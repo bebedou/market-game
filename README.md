@@ -95,7 +95,8 @@ This formats Dart, runs `flutter analyze --fatal-infos`, runs widget tests at ph
 and wider sizes, and builds release web output. GitHub Actions uses the same
 script and also builds an Android debug APK using the runner's Android SDK.
 The checks also advance the pure Dart economy for 10,000 days and print its
-financial results. To inspect a shorter run:
+financial results. A 365-day replay is also compiled to JavaScript and compared
+byte for byte with its Dart VM snapshot. To inspect a shorter run:
 
 ```bash
 dart tool/simulate.dart --days 30 --seed 42

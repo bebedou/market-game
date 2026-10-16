@@ -180,7 +180,9 @@ stay below JavaScript's exact integer limit for supported controls.
 
 Snapshots include day, random state, cash accounts, current journal, FIFO lots,
 prices, targets, prior sales, closure flags, and the last report. JSON round-trip
-and resumed-future equivalence are tested. Invalid schema versions are rejected.
+and resumed-future equivalence are tested. CI also compiles a 365-day replay
+to JavaScript, runs it with Node, and compares its complete JSON snapshot with
+the Dart VM output byte for byte. Invalid schema versions are rejected.
 There is no disk or browser persistence adapter yet. Snapshots currently assume
 the same version-1 catalog and population, not arbitrary custom scenarios.
 
