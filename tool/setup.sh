@@ -4,8 +4,13 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sdk_dir="$project_root/.tools/flutter"
 revision="$(tr -d '\r\n' < "$project_root/.flutter-revision")"
+version="$(tr -d '\r\n' < "$project_root/.flutter-version")"
 if [[ ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then
   echo 'Invalid Flutter revision in .flutter-revision' >&2
+  exit 1
+fi
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo 'Invalid stable Flutter version in .flutter-version' >&2
   exit 1
 fi
 
@@ -16,9 +21,17 @@ if [[ ! -d "$sdk_dir/.git" ]]; then
 fi
 
 installed_revision="$(git -C "$sdk_dir" rev-parse HEAD 2>/dev/null || true)"
-if [[ "$installed_revision" != "$revision" ]]; then
-  git -C "$sdk_dir" fetch --depth 1 origin "$revision"
-  git -C "$sdk_dir" checkout -B stable FETCH_HEAD
+installed_tag="$(git -C "$sdk_dir" rev-parse -q --verify "refs/tags/$version^{commit}" 2>/dev/null || true)"
+if [[ "$installed_revision" != "$revision" || "$installed_tag" != "$revision" ]]; then
+  # Flutter needs its release tag to resolve SDK version constraints correctly.
+  git -C "$sdk_dir" fetch --depth 1 origin "refs/tags/$version:refs/tags/$version"
+  resolved_revision="$(git -C "$sdk_dir" rev-parse "refs/tags/$version^{commit}")"
+  if [[ "$resolved_revision" != "$revision" ]]; then
+    echo 'Flutter release tag does not match the pinned revision.' >&2
+    exit 1
+  fi
+  git -C "$sdk_dir" checkout -B stable "$revision"
+  rm -f "$sdk_dir/bin/cache/flutter.version.json"
 fi
 
 export PATH="$sdk_dir/bin:$PATH"

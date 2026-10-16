@@ -34,12 +34,13 @@ native devices; web browsers control their own orientation.
 
 ## SDK and local setup
 
-The SDK is pinned in `.flutter-revision` to commit
-`abaf9c523780a608bd46686fd5e53740a07077f8`, resolved from Flutter's official
-`stable` branch on 2026-10-16. Dart is bundled with Flutter. Codespaces and CI use
-the same revision. `tool/setup.sh` installs it into ignored `.tools/flutter` and
-does not change any system Flutter installation. Review and update the revision
-deliberately as stable releases change.
+Flutter **3.47.7** is pinned in `.flutter-version`, with its commit recorded in
+`.flutter-revision`: `abaf9c523780a608bd46686fd5e53740a07077f8`. This was resolved
+from Flutter's official `stable` branch and verified against release tag `3.47.7`
+on 2026-10-16. Dart is bundled with Flutter. Codespaces and CI use the same release.
+`tool/setup.sh` verifies the tag's commit and installs it into ignored
+`.tools/flutter`, preserving any system Flutter installation. Review and update
+the version and revision deliberately as stable releases change.
 
 Codespaces installs Git, curl, unzip, xz, zip, Python, OpenGL support, and Java 17.
 To work locally on Linux or macOS, install these dependencies and run:

@@ -23,7 +23,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .tools/flutter
-          key: flutter-linux-${{ hashFiles('.flutter-revision') }}
+          key: flutter-linux-${{ hashFiles('.flutter-revision', '.flutter-version') }}
       - name: Install Flutter and generate Android launcher
         run: bash tool/setup.sh
       - name: Analyze, test, and build web
