@@ -59,7 +59,9 @@ on 2026-10-16. Dart is bundled with Flutter. Codespaces and CI use the same rele
 `.tools/flutter`, preserving any system Flutter installation. Review and update
 the version and revision deliberately as stable releases change.
 
-Codespaces installs Git, curl, unzip, xz, zip, Python, OpenGL support, and Java 17.
+Codespaces installs Git, curl, unzip, xz, zip, Python, Node.js, OpenGL support,
+and Java 17. Node.js runs the JavaScript compatibility check; the game has no
+Node.js backend.
 To work locally on Linux or macOS, install these dependencies and run:
 
 ```bash
