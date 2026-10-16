@@ -1,0 +1,43 @@
+name: Flutter checks
+
+on:
+  push:
+    branches: [main, 'setup/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-and-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache pinned Flutter SDK
+        uses: actions/cache@v4
+        with:
+          path: .tools/flutter
+          key: flutter-linux-${{ hashFiles('.flutter-revision', '.flutter-version') }}
+      - name: Install Flutter and generate Android launcher
+        run: bash tool/setup.sh
+      - name: Analyze, test, and build web
+        run: bash tool/check.sh
+      - name: Build Android debug APK
+        run: .tools/flutter/bin/flutter build apk --debug
+      - name: Upload previews and native launcher
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-game-starter
+          path: |
+            build/web/
+            build/app/outputs/flutter-apk/app-debug.apk
+            android/
+            pubspec.lock
+          include-hidden-files: true
+          retention-days: 7
