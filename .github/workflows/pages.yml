@@ -1,0 +1,50 @@
+name: Deploy Flutter to GitHub Pages
+
+on:
+  push:
+    branches: [main, setup/flutter-codespaces]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Cache pinned Flutter SDK
+        uses: actions/cache@v4
+        with:
+          path: .tools/flutter
+          key: flutter-linux-${{ hashFiles('.flutter-revision', '.flutter-version') }}
+      - name: Install pinned Flutter SDK
+        run: bash tool/setup.sh
+      - name: Build Flutter for the Pages subdirectory
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: .tools/flutter/bin/flutter build web --release --base-href="${BASE_PATH}/"
+      - name: Upload Pages site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

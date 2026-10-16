@@ -4,6 +4,21 @@ A Flutter foundation for an Android-first convenience-store simulator. This PR
 sets up development tooling and a responsive starter screen. **The retail
 simulation, dashboard, and local saves are not implemented yet.**
 
+## GitHub Pages preview
+
+The `Deploy Flutter to GitHub Pages` workflow publishes the web starter on pushes
+to `main` or `setup/flutter-codespaces`. It builds with the Pages subdirectory as
+Flutter's base path, so JavaScript and assets resolve correctly under
+`/market-game/`. The expected default URL is https://bebedou.github.io/market-game/;
+the successful deployment's environment URL is authoritative.
+
+The workflow attempts to enable Pages automatically. If GitHub denies initial
+site creation, an administrator must open **Settings → Pages**, select **GitHub
+Actions** as the source, and rerun the deployment. Pages availability for this
+private repository depends on the owner's GitHub plan. The deployment does not
+change repository visibility. This publishes the starter screen; the retail
+simulation is the next milestone.
+
 ## Start in Codespaces (including from a phone)
 
 1. On GitHub, select the `setup/flutter-codespaces` branch while this setup PR is
