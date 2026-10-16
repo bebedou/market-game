@@ -1,3 +1,7 @@
+// Relative imports let this CLI run with a standalone Dart SDK, even without
+// Flutter's package configuration. The engine itself has no package imports.
+// ignore_for_file: avoid_relative_lib_imports
+
 import 'dart:convert';
 import 'dart:io';
 
