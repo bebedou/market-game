@@ -1,8 +1,11 @@
-Pure Dart systems belong here: seeded randomness, daily demand, purchasing,
-restocking, competitor pricing, and accounting. Do not import Flutter or UI code.
+The pure Dart daily engine lives in simulation.dart. demand.dart contains consumer
+intentions and choice weights; seeded_random.dart owns reproducible PRNG state.
+No Flutter, wall-clock timers, persistence service, or backend is imported.
 
-The UI should invoke the engine and display its output. Real-time timers and
-local persistence belong outside the engine. The engine must advance in discrete
-days and serialize its random state to make save/resume deterministic.
+Use Simulation.neighborhood(seed: ...), advanceDay(), and the player's price and
+restock-target setters. Inspect lastReport for accounting and market shares.
+JSON snapshots preserve RNG, FIFO lots, prices, and prior sales so resumed games
+have the same future. File/browser persistence is a later UI concern.
 
-No simulation is implemented in this environment setup.
+Run: dart tool/simulate.dart --days 10000 --seed 42
+See ../../docs/economy.md for the model assumptions and supported controls.

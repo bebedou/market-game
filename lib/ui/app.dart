@@ -47,12 +47,12 @@ class _SetupScreen extends StatelessWidget {
                       style: textTheme.titleMedium),
                   const SizedBox(height: 8),
                   const Text(
-                    'This is the Flutter starter app. The next milestone is '
-                    'a daily retail economy with inventory, pricing, and '
-                    'competing convenience stores.',
+                    'The pure Dart economy now models households, inventory, '
+                    'suppliers, and competing convenience stores. The next '
+                    'milestone is the playable dashboard.',
                   ),
                   const SizedBox(height: 24),
-                  const Text('The economic simulation is not implemented yet.'),
+                  const Text('Dashboard controls and local saves are coming next.'),
                 ],
               ),
             ),

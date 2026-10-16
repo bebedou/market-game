@@ -1,8 +1,10 @@
 # Market Game
 
-A Flutter foundation for an Android-first convenience-store simulator. This PR
-sets up development tooling and a responsive starter screen. **The retail
-simulation, dashboard, and local saves are not implemented yet.**
+An Android-first convenience-store simulator with a pure Dart retail economy.
+The headless engine models 1,000 households, three stores, two suppliers, and eight
+products with seeded daily demand and auditable accounting. The Flutter screen
+is still the environment starter; the playable dashboard and local-save adapter
+are the next milestones.
 
 ## GitHub Pages preview
 
@@ -92,6 +94,16 @@ bash tool/check.sh
 This formats Dart, runs `flutter analyze --fatal-infos`, runs widget tests at phone
 and wider sizes, and builds release web output. GitHub Actions uses the same
 script and also builds an Android debug APK using the runner's Android SDK.
+The checks also advance the pure Dart economy for 10,000 days and print its
+financial results. To inspect a shorter run:
+
+```bash
+dart tool/simulate.dart --days 30 --seed 42
+```
+
+Read [the economic model](docs/economy.md) for formulas, opening endowments,
+consumer budgets, supplier policies, FIFO accounting, and snapshot limitations.
+
 The workflow uploads the web build, debug APK, generated Android launcher, and
 dependency lockfile as a seven-day artifact. Artifacts are downloads, not a hosted
 website. Workflow failures are visible in the repository's Actions tab.
@@ -101,8 +113,8 @@ website. Workflow failures are visible in the repository's Actions tab.
 ```text
 lib/
   main.dart       Flutter entry point and native orientation
-  domain/         Future pure Dart models; no Flutter imports
-  simulation/     Future pure Dart systems; no Flutter imports
+  domain/         Pure Dart entities, FIFO stock, reports, and cash ledger
+  simulation/     Seeded daily demand, restocking, pricing AI, and state snapshots
   ui/             Flutter screens and presentation
 test/             Automated tests
 tool/             SDK installation, verification, and preview scripts
@@ -116,13 +128,8 @@ inventory quantities.
 
 ## Next development milestone
 
-- Define eight products, aggregated segments totaling 1,000 households, three
-  stores, and two suppliers.
-- Implement seeded daily demand, budget constraints, inventory purchases, sales,
-  operating expenses, and bounded competitor pricing.
-- Document demand formulas and accounting assumptions before balancing them.
-- Test money transfers, inventory limits, demand responses, save/resume
-  reproducibility, and a headless 10,000-day run.
+The engine and its accounting, demand, inventory, determinism, snapshot-resume,
+and 10,000-day tests are implemented. Next:
 - Build cash/profit, revenue, inventory, pricing, market-share, notification, and
   pause/speed controls (15 seconds per day at 1×; also 3× and 10×).
 - Add local saves and validate the complete flow on Android.
