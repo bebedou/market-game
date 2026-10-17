@@ -1,18 +1,21 @@
 # Market Game
 
-An Android-first convenience-store simulator with a pure Dart retail economy.
-The headless engine models 1,000 households, three stores, two suppliers, and eight
-products with seeded daily demand and auditable accounting. The Flutter screen
-is still the environment starter; the playable dashboard and local-save adapter
-are the next milestones.
+An Android-first convenience-store simulator with a pure Dart retail economy
+and a live Flutter dashboard. The neighborhood contains 1,000 households, three
+stores, two suppliers, and eight products. Cash, daily profit, inventory, revenue
+history, market shares, and business activity come from actual daily simulation.
+
+Playback controls work. Product pricing and restock settings are read-only in
+this milestone; editing decisions and local saves are next. This preview keeps
+state in memory, so refreshing or restarting the app starts a new game.
 
 See [ROADMAP.md](ROADMAP.md) for detailed implementation steps, dependencies,
 and acceptance criteria for the first playable release.
 
 ## GitHub Pages preview
 
-The `Deploy Flutter to GitHub Pages` workflow publishes the web starter on pushes
-to `main` or `setup/flutter-codespaces`. It builds with the Pages subdirectory as
+The `Deploy Flutter to GitHub Pages` workflow publishes the web dashboard on pushes
+to `main`. It builds with the Pages subdirectory as
 Flutter's base path, so JavaScript and assets resolve correctly under
 `/market-game/`. The expected default URL is https://bebedou.github.io/market-game/;
 the successful deployment's environment URL is authoritative.
@@ -20,8 +23,31 @@ the successful deployment's environment URL is authoritative.
 The workflow attempts to enable Pages automatically. If GitHub denies initial
 site creation, an administrator must open **Settings → Pages**, select **GitHub
 Actions** as the source, and rerun the deployment. Pages is enabled for this public repository. The deployment does not
-change repository visibility. The hosted screen is still a status screen; the headless engine is implemented,
-and the playable dashboard is the next milestone.
+change repository visibility. The hosted dashboard advances the real economy; player decision controls and
+local saves remain the next milestones.
+
+## Using the dashboard
+
+- **Home:** cash, latest completed day's profit/revenue, up to 30 days of revenue
+  history, the daily income statement, and current store essentials.
+- **Stock:** eight products with units on hand, prices, targets, supplier quotes,
+  and coverage based on the latest seven completed days of actual sales. Coverage
+  is unavailable before the first close or when recent sales are zero.
+- **Market:** all three stores' revenue shares, consumer segments, and supplier
+  availability. There are no invented shares before the first trading day.
+- **Activity:** daily closes plus stockout/closure notices. The feed retains at
+  most 80 entries and repeats the same warning no more than once every three days.
+
+New and restored controllers start **paused**. Press **Play**, or use the **Next
+day** button (skip-next icon) while paused to complete one day immediately. Speeds
+are 1× (15 seconds/day), 3× (5 seconds/day), and 10× (1.5 seconds/day). Changing
+speed preserves the completed fraction of the current day. A manual next-day
+step resets that partial-day clock.
+
+Backgrounding the app or hiding the browser tab pauses it. Returning does not
+resume automatically or simulate offline time. There is one active tick timer;
+a delayed callback advances at most one day rather than catching up missed days.
+The engine still advances only when `advanceDay()` is called.
 
 ## Start in Codespaces (including from a phone)
 
@@ -85,8 +111,8 @@ Android behavior, remove `android/` from `.gitignore` and commit the generated
 launcher. The script will then leave it alone. The temporary application ID is
 `com.bebedou.market_game`; choose the final ID before publishing.
 
-`flutter pub get` generates `pubspec.lock`. Commit it after the first verified
-setup so dependency versions are locked for the application; it is not ignored.
+`pubspec.lock` is committed for reproducible application dependencies. Use
+`flutter pub get` for setup and review intentional dependency upgrades separately.
 
 ## Checks
 
@@ -94,7 +120,7 @@ setup so dependency versions are locked for the application; it is not ignored.
 bash tool/check.sh
 ```
 
-This formats Dart, runs `flutter analyze --fatal-infos`, runs widget tests at phone
+This checks committed Dart formatting, runs `flutter analyze --fatal-infos`, runs widget tests at phone
 and wider sizes, and builds release web output. GitHub Actions uses the same
 script and also builds an Android debug APK using the runner's Android SDK.
 The checks also advance the pure Dart economy for 10,000 days and print its
@@ -117,6 +143,7 @@ website. Workflow failures are visible in the repository's Actions tab.
 ```text
 lib/
   main.dart       Flutter entry point and native orientation
+  application/    Controller, monotonic playback clock, bounded history/activity
   domain/         Pure Dart entities, FIFO stock, reports, and cash ledger
   simulation/     Seeded daily demand, restocking, pricing AI, and state snapshots
   ui/             Flutter screens and presentation
@@ -132,11 +159,11 @@ inventory quantities.
 
 ## Next development milestone
 
-The engine and its accounting, demand, inventory, determinism, snapshot-resume,
-and 10,000-day tests are implemented. Next:
-- Build cash/profit, revenue, inventory, pricing, market-share, notification, and
-  pause/speed controls (15 seconds per day at 1×; also 3× and 10×).
-- Add local saves and validate the complete flow on Android.
+The engine and live dashboard are implemented, with controller, layout, accounting,
+determinism, and 10,000-day tests. Next:
+
+- Add validated player pricing and restock controls with immediate feedback.
+- Add local saves, recovery behavior, and complete the phone/device checks.
 
 Stock markets, manufacturing, patents, R&D, acquisitions, and macroeconomics are
 outside the first retail prototype.

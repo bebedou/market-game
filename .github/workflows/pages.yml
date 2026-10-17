@@ -2,7 +2,7 @@ name: Deploy Flutter to GitHub Pages
 
 on:
   push:
-    branches: [main, setup/flutter-codespaces]
+    branches: [main]
     paths-ignore:
       - '**.md'
   workflow_dispatch:

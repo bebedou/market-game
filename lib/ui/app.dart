@@ -1,64 +1,33 @@
 import 'package:flutter/material.dart';
 
+import '../application/game_controller.dart';
+import 'dashboard.dart';
+
 class MarketGameApp extends StatelessWidget {
-  const MarketGameApp({super.key});
+  const MarketGameApp({super.key, this.controller});
+
+  final GameController? controller;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Market Game',
+      title: 'Market Game — Corner & Co.',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF146C59)),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF226C52),
+          surface: Colors.white,
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF3F5F2),
         useMaterial3: true,
-      ),
-      home: const _SetupScreen(),
-    );
-  }
-}
-
-class _SetupScreen extends StatelessWidget {
-  const _SetupScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Market Game')),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.storefront_outlined,
-                    size: 56,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(height: 24),
-                  Text('Your neighborhood starts here.',
-                      style: textTheme.headlineMedium),
-                  const SizedBox(height: 16),
-                  Text('Development environment ready',
-                      style: textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'The pure Dart economy now models households, inventory, '
-                    'suppliers, and competing convenience stores. The next '
-                    'milestone is the playable dashboard.',
-                  ),
-                  const SizedBox(height: 24),
-                  const Text('Dashboard controls and local saves are coming next.'),
-                ],
-              ),
-            ),
-          ),
+        dividerColor: const Color(0xFFE5E9E3),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFF3F5F2),
+          foregroundColor: Color(0xFF18352C),
+          surfaceTintColor: Colors.transparent,
         ),
       ),
+      home: DashboardScreen(controller: controller),
     );
   }
 }

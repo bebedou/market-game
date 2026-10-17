@@ -24,16 +24,16 @@ and acquisitions are outside this release.
 | --- | --- | --- |
 | M0 — Development foundation | Complete and merged | Flutter 3.47.7, Codespaces, CI, web and Android builds |
 | M1 — Daily retail engine | Implemented and tested; integrated by this release | [PR #2](https://github.com/bebedou/market-game/pull/2) |
-| M2 — Game controller and simulation clock | Planned | Integrate M1 |
-| M3 — Readable mobile dashboard | Planned | M2 and engine reports |
+| M2 — Game controller and simulation clock | Implemented | Monotonic clock, lifecycle pause, bounded history |
+| M3 — Readable mobile dashboard | Implemented; device/accessibility pass pending | Read-only business settings; real reports |
 | M4 — Player decisions and feedback | Planned | M3 and validated engine commands |
 | M5 — Local persistence | Planned | M2 state ownership; M3 history; M4 controls |
 | M6 — Integrated validation and balance | Planned | M2–M5 |
 | M7 — First playable release | Planned | M6 acceptance checks |
 
 The [live GitHub Pages site](https://bebedou.github.io/market-game/) currently
-shows the environment starter. A working engine in a PR is not yet a playable
-mobile game. Completed checkboxes below describe implemented work; unchecked
+shows the simulation dashboard after this release is published. Business
+settings remain read-only and saves are not implemented yet. Completed checkboxes below describe implemented work; unchecked
 items are remaining work, not functionality available in the current build.
 
 ## M0 — Development foundation
@@ -50,13 +50,13 @@ items are remaining work, not functionality available in the current build.
 
 ### Foundation cleanup before the first playable release
 
-- [ ] Commit a verified application `pubspec.lock` for reproducible dependencies.
+- [x] Commit a verified application `pubspec.lock` for reproducible dependencies.
 - [ ] Commit the generated Android launcher before adding native customizations;
   stop ignoring `android/` at that point.
 - [ ] Review the temporary application ID before any store publication.
-- [ ] Limit production Pages deployments to the intended release branch, normally
+- [x] Limit production Pages deployments to the intended release branch, normally
   `main`; keep PR builds as validation rather than production deployments.
-- [ ] Ensure formatting is checked consistently and commit formatted source;
+- [x] Ensure formatting is checked consistently and commit formatted source;
   avoid depending on CI to silently rewrite files before analysis.
 
 Acceptance: a fresh Codespace can install dependencies and start the web preview
@@ -87,10 +87,10 @@ an installed Android SDK. The published project-subdirectory URL loads its asset
 ### Finish integration
 
 1. [x] Review the successful CI results and integrate PR #2 in this release.
-2. [ ] Run the documented 30-day scenario from the integrated revision.
+2. [x] Run the documented 30-day scenario from the integrated revision.
 3. [ ] Record any formula changes with their intended behavioral effect and update
    the model documentation and deterministic fixtures together.
-4. [ ] Preserve the framework boundary: domain and simulation code import neither
+4. [x] Preserve the framework boundary: domain and simulation code import neither
    Flutter nor storage/UI services.
 
 Verified baseline: 20 tests passed; 10,000 audited days completed; a 365-day full
@@ -103,24 +103,25 @@ all business statements reconcile; local cash and inventory never become negativ
 
 ## M2 — Game controller and simulation clock
 
-1. [ ] Add one small Flutter-facing controller that owns the `Simulation` instance,
+1. [x] Add one small Flutter-facing controller that owns the `Simulation` instance,
    playback state, selected speed, recent reports, and displayable errors. Start
    with Flutter's built-in notification/state tools; add a state package only if
    a concrete need appears.
-2. [ ] Expose explicit commands for play/pause, speed, price changes, stock targets,
-   and automatic restocking. Widgets must not edit ledger balances or inventory.
-3. [ ] Introduce a controllable scheduler outside the engine. A tick remains one
+2. [x] Expose explicit commands for play/pause, speed, and a paused single-day step.
+   Price/stock decision commands arrive with M4; widgets never edit the ledger
+   or inventory directly.
+3. [x] Introduce a controllable scheduler outside the engine. A tick remains one
    synchronous `advanceDay()` call; the economic engine never reads a wall clock.
-4. [ ] Implement day durations: 1× = 15 seconds, 3× = 5 seconds, 10× = 1.5 seconds.
-5. [ ] Define speed changes to preserve the fraction of the current day already
+4. [x] Implement day durations: 1× = 15 seconds, 3× = 5 seconds, 10× = 1.5 seconds.
+5. [x] Define speed changes to preserve the fraction of the current day already
    elapsed. Ensure there is only one active scheduler and no overlapping ticks.
-6. [ ] Start new and restored games paused. Pause when the app is backgrounded or
+6. [x] Start new and restored games paused. Pause when the app is backgrounded or
    the browser tab is hidden; require play on return. Do not add offline progress
    in the first release.
-7. [ ] Keep the most recent 30 daily reports for charts and event summaries. Show
+7. [x] Keep the most recent 30 daily reports for charts and event summaries. Show
    an explicit pre-trading state on day 0 rather than fabricated history.
-8. [ ] Dispose timers/listeners when the controller is replaced or the app closes.
-9. [ ] Test the clock with fake time: each speed, pause/resume, speed changes,
+8. [x] Dispose timers/listeners when the controller is replaced or the app closes.
+9. [x] Test the clock with fake time: each speed, pause/resume, speed changes,
    backgrounding, disposal, and rapid repeated control taps.
 
 Acceptance: one day advances exactly once at the configured interval, pausing
@@ -129,28 +130,28 @@ randomness for the same completed-day/action sequence.
 
 ## M3 — Readable mobile dashboard
 
-1. [ ] Replace the starter screen with a dashboard backed entirely by controller
+1. [x] Replace the starter screen with a dashboard backed entirely by controller
    state and actual engine reports.
-2. [ ] Show current day, playback state, cash, last completed day's revenue, and
+2. [x] Show current day, playback state, cash, last completed day's revenue, and
    last completed day's profit. Label cash change and profit distinctly.
-3. [ ] Add a revenue history chart for up to 30 completed days. Include readable
+3. [x] Add a revenue history chart for up to 30 completed days. Include readable
    values and an empty state before the first close; do not generate sample data.
-4. [ ] Show each product's units on hand, inventory value, current retail price,
+4. [x] Show each product's units on hand, inventory value, current retail price,
    supplier quotes, restock target, and estimated days of stock remaining.
-5. [ ] Derive stock coverage from recent actual unit sales. For zero sales or no
+5. [x] Derive stock coverage from recent actual unit sales. For zero sales or no
    history, display an explicit unavailable/insufficient-history state.
-6. [ ] Show all three competitors' revenue shares, including a zero-sales state
+6. [x] Show all three competitors' revenue shares, including a zero-sales state
    and a clear indication of the player-controlled store.
-7. [ ] Provide a daily explanation of revenue minus COGS minus operating expenses,
+7. [x] Provide a daily explanation of revenue minus COGS minus operating expenses,
    so the player can connect a decision to its financial result.
-8. [ ] Make important events visible without obscuring controls: stockouts,
-   inability to restock, store closure, and save/load problems.
-9. [ ] Use a small number of navigable sections if a single scrolling screen
+8. [ ] Complete event coverage. Stockout/closure notices are implemented; explicit
+   cash-limited restock notices and save/load recovery remain with M4/M5.
+9. [x] Use a small number of navigable sections if a single scrolling screen
    becomes difficult to scan. Keep primary business and playback controls easy
    to reach with one hand.
-10. [ ] Check narrow phones, larger phones, browser widths, large text, contrast,
-    screen-reader labels, and touch targets. Do not rely on color alone for profit
-    and loss or stock warnings.
+10. [ ] Complete device and accessibility validation. Automated layouts cover
+    320/430/1024 px widths and 1.8× text; inspect browser visuals and real TalkBack
+    behavior before the first playable release. Warnings include readable text.
 
 Acceptance: every visible number has an identifiable engine/report source; the
 player can find cash, profit, inventory, and market share without horizontal

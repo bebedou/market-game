@@ -5,7 +5,7 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PATH="$project_root/.tools/flutter/bin:$PATH"
 cd "$project_root"
 flutter pub get
-dart format lib test tool/simulate.dart tool/replay_check.dart
+dart format --output=none --set-exit-if-changed lib test tool/simulate.dart tool/replay_check.dart
 flutter analyze --fatal-infos
 flutter test
 dart tool/simulate.dart --days 30 --seed 42
