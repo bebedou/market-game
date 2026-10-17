@@ -1,8 +1,13 @@
 # Market Game
 
-A Flutter foundation for an Android-first convenience-store simulator. This PR
-sets up development tooling and a responsive starter screen. **The retail
-simulation, dashboard, and local saves are not implemented yet.**
+An Android-first convenience-store simulator with a pure Dart retail economy.
+The headless engine models 1,000 households, three stores, two suppliers, and eight
+products with seeded daily demand and auditable accounting. The Flutter screen
+is still the environment starter; the playable dashboard and local-save adapter
+are the next milestones.
+
+See [ROADMAP.md](ROADMAP.md) for detailed implementation steps, dependencies,
+and acceptance criteria for the first playable release.
 
 ## GitHub Pages preview
 
@@ -14,15 +19,13 @@ the successful deployment's environment URL is authoritative.
 
 The workflow attempts to enable Pages automatically. If GitHub denies initial
 site creation, an administrator must open **Settings → Pages**, select **GitHub
-Actions** as the source, and rerun the deployment. Pages availability for this
-private repository depends on the owner's GitHub plan. The deployment does not
-change repository visibility. This publishes the starter screen; the retail
-simulation is the next milestone.
+Actions** as the source, and rerun the deployment. Pages is enabled for this public repository. The deployment does not
+change repository visibility. The hosted screen is still a status screen; the headless engine is implemented,
+and the playable dashboard is the next milestone.
 
 ## Start in Codespaces (including from a phone)
 
-1. On GitHub, select the `setup/flutter-codespaces` branch while this setup PR is
-   open (use `main` after merging).
+1. On GitHub, select the `main` branch for the integrated project.
 2. Choose **Code → Codespaces → Create codespace on this branch**. On a phone,
    use the browser's desktop-site option if the Code menu is hidden. Creating a
    Codespace uses your GitHub account's Codespaces quota.
@@ -57,7 +60,9 @@ on 2026-10-16. Dart is bundled with Flutter. Codespaces and CI use the same rele
 `.tools/flutter`, preserving any system Flutter installation. Review and update
 the version and revision deliberately as stable releases change.
 
-Codespaces installs Git, curl, unzip, xz, zip, Python, OpenGL support, and Java 17.
+Codespaces installs Git, curl, unzip, xz, zip, Python, Node.js, OpenGL support,
+and Java 17. Node.js runs the JavaScript compatibility check; the game has no
+Node.js backend.
 To work locally on Linux or macOS, install these dependencies and run:
 
 ```bash
@@ -92,6 +97,17 @@ bash tool/check.sh
 This formats Dart, runs `flutter analyze --fatal-infos`, runs widget tests at phone
 and wider sizes, and builds release web output. GitHub Actions uses the same
 script and also builds an Android debug APK using the runner's Android SDK.
+The checks also advance the pure Dart economy for 10,000 days and print its
+financial results. A 365-day replay is also compiled to JavaScript and compared
+byte for byte with its Dart VM snapshot. To inspect a shorter run:
+
+```bash
+dart tool/simulate.dart --days 30 --seed 42
+```
+
+Read [the economic model](docs/economy.md) for formulas, opening endowments,
+consumer budgets, supplier policies, FIFO accounting, and snapshot limitations.
+
 The workflow uploads the web build, debug APK, generated Android launcher, and
 dependency lockfile as a seven-day artifact. Artifacts are downloads, not a hosted
 website. Workflow failures are visible in the repository's Actions tab.
@@ -101,8 +117,8 @@ website. Workflow failures are visible in the repository's Actions tab.
 ```text
 lib/
   main.dart       Flutter entry point and native orientation
-  domain/         Future pure Dart models; no Flutter imports
-  simulation/     Future pure Dart systems; no Flutter imports
+  domain/         Pure Dart entities, FIFO stock, reports, and cash ledger
+  simulation/     Seeded daily demand, restocking, pricing AI, and state snapshots
   ui/             Flutter screens and presentation
 test/             Automated tests
 tool/             SDK installation, verification, and preview scripts
@@ -116,13 +132,8 @@ inventory quantities.
 
 ## Next development milestone
 
-- Define eight products, aggregated segments totaling 1,000 households, three
-  stores, and two suppliers.
-- Implement seeded daily demand, budget constraints, inventory purchases, sales,
-  operating expenses, and bounded competitor pricing.
-- Document demand formulas and accounting assumptions before balancing them.
-- Test money transfers, inventory limits, demand responses, save/resume
-  reproducibility, and a headless 10,000-day run.
+The engine and its accounting, demand, inventory, determinism, snapshot-resume,
+and 10,000-day tests are implemented. Next:
 - Build cash/profit, revenue, inventory, pricing, market-share, notification, and
   pause/speed controls (15 seconds per day at 1×; also 3× and 10×).
 - Add local saves and validate the complete flow on Android.
