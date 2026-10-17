@@ -3,13 +3,18 @@ import 'package:flutter/material.dart';
 import '../application/game_controller.dart';
 import '../domain/economy.dart';
 import 'format.dart';
-import 'revenue_chart.dart';
+import 'competition_chart.dart';
 
 const _ink = Color(0xFF18352C);
 const _muted = Color(0xFF66776D);
 const _amber = Color(0xFF92630F);
-const _red = Color(0xFFB33D32);
-const _storeColors = [Color(0xFF226C52), Color(0xFF4D73B4), Color(0xFFAA7834)];
+
+int _sum(Iterable<int> values) => values.fold(0, (a, b) => a + b);
+String _margin(BusinessReport? report) => report == null || report.revenue == 0
+    ? '—'
+    : '${(100 * report.profit / report.revenue).toStringAsFixed(1)}%';
+String _amount(int? value, {bool signed = false}) =>
+    value == null ? '—' : money(value, signed: signed);
 
 class OverviewView extends StatelessWidget {
   const OverviewView({super.key, required this.game});
@@ -18,13 +23,12 @@ class OverviewView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sim = game.simulation;
-    final report = game.playerReport;
-    final totalUnits = report?.unitsSold.values.fold<int>(0, (a, b) => a + b);
+    final report = sim.lastReport;
     return _Page(
       children: [
         const _Heading(
-          'Your business, at a glance',
-          'Performance from your latest trading day.',
+          'Neighborhood overview',
+          '1,000 households · 3 shops · 2 suppliers',
         ),
         Container(
           padding: const EdgeInsets.all(24),
@@ -35,89 +39,81 @@ class OverviewView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Icon(
-                    Icons.account_balance_wallet_outlined,
-                    color: Color(0xFFBDE8D0),
-                    size: 20,
-                  ),
-                  Text(
-                    'AVAILABLE CASH',
-                    style: TextStyle(
-                      color: Color(0xFFCAE5D4),
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.3,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+              const Text(
+                'TOTAL RETAIL REVENUE',
+                style: TextStyle(
+                  color: Color(0xFFCAE5D4),
+                  letterSpacing: 1.2,
+                  fontSize: 12,
+                ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
                 child: Text(
-                  money(sim.ledger.balance(sim.player.id)),
-                  key: const Key('cash-value'),
+                  _amount(report?.retailRevenue),
+                  key: const Key('retail-revenue'),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 38,
+                    fontSize: 36,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: -1.2,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Text(
                 report == null
-                    ? 'Opening capital · ready for your first day'
-                    : '${money(report.cashChange, signed: true)} cash movement on day ${sim.day}',
+                    ? 'Advance one day to collect results.'
+                    : 'Latest completed day · Day ${report.day}',
                 style: const TextStyle(color: Color(0xFFD2E7D9)),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
+        _Panel(
+          child: Column(
+            children: [
+              _Detail(
+                'Combined daily profit',
+                report == null ? '—' : money(game.retailProfit, signed: true),
+                strong: true,
+              ),
+              _Detail('Retail cash', money(game.retailCash)),
+              _Detail(
+                'Units sold',
+                report == null ? '—' : count(report.soldUnits),
+              ),
+              _Detail(
+                'Open shops',
+                '${sim.stores.where((s) => s.isOpen).length} / ${sim.stores.length}',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        const _Heading(
+          'Shop comparison',
+          'Same day, same measures. Share is based on retail revenue.',
+          compact: true,
+        ),
         LayoutBuilder(
           builder: (context, constraints) {
-            final stacked =
-                constraints.maxWidth < 340 ||
-                MediaQuery.textScalerOf(context).scale(1) > 1.4;
-            final width = stacked
-                ? constraints.maxWidth
-                : (constraints.maxWidth - 12) / 2;
+            final columns = constraints.maxWidth >= 760 ? 3 : 1;
+            final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
             return Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
-                SizedBox(
-                  width: width,
-                  child: _Metric(
-                    'Daily profit',
-                    report == null ? '—' : money(report.profit, signed: true),
-                    report == null
-                        ? 'After your first close'
-                        : 'Revenue less costs & expenses',
-                    icon: Icons.trending_up,
-                    color: (report?.profit ?? 0) < 0 ? _red : _storeColors[0],
+                for (var i = 0; i < sim.stores.length; i++)
+                  SizedBox(
+                    width: width,
+                    child: _StoreSummary(
+                      game: game,
+                      store: sim.stores[i],
+                      index: i,
+                    ),
                   ),
-                ),
-                SizedBox(
-                  width: width,
-                  child: _Metric(
-                    'Daily revenue',
-                    report == null ? '—' : money(report.revenue),
-                    report == null
-                        ? 'After your first close'
-                        : '${count(totalUnits!)} units sold',
-                    icon: Icons.receipt_long_outlined,
-                    color: _storeColors[1],
-                  ),
-                ),
               ],
             );
           },
@@ -127,73 +123,34 @@ class OverviewView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Heading(
-                'Revenue history',
-                game.reports.isEmpty
-                    ? 'No completed days yet'
-                    : 'Last ${game.reports.length} completed days',
+              const _Heading(
+                'Competition over time',
+                'Latest 30 completed days. Solid 1 · dashed 2 · dotted 3.',
                 compact: true,
               ),
-              RevenueChart(reports: game.reports, storeId: sim.player.id),
+              CompetitionChart(reports: game.reports, stores: sim.stores),
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        if (report != null) ...[
-          _Panel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Heading(
-                  'Day ${sim.day} · the numbers',
-                  'How sales become profit',
-                  compact: true,
-                ),
-                _Detail('Revenue', money(report.revenue)),
-                _Detail(
-                  'Cost of goods sold',
-                  '−${money(report.costOfGoodsSold)}',
-                ),
-                _Detail(
-                  'Operating expenses',
-                  '−${money(report.operatingExpenses)}',
-                ),
-                const Divider(height: 24),
-                _Detail('Net profit', money(report.profit), strong: true),
-                const SizedBox(height: 12),
-                Text(
-                  'Restocking: ${money(report.inventoryPurchases)} moved from cash into inventory. '
-                  'It becomes a cost when those goods sell.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: _muted),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
+        const SizedBox(height: 16),
         _Panel(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const _Heading(
-                'Store essentials',
-                'Your current position',
+                'Run assumptions',
+                'A small economy for observing and tuning the engine.',
                 compact: true,
               ),
-              _Detail(
-                'Inventory on hand',
-                '${count(sim.player.inventory.values.fold<int>(0, (a, b) => a + b.quantity))} units',
+              Text(
+                sim.automateAllStores
+                    ? 'All three shops use automatic pricing and restocking.'
+                    : 'Mixed policy run: Corner & Co. prices are fixed; the other shops adapt.',
               ),
-              _Detail(
-                'Inventory value',
-                money(inventoryValue(sim.player.inventory)),
-              ),
-              _Detail('Daily operating cost', money(sim.player.operatingCost)),
-              _Detail(
-                'Status',
-                sim.player.isOpen ? 'Open for business' : 'Store closed',
+              const SizedBox(height: 8),
+              const Text(
+                'Profits and demand are provisional. Unfilled intentions include outside purchases, price rejection, budget limits, and stock shortages.',
+                style: TextStyle(color: _muted, height: 1.5),
               ),
             ],
           ),
@@ -205,56 +162,227 @@ class OverviewView extends StatelessWidget {
   }
 }
 
-class StockView extends StatelessWidget {
-  const StockView({super.key, required this.game});
+class _StoreSummary extends StatelessWidget {
+  const _StoreSummary({
+    required this.game,
+    required this.store,
+    required this.index,
+  });
   final GameController game;
+  final Store store;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
-    final store = game.simulation.player;
+    final report = game.reportFor(store.id);
+    final share = game.simulation.lastReport?.marketShares[store.id];
+    final empty = store.inventory.values.where((s) => s.quantity == 0).length;
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 12,
+            runSpacing: 6,
+            children: [
+              Text(
+                '${index + 1}. ${store.name}',
+                style: TextStyle(
+                  color: storeColors[index],
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+              Text(
+                store.isOpen ? 'Open' : 'Closed',
+                style: TextStyle(color: store.isOpen ? _muted : _amber),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _Detail(
+            'Revenue share',
+            share == null ? '—' : '${(share * 100).toStringAsFixed(1)}%',
+            strong: true,
+          ),
+          Semantics(
+            label: '${store.name} revenue share',
+            value: share == null
+                ? 'No completed days'
+                : '${(share * 100).toStringAsFixed(1)} percent',
+            child: ExcludeSemantics(
+              child: LinearProgressIndicator(
+                value: share ?? 0,
+                color: storeColors[index],
+                backgroundColor: storeColors[index].withValues(alpha: 0.1),
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _Detail('Revenue', _amount(report?.revenue)),
+          _Detail('Net profit', _amount(report?.profit, signed: true)),
+          _Detail('Net margin', _margin(report)),
+          _Detail('Cash', money(game.simulation.ledger.balance(store.id))),
+          _Detail('Inventory value', money(inventoryValue(store.inventory))),
+          _Detail('Empty product lines', '$empty / ${products.length}'),
+        ],
+      ),
+    );
+  }
+}
+
+class ShopsView extends StatefulWidget {
+  const ShopsView({super.key, required this.game});
+  final GameController game;
+
+  @override
+  State<ShopsView> createState() => _ShopsViewState();
+}
+
+class _ShopsViewState extends State<ShopsView> {
+  String? _storeId;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = widget.game;
+    final sim = game.simulation;
+    final store = sim.stores.firstWhere(
+      (s) => s.id == (_storeId ?? sim.stores.first.id),
+    );
+    final report = game.reportFor(store.id);
     return _Page(
       children: [
         const _Heading(
-          'Stockroom',
-          'Current stock, prices, and supplier quotes.',
+          'Shop inspector',
+          'Inspect the same financial and inventory measures for every shop.',
         ),
         _Panel(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Text('Shop', style: TextStyle(color: _muted)),
+              DropdownButton<String>(
+                key: const Key('shop-selector'),
+                value: store.id,
+                isExpanded: true,
+                itemHeight: null,
+                selectedItemBuilder: (context) => [
+                  for (final s in sim.stores)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        s.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                items: [
+                  for (final s in sim.stores)
+                    DropdownMenuItem(
+                      value: s.id,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(s.name),
+                      ),
+                    ),
+                ],
+                onChanged: (id) => setState(() => _storeId = id),
+              ),
+              const SizedBox(height: 8),
               Text(
-                money(inventoryValue(store.inventory)),
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: _ink,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Inventory value at purchase cost',
-                style: TextStyle(color: _muted),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                store.autoRestock
-                    ? 'Automatic restocking · at the daily open'
-                    : 'Automatic restocking is off',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Prices and restock targets are read-only in this preview.',
-                style: TextStyle(color: _muted),
+                '${store.isOpen ? 'Open' : 'Closed'} · ${sim.automateAllStores || !store.playerControlled ? 'Adaptive pricing' : 'Fixed prices'} · ${store.autoRestock ? 'Auto restock' : 'Restocking off'}',
+                style: const TextStyle(color: _muted),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        for (var i = 0; i < products.length; i++) ...[
-          _ProductCard(
-            game: game,
-            product: products[i],
-            icon: _productIcons[i],
+        _Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _Heading(
+                'Daily accounts',
+                'Latest completed day · FIFO cost of goods',
+                compact: true,
+              ),
+              _Detail('Cash', money(sim.ledger.balance(store.id))),
+              _Detail('Revenue', _amount(report?.revenue)),
+              _Detail('Cost of goods sold', _amount(report?.costOfGoodsSold)),
+              _Detail('Operating expenses', _amount(report?.operatingExpenses)),
+              _Detail(
+                'Net profit',
+                _amount(report?.profit, signed: true),
+                strong: true,
+              ),
+              _Detail('Net margin', _margin(report)),
+              const Divider(height: 24),
+              _Detail(
+                'Inventory purchases',
+                _amount(report?.inventoryPurchases),
+              ),
+              _Detail(
+                'Cash movement',
+                _amount(report?.cashChange, signed: true),
+              ),
+              _Detail(
+                'Inventory value',
+                money(inventoryValue(store.inventory)),
+              ),
+              _Detail('Scheduled daily costs', money(store.operatingCost)),
+              const SizedBox(height: 10),
+              const Text(
+                'Restocking moves cash into inventory. Profit deducts the cost of sold goods, not all purchases.',
+                style: TextStyle(color: _muted, height: 1.5),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        const _Heading(
+          'Products',
+          'Read-only observations. Coverage uses up to seven days of actual sales.',
+          compact: true,
+        ),
+        for (final p in products) ...[
+          _Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  p.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _ink,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _Detail('Retail price', money(store.prices[p.id]!)),
+                _Detail(
+                  'Units sold today',
+                  report == null ? '—' : count(report.unitsSold[p.id]!),
+                ),
+                _Detail('On hand', count(store.inventory[p.id]!.quantity)),
+                _Detail('Restock target', count(store.restockTargets[p.id]!)),
+                _Detail(
+                  'Stock coverage',
+                  game.stockCoverage(p.id, storeId: store.id) == null
+                      ? '— (no recent sales)'
+                      : '${game.stockCoverage(p.id, storeId: store.id)!.toStringAsFixed(1)} days',
+                ),
+                const Divider(height: 24),
+                for (final supplier in sim.suppliers)
+                  _Detail(
+                    supplier.name,
+                    '${money(supplier.prices[p.id]!)} · ${count(supplier.inventory[p.id]!.quantity)} units',
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
         ],
@@ -264,258 +392,147 @@ class StockView extends StatelessWidget {
   }
 }
 
-const _productIcons = [
-  Icons.water_drop_outlined,
-  Icons.local_drink_outlined,
-  Icons.bakery_dining_outlined,
-  Icons.sports_bar_outlined,
-  Icons.cookie_outlined,
-  Icons.coffee_outlined,
-  Icons.soap_outlined,
-  Icons.eco_outlined,
-];
-
-class _ProductCard extends StatelessWidget {
-  const _ProductCard({
-    required this.game,
-    required this.product,
-    required this.icon,
-  });
-  final GameController game;
-  final Product product;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final store = game.simulation.player;
-    final stock = store.inventory[product.id]!;
-    final coverage = game.stockCoverage(product.id);
-    final warning = stock.quantity == 0 || (coverage != null && coverage < 2);
-    final coverageText = stock.quantity == 0
-        ? 'Out of stock'
-        : coverage == null
-        ? (game.reports.isEmpty
-              ? 'Coverage: awaiting first close'
-              : 'Coverage: no recent sales')
-        : '${coverage.toStringAsFixed(1)} days of stock';
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, color: _storeColors[0], size: 22),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      product.name,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: _ink,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Text(
-                money(store.prices[product.id]!),
-                style: const TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 20,
-            runSpacing: 8,
-            children: [
-              Text(
-                '${count(stock.quantity)} on hand',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              Text(
-                'Target ${count(store.restockTargets[product.id]!)}',
-                style: const TextStyle(color: _muted),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            coverageText,
-            style: TextStyle(
-              color: warning ? _amber : _muted,
-              fontWeight: warning ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-          const Divider(height: 28),
-          for (final supplier in game.simulation.suppliers)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: _Detail(
-                supplier.name,
-                money(supplier.prices[product.id]!),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class MarketView extends StatelessWidget {
-  const MarketView({super.key, required this.game});
+class SupplyView extends StatelessWidget {
+  const SupplyView({super.key, required this.game});
   final GameController game;
 
   @override
   Widget build(BuildContext context) {
     final sim = game.simulation;
-    final shares = sim.lastReport?.marketShares;
+    final report = sim.lastReport;
+    final budget = _sum(consumerSegments.map((s) => s.dailyBudget));
+    final spending = report == null ? null : _sum(report.spending.values);
     return _Page(
       children: [
         const _Heading(
-          'The neighborhood',
-          '1,000 households. Three stores. One shared market.',
+          'Demand & supply',
+          'Trace household spending and the two wholesalers behind the shops.',
         ),
         _Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Heading(
-                'Market share',
-                sim.day == 0
-                    ? 'Available after the first trading day'
-                    : 'Revenue share · day ${sim.day}',
+              const _Heading(
+                'Consumer demand',
+                'Latest completed day',
                 compact: true,
               ),
-              for (var i = 0; i < sim.stores.length; i++) ...[
-                _ShareRow(
-                  store: sim.stores[i],
-                  share: shares?[sim.stores[i].id],
-                  color: _storeColors[i],
-                ),
-                if (i < sim.stores.length - 1) const SizedBox(height: 24),
-              ],
-              const SizedBox(height: 20),
+              _Detail('Daily shopping budget', money(budget)),
+              _Detail('Spent in local shops', _amount(spending)),
+              _Detail(
+                'Unspent budget',
+                spending == null ? '—' : money(budget - spending),
+              ),
+              _Detail(
+                'Purchase intentions',
+                report == null ? '—' : count(report.requestedUnits),
+              ),
+              _Detail(
+                'Units sold locally',
+                report == null ? '—' : count(report.soldUnits),
+              ),
+              _Detail(
+                'Unfilled intentions',
+                report == null ? '—' : count(report.unfulfilledUnits),
+              ),
+              _Detail(
+                'Local fulfillment',
+                report == null || report.requestedUnits == 0
+                    ? '—'
+                    : '${(100 * report.soldUnits / report.requestedUnits).toStringAsFixed(1)}%',
+              ),
+              const SizedBox(height: 10),
               const Text(
-                'Shares measure local retail revenue, not units sold. Some households choose not to buy.',
-                style: TextStyle(color: _muted, fontSize: 12),
+                'Unfilled intentions are not a stockout measure. Households can reject prices, reach their budget, or choose the outside option. Unsold budgets are not spent automatically.',
+                style: TextStyle(color: _muted, height: 1.5),
               ),
             ],
           ),
         ),
         const SizedBox(height: 20),
-        _Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const _Heading(
-                'Consumer segments',
-                'Income sets a budget; price affects where it goes.',
-                compact: true,
-              ),
-              for (final segment in consumerSegments) ...[
-                _Detail(
-                  '${segment.id[0].toUpperCase()}${segment.id.substring(1)}',
-                  '${segment.households} households',
-                  strong: true,
-                ),
+        const _Heading(
+          'Households',
+          'Income is monthly per household; budgets are daily segment totals.',
+          compact: true,
+        ),
+        for (final segment in consumerSegments) ...[
+          _Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 Text(
-                  '${money(segment.monthlyIncome)} / month per household',
-                  style: const TextStyle(color: _muted),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        _Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const _Heading(
-                'Wholesale supply',
-                'Quotes and stock refresh at the daily open.',
-                compact: true,
-              ),
-              for (final supplier in sim.suppliers) ...[
-                _Detail(
-                  supplier.name,
-                  '${count(supplier.inventory.values.fold<int>(0, (n, s) => n + s.quantity))} units',
+                  '${segment.id[0].toUpperCase()}${segment.id.substring(1)} · ${count(segment.households)} households',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                    color: _ink,
+                  ),
                 ),
                 const SizedBox(height: 8),
+                _Detail(
+                  'Monthly household income',
+                  money(segment.monthlyIncome),
+                ),
+                _Detail('Daily shopping budget', money(segment.dailyBudget)),
+                _Detail(
+                  'Local spending today',
+                  report == null ? '—' : money(report.spending[segment.id]!),
+                ),
+                _Detail('Price sensitivity', '${segment.priceSensitivity} / 5'),
               ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        const _SessionNote(),
-      ],
-    );
-  }
-}
-
-class _ShareRow extends StatelessWidget {
-  const _ShareRow({
-    required this.store,
-    required this.share,
-    required this.color,
-  });
-  final Store store;
-  final double? share;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          spacing: 12,
-          runSpacing: 4,
-          children: [
-            Text(
-              '${store.name}${store.playerControlled ? ' · You' : ''}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            Text(
-              share == null ? '—' : '${(share! * 100).toStringAsFixed(1)}%',
-              style: TextStyle(color: color, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Semantics(
-          label: '${store.name} revenue share',
-          value: share == null
-              ? 'No sales yet'
-              : '${(share! * 100).toStringAsFixed(1)} percent',
-          child: ExcludeSemantics(
-            child: LinearProgressIndicator(
-              value: share ?? 0,
-              minHeight: 7,
-              color: color,
-              backgroundColor: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
             ),
           ),
-        ),
+          const SizedBox(height: 12),
+        ],
         const SizedBox(height: 8),
-        Text(
-          '${store.isOpen ? 'Open' : 'Closed'} · 8-item basket ${money(store.prices.values.fold<int>(0, (a, b) => a + b))}',
-          style: const TextStyle(fontSize: 12, color: _muted),
+        const _Heading(
+          'Wholesale suppliers',
+          'Quotes and available units are the end-of-day position.',
+          compact: true,
         ),
+        for (final supplier in sim.suppliers) ...[
+          _Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  supplier.name,
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: _ink,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _Detail('Cash', money(sim.ledger.balance(supplier.id))),
+                _Detail(
+                  'Wholesale revenue',
+                  _amount(game.reportFor(supplier.id)?.revenue),
+                ),
+                _Detail(
+                  'Profit',
+                  _amount(game.reportFor(supplier.id)?.profit, signed: true),
+                ),
+                _Detail(
+                  'Procurement spending',
+                  _amount(game.reportFor(supplier.id)?.inventoryPurchases),
+                ),
+                _Detail(
+                  'Inventory value',
+                  money(inventoryValue(supplier.inventory)),
+                ),
+                const Divider(height: 24),
+                for (final p in products)
+                  _Detail(
+                    p.name,
+                    '${money(supplier.prices[p.id]!)} · ${count(supplier.inventory[p.id]!.quantity)} units',
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        const _SessionNote(),
       ],
     );
   }
@@ -529,28 +546,13 @@ class ActivityView extends StatelessWidget {
   Widget build(BuildContext context) => _Page(
     children: [
       const _Heading(
-        'Business activity',
-        'Daily closes and the events worth your attention.',
+        'Economy activity',
+        'Neighborhood daily totals and warnings from every shop.',
       ),
       if (game.activity.isEmpty)
         const _Panel(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 28),
-            child: Column(
-              children: [
-                Icon(Icons.notifications_none, size: 36, color: _muted),
-                SizedBox(height: 16),
-                Text(
-                  'A fresh start',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Complete your first day to see sales, profit, and business events here.',
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+          child: Text(
+            'Complete one day to see neighborhood results and business events.',
           ),
         ),
       for (final event in game.activity) ...[
@@ -561,22 +563,19 @@ class ActivityView extends StatelessWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Icon(
                     event.warning
                         ? Icons.warning_amber_rounded
                         : Icons.check_circle_outline,
-                    color: event.warning ? _amber : _storeColors[0],
+                    color: event.warning ? _amber : storeColors.first,
                     size: 20,
                   ),
                   Text(
                     'DAY ${event.day}',
                     style: const TextStyle(
-                      fontSize: 11,
-                      letterSpacing: 1.2,
-                      fontWeight: FontWeight.w700,
                       color: _muted,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -589,7 +588,7 @@ class ActivityView extends StatelessWidget {
               if (event.revenue != null) ...[
                 const SizedBox(height: 10),
                 Text(
-                  'Revenue ${money(event.revenue!)} · Profit ${money(event.profit!)}',
+                  'Total retail revenue ${money(event.revenue!)} · Profit ${money(event.profit!)}',
                   style: const TextStyle(color: _muted),
                 ),
               ],
@@ -667,46 +666,6 @@ class _Heading extends StatelessWidget {
   );
 }
 
-class _Metric extends StatelessWidget {
-  const _Metric(
-    this.label,
-    this.value,
-    this.detail, {
-    required this.icon,
-    required this.color,
-  });
-  final String label;
-  final String value;
-  final String detail;
-  final IconData icon;
-  final Color color;
-  @override
-  Widget build(BuildContext context) => _Panel(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: color, size: 22),
-        const SizedBox(height: 12),
-        Text(label, style: const TextStyle(color: _muted)),
-        const SizedBox(height: 6),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 25,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(detail, style: const TextStyle(fontSize: 12, color: _muted)),
-      ],
-    ),
-  );
-}
-
 class _Detail extends StatelessWidget {
   const _Detail(this.label, this.value, {this.strong = false});
   final String label;
@@ -762,7 +721,7 @@ class _SessionNote extends StatelessWidget {
   const _SessionNote();
   @override
   Widget build(BuildContext context) => const Text(
-    'Session only · Refreshing starts a new game.',
+    'Session only · Refreshing starts a new observation run.',
     textAlign: TextAlign.center,
     style: TextStyle(fontSize: 12, color: _muted, height: 1.5),
   );

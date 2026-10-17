@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:market_game/application/game_controller.dart';
 import 'package:market_game/ui/app.dart';
 import 'package:market_game/ui/format.dart';
+import 'package:market_game/ui/competition_chart.dart';
 
 void setScreen(WidgetTester tester, double width, {double scale = 1}) {
   tester.view.physicalSize = Size(width, 844);
@@ -14,6 +15,80 @@ void setScreen(WidgetTester tester, double width, {double scale = 1}) {
 }
 
 void main() {
+  testWidgets('Shop selection inspects each shop and survives a daily tick', (
+    tester,
+  ) async {
+    setScreen(tester, 430);
+    final game = GameController()..nextDay();
+    addTearDown(game.dispose);
+    await tester.pumpWidget(MarketGameApp(controller: game));
+    await tester.tap(find.text('Shops'));
+    await tester.pumpAndSettle();
+    for (final store in game.simulation.stores) {
+      await tester.tap(find.byKey(const Key('shop-selector')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(store.name).last);
+      await tester.pumpAndSettle();
+      final dropdown = tester.widget<DropdownButton<String>>(
+        find.byKey(const Key('shop-selector')),
+      );
+      expect(dropdown.value, store.id);
+      expect(
+        find.text(money(game.simulation.ledger.balance(store.id))),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('next-day')));
+      await tester.pump();
+      expect(
+        tester
+            .widget<DropdownButton<String>>(
+              find.byKey(const Key('shop-selector')),
+            )
+            .value,
+        store.id,
+      );
+      expect(
+        find.text(money(game.simulation.ledger.balance(store.id))),
+        findsOneWidget,
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Comparison chart supports losses, shares, and zero-sales days', (
+    tester,
+  ) async {
+    setScreen(tester, 430);
+    final game = GameController();
+    addTearDown(game.dispose);
+    for (final store in game.simulation.stores) {
+      store.autoRestock = false;
+      for (final stock in store.inventory.values) {
+        stock.remove(stock.quantity);
+      }
+    }
+    game.nextDay();
+    expect(game.retailProfit, lessThan(0));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CompetitionChart(
+            reports: game.reports,
+            stores: game.simulation.stores,
+          ),
+        ),
+      ),
+    );
+    for (final metric in TrendMetric.values) {
+      await tester.tap(find.byType(DropdownButton<TrendMetric>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(metric.label).last);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('1. Corner & Co.'), findsOneWidget);
+    }
+  });
+
   for (final width in [320.0, 430.0, 1024.0]) {
     testWidgets(
       'All dashboard sections render without overflow at width $width',
@@ -23,10 +98,12 @@ void main() {
         addTearDown(game.dispose);
         await tester.pumpWidget(MarketGameApp(controller: game));
         expect(find.text('Day 0'), findsOneWidget);
-        expect(find.text('\$25,000.00'), findsOneWidget);
-        expect(find.text('No completed days yet'), findsOneWidget);
-        expect(find.text('After your first close'), findsNWidgets(2));
-        for (final tab in ['Stock', 'Market', 'Activity', 'Home']) {
+        expect(find.text('\$75,000.00'), findsOneWidget);
+        expect(find.textContaining('No completed days yet'), findsOneWidget);
+        expect(find.text('1. Corner & Co.'), findsOneWidget);
+        expect(find.text('2. Quick Stop'), findsOneWidget);
+        expect(find.text('3. Neighborhood Mart'), findsOneWidget);
+        for (final tab in ['Shops', 'Supply', 'Activity', 'Economy']) {
           await tester.tap(find.text(tab).last);
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
@@ -42,7 +119,7 @@ void main() {
     final game = GameController()..nextDay();
     addTearDown(game.dispose);
     await tester.pumpWidget(MarketGameApp(controller: game));
-    for (final tab in ['Stock', 'Market', 'Activity', 'Home']) {
+    for (final tab in ['Shops', 'Supply', 'Activity', 'Economy']) {
       await tester.tap(find.text(tab).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
@@ -60,27 +137,19 @@ void main() {
     await tester.pump();
     expect(game.simulation.day, 1);
     expect(find.text('Day 1'), findsOneWidget);
-    expect(
-      find.text(money(game.simulation.ledger.balance('player'))),
-      findsOneWidget,
-    );
-    expect(
-      find.text(money(game.playerReport!.profit, signed: true)),
-      findsOneWidget,
-    );
-    expect(find.text('After your first close'), findsNothing);
-    await tester.tap(find.text('Stock'));
+    expect(find.text(money(game.retailCash)), findsOneWidget);
+    expect(find.text(money(game.retailProfit, signed: true)), findsOneWidget);
+    expect(find.textContaining('No completed days yet'), findsNothing);
+    await tester.tap(find.text('Shops'));
     await tester.pumpAndSettle();
     expect(find.text('Bottled water'), findsOneWidget);
     expect(
-      find.text(
-        '${count(game.simulation.player.inventory['water']!.quantity)} on hand',
-      ),
+      find.text(count(game.simulation.player.inventory['water']!.quantity)),
       findsOneWidget,
     );
     await tester.tap(find.text('Activity'));
     await tester.pumpAndSettle();
-    expect(find.text('Trading day completed'), findsOneWidget);
+    expect(find.text('Neighborhood day completed'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

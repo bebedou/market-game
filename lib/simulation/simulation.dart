@@ -41,11 +41,15 @@ class Simulation {
     this.stores,
     this.suppliers,
     this.lastReport,
+    this.automateAllStores,
   ) {
     validate();
   }
 
-  factory Simulation.neighborhood({int seed = 42}) {
+  factory Simulation.neighborhood({
+    int seed = 42,
+    bool automateAllStores = false,
+  }) {
     final stores = <Store>[];
     for (var i = 0; i < 3; i++) {
       final inventory = <String, Stock>{};
@@ -97,6 +101,7 @@ class Simulation {
       List.unmodifiable(stores),
       List.unmodifiable(suppliers),
       null,
+      automateAllStores,
     );
   }
 
@@ -106,6 +111,9 @@ class Simulation {
   final List<Store> stores;
   final List<Supplier> suppliers;
   DailyReport? lastReport;
+
+  /// Observer runs apply the same pricing policy to every store.
+  final bool automateAllStores;
   Store get player => stores.singleWhere((s) => s.playerControlled);
 
   void setPlayerPrice(String productId, int cents) {
@@ -331,7 +339,9 @@ class Simulation {
     if (day == 1) {
       return;
     }
-    for (final store in stores.where((s) => !s.playerControlled && s.isOpen)) {
+    for (final store in stores.where(
+      (s) => s.isOpen && (automateAllStores || !s.playerControlled),
+    )) {
       for (final p in products) {
         final current = store.prices[p.id]!;
         final expected = (p.dailyDemandPerThousand + 2) ~/ 3;
@@ -467,6 +477,7 @@ class Simulation {
   /// Snapshot data is versioned; file/browser persistence remains a UI concern.
   Map<String, Object?> toJson() => {
     'schemaVersion': 1,
+    'automateAllStores': automateAllStores,
     'day': day,
     'randomState': random.state,
     'ledger': ledger.toJson(),
@@ -494,6 +505,7 @@ class Simulation {
       j['lastReport'] == null
           ? null
           : DailyReport.fromJson(j['lastReport'] as Map<String, dynamic>),
+      j['automateAllStores'] as bool? ?? false,
     );
   }
 }

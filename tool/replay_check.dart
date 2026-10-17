@@ -7,7 +7,7 @@ import '../lib/simulation/simulation.dart';
 
 /// CI compares this exact snapshot from the Dart VM and JavaScript runtimes.
 void main() {
-  final simulation = Simulation.neighborhood(seed: 42);
+  final simulation = Simulation.neighborhood(seed: 42, automateAllStores: true);
   for (var day = 0; day < 365; day++) {
     simulation.advanceDay();
   }

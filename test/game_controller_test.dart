@@ -6,6 +6,43 @@ import 'package:market_game/application/game_controller.dart';
 import 'package:market_game/simulation/simulation.dart';
 
 void main() {
+  test('Observer totals and coverage include every shop, not just Corner', () {
+    final game = GameController();
+    expect(game.simulation.automateAllStores, isTrue);
+    expect(game.retailCash, 7500000);
+    for (var i = 0; i < 7; i++) {
+      game.nextDay();
+    }
+    final report = game.simulation.lastReport!;
+    expect(
+      game.retailProfit,
+      report.businesses.values
+          .where((b) => b.retail)
+          .fold<int>(0, (n, b) => n + b.profit),
+    );
+    expect(
+      game.retailCash,
+      game.simulation.stores.fold<int>(
+        0,
+        (n, s) => n + game.simulation.ledger.balance(s.id),
+      ),
+    );
+    final close = game.activity.firstWhere((a) => a.revenue != null);
+    expect(close.revenue, report.retailRevenue);
+    expect(close.profit, game.retailProfit);
+    for (final store in game.simulation.stores) {
+      final sold = game.reports.fold<int>(
+        0,
+        (n, r) => n + r.businesses[store.id]!.unitsSold['water']!,
+      );
+      expect(
+        game.stockCoverage('water', storeId: store.id),
+        closeTo(store.inventory['water']!.quantity / (sold / 7), 0.000001),
+      );
+    }
+    game.dispose();
+  });
+
   test('A new or restored game starts paused without fabricating history', () {
     final game = GameController();
     expect(game.isPlaying, isFalse);
@@ -134,7 +171,7 @@ void main() {
   test('Timed and manual ticks have exactly the same economic future', () {
     fakeAsync((time) {
       final game = GameController(now: () => time.elapsed);
-      final reference = Simulation.neighborhood();
+      final reference = Simulation.neighborhood(automateAllStores: true);
       game.setSpeed(3);
       game.play();
       time.elapse(const Duration(seconds: 15));

@@ -24,7 +24,8 @@ class ActivityEntry {
 /// Owns presentation state and one timer; the economic engine has no clock.
 class GameController extends ChangeNotifier {
   GameController({Simulation? simulation, Duration Function()? now})
-    : _simulation = simulation ?? Simulation.neighborhood(),
+    : _simulation =
+          simulation ?? Simulation.neighborhood(automateAllStores: true),
       _now = now ?? _monotonicClock() {
     final existing = _simulation.lastReport;
     if (existing != null) {
@@ -59,8 +60,14 @@ class GameController extends ChangeNotifier {
   Duration get dayDuration => Duration(microseconds: 15000000 ~/ _speed);
   List<DailyReport> get reports => List.unmodifiable(_reports);
   List<ActivityEntry> get activity => List.unmodifiable(_activity.reversed);
-  BusinessReport? get playerReport =>
-      _simulation.lastReport?.businesses[_simulation.player.id];
+  BusinessReport? reportFor(String id) =>
+      _simulation.lastReport?.businesses[id];
+  int get retailCash => _simulation.stores.fold(
+    0,
+    (n, s) => n + _simulation.ledger.balance(s.id),
+  );
+  int get retailProfit =>
+      _simulation.stores.fold(0, (n, s) => n + (reportFor(s.id)?.profit ?? 0));
 
   double get dayProgress {
     final start = _startedAt;
@@ -153,13 +160,12 @@ class GameController extends ChangeNotifier {
       if (_reports.length > 30) {
         _reports.removeAt(0);
       }
-      final player = report.businesses[_simulation.player.id]!;
       _activity.add(
         ActivityEntry(
           day: report.day,
-          message: 'Trading day completed',
-          revenue: player.revenue,
-          profit: player.profit,
+          message: 'Neighborhood day completed',
+          revenue: report.retailRevenue,
+          profit: retailProfit,
         ),
       );
       for (final message in report.notifications) {
@@ -183,21 +189,22 @@ class GameController extends ChangeNotifier {
   }
 
   /// Coverage uses up to seven completed days of actual sales, not intentions.
-  double? stockCoverage(String productId) {
+  double? stockCoverage(String productId, {String? storeId}) {
+    final store = _simulation.stores.singleWhere(
+      (s) => s.id == (storeId ?? _simulation.player.id),
+    );
     if (_reports.isEmpty) {
       return null;
     }
     final recent = _reports.skip(_reports.length > 7 ? _reports.length - 7 : 0);
     final sold = recent.fold<int>(
       0,
-      (n, r) =>
-          n + (r.businesses[_simulation.player.id]?.unitsSold[productId] ?? 0),
+      (n, r) => n + (r.businesses[store.id]?.unitsSold[productId] ?? 0),
     );
     if (sold == 0) {
       return null;
     }
-    return _simulation.player.inventory[productId]!.quantity /
-        (sold / recent.length);
+    return store.inventory[productId]!.quantity / (sold / recent.length);
   }
 
   void _cancelTimer() {
