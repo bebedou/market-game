@@ -18,18 +18,30 @@ class _DayBook {
   final unitsSold = {for (final p in products) p.id: 0};
 
   BusinessReport close(int cash, int inventory) => BusinessReport(
-        id: id, retail: retail, openingCash: openingCash, closingCash: cash,
-        openingInventory: openingInventory, closingInventory: inventory,
-        revenue: revenue, costOfGoodsSold: costOfGoodsSold,
-        inventoryPurchases: inventoryPurchases,
-        operatingExpenses: operatingExpenses, unitsSold: unitsSold,
-      );
+    id: id,
+    retail: retail,
+    openingCash: openingCash,
+    closingCash: cash,
+    openingInventory: openingInventory,
+    closingInventory: inventory,
+    revenue: revenue,
+    costOfGoodsSold: costOfGoodsSold,
+    inventoryPurchases: inventoryPurchases,
+    operatingExpenses: operatingExpenses,
+    unitsSold: unitsSold,
+  );
 }
 
 /// Daily economic engine, independent of Flutter, timers, storage, and services.
 class Simulation {
-  Simulation._(this.day, this.random, this.ledger, this.stores, this.suppliers,
-      this.lastReport) {
+  Simulation._(
+    this.day,
+    this.random,
+    this.ledger,
+    this.stores,
+    this.suppliers,
+    this.lastReport,
+  ) {
     validate();
   }
 
@@ -43,24 +55,34 @@ class Simulation {
         targets[p.id] = target;
         inventory[p.id] = Stock()..add(target, p.wholesaleCost);
       }
-      stores.add(Store(
-        id: i == 0 ? 'player' : 'competitor_$i',
-        name: ['Corner & Co.', 'Quick Stop', 'Neighborhood Mart'][i],
-        playerControlled: i == 0,
-        operatingCost: [8000, 9000, 8500][i],
-        appeal: [100, 105, 95][i],
-        inventory: inventory,
-        prices: {for (final p in products)
-          p.id: p.referencePrice * [100, 97, 104][i] ~/ 100},
-        restockTargets: targets,
-      ));
+      stores.add(
+        Store(
+          id: i == 0 ? 'player' : 'competitor_$i',
+          name: ['Corner & Co.', 'Quick Stop', 'Neighborhood Mart'][i],
+          playerControlled: i == 0,
+          operatingCost: [8000, 9000, 8500][i],
+          appeal: [100, 105, 95][i],
+          inventory: inventory,
+          prices: {
+            for (final p in products)
+              p.id: p.referencePrice * [100, 97, 104][i] ~/ 100,
+          },
+          restockTargets: targets,
+        ),
+      );
     }
     final suppliers = [
       for (var i = 0; i < 2; i++)
-        Supplier('supplier_$i', ['Metro Wholesale', 'Value Supply'][i], {
-          for (final p in products)
-            p.id: Stock()..add(p.dailyDemandPerThousand * 2, p.productionCost),
-        }, {for (final p in products) p.id: p.wholesaleCost}),
+        Supplier(
+          'supplier_$i',
+          ['Metro Wholesale', 'Value Supply'][i],
+          {
+            for (final p in products)
+              p.id: Stock()
+                ..add(p.dailyDemandPerThousand * 2, p.productionCost),
+          },
+          {for (final p in products) p.id: p.wholesaleCost},
+        ),
     ];
     final ledger = Ledger({
       outsideAccount: 0,
@@ -68,8 +90,14 @@ class Simulation {
       for (final supplier in suppliers) supplier.id: 1000000,
       for (final segment in consumerSegments) segment.id: 0,
     });
-    return Simulation._(0, SeededRandom(seed), ledger,
-        List.unmodifiable(stores), List.unmodifiable(suppliers), null);
+    return Simulation._(
+      0,
+      SeededRandom(seed),
+      ledger,
+      List.unmodifiable(stores),
+      List.unmodifiable(suppliers),
+      null,
+    );
   }
 
   int day;
@@ -81,15 +109,23 @@ class Simulation {
   Store get player => stores.singleWhere((s) => s.playerControlled);
 
   void setPlayerPrice(String productId, int cents) {
-    if (!player.prices.containsKey(productId) || cents <= 0 || cents > 1000000) {
-      throw ArgumentError('Unknown product or price outside 1..1,000,000 cents.');
+    if (!player.prices.containsKey(productId) ||
+        cents <= 0 ||
+        cents > 1000000) {
+      throw ArgumentError(
+        'Unknown product or price outside 1..1,000,000 cents.',
+      );
     }
     player.prices[productId] = cents;
   }
 
   void setPlayerRestockTarget(String productId, int units) {
-    if (!player.restockTargets.containsKey(productId) || units < 0 || units > 10000) {
-      throw ArgumentError('Unknown product or restock target outside 0..10,000.');
+    if (!player.restockTargets.containsKey(productId) ||
+        units < 0 ||
+        units > 10000) {
+      throw ArgumentError(
+        'Unknown product or restock target outside 0..10,000.',
+      );
     }
     player.restockTargets[productId] = units;
   }
@@ -101,12 +137,27 @@ class Simulation {
     final notifications = <String>[];
     final books = {
       for (final s in stores)
-        s.id: _DayBook(s.id, true, ledger.balance(s.id), inventoryValue(s.inventory)),
+        s.id: _DayBook(
+          s.id,
+          true,
+          ledger.balance(s.id),
+          inventoryValue(s.inventory),
+        ),
       for (final s in suppliers)
-        s.id: _DayBook(s.id, false, ledger.balance(s.id), inventoryValue(s.inventory)),
+        s.id: _DayBook(
+          s.id,
+          false,
+          ledger.balance(s.id),
+          inventoryValue(s.inventory),
+        ),
     };
     for (final segment in consumerSegments) {
-      ledger.transfer(outsideAccount, segment.id, segment.dailyIncome, TransferKind.income);
+      ledger.transfer(
+        outsideAccount,
+        segment.id,
+        segment.dailyIncome,
+        TransferKind.income,
+      );
     }
     _updateSuppliers(books);
     _updateCompetitorPrices();
@@ -119,12 +170,18 @@ class Simulation {
       }
       if (ledger.balance(store.id) < store.operatingCost) {
         store.isOpen = false;
-        notifications.add('${store.name} closed: unable to fund daily operating costs.');
+        notifications.add(
+          '${store.name} closed: unable to fund daily operating costs.',
+        );
         continue;
       }
       if (store.operatingCost > 0) {
-        ledger.transfer(store.id, outsideAccount, store.operatingCost,
-            TransferKind.operatingCost);
+        ledger.transfer(
+          store.id,
+          outsideAccount,
+          store.operatingCost,
+          TransferKind.operatingCost,
+        );
       }
       book.operatingExpenses += store.operatingCost;
       if (store.autoRestock) {
@@ -144,9 +201,17 @@ class Simulation {
       for (final p in productOrder) {
         final desired = ConsumerDemand.desiredUnits(segment, p, day, random);
         requested += desired;
-        final weights = [for (final store in stores)
-          store.isOpen ? ConsumerDemand.storeWeight(segment, p,
-              store.prices[p.id]!, store.appeal) : 0];
+        final weights = [
+          for (final store in stores)
+            store.isOpen
+                ? ConsumerDemand.storeWeight(
+                    segment,
+                    p,
+                    store.prices[p.id]!,
+                    store.appeal,
+                  )
+                : 0,
+        ];
         final purchases = List<int>.filled(stores.length, 0);
         // Allocate units individually but settle each segment/product/store in
         // one journal entry, keeping the daily journal and memory bounded.
@@ -182,10 +247,16 @@ class Simulation {
           final store = stores[i];
           final amount = quantity * store.prices[p.id]!;
           final cost = store.inventory[p.id]!.remove(quantity);
-          ledger.transfer(segment.id, store.id, amount, TransferKind.retailSale);
+          ledger.transfer(
+            segment.id,
+            store.id,
+            amount,
+            TransferKind.retailSale,
+          );
           books[store.id]!.revenue += amount;
           books[store.id]!.costOfGoodsSold += cost;
-          books[store.id]!.unitsSold[p.id] = books[store.id]!.unitsSold[p.id]! + quantity;
+          books[store.id]!.unitsSold[p.id] =
+              books[store.id]!.unitsSold[p.id]! + quantity;
           spending[segment.id] = spending[segment.id]! + amount;
           sold += quantity;
         }
@@ -199,12 +270,25 @@ class Simulation {
     }
     final reports = {
       for (final s in stores)
-        s.id: books[s.id]!.close(ledger.balance(s.id), inventoryValue(s.inventory)),
+        s.id: books[s.id]!.close(
+          ledger.balance(s.id),
+          inventoryValue(s.inventory),
+        ),
       for (final s in suppliers)
-        s.id: books[s.id]!.close(ledger.balance(s.id), inventoryValue(s.inventory)),
+        s.id: books[s.id]!.close(
+          ledger.balance(s.id),
+          inventoryValue(s.inventory),
+        ),
     };
-    final report = DailyReport(day, reports, budgets, spending,
-        requested, sold, notifications);
+    final report = DailyReport(
+      day,
+      reports,
+      budgets,
+      spending,
+      requested,
+      sold,
+      notifications,
+    );
     lastReport = report;
     validate();
     return report;
@@ -218,15 +302,25 @@ class Simulation {
         final stock = supplier.inventory[p.id]!;
         final scarcity = stock.quantity < p.dailyDemandPerThousand ? 5 : 0;
         final bias = (i + j).isEven ? -4 : 4;
-        supplier.prices[p.id] = p.wholesaleCost *
-            (100 + bias + scarcity + random.nextInt(5) - 2) ~/ 100;
+        supplier.prices[p.id] =
+            p.wholesaleCost *
+            (100 + bias + scarcity + random.nextInt(5) - 2) ~/
+            100;
         final required = p.dailyDemandPerThousand * 2 - stock.quantity;
-        final quantity = _min(required, ledger.balance(supplier.id) ~/ p.productionCost);
+        final quantity = _min(
+          required,
+          ledger.balance(supplier.id) ~/ p.productionCost,
+        );
         if (quantity <= 0) {
           continue;
         }
         final cost = quantity * p.productionCost;
-        ledger.transfer(supplier.id, outsideAccount, cost, TransferKind.procurement);
+        ledger.transfer(
+          supplier.id,
+          outsideAccount,
+          cost,
+          TransferKind.procurement,
+        );
         stock.add(quantity, p.productionCost);
         books[supplier.id]!.inventoryPurchases += cost;
       }
@@ -241,12 +335,17 @@ class Simulation {
       for (final p in products) {
         final current = store.prices[p.id]!;
         final expected = (p.dailyDemandPerThousand + 2) ~/ 3;
-        final cheapestRetail = stores.where((s) => s.isOpen)
-            .map((s) => s.prices[p.id]!).reduce(_min);
-        final cheapestWholesale = suppliers.map((s) => s.prices[p.id]!).reduce(_min);
+        final cheapestRetail = stores
+            .where((s) => s.isOpen)
+            .map((s) => s.prices[p.id]!)
+            .reduce(_min);
+        final cheapestWholesale = suppliers
+            .map((s) => s.prices[p.id]!)
+            .reduce(_min);
         final step = current ~/ 50 < 1 ? 1 : current ~/ 50;
         var next = current;
-        if (store.inventory[p.id]!.quantity == 0 && store.lastSales[p.id]! > 0) {
+        if (store.inventory[p.id]!.quantity == 0 &&
+            store.lastSales[p.id]! > 0) {
           next += step;
         } else if (store.lastSales[p.id]! < expected * 8 ~/ 10 ||
             current * 100 > cheapestRetail * 110) {
@@ -265,7 +364,8 @@ class Simulation {
 
   void _restock(Store store, Map<String, _DayBook> books) {
     for (final p in products) {
-      var needed = store.restockTargets[p.id]! - store.inventory[p.id]!.quantity;
+      var needed =
+          store.restockTargets[p.id]! - store.inventory[p.id]!.quantity;
       final offers = suppliers.toList()
         ..sort((a, b) {
           final byPrice = a.prices[p.id]!.compareTo(b.prices[p.id]!);
@@ -276,14 +376,24 @@ class Simulation {
           break;
         }
         final price = supplier.prices[p.id]!;
-        final quantity = _min(needed, _min(supplier.inventory[p.id]!.quantity,
-            ledger.balance(store.id) ~/ price));
+        final quantity = _min(
+          needed,
+          _min(
+            supplier.inventory[p.id]!.quantity,
+            ledger.balance(store.id) ~/ price,
+          ),
+        );
         if (quantity <= 0) {
           continue;
         }
         final amount = quantity * price;
         final cost = supplier.inventory[p.id]!.remove(quantity);
-        ledger.transfer(store.id, supplier.id, amount, TransferKind.wholesaleSale);
+        ledger.transfer(
+          store.id,
+          supplier.id,
+          amount,
+          TransferKind.wholesaleSale,
+        );
         store.inventory[p.id]!.add(quantity, price);
         books[store.id]!.inventoryPurchases += amount;
         books[supplier.id]!.revenue += amount;
@@ -296,12 +406,18 @@ class Simulation {
   }
 
   void validate() {
-    if (day < 0 || stores.length != 3 || suppliers.length != 2 ||
+    if (day < 0 ||
+        stores.length != 3 ||
+        suppliers.length != 2 ||
         stores.where((s) => s.playerControlled).length != 1) {
       throw StateError('Invalid neighborhood structure.');
     }
-    final accountIds = [outsideAccount, ...stores.map((s) => s.id),
-      ...suppliers.map((s) => s.id), ...consumerSegments.map((s) => s.id)];
+    final accountIds = [
+      outsideAccount,
+      ...stores.map((s) => s.id),
+      ...suppliers.map((s) => s.id),
+      ...consumerSegments.map((s) => s.id),
+    ];
     if (accountIds.toSet().length != accountIds.length ||
         accountIds.length != ledger.balances.length ||
         accountIds.any((id) => !ledger.balances.containsKey(id))) {
@@ -309,7 +425,8 @@ class Simulation {
     }
     ledger.validate();
     for (final store in stores) {
-      if (store.operatingCost < 0 || store.appeal <= 0 ||
+      if (store.operatingCost < 0 ||
+          store.appeal <= 0 ||
           store.inventory.length != products.length ||
           store.prices.length != products.length ||
           store.restockTargets.length != products.length ||
@@ -318,9 +435,11 @@ class Simulation {
       }
       for (final p in products) {
         if (!store.inventory.containsKey(p.id) ||
-            (store.prices[p.id] ?? 0) <= 0 || store.prices[p.id]! > 1000000 ||
+            (store.prices[p.id] ?? 0) <= 0 ||
+            store.prices[p.id]! > 1000000 ||
             (store.restockTargets[p.id] ?? -1) < 0 ||
-            store.restockTargets[p.id]! > 10000 || (store.lastSales[p.id] ?? -1) < 0) {
+            store.restockTargets[p.id]! > 10000 ||
+            (store.lastSales[p.id] ?? -1) < 0) {
           throw StateError('Invalid product controls.');
         }
         store.inventory[p.id]!.validate();
@@ -347,12 +466,14 @@ class Simulation {
 
   /// Snapshot data is versioned; file/browser persistence remains a UI concern.
   Map<String, Object?> toJson() => {
-        'schemaVersion': 1, 'day': day, 'randomState': random.state,
-        'ledger': ledger.toJson(),
-        'stores': [for (final s in stores) s.toJson()],
-        'suppliers': [for (final s in suppliers) s.toJson()],
-        'lastReport': lastReport?.toJson(),
-      };
+    'schemaVersion': 1,
+    'day': day,
+    'randomState': random.state,
+    'ledger': ledger.toJson(),
+    'stores': [for (final s in stores) s.toJson()],
+    'suppliers': [for (final s in suppliers) s.toJson()],
+    'lastReport': lastReport?.toJson(),
+  };
 
   static Simulation fromJson(Map<String, dynamic> j) {
     if (j['schemaVersion'] != 1) {
@@ -362,12 +483,17 @@ class Simulation {
       j['day'] as int,
       SeededRandom.fromState(j['randomState'] as int),
       Ledger.fromJson(j['ledger'] as Map<String, dynamic>),
-      List.unmodifiable([for (final s in j['stores'] as List)
-        Store.fromJson(s as Map<String, dynamic>)]),
-      List.unmodifiable([for (final s in j['suppliers'] as List)
-        Supplier.fromJson(s as Map<String, dynamic>)]),
-      j['lastReport'] == null ? null :
-          DailyReport.fromJson(j['lastReport'] as Map<String, dynamic>),
+      List.unmodifiable([
+        for (final s in j['stores'] as List)
+          Store.fromJson(s as Map<String, dynamic>),
+      ]),
+      List.unmodifiable([
+        for (final s in j['suppliers'] as List)
+          Supplier.fromJson(s as Map<String, dynamic>),
+      ]),
+      j['lastReport'] == null
+          ? null
+          : DailyReport.fromJson(j['lastReport'] as Map<String, dynamic>),
     );
   }
 }
