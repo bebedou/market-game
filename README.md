@@ -6,6 +6,9 @@ products with seeded daily demand and auditable accounting. The Flutter screen
 is still the environment starter; the playable dashboard and local-save adapter
 are the next milestones.
 
+See [ROADMAP.md](ROADMAP.md) for detailed implementation steps, dependencies,
+and acceptance criteria for the first playable release.
+
 ## GitHub Pages preview
 
 The `Deploy Flutter to GitHub Pages` workflow publishes the web starter on pushes
@@ -16,15 +19,13 @@ the successful deployment's environment URL is authoritative.
 
 The workflow attempts to enable Pages automatically. If GitHub denies initial
 site creation, an administrator must open **Settings → Pages**, select **GitHub
-Actions** as the source, and rerun the deployment. Pages availability for this
-private repository depends on the owner's GitHub plan. The deployment does not
-change repository visibility. This publishes the starter screen; the retail
-simulation is the next milestone.
+Actions** as the source, and rerun the deployment. Pages is enabled for this public repository. The deployment does not
+change repository visibility. The hosted screen is still a status screen; the headless engine is implemented,
+and the playable dashboard is the next milestone.
 
 ## Start in Codespaces (including from a phone)
 
-1. On GitHub, select the `setup/flutter-codespaces` branch while this setup PR is
-   open (use `main` after merging).
+1. On GitHub, select the `main` branch for the integrated project.
 2. Choose **Code → Codespaces → Create codespace on this branch**. On a phone,
    use the browser's desktop-site option if the Code menu is hidden. Creating a
    Codespace uses your GitHub account's Codespaces quota.
