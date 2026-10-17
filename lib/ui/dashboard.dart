@@ -80,8 +80,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             Expanded(
               child: switch (_page) {
                 0 => OverviewView(game: _game),
-                1 => StockView(game: _game),
-                2 => MarketView(game: _game),
+                1 => ShopsView(game: _game),
+                2 => SupplyView(game: _game),
                 _ => ActivityView(game: _game),
               },
             ),
@@ -99,17 +99,17 @@ class _DashboardScreenState extends State<DashboardScreen>
           NavigationDestination(
             icon: Icon(Icons.space_dashboard_outlined),
             selectedIcon: Icon(Icons.space_dashboard),
-            label: 'Home',
+            label: 'Economy',
           ),
           NavigationDestination(
             icon: Icon(Icons.inventory_2_outlined),
             selectedIcon: Icon(Icons.inventory_2),
-            label: 'Stock',
+            label: 'Shops',
           ),
           NavigationDestination(
             icon: Icon(Icons.pie_chart_outline),
             selectedIcon: Icon(Icons.pie_chart),
-            label: 'Market',
+            label: 'Supply',
           ),
           NavigationDestination(
             icon: Icon(Icons.notifications_none),
@@ -138,7 +138,7 @@ class _DashboardHeader extends StatelessWidget {
       child: const Icon(Icons.storefront_outlined, color: Color(0xFF226C52)),
     );
     const title = Text(
-      'Corner & Co.',
+      'Economy monitor',
       style: TextStyle(
         fontSize: 21,
         fontWeight: FontWeight.w700,
@@ -147,7 +147,7 @@ class _DashboardHeader extends StatelessWidget {
       ),
     );
     final status = Text(
-      game.isPlaying ? 'Trading · not saved' : 'Paused · not saved',
+      game.isPlaying ? 'Running · session only' : 'Paused · session only',
       style: const TextStyle(fontSize: 12, color: Color(0xFF66776D)),
     );
     final day = Container(

@@ -23,7 +23,12 @@ income stays in the segment's cash balance, but does not increase tomorrow's
 spending allowance. We model neither other household purchases nor consumption
 utility. A month is always 30 days for income accounting.
 
-Corner & Co. is player-controlled; Quick Stop and Neighborhood Mart are AI stores.
+The observer dashboard and headless CLI automate pricing for **all three shops**.
+The low-level factory keeps the original mixed-policy default for regression
+experiments: Corner & Co. has fixed prices while the other two shops adapt.
+Use `Simulation.neighborhood(automateAllStores: true)` for the observer scenario.
+The legacy `playerControlled` identity is retained in the domain for compatibility;
+it gives Corner no manual UI controls or pricing exemption in observer runs.
 Each starts with $25,000 cash and approximately three days of stock at an equal
 one-third share of baseline demand. Daily operating costs are $80, $90, and $85;
 store appeal is 100, 105, and 95. Two suppliers start with $10,000 cash each and
@@ -120,10 +125,11 @@ is wholesale purchasing from an external source, not a manufacturing system.
 Stores buy only the gap to their target, with no delivery fee or delay, limited
 by supplier quantity and available cash. Products are restocked in catalog order;
 this gives essential products priority when working capital is low. Supplier
-price ties break by ID. The player starts with automatic restocking enabled and
-can disable it or set per-product targets (0..10,000 units).
+price ties break by ID. All shops start with automatic restocking enabled. Engine experiments can disable
+it or set per-product targets (0..10,000 units); the observer UI is read-only.
 
-AI stores start at 97% and 104% of reference retail prices. From day 2:
+Corner & Co., Quick Stop, and Neighborhood Mart start at 100%, 97%, and 104%
+of reference retail prices. From day 2, automated shops follow this policy:
 
 - A product sold out yesterday with positive sales: increase by about 2%.
 - Otherwise, sales below 80% of an equal market share, or a price more than 10%
@@ -131,8 +137,8 @@ AI stores start at 97% and 104% of reference retail prices. From day 2:
 - Otherwise, move one cent toward reference price.
 
 Clamp the result between 120% of the cheapest current wholesale quote and 125%
-of reference retail price. Competitors evaluate in stable store order. The
-player's prices are never changed by AI; valid player prices are 1..1,000,000
+of reference retail price. Shops evaluate in stable store order.
+Corner's prices stay fixed only in mixed-policy runs; valid explicit prices are 1..1,000,000
 cents. There is no profit-maximizing solver or predictive intelligence yet.
 
 ## Accounting and invariants
@@ -202,3 +208,31 @@ and cash conservation. Both automated tests and the CLI audit every day for
 the full run, and active in the market. This is a regression check, not proof
 that all strategies or seeds are balanced. No speed or wall-clock timer is part
 of this engine milestone.
+
+
+## Observer measurements and calibration
+
+The dashboard compares all shops using settled daily reports. Revenue share is
+shop revenue divided by total retail revenue (zero for every shop when no sales
+occur). Net margin is profit / revenue; it is unavailable when revenue is zero.
+Empty product lines count end-of-day zero quantities, not missed purchases.
+Coverage divides current units by mean actual daily units sold over up to seven
+retained days, including zero-sales days; no sales means no coverage estimate.
+The trend window retains 30 completed days, not opening balances or projections.
+
+`requestedUnits - soldUnits` includes price/budget rejection and the outside
+option as well as availability constraints. It cannot attribute unmet demand to
+a particular cause. End-of-day quotes are not weighted average acquisition costs;
+FIFO reports remain authoritative for margins. Wholesale revenue and retail
+revenue describe different transactions and must not be added as household spend.
+
+The all-automated flag is stored in schema-1 snapshots as an additive field;
+missing fields default to the original mixed policy. The headless runner and
+cross-runtime replay explicitly select all-automated pricing. Pricing updates
+still use the existing fixed shop iteration order, so same-policy competition is
+not claimed to be perfectly symmetric. Initial appeal, costs, and prices also
+differ between shops. Profits remain generous and uncalibrated.
+
+Tune one formula in code at a time using a fixed seed. The immediate goal is
+observation and engine calibration; there are no player decisions, saved browser
+sessions, or in-app parameter editors in this milestone.

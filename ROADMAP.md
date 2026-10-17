@@ -2,6 +2,46 @@
 
 Updated: 2026-10-17
 
+## Current direction: observe the economy first
+
+The immediate deliverable is an economy dashboard for monitoring **all three
+competing shops equally** and adjusting the engine from observed results. The
+player-oriented first-playable plan below is deferred; it is retained as future
+context, not the current implementation sequence.
+
+### Step 1 — Economy observation dashboard
+
+- [x] Run every shop with automatic pricing and restocking.
+- [x] Compare daily revenue, profit, margin, cash, inventory value, empty product
+  lines, and revenue share for every shop.
+- [x] Plot all shops on shared 30-day revenue, profit, and revenue-share charts.
+- [x] Inspect any shop's daily accounts and eight product lines.
+- [x] Inspect household budgets/spending, local fulfillment, and supplier health.
+- [x] Keep pause, next-day stepping, 1×/3×/10× speeds, and lifecycle pause.
+- [x] Check observer accounting, snapshot policy, deterministic replay, and a
+  10,000-day all-automated run.
+
+### Step 2 — Calibrate the existing retail engine
+
+1. Capture a 30-day seed-42 baseline using `tool/simulate.dart` and the dashboard.
+2. Check stock coverage, empty lines, supplier availability, and household budget
+   utilization together; distinguish outside purchases from stock shortages.
+3. Change one demand, price-response, cost, or AI assumption at a time in code.
+4. Compare the same seed and time window, then sample several seeds.
+5. Keep financial invariants, nonnegative inventory, and VM/Web determinism intact.
+6. Document accepted formulas, results, and unresolved balance issues in
+   `docs/economy.md`. Add diagnostics only when an experiment needs them.
+
+### Deferred
+
+Player pricing/restock controls, local saves, progression, additional industries,
+financial markets, and the first-playable release are on hold. No in-app engine
+parameter editor is part of this step.
+
+---
+
+## Deferred first-playable roadmap
+
 ## Goal and scope
 
 Deliver a first playable, Android-first convenience-store simulator with a mobile
@@ -26,10 +66,10 @@ and acquisitions are outside this release.
 | M1 — Daily retail engine | Implemented and tested; integrated by this release | [PR #2](https://github.com/bebedou/market-game/pull/2) |
 | M2 — Game controller and simulation clock | Implemented | Monotonic clock, lifecycle pause, bounded history |
 | M3 — Readable mobile dashboard | Implemented; device/accessibility pass pending | Read-only business settings; real reports |
-| M4 — Player decisions and feedback | Planned | M3 and validated engine commands |
-| M5 — Local persistence | Planned | M2 state ownership; M3 history; M4 controls |
-| M6 — Integrated validation and balance | Planned | M2–M5 |
-| M7 — First playable release | Planned | M6 acceptance checks |
+| M4 — Player decisions and feedback | Deferred | M3 and validated engine commands |
+| M5 — Local persistence | Deferred | M2 state ownership; M3 history; M4 controls |
+| M6 — Integrated validation and balance | Deferred playable integration; engine calibration is current | M2–M5 |
+| M7 — First playable release | Deferred | M6 acceptance checks |
 
 The [live GitHub Pages site](https://bebedou.github.io/market-game/) currently
 shows the simulation dashboard after this release is published. Business

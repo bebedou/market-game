@@ -11,7 +11,7 @@ class MarketGameApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Market Game — Corner & Co.',
+      title: 'Market Game — Economy monitor',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(

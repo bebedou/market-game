@@ -31,7 +31,10 @@ void main(List<String> args) {
       seed = value;
     }
   }
-  final simulation = Simulation.neighborhood(seed: seed);
+  final simulation = Simulation.neighborhood(
+    seed: seed,
+    automateAllStores: true,
+  );
   final profits = {for (final s in simulation.stores) s.id: 0};
   final revenues = {for (final s in simulation.stores) s.id: 0};
   for (var i = 0; i < days; i++) {
@@ -45,6 +48,7 @@ void main(List<String> args) {
     const JsonEncoder.withIndent('  ').convert({
       'days': simulation.day,
       'seed': seed,
+      'automateAllStores': simulation.automateAllStores,
       'households': consumerSegments.fold<int>(0, (n, s) => n + s.households),
       'cashConserved':
           simulation.ledger.totalCash == simulation.ledger.conservedCash,

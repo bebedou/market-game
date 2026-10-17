@@ -16,6 +16,45 @@ void emptyStore(Store store) {
 }
 
 void main() {
+  test(
+    'Observer pricing applies to Corner too and snapshots preserve the policy',
+    () {
+      final sim = Simulation.neighborhood(automateAllStores: true);
+      sim.advanceDay();
+      final store = sim.stores.first;
+      final price = store.prices['water']!;
+      final stock = store.inventory['water']!;
+      stock.remove(stock.quantity);
+      store.lastSales['water'] = 100;
+      final resumed = Simulation.fromJson(
+        jsonDecode(jsonEncode(sim.toJson())) as Map<String, dynamic>,
+      );
+      sim.advanceDay();
+      resumed.advanceDay();
+      expect(store.prices['water'], greaterThan(price));
+      expect(resumed.automateAllStores, isTrue);
+      expect(jsonEncode(sim.toJson()), jsonEncode(resumed.toJson()));
+      for (var i = 0; i < 60; i++) {
+        sim.advanceDay();
+        resumed.advanceDay();
+        expect(jsonEncode(sim.toJson()), jsonEncode(resumed.toJson()));
+      }
+    },
+  );
+
+  test('Old snapshots retain fixed Corner pricing', () {
+    final snapshot =
+        jsonDecode(jsonEncode(Simulation.neighborhood().toJson()))
+            as Map<String, dynamic>;
+    snapshot.remove('automateAllStores');
+    final restored = Simulation.fromJson(snapshot);
+    expect(restored.automateAllStores, isFalse);
+    final prices = Map<String, int>.from(restored.player.prices);
+    restored.advanceDay();
+    restored.advanceDay();
+    expect(restored.player.prices, prices);
+  });
+
   group('Inventory and ledger', () {
     test('FIFO costs reconcile across differently priced purchases', () {
       final stock = Stock()
@@ -357,9 +396,9 @@ void main() {
     );
 
     test(
-      '10,000 days preserve invariants and the baseline neighborhood stays viable',
+      '10,000 observer days preserve invariants and all shops stay viable',
       () {
-        final sim = Simulation.neighborhood(seed: 42);
+        final sim = Simulation.neighborhood(seed: 42, automateAllStores: true);
         final initialCash = sim.ledger.totalCash;
         for (var day = 0; day < 10000; day++) {
           sim.advanceDay(); // Audits cash, inventory, spending and profit each day.

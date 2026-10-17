@@ -1,16 +1,13 @@
 # Market Game
 
-An Android-first convenience-store simulator with a pure Dart retail economy
-and a live Flutter dashboard. The neighborhood contains 1,000 households, three
-stores, two suppliers, and eight products. Cash, daily profit, inventory, revenue
-history, market shares, and business activity come from actual daily simulation.
+A mobile-first **economy observation dashboard** for tuning a small, pure Dart
+retail simulation: 1,000 households, three competing shops, two wholesale
+suppliers, and eight products. Every shop uses automatic pricing and restocking.
+There is no player management interface in this milestone.
 
-Playback controls work. Product pricing and restock settings are read-only in
-this milestone; editing decisions and local saves are next. This preview keeps
-state in memory, so refreshing or restarting the app starts a new game.
-
-See [ROADMAP.md](ROADMAP.md) for detailed implementation steps, dependencies,
-and acceptance criteria for the first playable release.
+State lives in memory. Refreshing starts a fresh deterministic run with seed 42.
+Player decisions, local saves, and additional industries are deferred while we
+observe and calibrate the retail economy. See [ROADMAP.md](ROADMAP.md).
 
 ## GitHub Pages preview
 
@@ -23,20 +20,30 @@ the successful deployment's environment URL is authoritative.
 The workflow attempts to enable Pages automatically. If GitHub denies initial
 site creation, an administrator must open **Settings → Pages**, select **GitHub
 Actions** as the source, and rerun the deployment. Pages is enabled for this public repository. The deployment does not
-change repository visibility. The hosted dashboard advances the real economy; player decision controls and
-local saves remain the next milestones.
+change repository visibility. The hosted dashboard advances the real economy. The current priority is monitoring
+and engine calibration; gameplay and saves are deferred.
 
 ## Using the dashboard
 
-- **Home:** cash, latest completed day's profit/revenue, up to 30 days of revenue
-  history, the daily income statement, and current store essentials.
-- **Stock:** eight products with units on hand, prices, targets, supplier quotes,
-  and coverage based on the latest seven completed days of actual sales. Coverage
-  is unavailable before the first close or when recent sales are zero.
-- **Market:** all three stores' revenue shares, consumer segments, and supplier
-  availability. There are no invented shares before the first trading day.
-- **Activity:** daily closes plus stockout/closure notices. The feed retains at
-  most 80 entries and repeats the same warning no more than once every three days.
+- **Economy:** total retail revenue, profit, cash, and sales; equal comparison
+  cards for all three shops; a shared 30-day chart switching between revenue,
+  profit (including losses), and revenue share. Cards show empty product lines,
+  net margin, and inventory value. Shares are revenue-based, not unit-based.
+- **Shops:** choose any shop to inspect FIFO accounts, cash movement, inventory
+  purchases, prices, stock targets, sales, supplier quotes, and stock coverage.
+  Coverage uses up to seven completed days of actual sales and is unavailable
+  when there are no sales. Selection survives ticks while that view stays open.
+- **Supply:** household budgets and actual spending, local demand fulfillment,
+  and both suppliers' cash, profit, procurement, stock, and quotes. Unfilled
+  intentions include the outside option and price/budget rejection; they must
+  not be interpreted as lost sales caused only by stockouts.
+- **Activity:** neighborhood daily closes plus warnings from every shop. The feed
+  retains at most 80 entries and repeats warnings at most once every three days.
+
+No data is fabricated before day one. All daily financials describe the latest
+completed day; prices and stock show the current closing position. Daily profit
+is revenue minus FIFO cost of goods sold and operating expenses. Restocking
+reduces cash and increases inventory, so cash movement differs from profit.
 
 New and restored controllers start **paused**. Press **Play**, or use the **Next
 day** button (skip-next icon) while paused to complete one day immediately. Speeds
@@ -157,13 +164,27 @@ will request daily ticks; persistence will serialize game state and the random
 generator state outside the engine. Use integer cents for money and explicit
 inventory quantities.
 
-## Next development milestone
+## Engine calibration workflow
 
-The engine and live dashboard are implemented, with controller, layout, accounting,
-determinism, and 10,000-day tests. Next:
+1. Start paused and advance individual days to inspect accounts and stock.
+2. Run at 10× to compare shops over the latest 30 days. Inspect supplier supply,
+   unfilled intentions, and segment spending alongside profit and share.
+3. Change one assumption in code, rerun with the same seed, and compare results.
+   Product demand/prices/costs and segment incomes/sensitivity live in
+   `lib/domain/economy.dart`; choice formulas in `lib/simulation/demand.dart`;
+   opening capital, daily costs, restocking, and AI in
+   `lib/simulation/simulation.dart`. Formulas are documented in
+   [docs/economy.md](docs/economy.md).
+4. Run `bash tool/check.sh`. The headless CLI and VM/JavaScript replay use the same
+   all-automated policy as the dashboard. The long run audits 10,000 days.
 
-- Add validated player pricing and restock controls with immediate feedback.
-- Add local saves, recovery behavior, and complete the phone/device checks.
+The default low-level `Simulation.neighborhood()` retains the original mixed
+policy for engine regression experiments. Pass `automateAllStores: true` for
+observer runs; the controller and CLI already do. Snapshots preserve this flag;
+older snapshots without it retain their original fixed Corner & Co. prices.
 
-Stock markets, manufacturing, patents, R&D, acquisitions, and macroeconomics are
-outside the first retail prototype.
+The UI is read-only apart from playback and view selection. Engine parameters
+are edited in code in this step. Profits are provisional; this is a diagnostic
+tool, not a balanced playable game. Next work is evidence-driven calibration and
+additional diagnostics where a concrete experiment needs them. Player decisions,
+saves, stock markets, manufacturing, patents, R&D, and acquisitions remain deferred.
