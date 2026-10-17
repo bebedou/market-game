@@ -1,7 +1,13 @@
 /// Domain objects use integer cents and contain no Flutter dependencies.
 class Product {
-  const Product(this.id, this.name, this.referencePrice, this.wholesaleCost,
-      this.productionCost, this.dailyDemandPerThousand);
+  const Product(
+    this.id,
+    this.name,
+    this.referencePrice,
+    this.wholesaleCost,
+    this.productionCost,
+    this.dailyDemandPerThousand,
+  );
 
   final String id;
   final String name;
@@ -23,8 +29,13 @@ const products = [
 ];
 
 class ConsumerSegment {
-  const ConsumerSegment(this.id, this.households, this.monthlyIncome,
-      this.retailBudgetBps, this.priceSensitivity);
+  const ConsumerSegment(
+    this.id,
+    this.households,
+    this.monthlyIncome,
+    this.retailBudgetBps,
+    this.priceSensitivity,
+  );
 
   final String id;
   final int households;
@@ -101,9 +112,9 @@ class Stock {
   }
 
   List<Object> toJson() => [
-        for (final lot in _lots)
-          {'quantity': lot.quantity, 'unitCost': lot.unitCost},
-      ];
+    for (final lot in _lots)
+      {'quantity': lot.quantity, 'unitCost': lot.unitCost},
+  ];
 
   static Stock fromJson(List<dynamic> json) {
     final stock = Stock();
@@ -146,35 +157,35 @@ class Store {
   bool isOpen;
 
   Map<String, Object> toJson() => {
-        'id': id,
-        'name': name,
-        'playerControlled': playerControlled,
-        'operatingCost': operatingCost,
-        'appeal': appeal,
-        'inventory': {for (final e in inventory.entries) e.key: e.value.toJson()},
-        'prices': Map<String, int>.of(prices),
-        'restockTargets': Map<String, int>.of(restockTargets),
-        'lastSales': Map<String, int>.of(lastSales),
-        'autoRestock': autoRestock,
-        'isOpen': isOpen,
-      };
+    'id': id,
+    'name': name,
+    'playerControlled': playerControlled,
+    'operatingCost': operatingCost,
+    'appeal': appeal,
+    'inventory': {for (final e in inventory.entries) e.key: e.value.toJson()},
+    'prices': Map<String, int>.of(prices),
+    'restockTargets': Map<String, int>.of(restockTargets),
+    'lastSales': Map<String, int>.of(lastSales),
+    'autoRestock': autoRestock,
+    'isOpen': isOpen,
+  };
 
   static Store fromJson(Map<String, dynamic> json) => Store(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        playerControlled: json['playerControlled'] as bool,
-        operatingCost: json['operatingCost'] as int,
-        appeal: json['appeal'] as int,
-        inventory: {
-          for (final e in (json['inventory'] as Map<String, dynamic>).entries)
-            e.key: Stock.fromJson(e.value as List<dynamic>),
-        },
-        prices: Map<String, int>.from(json['prices'] as Map),
-        restockTargets: Map<String, int>.from(json['restockTargets'] as Map),
-        lastSales: Map<String, int>.from(json['lastSales'] as Map),
-        autoRestock: json['autoRestock'] as bool,
-        isOpen: json['isOpen'] as bool,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    playerControlled: json['playerControlled'] as bool,
+    operatingCost: json['operatingCost'] as int,
+    appeal: json['appeal'] as int,
+    inventory: {
+      for (final e in (json['inventory'] as Map<String, dynamic>).entries)
+        e.key: Stock.fromJson(e.value as List<dynamic>),
+    },
+    prices: Map<String, int>.from(json['prices'] as Map),
+    restockTargets: Map<String, int>.from(json['restockTargets'] as Map),
+    lastSales: Map<String, int>.from(json['lastSales'] as Map),
+    autoRestock: json['autoRestock'] as bool,
+    isOpen: json['isOpen'] as bool,
+  );
 }
 
 class Supplier {
@@ -185,21 +196,17 @@ class Supplier {
   final Map<String, int> prices;
 
   Map<String, Object> toJson() => {
-        'id': id,
-        'name': name,
-        'inventory': {for (final e in inventory.entries) e.key: e.value.toJson()},
-        'prices': Map<String, int>.of(prices),
-      };
+    'id': id,
+    'name': name,
+    'inventory': {for (final e in inventory.entries) e.key: e.value.toJson()},
+    'prices': Map<String, int>.of(prices),
+  };
 
-  static Supplier fromJson(Map<String, dynamic> json) => Supplier(
-        json['id'] as String,
-        json['name'] as String,
-        {
-          for (final e in (json['inventory'] as Map<String, dynamic>).entries)
-            e.key: Stock.fromJson(e.value as List<dynamic>),
-        },
-        Map<String, int>.from(json['prices'] as Map),
-      );
+  static Supplier fromJson(Map<String, dynamic> json) =>
+      Supplier(json['id'] as String, json['name'] as String, {
+        for (final e in (json['inventory'] as Map<String, dynamic>).entries)
+          e.key: Stock.fromJson(e.value as List<dynamic>),
+      }, Map<String, int>.from(json['prices'] as Map));
 }
 
 /// A settled daily report. All monetary values are cents.
@@ -242,42 +249,47 @@ class BusinessReport {
   }
 
   Map<String, Object> toJson() => {
-        'id': id,
-        'retail': retail,
-        'openingCash': openingCash,
-        'closingCash': closingCash,
-        'openingInventory': openingInventory,
-        'closingInventory': closingInventory,
-        'revenue': revenue,
-        'costOfGoodsSold': costOfGoodsSold,
-        'inventoryPurchases': inventoryPurchases,
-        'operatingExpenses': operatingExpenses,
-        'unitsSold': unitsSold,
-      };
+    'id': id,
+    'retail': retail,
+    'openingCash': openingCash,
+    'closingCash': closingCash,
+    'openingInventory': openingInventory,
+    'closingInventory': closingInventory,
+    'revenue': revenue,
+    'costOfGoodsSold': costOfGoodsSold,
+    'inventoryPurchases': inventoryPurchases,
+    'operatingExpenses': operatingExpenses,
+    'unitsSold': unitsSold,
+  };
 
   static BusinessReport fromJson(Map<String, dynamic> j) => BusinessReport(
-        id: j['id'] as String,
-        retail: j['retail'] as bool,
-        openingCash: j['openingCash'] as int,
-        closingCash: j['closingCash'] as int,
-        openingInventory: j['openingInventory'] as int,
-        closingInventory: j['closingInventory'] as int,
-        revenue: j['revenue'] as int,
-        costOfGoodsSold: j['costOfGoodsSold'] as int,
-        inventoryPurchases: j['inventoryPurchases'] as int,
-        operatingExpenses: j['operatingExpenses'] as int,
-        unitsSold: Map<String, int>.from(j['unitsSold'] as Map),
-      );
+    id: j['id'] as String,
+    retail: j['retail'] as bool,
+    openingCash: j['openingCash'] as int,
+    closingCash: j['closingCash'] as int,
+    openingInventory: j['openingInventory'] as int,
+    closingInventory: j['closingInventory'] as int,
+    revenue: j['revenue'] as int,
+    costOfGoodsSold: j['costOfGoodsSold'] as int,
+    inventoryPurchases: j['inventoryPurchases'] as int,
+    operatingExpenses: j['operatingExpenses'] as int,
+    unitsSold: Map<String, int>.from(j['unitsSold'] as Map),
+  );
 }
 
 class DailyReport {
-  DailyReport(this.day, Map<String, BusinessReport> businesses,
-      Map<String, int> budgets, Map<String, int> spending,
-      this.requestedUnits, this.soldUnits, List<String> notifications)
-      : businesses = Map.unmodifiable(businesses),
-        budgets = Map.unmodifiable(budgets),
-        spending = Map.unmodifiable(spending),
-        notifications = List.unmodifiable(notifications);
+  DailyReport(
+    this.day,
+    Map<String, BusinessReport> businesses,
+    Map<String, int> budgets,
+    Map<String, int> spending,
+    this.requestedUnits,
+    this.soldUnits,
+    List<String> notifications,
+  ) : businesses = Map.unmodifiable(businesses),
+      budgets = Map.unmodifiable(budgets),
+      spending = Map.unmodifiable(spending),
+      notifications = List.unmodifiable(notifications);
 
   final int day;
   final Map<String, BusinessReport> businesses;
@@ -293,9 +305,9 @@ class DailyReport {
 
   /// Revenue shares; zero for every store when no retail sales take place.
   Map<String, double> get marketShares => {
-        for (final b in businesses.values.where((b) => b.retail))
-          b.id: retailRevenue == 0 ? 0 : b.revenue / retailRevenue,
-      };
+    for (final b in businesses.values.where((b) => b.retail))
+      b.id: retailRevenue == 0 ? 0 : b.revenue / retailRevenue,
+  };
 
   void validate() {
     for (final b in businesses.values) {
@@ -303,31 +315,32 @@ class DailyReport {
     }
     if (retailRevenue != spending.values.fold<int>(0, (v, s) => v + s) ||
         spending.entries.any((e) => e.value < 0 || e.value > budgets[e.key]!) ||
-        soldUnits < 0 || soldUnits > requestedUnits) {
+        soldUnits < 0 ||
+        soldUnits > requestedUnits) {
       throw StateError('Consumer spending and retail sales disagree.');
     }
   }
 
   Map<String, Object> toJson() => {
-        'day': day,
-        'businesses': {for (final e in businesses.entries) e.key: e.value.toJson()},
-        'budgets': budgets,
-        'spending': spending,
-        'requestedUnits': requestedUnits,
-        'soldUnits': soldUnits,
-        'notifications': notifications,
-      };
+    'day': day,
+    'businesses': {for (final e in businesses.entries) e.key: e.value.toJson()},
+    'budgets': budgets,
+    'spending': spending,
+    'requestedUnits': requestedUnits,
+    'soldUnits': soldUnits,
+    'notifications': notifications,
+  };
 
   static DailyReport fromJson(Map<String, dynamic> j) => DailyReport(
-        j['day'] as int,
-        {
-          for (final e in (j['businesses'] as Map<String, dynamic>).entries)
-            e.key: BusinessReport.fromJson(e.value as Map<String, dynamic>),
-        },
-        Map<String, int>.from(j['budgets'] as Map),
-        Map<String, int>.from(j['spending'] as Map),
-        j['requestedUnits'] as int,
-        j['soldUnits'] as int,
-        List<String>.from(j['notifications'] as List),
-      );
+    j['day'] as int,
+    {
+      for (final e in (j['businesses'] as Map<String, dynamic>).entries)
+        e.key: BusinessReport.fromJson(e.value as Map<String, dynamic>),
+    },
+    Map<String, int>.from(j['budgets'] as Map),
+    Map<String, int>.from(j['spending'] as Map),
+    j['requestedUnits'] as int,
+    j['soldUnits'] as int,
+    List<String>.from(j['notifications'] as List),
+  );
 }

@@ -41,17 +41,26 @@ void main(List<String> args) {
       revenues[s.id] = revenues[s.id]! + report.businesses[s.id]!.revenue;
     }
   }
-  stdout.writeln(const JsonEncoder.withIndent('  ').convert({
-    'days': simulation.day, 'seed': seed,
-    'households': consumerSegments.fold<int>(0, (n, s) => n + s.households),
-    'cashConserved': simulation.ledger.totalCash == simulation.ledger.conservedCash,
-    'retailRevenueCents': revenues, 'retailProfitCents': profits,
-    'stores': {for (final s in simulation.stores) s.id: {
-      'cashCents': simulation.ledger.balance(s.id), 'isOpen': s.isOpen,
-      'inventoryValueCents': inventoryValue(s.inventory),
-    }},
-    'lastDayMarketShares': simulation.lastReport?.marketShares,
-    'randomState': simulation.random.state,
-    'journalEntriesRetained': simulation.ledger.entries.length,
-  }));
+  stdout.writeln(
+    const JsonEncoder.withIndent('  ').convert({
+      'days': simulation.day,
+      'seed': seed,
+      'households': consumerSegments.fold<int>(0, (n, s) => n + s.households),
+      'cashConserved':
+          simulation.ledger.totalCash == simulation.ledger.conservedCash,
+      'retailRevenueCents': revenues,
+      'retailProfitCents': profits,
+      'stores': {
+        for (final s in simulation.stores)
+          s.id: {
+            'cashCents': simulation.ledger.balance(s.id),
+            'isOpen': s.isOpen,
+            'inventoryValueCents': inventoryValue(s.inventory),
+          },
+      },
+      'lastDayMarketShares': simulation.lastReport?.marketShares,
+      'randomState': simulation.random.state,
+      'journalEntriesRetained': simulation.ledger.entries.length,
+    }),
+  );
 }
