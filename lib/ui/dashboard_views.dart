@@ -264,33 +264,36 @@ class _ShopsViewState extends State<ShopsView> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text('Shop', style: TextStyle(color: _muted)),
-              DropdownButton<String>(
-                key: const Key('shop-selector'),
-                value: store.id,
-                isExpanded: true,
-                itemHeight: null,
-                selectedItemBuilder: (context) => [
-                  for (final s in sim.stores)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        s.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+              Semantics(
+                container: true,
+                child: DropdownButton<String>(
+                  key: const Key('shop-selector'),
+                  value: store.id,
+                  isExpanded: true,
+                  itemHeight: null,
+                  selectedItemBuilder: (context) => [
+                    for (final s in sim.stores)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          s.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                ],
-                items: [
-                  for (final s in sim.stores)
-                    DropdownMenuItem(
-                      value: s.id,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Text(s.name),
+                  ],
+                  items: [
+                    for (final s in sim.stores)
+                      DropdownMenuItem(
+                        value: s.id,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(s.name),
+                        ),
                       ),
-                    ),
-                ],
-                onChanged: (id) => setState(() => _storeId = id),
+                  ],
+                  onChanged: (id) => setState(() => _storeId = id),
+                ),
               ),
               const SizedBox(height: 8),
               Text(

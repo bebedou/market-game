@@ -46,21 +46,24 @@ class _CompetitionChartState extends State<CompetitionChart> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DropdownButton<TrendMetric>(
-          value: _metric,
-          isExpanded: true,
-          itemHeight: null,
-          items: [
-            for (final metric in TrendMetric.values)
-              DropdownMenuItem(
-                value: metric,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(metric.label),
+        Semantics(
+          container: true,
+          child: DropdownButton<TrendMetric>(
+            value: _metric,
+            isExpanded: true,
+            itemHeight: null,
+            items: [
+              for (final metric in TrendMetric.values)
+                DropdownMenuItem(
+                  value: metric,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(metric.label),
+                  ),
                 ),
-              ),
-          ],
-          onChanged: (value) => setState(() => _metric = value!),
+            ],
+            onChanged: (value) => setState(() => _metric = value!),
+          ),
         ),
         if (reports.isEmpty)
           const Padding(

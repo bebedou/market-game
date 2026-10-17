@@ -200,6 +200,39 @@ void main() {
     },
   );
 
+  testWidgets('Dropdown announcements exclude surrounding dashboard text', (
+    tester,
+  ) async {
+    setScreen(tester, 430);
+    final semantics = tester.ensureSemantics();
+    final game = GameController();
+    addTearDown(game.dispose);
+    try {
+      await tester.pumpWidget(MarketGameApp(controller: game));
+      await tester.scrollUntilVisible(
+        find.byType(DropdownButton<TrendMetric>),
+        500,
+        scrollable: find.byType(Scrollable).first,
+      );
+      final trendLabel = tester
+          .getSemantics(find.byType(DropdownButton<TrendMetric>))
+          .getSemanticsData()
+          .label;
+      expect(trendLabel, contains('Revenue'));
+      expect(trendLabel, isNot(contains('Neighborhood overview')));
+      await tester.tap(find.text('Shops'));
+      await tester.pumpAndSettle();
+      final shopLabel = tester
+          .getSemantics(find.byKey(const Key('shop-selector')))
+          .getSemanticsData()
+          .label;
+      expect(shopLabel, contains('Corner & Co.'));
+      expect(shopLabel, isNot(contains('Daily accounts')));
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   test('Currency formatting keeps cents exact and readable', () {
     expect(money(123456789), '\$1,234,567.89');
     expect(money(-101), '−\$1.01');
