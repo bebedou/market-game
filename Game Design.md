@@ -1,0 +1,280 @@
+# Economic Sandbox — Game Design Brief
+**Version 0.4 | November 2026**
+
+## Vision
+
+A premium, mobile-first economic simulation combining the entrepreneurial progression of Big Ambitions, the financial complexity of Wall Street Raider, and the interconnected industries of Capitalism Lab.
+
+The player starts with a small business and can eventually become a multinational business owner, industrialist, technology innovator, or corporate investor.
+
+**Core philosophy:** The player operates within a living economy rather than a collection of disconnected business minigames.
+
+## Fundamental gameplay principles
+
+1. **Start small, grow indefinitely.** From a convenience store to a diversified corporate empire.
+2. **A living economy.** Consumers, suppliers, competitors, and markets function independently of the player.
+3. **One interconnected simulation.** Production, retail, services, brands, innovation, finance, and macroeconomics affect each other.
+4. **Multiple paths to wealth.** Entrepreneurship, industrial production, technological innovation, intellectual property, investments, and acquisitions.
+5. **Emergent innovation.** A dynamic, realistic technology system instead of a predetermined historical research tree.
+6. **Strategic management over busywork.** No manual shelf restocking, walking between locations, or arbitrary waiting mechanics.
+7. **Designed for mobile.** Primarily dashboards, financial reports, charts, contextual decisions, and an accessible interface.
+8. **Premium experience.** A proposed price of approximately $4.99, without energy systems or pay-to-win mechanics.
+9. **Same rules for everyone.** AI companies use the same engine, costs, and constraints as the player. They can expand, and they can go bankrupt.
+10. **Legible causality.** The player can always find out *why* a number changed. Hidden information is fine; unexplainable outcomes are not.
+11. **Extremely moddable.** Company names, countries, cities, products, balance and every line of text are data anyone can change or replace, without touching the code (see Modding).
+
+## Player experience
+
+**Identity.** The player is a person with personal wealth (cash, assets, reputation) distinct from the companies they own. Each company has its own balance sheet and, at launch, is wholly owned by the player. Personal wealth funds new ventures and is shielded from a company's failure, except for debts the player personally guaranteed.
+
+**Money flow.** The player injects capital into their companies; companies pay dividends back, taxed and only out of retained profits. There are no other transfers, so a failing company cannot be drained into personal wealth.
+
+**Personal guarantees.** The bank lends a company on what its stores earn; beyond that, only on the player's personal guarantee. A new business has no earnings, so the early game is personally risky; a grown empire borrows on its own.
+
+**Borrowing to grow.** Borrowing is a lever for growth, not a side feature. The bank lends without a guarantee up to a year and a half of a company's earnings, and says how much on each company's accounts. Opening a store or buying a rival without the cash, the player is offered the rest there and then, with what it costs a month; buying a store, its own earnings count, so a profitable rival can largely pay for itself. A whole company can borrow part of its own price on its earnings, so buying out a rival chain takes less of the player's own cash. Long loans keep the payments small, and the cash cushion keeps the next one aside. A director can borrow too, if their brief lets them.
+
+**Goals.** A pure sandbox: the player sets their own goals. Replayability comes from new businesses, sectors and markets added in updates, and from choosing where and how to start. Goals, achievements and challenge seeds come after launch (see Roadmap).
+
+**Failure.** Bankruptcy is recoverable. A bankrupt company is liquidated and its creditors are paid from company assets. The player keeps their personal assets minus any guaranteed debt, takes a reputation hit (worse borrowing terms, harder deals), and can start again in the same world.
+
+**Sessions.** The game must work for both short and long sessions:
+- *Short (5–15 min):* review the dashboard, react to what changed, adjust a few policies, advance time.
+- *Long (30–90 min):* expand into new markets, restructure, analyze reports, buy or sell businesses.
+
+Time controls should support both, e.g. "advance one week" and pausing on important events.
+
+## Setting and world
+
+**Real-world, modern day.** Real countries and cities; all companies, brands, and products are fictional.
+
+**Abstract markets.** There is no map and no walking. A market is a city (later a region or country) described by its statistics: households by segment, income, price level, rents, and competition. Location inside a market is an abstract attribute of a business (a location-quality tier that trades rent against convenience).
+
+**Start points are data.** A scenario is an initial world state: date, markets, firms, macroeconomic parameters, and technology frontier. Launch ships one modern start. Historical start points are possible future content, not an engine feature.
+
+**Languages.** The game plays in English, French and Spanish, in the phone's language by default, with a choice on the main menu. A saved game opens in any of them.
+
+## Modding
+
+The game must be extremely moddable. A player should be able to rename, replace or rebuild almost everything they see, and installing a world someone else made should be as easy as opening a saved game. A long life for a solo-developed game depends on it: players bring the countries, the brands and the languages that one developer never will.
+
+**What a mod can change:**
+- *Names:* companies, brands, people, stores, suppliers and products, including real ones the base game must not use.
+- *Places:* countries, cities and sites, with their households, incomes, prices and rents, so the game can move anywhere in the world.
+- *Trades:* kinds of business, product ranges, customer segments, strategies, and the grades of manager and director.
+- *The economy:* every balance number: costs, wages, rents, taxes, lending, the business cycle.
+- *Words:* every line of text, and whole new languages.
+- *The look:* each trade's colour and icon.
+
+**Design rules:**
+1. **World facts live in data.** Code knows what a thing does, never what it is called or where it is. Nothing about a particular country, city, company or product is written in code; a feature that needs a new fact adds it to the scenario.
+2. **Text lives in data.** Everything the player reads comes from JSON files, including what the engine refuses and why. A new language needs no build, and a partial one falls back on English.
+3. **Ids, not names.** Rules and saves refer to stable ids; a name is only ever shown. Renaming something never breaks a save or changes how the game plays.
+4. **Gaps don't break.** A mod says only what it changes; what it leaves out comes from what it builds on. A scenario with no translation still plays, in its own words.
+5. **Mods are data, not scripts.** The same mod, seed and commands give the same game on every platform, so determinism, replays and seeds keep working. Scripting is not planned.
+6. **The base game is a mod.** France ships through the same files and loader a mod uses, so the way in is always tested.
+
+**Where it stands.** The scenario already holds the world and its balance, and all text and languages are in JSON. Still to build: loading mods from a folder, with a simple format and a load order, and a screen to pick them. A few facts are still in code and should move to data: each trade's colour and icon, chosen by name in `theme.dart`, the loan lengths offered, the net-worth milestones in the news, and rule limits such as the most a store may spend on marketing. Countries by formula (see Roadmap) should load the same way, so a mod can add one.
+
+## Three economic layers
+
+**Real economy:** Stores, factories, products, consumers, workers, suppliers, software, services, marketing, research, patents, and intellectual property.
+
+**Financial economy:** Cash, loans, equity, corporate ownership, investments, mergers, acquisitions, and financial markets.
+
+**Macroeconomic environment:** Inflation, interest rates, employment, wages, consumer purchasing power, economic growth, recessions, and regulation.
+
+## Business sectors
+
+- Retail: Convenience stores, specialist retailers, luxury stores.
+- Raw materials: Mining, agriculture, energy.
+- Industrial goods: Electronics, components, automotive, aerospace, defense.
+- Food and beverages: Consumer food products, manufacturing, brands.
+- Software: SaaS, applications, platforms, video games.
+- Services: Logistics, consulting, financial and professional services.
+- Marketing: Advertising agencies, campaigns, research.
+- Entertainment: Film, music, publishing, intellectual property.
+
+Companies can participate in multiple sectors and own different kinds of assets.
+
+## Launch scope
+
+**Production context:** solo developer, no fixed deadline. Scope decisions favor systems that reuse the same engine primitives.
+
+**Launch ($4.99):**
+- Retail (several store formats) across multiple real-world markets.
+- Wholesale suppliers.
+- Managers and policies (see below).
+- Finance basics: loans, buying and selling whole businesses (100% ownership only).
+- Personal wealth layer: capital injections, dividends, personal guarantees.
+- Taxes: per-country corporate profit tax and dividend tax, so "reinvest or pay out" is a real choice. No other regulation.
+- Hybrid macroeconomy: business cycles, interest rates, inflation.
+
+**Post-launch (free updates):** production chains (raw materials → manufacturing → retail), stock market and equity (IPOs, partial stakes, takeovers), R&D, patents and IP, the remaining sectors, and additional start points.
+
+## Roadmap
+
+Not part of the first release, in no fixed order:
+
+- **Goals and milestones.** Net-worth tiers, first acquisition, leading a city's market, a first factory: marked on a timeline of the player's empire.
+- **Achievements.** For feats and odd paths: surviving a recession without a loan, a fine-dining empire, buying out the chain that beat you.
+- **Seeds.** Every world comes from a seed, so it can be shared. A weekly challenge seed puts everyone in the same world and the same economic shocks, ranked on a leaderboard; each run is checked by replaying its commands, which the deterministic engine makes cheap and cheat-proof.
+- **Challenge scenarios.** A set start with a goal and a deadline ("turn around a failing chain in two years"), including ones built on real crises (2008, the 2022 inflation) through the macroeconomic engine.
+- **Showing the size of the empire.** The interface should make growth felt: the cities and sites the holding spans, its stores by trade colour, and its history over the years, not only longer lists.
+- **Lending and savings.** Credit priced from a business's risk (it is already sized on its earnings), fixed or variable rates, an overdraft line, deposit interest and government bonds; rival owners who borrow.
+- **Owning the chain.** Each trade climbs its own ladder upstream: a store brand, farms, a lab and a factory (see Owning the chain).
+- **Countries by formula.** Countries described by real statistics (households by income class, what each earns and spends per trade, margins, the cycle), with fictional chains as blocks, cheap enough to run many at once. France, Germany, Italy and Spain are built, not yet in the game; see Engine Architecture.md. The aim: a player can stay local, shop by shop, or rise to run businesses across a whole world.
+- **Executives.** Named people with strengths and characters, hired and fired, who run whole layers of the holding (see Managing at scale). Directors, one per company, are the first step.
+
+## Owning the chain
+
+Growing should not only mean more of the same store. Each trade can own more of its own chain, one rung at a time, until the player supplies themselves and, if they choose, their rivals. This is how the sectors connect: production comes in through the trades the player already runs, not as separate games.
+
+**Ladders by trade.** Each rung is a business unit of its own, with its costs, staff and capacity:
+- *Convenience store and supermarket:* a store-brand factory (cheaper goods, at a quality the player picks), then a distribution centre (shorter delivery times, less spoilage), then a dairy or market garden for fresh produce.
+- *Restaurants:* a central kitchen, then a farm or ranch for meat and vegetables, then the house dishes sold as frozen meals in supermarkets, which takes the player into food manufacturing.
+- *Electronics:* a repair workshop, then an R&D lab that invents the player's own gadgets and phones (see Post-launch direction), then a factory making the brand.
+
+**Design rules:**
+1. **Real trade-offs, not a discount button.** A rung costs a lot up front and must run near capacity to pay. In a recession, idle capacity is a weight a supplier would not be; a supplier's flexibility is what integration gives up.
+2. **Sell to rivals, or keep it exclusive.** A farm or factory can sell to competitors: income and scale, at the price of helping them. AI owners buy from it under the same rules as from any supplier, and can climb ladders of their own.
+3. **One rung at a time.** Each rung should pay for itself before the next is worth building.
+4. **Legible.** Reports show what a rung saves or earns against buying from the market, and at what transfer price.
+
+**First step.** The store brand: a new product line from the player's own supplier is the smallest ladder to build and the best test of whether integration is fun. Prove it before building the others.
+
+## Managing at scale
+
+Any business unit can be run by a manager who follows player-set policies:
+- price stance (discount, match the market, premium) and target margin;
+- stock coverage (days of stock to hold);
+- supplier preference and assortment;
+- budget limits.
+
+The player intervenes by changing policies or taking direct control of a unit.
+
+Managers have a skill level and a salary. Skill determines how closely they hit policy targets and how well they forecast demand; better managers cost more. Their mistakes come from imperfect forecasting, never from random blunders.
+
+**AI competitors run on the same policy engine,** each with its own strategy. One decision system serves both player delegation and the living economy.
+
+### Executives (roadmap)
+
+Above the store managers, the holding gets a board, so the player can rise from running stores to running the empire: where to grow, what to buy or build, when to borrow.
+
+**Roles.** Each takes a layer of decisions off the player, following the player's policies:
+- *Head of operations:* every store's prices, stock, staff and assortment.
+- *Finance director:* cash, borrowing, repayments and dividends within the limits set.
+- *Marketing director:* marketing budgets and where they go.
+- *Head of purchasing, later of production:* suppliers, terms, and the farms and factories of the chain.
+- *R&D director:* what the lab works on.
+
+**People, not grades.** Each executive is a named person with a face (ink portraits, in the ledger's style), a career history, strengths in operations, finance, marketing or production, and a character (frugal, bold, cautious, charismatic and so on) that changes how they apply the player's policies. They come from a pool of candidates in each city, through a recruiter for a fee. They ask for raises, grow better with time, can be poached by rivals, and cost severance to let go, as French labour law has it.
+
+**Memos.** Executives report in their own words, and this is how the game explains itself at scale: "I cut night staff at three stores; sales dipped 1% and wages fell 6%." Every decision an executive takes can be traced and asked about.
+
+**First step: directors.** Each company can have a director, hired from its page in Finance at one of three grades. The director sits above the store managers: they hire a manager for any store without one, close stores that keep losing money, as the AI chains do, and grow the company as far as the player allows (keep the stores as they are, enlarge and convert them, also open new stores, also buy struggling rivals), paying for growth from the company's cash, never the player's, and if the player lets them, by borrowing on its earnings, never on the player's guarantee. Allowed to buy and to borrow, they also go for profitable rivals that repay their price within four years. The player also says whether the profit stays in the company or comes to them each month; a director saving for a new store keeps it and says so. Skill shows as judgment: a better director sharpens their managers' forecasts and prices, and a cheaper one misjudges what a new site would earn, opening more stores that later close. Each month the director writes a letter: how the month before went, then each decision with its figures ("I closed Grill du Port: it lost 4,210 over the year on 38,900 of sales"). Names, characters and one executive over several companies come next.
+
+**Rules.**
+1. Delegating changes what the player decides; it never leaves them with nothing to decide.
+2. Mistakes come from skill and character, never from random blunders, as with managers.
+3. Executives decide through the same policy engine as managers and AI owners, with a wider remit and a personality.
+
+## Simulation model
+
+The game uses continuous time with discrete daily economic ticks.
+
+The player can pause or accelerate time. Daily revenue, inventory movements, expenses, company decisions, and changing demand are resolved through the economic engine.
+
+**Time scale:** a typical 30-minute session covers one to two in-game years. Decisions run on a weekly-to-monthly cadence, and a 40-year empire takes roughly 10–20 hours of play.
+
+**Macroeconomy (hybrid):** an exogenous business cycle and a central-bank rule set interest rates and baseline inflation. Aggregate simulated activity (prices, wages, demand) nudges them.
+
+The simulation must be deterministic for a given starting seed and identical player decisions, across platforms. It must also support thousands of days of headless testing.
+
+## Initial playable prototype
+
+**World:** one market of approximately 1,000 households represented by consumer segments (differing in income, price sensitivity, loyalty, and basket), three competing convenience stores (the player and two AI firms under the same rules), two wholesale suppliers, and eight consumer products: four categories (e.g. milk, bread, snacks, drinks), each in a budget and a premium tier, mixing perishable and non-perishable goods.
+
+The player controls one store.
+
+**Player decisions:**
+- prices per product;
+- ordering: supplier, quantity, timing;
+- assortment, within shelf capacity;
+- staffing level (staffed hours and headcount; caps opening hours and affects service; wages follow the macro wage level, with no individual employees);
+- opening hours (location tier is fixed per store in the prototype);
+- market research purchases.
+
+**Demand model.** Each segment chooses where to shop based on:
+- *Price:* basket price relative to the segment's price sensitivity.
+- *Convenience:* location tier, opening hours, service (staffing).
+- *Availability:* a stockout loses the sale and erodes future visits.
+- *Loyalty and reputation:* habit and word of mouth create inertia, so customers don't switch over a one-cent difference. Each store also has a reputation everyone knows: it builds over months from keeping the shelves stocked with what shoppers ask for and serving them without queues. A new store opens with less of it than one the city has known for years, so a well-run store's custom grows over its first years.
+- *Marketing:* advertising builds goodwill that draws shoppers from rivals, with diminishing returns: each extra point of sales spent buys less pull. The store screen shows what each share costs and the pull it builds, so the player can find where more stops paying, often a few percent of sales.
+
+**Substitution.** When a product is out of stock or overpriced, each segment has its own odds to substitute the other tier of the same category in-store, buy it at another store, delay the purchase, or skip it. A price too dear can't be waited out and is never answered by paying more: households take a cheaper tier, try another store or go without. So even a shop with no rival in its city can only charge so much. Every outcome also nudges loyalty.
+
+**Entry and exit.** AI entrepreneurs periodically evaluate the market and open a store when expected profit is attractive. A bankrupt store's location becomes available to any firm, including the player.
+
+**Information.** Competitor shelf prices are visible. True demand, elasticities, and segment preferences are hidden. The player infers them from their own sales or reveals them through paid market research.
+
+**Supply frictions:**
+- lead times per supplier;
+- spoilage of perishables;
+- supplier terms (minimum order quantities, volume discounts, payment terms);
+- shelf capacity.
+
+**Calm news.** Only what needs the player stops the clock: a change refused, a bill unpaid, a bankruptcy. The rest is news to read when they like, and it includes the good: a record month, net worth milestones, a store making a name for itself.
+
+**Growth you can feel.** The game is balanced so that sensible play grows: towns gain households every year, stores build a name, and a store run well, even by a manager, earns more each year. Investment is not a setback: fitting out and works are shown apart from what the stores earn, so a month of building reads as a month of building, not a loss. Failure comes from clear mistakes, flagged early.
+
+**Legibility.** Every change in revenue must be traceable to a cause. Reports attribute gained and lost visits and sales to price, stockouts, substitution, convenience, and loyalty (e.g. "lost 40 visits to Store B: your milk is 12% above theirs").
+
+Profitability must be the consequence of simulated business activity.
+
+### Prototype success criteria
+
+The prototype is done when all four hold:
+
+1. **Stable economy.** Thousands of headless days across many seeds with no collapse, runaway prices, or degenerate equilibrium.
+2. **Multiple strategies.** At least two distinct strategies (e.g. discount/volume vs. premium/convenience) are each profitable against the AI. Verified with headless strategy bots and with playtesters.
+3. **Legible decisions.** Playtesters can correctly explain why their profit changed in a given week.
+4. **Fun.** Playtesters voluntarily keep playing past 30 minutes.
+
+## Technical direction
+
+Flutter for the interface, with a separate pure Dart economic simulation engine. The engine design is in [Engine Architecture.md](<Engine Architecture.md>).
+
+Android-first, offline single-player, with Flutter Web for development and testing.
+
+The architecture must accommodate future industries and systems without requiring the convenience-store simulation to be discarded: a store is one kind of business unit, and firms, products, and markets are data-driven.
+
+**Cross-platform determinism.** The same seed and player commands must produce identical results on Android (Dart VM) and the web (compiled to JavaScript), where Dart integers are JavaScript numbers and `dart:math` functions may return different results. Rules for the engine:
+- Money in integer minor units (cents).
+- Integer or fixed-point math for anything that affects state; no `double` in simulation logic and no `dart:math` transcendentals (`exp`, `log`, `pow`). Use lookup tables or integer approximations instead.
+- All values stay within ±2^53.
+- A custom seeded PRNG, with separate streams per subsystem so adding a system does not shift the others' randomness.
+- Insertion-ordered collections only; never iterate over unordered hash sets or maps.
+- A save is a seed plus a player command log, plus periodic snapshots.
+- A test runs identical seeds on the Dart VM and on the JavaScript build and compares a daily state hash.
+
+## Development priority
+
+Build the smallest functioning **market**, rather than an isolated shop simulator.
+
+Validate consumer demand, inventory, pricing, competition, cash flow, and the daily clock before expanding into manufacturing, R&D, patents, or financial markets.
+
+**The goal is not maximum complexity. It is maximum strategic depth from interacting systems.**
+
+## Post-launch direction
+
+**Innovation: stochastic discovery.** R&D spending buys chances at breakthroughs, and knowledge spills over between firms. Breakthrough odds must be visible to the player (legible causality). The product data model must allow new products and technologies to appear at runtime.
+
+## Open questions
+
+1. **AI owners.** Under "same rules for everyone", do AI firms have AI owners with personal wealth who inject capital and take dividends? Where do AI entrepreneurs get the capital to enter a market? *(Provisional: AI owners are persons with scenario-given wealth; see Engine Architecture.md.)*
+2. **Guarantee threshold.** What makes a company "large enough" to borrow without a personal guarantee: revenue, equity, credit history? *(Provisional: earnings. Without a guarantee, a company may owe up to a year and a half of its stores' earnings; see Engine Architecture.md.)*
+3. **Manager hiring.** Where do managers come from (a pool per market?), and is their skill visible or revealed over time? *(Provisional at launch: the scenario offers grades of manager with visible skill and salary; see Engine Architecture.md. Later, executives come from a candidate pool per city, their strengths shown and their character revealed over time; see Executives.)*
+4. **Discovery details.** How are breakthrough odds shown, how fast does knowledge spill over, and how do patents protect against spillover?
+5. **Store model (decide near launch).** Paid upfront, or a free demo with a one-time $4.99 unlock?
+6. **Transfer prices.** When the player's farm or factory supplies their own stores, at what price: cost, market, or a price the player sets? It moves profit between companies, and so tax.
+7. **Executives' character.** How many traits, how strongly they bend policies, and how much is visible before hiring?

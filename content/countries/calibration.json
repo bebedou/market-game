@@ -1,0 +1,22 @@
+{
+  "capture": {
+    "grocery": "0.9517",
+    "restaurants": "0.8549",
+    "electronics": "1.0083"
+  },
+  "staffFixed": {
+    "grocery": "0.2998",
+    "restaurants": "0.4641",
+    "electronics": "0.9964"
+  },
+  "riseResponse": {
+    "grocery": "3.2644",
+    "restaurants": "2.4136",
+    "electronics": "0.8930"
+  },
+  "cutResponse": {
+    "grocery": "0.6590",
+    "restaurants": "0.6031",
+    "electronics": "0.0000"
+  }
+}

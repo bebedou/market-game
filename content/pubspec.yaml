@@ -1,0 +1,14 @@
+name: market_content
+description: Scenario data and the game's words, bundled into the app as assets.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.8.0
+
+resolution: workspace
+
+flutter:
+  assets:
+    - scenarios/
+    - locales/

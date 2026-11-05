@@ -1,0 +1,749 @@
+import '../accounting/ledger.dart';
+import '../content/content_db.dart';
+import '../core/calendar.dart';
+import '../core/fx.dart';
+import '../core/ids.dart';
+import '../core/money.dart';
+import '../reports/period_report.dart' show ReportPeriod;
+import '../state/credit.dart';
+import '../state/director.dart';
+import '../state/entities.dart';
+import '../state/history.dart';
+import '../state/market.dart';
+import '../state/public_record.dart';
+import '../state/orders.dart';
+import '../state/research.dart';
+import '../state/store.dart';
+import '../state/valuation.dart';
+import '../state/world_state.dart';
+
+/// What one actor can see at the start of a day: the economy, its own
+/// companies and stores in full, every store's shelf and hours, each
+/// market's size, and the research it bought. Policies, and later the app,
+/// read the world only through this. It is a copy, unaffected by later
+/// steps.
+final class Observation {
+  const Observation({
+    required this.today,
+    required this.actor,
+    required this.cash,
+    required this.lastBankruptcy,
+    required this.macro,
+    required this.households,
+    required this.censuses,
+    required this.companyNames,
+    required this.companies,
+    required this.shelves,
+    required this.vacantSites,
+    required this.reports,
+    this.filings = const [],
+    this.history = const [],
+    this.companyOwners = const [],
+    this.valuations = const [],
+    this.companyPrices = const [],
+    this.companyCredits = const [],
+    this.guaranteeRoom = Money.zero,
+  });
+
+  /// The day about to be simulated.
+  final Day today;
+  final PersonId actor;
+
+  /// The actor's personal cash.
+  final Money cash;
+
+  /// When a company of the actor's was last liquidated, if ever.
+  final Day? lastBankruptcy;
+
+  /// The state of the economy, which everyone can read in the news.
+  final MacroView macro;
+
+  /// Households per market at the latest census, indexed by [MarketId].
+  /// Censuses are public, taken every first of January.
+  final List<int> households;
+
+  /// Every market's censuses, oldest first, indexed by [MarketId].
+  final List<List<Census>> censuses;
+
+  /// Every company's name, indexed by [CompanyId].
+  final List<String> companyNames;
+
+  /// The companies the actor owns, active or liquidated.
+  final List<CompanyView> companies;
+
+  /// Every store's public face, indexed by [StoreId].
+  final List<ShelfView> shelves;
+
+  /// Sites where anyone may open a store.
+  final List<SiteId> vacantSites;
+
+  /// The market studies the actor bought, oldest first.
+  final List<ResearchReport> reports;
+
+  /// Every company's yearly accounts, public: oldest first.
+  final List<Filing> filings;
+
+  /// The economy month by month, oldest first.
+  final List<EconomicMonth> history;
+
+  /// Every company's owner, as the register shows: indexed by [CompanyId].
+  final List<PersonId> companyOwners;
+
+  /// Every store's asking price and what it rests on, indexed by [StoreId]:
+  /// null for a closed store, or all of them if the scenario sells nothing.
+  final List<Valuation?> valuations;
+
+  /// What each company sells for whole, indexed by [CompanyId]: null if it
+  /// has been liquidated or the scenario sells nothing.
+  final List<Money?> companyPrices;
+
+  /// What the bank still lends each company on its earnings, without a
+  /// guarantee (see `earningsRoom`), indexed by [CompanyId]: below zero if
+  /// its loans exceed what its earnings carry, null if it has been
+  /// liquidated. Buying a store adds the multiple of its earnings.
+  final List<Money?> companyCredits;
+
+  /// How much more the actor can guarantee (see `guaranteeRoom`).
+  final Money guaranteeRoom;
+}
+
+/// The economy as published.
+typedef MacroView = ({
+  RegimeId regime,
+  Fx priceIndex,
+  Fx wageIndex,
+
+  /// The latest annual inflation rate.
+  Fx inflation,
+  Fx policyRate,
+
+  /// The share of the labour force out of work.
+  Fx unemployment,
+});
+
+/// A loan as its borrower sees it.
+typedef LoanView = ({
+  int number,
+  Money outstanding,
+  Fx rate,
+  int installmentsLeft,
+  bool guaranteed,
+});
+
+/// A store's results over its owner's last complete months, up to twelve:
+/// its sales, what it earned before interest and tax (see
+/// [StoreReport.profit]), and the days covered.
+typedef StoreMonths = ({Money revenue, Money profit, int days});
+
+/// A store's manager, as the owner sees it.
+
+typedef ManagerView = ({
+  ManagerGradeId grade,
+  StrategyId strategy,
+
+  /// Indexed by [ManagerDuty].
+  List<bool> duties,
+  Day hiredOn,
+});
+
+/// A purchase order on its way, as the buyer sees it.
+typedef OrderView = ({
+  int number,
+  StoreId store,
+  SupplierId supplier,
+  Day arrival,
+  List<OrderLine> lines,
+});
+
+/// A bill not yet paid, as the debtor sees it.
+typedef BillView = ({
+  PartyRef creditor,
+  EntryReason reason,
+  Money amount,
+  Day due,
+});
+
+/// A company as its owner sees it.
+final class CompanyView {
+  const CompanyView({
+    required this.id,
+    required this.status,
+    required this.founded,
+    required this.balances,
+    required this.committed,
+    required this.loans,
+    required this.orders,
+    required this.bills,
+    required this.stores,
+    this.lossCarried = Money.zero,
+    this.cushionDays = defaultCushionDays,
+    this.taxAccrued = Money.zero,
+    this.director,
+    this.memos = const [],
+  });
+
+  final CompanyId id;
+  final CompanyStatus status;
+  final Day founded;
+
+  /// Account balances, debit-positive, indexed by [AccountKind].
+  final List<Money> balances;
+
+  /// Unpaid bills plus orders not yet delivered: money already spoken for.
+  final Money committed;
+  final List<LoanView> loans;
+
+  /// Orders not yet delivered, in the order they were placed.
+  final List<OrderView> orders;
+
+  /// Unpaid bills, oldest first.
+  final List<BillView> bills;
+  final List<StoreView> stores;
+
+  Money balance(AccountKind kind) => balances[kind.index];
+
+  Money get cash => balance(AccountKind.cash);
+
+  /// What the company owns less what it owes, at book value: cash, stock at
+  /// cost, what it paid for stores it bought and stakes in other companies,
+  /// less unpaid bills and loans. Fitting out and works are spent, so they
+  /// don't count.
+  Money get netAssets =>
+      balance(AccountKind.cash) +
+      balance(AccountKind.inventory) +
+      balance(AccountKind.businessAssets) +
+      balance(AccountKind.investments) +
+      balance(AccountKind.payables) +
+      balance(AccountKind.loans);
+
+  /// Past losses not yet set against profit for tax.
+  final Money lossCarried;
+
+  /// How many days of wages its cash cushion holds.
+  final int cushionDays;
+
+  /// The corporate tax on this year's profit so far, less losses carried:
+  /// what January's bill would be if the year ended today. On the first of
+  /// January, before that bill, the tax on the year just ended.
+  final Money taxAccrued;
+
+  /// Who runs it for its owner, if anyone.
+  final Director? director;
+
+  /// What its directors did, oldest first.
+  final List<Memo> memos;
+
+  /// Profit kept since the start: what dividends may be paid from.
+  Money get retainedEarnings => netAssets + balance(AccountKind.equity);
+}
+
+/// A store as its owner sees it.
+final class StoreView {
+  const StoreView({
+    required this.id,
+    required this.site,
+    required this.status,
+    required this.opensOn,
+    required this.market,
+    required this.shelfSlots,
+    required this.storageUnits,
+    required this.prices,
+    required this.stock,
+    required this.onOrder,
+    required this.staff,
+    required this.service,
+    required this.sales,
+    required this.area,
+    this.format = const FormatId(0),
+    this.marketingShare = Fx.zero,
+    this.goodwill = Money.zero,
+    this.reputation = Fx.zero,
+    this.manager,
+    this.works,
+    this.enlargedOn,
+    this.boughtFor = Money.zero,
+    this.acquiredOn,
+    this.buyer,
+    this.recentMonths = (revenue: Money.zero, profit: Money.zero, days: 0),
+  });
+
+  final StoreId id;
+  final SiteId site;
+
+  /// What kind of business it is, which sets what it may sell.
+  final FormatId format;
+
+  /// The share of its recent sales it spends on marketing each day.
+  final Fx marketingShare;
+
+  /// What its advertising has built up.
+  final Money goodwill;
+
+  /// What shoppers think of it, from 0 to 1.
+  final Fx reputation;
+  final StoreStatus status;
+
+  /// The first trading day.
+  final Day opensOn;
+  final MarketId market;
+  final int shelfSlots;
+  final int storageUnits;
+
+  /// Shelf price per product, indexed by [ProductId]; null if not listed.
+  final List<Money?> prices;
+
+  /// Units on hand, indexed by [ProductId].
+  final List<int> stock;
+
+  /// Units ordered but not delivered, indexed by [ProductId].
+  final List<int> onOrder;
+
+  /// Staff per slot of the day, indexed by [DaySlot]; zero means closed.
+  final List<int> staff;
+
+  /// How well each slot's staff kept up with shoppers, from 0 to 1, indexed
+  /// by [DaySlot].
+  final List<Fx> service;
+  final RecentSales sales;
+
+  /// Who runs the store for its owner, if anyone.
+  final ManagerView? manager;
+
+  /// Selling area in square metres.
+  final int area;
+
+  /// Enlargement under way, if any.
+  final Works? works;
+
+  /// When the store last grew, if ever.
+  final Day? enlargedOn;
+
+  /// What its owner paid for it beyond its stock; zero if they opened it.
+  final Money boughtFor;
+
+  /// When its owner bought it, if they did.
+  final Day? acquiredOn;
+
+  /// The company that would buy it at its asking price today, if any.
+  final CompanyId? buyer;
+
+  /// How it did over its owner's last complete months.
+  final StoreMonths recentMonths;
+
+  int get listedProducts => prices.where((price) => price != null).length;
+}
+
+/// A store as everyone sees it.
+final class ShelfView {
+  const ShelfView({
+    required this.id,
+    required this.name,
+    required this.company,
+    required this.site,
+    required this.status,
+    required this.market,
+    required this.location,
+    required this.prices,
+    required this.openSlots,
+    required this.area,
+    this.format = const FormatId(0),
+    this.opensOn = const Day(0),
+    this.acquiredOn,
+  });
+
+  final StoreId id;
+  final String name;
+  final CompanyId company;
+  final SiteId site;
+  final StoreStatus status;
+  final MarketId market;
+  final Fx location;
+
+  /// What kind of business it is.
+  final FormatId format;
+
+  /// Whether the store opens in each slot of the day, indexed by [DaySlot].
+  final List<bool> openSlots;
+
+  /// Selling area in square metres.
+  final int area;
+
+  /// Shelf price per product, indexed by [ProductId]; null if not listed.
+  final List<Money?> prices;
+
+  /// The first trading day.
+  final Day opensOn;
+
+  /// When its owner bought it, if they did.
+  final Day? acquiredOn;
+}
+
+/// A store's daily sales counts for the days recorded so far, up to
+/// [salesHistoryDays].
+final class RecentSales {
+  RecentSales(this.days, this._counts, [List<List<int>>? traffic])
+    : _traffic =
+          traffic ?? [for (final _ in DaySlot.values) List.filled(days, 0)];
+
+  /// Days recorded since the store opened, the latest being yesterday.
+  final int days;
+
+  /// Indexed by [SalesCount], then product, then day, oldest first.
+  final List<List<List<int>>> _counts;
+
+  /// Visits indexed by [DaySlot], then day, oldest first.
+  final List<List<int>> _traffic;
+
+  /// Visits per recorded day, all slots together, oldest first.
+  List<int> get dailyVisits => [
+    for (var day = 0; day < days; day++)
+      _traffic.fold(0, (sum, slot) => sum + slot[day]),
+  ];
+
+  /// Units sold per recorded day, all products together, oldest first.
+  List<int> get dailySold => [
+    for (var day = 0; day < days; day++)
+      _counts[SalesCount.sold.index].fold(
+        0,
+        (sum, product) => sum + product[day],
+      ),
+  ];
+
+  /// Visits in [slot] over the last [lastDays] recorded days, or all of them
+  /// if fewer.
+  int visits(DaySlot slot, int lastDays) {
+    final daily = _traffic[slot.index];
+    var sum = 0;
+    for (var i = lastDays < days ? days - lastDays : 0; i < days; i++) {
+      sum += daily[i];
+    }
+    return sum;
+  }
+
+  /// The total [count] of [product] over the last [lastDays] recorded days,
+  /// or all of them if fewer.
+  int total(SalesCount count, ProductId product, int lastDays) {
+    final daily = _counts[count.index][product.index];
+    var sum = 0;
+    for (var i = lastDays < days ? days - lastDays : 0; i < days; i++) {
+      sum += daily[i];
+    }
+    return sum;
+  }
+}
+
+/// Builds [actor]'s observation of [world].
+/// What everyone can see of [world] at once: the economy, the censuses,
+/// company names, every store's shelf and the vacant sites. Built once and
+/// shared by every observation of the same moment.
+final class PublicView {
+  PublicView(WorldState world, ContentDb content)
+    : macro = (
+        regime: world.macro.regime,
+        priceIndex: world.macro.priceIndex,
+        wageIndex: world.macro.wageIndex,
+        inflation: world.macro.inflation,
+        policyRate: world.macro.policyRate,
+        unemployment: world.macro.unemployment,
+      ),
+      filings = List.unmodifiable(world.filings),
+      history = List.unmodifiable(world.economicHistory),
+      households = List.unmodifiable([
+        for (final market in world.markets) market.censuses.last.households,
+      ]),
+      censuses = List.unmodifiable([
+        for (final market in world.markets)
+          List<Census>.unmodifiable(market.censuses),
+      ]),
+      companyNames = List.unmodifiable([
+        for (final company in world.companies) company.name,
+      ]),
+      shelves = List.unmodifiable([
+        for (final store in world.stores)
+          ShelfView(
+            id: store.id,
+            name: store.name,
+            company: store.company,
+            site: store.site,
+            status: store.status,
+            market: store.market,
+            location: store.location,
+            prices: List.unmodifiable(store.prices),
+            openSlots: List.unmodifiable([
+              for (final count in store.staff) count > 0,
+            ]),
+            area: store.area,
+            format: store.format,
+            opensOn: store.opensOn,
+            acquiredOn: store.acquiredOn,
+          ),
+      ]),
+      vacantSites = _vacantSites(world, content),
+      companyOwners = List.unmodifiable([
+        for (final company in world.companies) company.owner,
+      ]),
+      valuations = List.unmodifiable([
+        for (final store in world.stores) valueStore(world, content, store),
+      ]) {
+    companyPrices = List.unmodifiable([
+      for (final company in world.companies)
+        companyPrice(world, content, company, values: valuations),
+    ]);
+    companyCredits = List.unmodifiable([
+      for (final company in world.companies)
+        company.isActive
+            ? earningsRoom(world, content, company, values: valuations)
+            : null,
+    ]);
+  }
+
+  final MacroView macro;
+  final List<int> households;
+  final List<List<Census>> censuses;
+  final List<String> companyNames;
+  final List<ShelfView> shelves;
+  final List<SiteId> vacantSites;
+  final List<Filing> filings;
+  final List<EconomicMonth> history;
+  final List<PersonId> companyOwners;
+  final List<Valuation?> valuations;
+  late final List<Money?> companyPrices;
+  late final List<Money?> companyCredits;
+
+  static List<SiteId> _vacantSites(WorldState world, ContentDb content) {
+    final held = {
+      for (final store in world.stores)
+        if (store.isTrading) store.site.index,
+    };
+    return List.unmodifiable([
+      for (final site in content.sites)
+        if (!held.contains(site.id.index)) site.id,
+    ]);
+  }
+}
+
+/// What [actor] can see of [world], sharing [public] if given: it must be of
+/// the same moment.
+Observation observe(
+  WorldState world,
+  ContentDb content,
+  PersonId actor, {
+  PublicView? public,
+}) {
+  final person = world.persons[actor.index];
+  final shared = public ?? PublicView(world, content);
+  // Each of the actor's companies' profit before tax in the year yesterday
+  // belonged to, by company index, as the January tax counts it; and each
+  // of their stores' last twelve complete months, by store index.
+  final taxBase = <int, Money>{};
+  final months = <int, StoreMonths>{};
+  final year = Day(world.today.number - 1).date.year;
+  final yearAgo = world.today.number - 366;
+  for (final report in world.periodReports) {
+    if (report.period != ReportPeriod.month ||
+        world.companies[report.company.index].owner != actor) {
+      continue;
+    }
+    if (content.taxes != null && report.start.date.year == year) {
+      taxBase[report.company.index] =
+          (taxBase[report.company.index] ?? Money.zero) +
+          report.profit +
+          report.flow(AccountKind.taxes);
+    }
+    if (report.start.number < yearAgo ||
+        ReportPeriod.month.endOf(report.start) > world.today) {
+      continue;
+    }
+    for (final store in report.stores) {
+      final (:revenue, :profit, :days) =
+          months[store.store.index] ??
+          (revenue: Money.zero, profit: Money.zero, days: 0);
+      months[store.store.index] = (
+        revenue: revenue + store.totalRevenue,
+        profit: profit + store.profit,
+        days: days + report.days,
+      );
+    }
+  }
+  return Observation(
+    today: world.today,
+    actor: actor,
+    cash: person.accounts[AccountKind.cash],
+    lastBankruptcy: person.lastBankruptcy,
+    macro: shared.macro,
+    households: shared.households,
+    censuses: shared.censuses,
+    companyNames: shared.companyNames,
+    companies: [
+      for (final company in world.companies)
+        if (company.owner == actor)
+          CompanyView(
+            id: company.id,
+            status: company.status,
+            founded: company.founded,
+            balances: List.unmodifiable([
+              for (final kind in AccountKind.values) company.accounts[kind],
+            ]),
+            committed: _committed(world, company.id),
+            loans: List.unmodifiable([
+              for (final loan in world.loans)
+                if (loan.company == company.id)
+                  (
+                    number: loan.number,
+                    outstanding: loan.outstanding,
+                    rate: loan.rate,
+                    installmentsLeft: loan.installmentsLeft,
+                    guaranteed: loan.guarantor != null,
+                  ),
+            ]),
+            orders: List.unmodifiable([
+              for (final order in world.orders)
+                if (world.stores[order.store.index].company == company.id)
+                  (
+                    number: order.number,
+                    store: order.store,
+                    supplier: order.supplier,
+                    arrival: order.arrival,
+                    lines: List<OrderLine>.unmodifiable(order.lines),
+                  ),
+            ]),
+            bills: List.unmodifiable([
+              for (final payable in company.payables)
+                (
+                  creditor: payable.creditor,
+                  reason: payable.reason,
+                  amount: payable.amount,
+                  due: payable.due,
+                ),
+            ]),
+            stores: [
+              for (final store in world.stores)
+                if (store.company == company.id)
+                  _storeView(world, content, shared, store, months),
+            ],
+            lossCarried: company.lossCarried,
+            cushionDays: company.cushionDays,
+            director: company.director,
+            memos: List.unmodifiable(company.memos),
+            taxAccrued: switch (content.taxes) {
+              final taxes? => taxes.corporateTax(
+                (taxBase[company.id.index] ?? Money.zero) - company.lossCarried,
+                world.macro.priceIndex,
+              ),
+              null => Money.zero,
+            },
+          ),
+    ],
+    shelves: shared.shelves,
+    vacantSites: shared.vacantSites,
+    filings: shared.filings,
+    history: shared.history,
+    companyOwners: shared.companyOwners,
+    valuations: shared.valuations,
+    companyPrices: shared.companyPrices,
+    companyCredits: shared.companyCredits,
+    guaranteeRoom: guaranteeRoom(world, content, person),
+    reports: List.unmodifiable([
+      for (final report in world.reports)
+        if (report.buyer == actor) report,
+    ]),
+  );
+}
+
+Money _committed(WorldState world, CompanyId company) {
+  var total = Money.zero;
+  for (final payable in world.companies[company.index].payables) {
+    total += payable.amount;
+  }
+  for (final order in world.orders) {
+    if (world.stores[order.store.index].company != company) continue;
+    for (final line in order.lines) {
+      total += line.unitPrice.timesInt(line.quantity);
+    }
+  }
+  return total;
+}
+
+StoreView _storeView(
+  WorldState world,
+  ContentDb content,
+  PublicView public,
+  Store store,
+  Map<int, StoreMonths> months,
+) {
+  final days = world.today.number - store.opensOn.number;
+  final recorded = days < 0
+      ? 0
+      : (days < salesHistoryDays ? days : salesHistoryDays);
+  final products = store.prices.length;
+  final onOrder = List.filled(products, 0);
+  for (final order in world.orders.where((order) => order.store == store.id)) {
+    for (final line in order.lines) {
+      onOrder[line.product.index] += line.quantity;
+    }
+  }
+  final yesterday = world.today.number - 1;
+  return StoreView(
+    id: store.id,
+    site: store.site,
+    status: store.status,
+    opensOn: store.opensOn,
+    market: store.market,
+    shelfSlots: store.shelfSlots,
+    storageUnits: store.storageUnits,
+    prices: List.unmodifiable(store.prices),
+    stock: List.unmodifiable([for (final stock in store.stock) stock.units]),
+    onOrder: List.unmodifiable(onOrder),
+    staff: List.unmodifiable(store.staff),
+    service: List.unmodifiable(store.service),
+    area: store.area,
+    format: store.format,
+    marketingShare: store.marketingShare,
+    goodwill: store.goodwill,
+    reputation: store.reputation,
+    works: store.works,
+    enlargedOn: store.enlargedOn,
+    boughtFor: store.boughtFor,
+    acquiredOn: store.acquiredOn,
+    recentMonths:
+        months[store.id.index] ??
+        (revenue: Money.zero, profit: Money.zero, days: 0),
+    buyer: switch (public.valuations[store.id.index]) {
+      final value? => bestBuyer(world, content, store, value.price)?.id,
+      null => null,
+    },
+    manager: switch (store.manager) {
+      final manager? => (
+        grade: manager.grade,
+        strategy: manager.strategy,
+        duties: manager.duties,
+        hiredOn: manager.hiredOn,
+      ),
+      null => null,
+    },
+    sales: RecentSales(
+      recorded,
+      [
+        for (final count in SalesCount.values)
+          [
+            for (var product = 0; product < products; product++)
+              [
+                for (var ago = recorded - 1; ago >= 0; ago--)
+                  store.history.at(
+                    count,
+                    ProductId(product),
+                    Day(yesterday - ago),
+                  ),
+              ],
+          ],
+      ],
+      [
+        for (final slot in DaySlot.values)
+          [
+            for (var ago = recorded - 1; ago >= 0; ago--)
+              store.history.visitsAt(slot.index, Day(yesterday - ago)),
+          ],
+      ],
+    ),
+  );
+}

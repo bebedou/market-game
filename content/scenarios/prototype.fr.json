@@ -1,0 +1,188 @@
+{
+  "country": "France",
+  "tagline": "Gérez boutiques, restaurants et chaînes dans sept villes de France, et bâtissez un holding.",
+  "categories": {
+    "milk": "Lait",
+    "bread": "Pain",
+    "snacks": "Snacks",
+    "drinks": "Boissons",
+    "produce": "Fruits et légumes",
+    "household": "Entretien",
+    "fastfood": "Menus rapides",
+    "steak": "Grillades",
+    "finedining": "Gastronomie",
+    "gadgets": "Accessoires",
+    "phones": "Smartphones",
+    "smarthome": "Maison connectée"
+  },
+  "formats": {
+    "grocery": {
+      "name": "Supérette",
+      "a": "une supérette",
+      "blurb": "L’épicerie du quotidien : lait, pain, snacks, boissons, fruits et légumes, entretien. Un commerce régulier à marges faibles."
+    },
+    "fastfood": {
+      "name": "Restauration rapide",
+      "a": "un fast-food",
+      "blurb": "Burgers et frites : beaucoup de visites rapides à petits prix, et une équipe à payer toute la journée."
+    },
+    "steakhouse": {
+      "name": "Steakhouse",
+      "a": "un steakhouse",
+      "blurb": "Des repas à table à prix moyens, le midi et le soir, avec une équipe de cuisine coûteuse."
+    },
+    "finedining": {
+      "name": "Gastronomique",
+      "a": "un restaurant gastronomique",
+      "blurb": "Des menus dégustation pour les plus aisés : peu de tables, grosses additions, le personnel et les aménagements les plus chers."
+    },
+    "supermarket": {
+      "name": "Supermarché",
+      "a": "un supermarché",
+      "blurb": "Une grande épicerie, avec un large choix et moins de personnel pour son activité."
+    },
+    "electronics": {
+      "name": "Magasin d’électronique",
+      "a": "un magasin d’électronique",
+      "blurb": "Gadgets, téléphones et maison connectée : un stock cher, des ventes rares mais grosses, et des nouveautés qui s’imposent au fil des ans."
+    }
+  },
+  "products": {
+    "milk_budget": "Lait économique 1 L",
+    "milk_premium": "Lait bio 1 L",
+    "bread_budget": "Pain de mie",
+    "bread_premium": "Pain au levain",
+    "snacks_budget": "Chips salées",
+    "snacks_premium": "Chips artisanales",
+    "drinks_budget": "Cola 1,5 L",
+    "drinks_premium": "Limonade pétillante",
+    "produce_budget": "Bananes 1 kg",
+    "produce_premium": "Pommes bio 1 kg",
+    "household_budget": "Liquide vaisselle",
+    "household_premium": "Lessive écologique en capsules",
+    "fastfood_budget": "Menu burger",
+    "fastfood_premium": "Menu burger gourmet",
+    "steak_budget": "Bavette-frites",
+    "steak_premium": "Entrecôte pour un",
+    "finedining_budget": "Menu du midi",
+    "finedining_premium": "Menu dégustation",
+    "gadgets_budget": "Câble de charge",
+    "gadgets_premium": "Écouteurs sans fil",
+    "phones_budget": "Smartphone économique",
+    "phones_premium": "Smartphone haut de gamme",
+    "smarthome_budget": "Prise connectée",
+    "smarthome_premium": "Enceinte connectée"
+  },
+  "segments": {
+    "families": "Familles modestes",
+    "professionals": "Jeunes actifs",
+    "students": "Étudiants",
+    "retirees": "Retraités",
+    "singles": "Célibataires actifs",
+    "comfortable": "Familles aisées"
+  },
+  "research": {
+    "quick": {
+      "name": "Enquête rapide",
+      "a": "une enquête rapide"
+    },
+    "standard": {
+      "name": "Étude de marché",
+      "a": "une étude de marché"
+    },
+    "full": {
+      "name": "Panel complet",
+      "a": "un panel complet"
+    }
+  },
+  "strategies": {
+    "discount": {
+      "name": "Discount et volume",
+      "advice": "Rapporte peu dans un petit magasin. Rentable avec le volume d’un supermarché, ou quelques mois pour attirer des clients vers un nouveau magasin."
+    },
+    "balanced": "Équilibré",
+    "premium": "Premium et proximité",
+    "fastfood": "Service rapide",
+    "steakhouse": "Grill",
+    "finedining": "Gastronomie",
+    "electronics": "Commerce d’électronique"
+  },
+  "managers": {
+    "grades": {
+      "trainee": {
+        "name": "Stagiaire",
+        "one": "gérant stagiaire",
+        "a": "un gérant stagiaire",
+        "many": "des gérants stagiaires"
+      },
+      "experienced": {
+        "name": "Expérimenté",
+        "one": "gérant expérimenté",
+        "a": "un gérant expérimenté",
+        "many": "des gérants expérimentés"
+      },
+      "expert": {
+        "name": "Expert",
+        "one": "gérant expert",
+        "a": "un gérant expert",
+        "many": "des gérants experts"
+      }
+    }
+  },
+  "directors": {
+    "grades": {
+      "promoted": {
+        "name": "Gérant promu",
+        "a": "un gérant promu"
+      },
+      "seasoned": {
+        "name": "Directeur chevronné",
+        "a": "un directeur chevronné"
+      },
+      "star": {
+        "name": "Directeur vedette",
+        "a": "un directeur vedette"
+      }
+    }
+  },
+  "macro": {
+    "regimes": {
+      "expansion": {
+        "name": "Expansion",
+        "a": "une expansion"
+      },
+      "slowdown": {
+        "name": "Ralentissement",
+        "a": "un ralentissement"
+      },
+      "recession": {
+        "name": "Récession",
+        "a": "une récession"
+      },
+      "recovery": {
+        "name": "Reprise",
+        "a": "une reprise"
+      }
+    }
+  },
+  "sites": {
+    "station": "Métro Hénon",
+    "mtp_tram": "Arrêt de tram Boutonnet",
+    "mtp_campus": "Entrée du campus",
+    "mtp_arceaux": "Coin des Arceaux",
+    "bdx_market": "Halles des Chartrons",
+    "reze_center": "Mairie de Rezé",
+    "reze_park": "Zone commerciale du périphérique",
+    "reze_chateau": "Quartier du Château",
+    "lille_metro": "Métro Gambetta",
+    "lille_halles": "Coin des halles de Wazemmes",
+    "mrs_metro": "Métro Notre-Dame-du-Mont",
+    "reze_halles": "Place du marché de Rezé"
+  },
+  "companies": {
+    "player_co": "Épicerie du Coin"
+  },
+  "stores": {
+    "player_store": "Épicerie du Coin"
+  }
+}

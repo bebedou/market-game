@@ -1,0 +1,61 @@
+name: market_game
+description: "Market Game: an economic simulation for phones."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.8.0
+
+resolution: workspace
+
+dependencies:
+  engine:
+    path: ../packages/engine
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  market_content:
+    path: ../content
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_driver:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/fonts/OFL-Fraunces.txt
+    - assets/fonts/OFL-IBMPlex.txt
+  fonts:
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces9pt-Regular.ttf
+        - asset: assets/fonts/Fraunces9pt-SemiBold.ttf
+          weight: 600
+    - family: Fraunces Display
+      fonts:
+        - asset: assets/fonts/Fraunces72pt-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Fraunces72pt-Bold.ttf
+          weight: 700
+    - family: IBM Plex Sans
+      fonts:
+        - asset: assets/fonts/IBMPlexSans-Regular.ttf
+        - asset: assets/fonts/IBMPlexSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSans-SemiBold.ttf
+          weight: 600
+    - family: IBM Plex Mono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600

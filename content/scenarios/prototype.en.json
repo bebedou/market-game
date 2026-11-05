@@ -1,0 +1,62 @@
+{
+  "country": "France",
+  "tagline": "Run shops, restaurants and chains across seven French cities, and grow a holding.",
+  "formats": {
+    "grocery": {
+      "a": "a convenience store",
+      "blurb": "Everyday groceries: milk, bread, snacks, drinks, fruit and veg, household goods. Steady trade on thin margins."
+    },
+    "fastfood": {
+      "a": "a fast-food restaurant",
+      "blurb": "Burgers and fries: many quick visits at low prices, and a crew to pay through the day."
+    },
+    "steakhouse": {
+      "a": "a steakhouse",
+      "blurb": "Sit-down meals at middling prices, lunch and evenings, with a costly kitchen crew."
+    },
+    "finedining": {
+      "a": "a fine-dining restaurant",
+      "blurb": "Tasting menus for the well-off: few tables, large bills, the dearest staff and fittings."
+    },
+    "supermarket": {
+      "a": "a supermarket",
+      "blurb": "A big grocery store with a wide range and fewer staff for its trade."
+    },
+    "electronics": {
+      "a": "an electronics shop",
+      "blurb": "Gadgets, phones and smart home kit: dear stock, few but large sales, and new products catching on over the years."
+    }
+  },
+  "strategies": {
+    "discount": {
+      "advice": "Earns little in a small shop. It pays on a supermarket's volume, or for a few months to win shoppers for a new store."
+    }
+  },
+  "research": {
+    "quick": { "a": "a quick survey" },
+    "standard": { "a": "a market study" },
+    "full": { "a": "a full panel" }
+  },
+  "managers": {
+    "grades": {
+      "trainee": { "one": "trainee manager", "a": "a trainee manager", "many": "trainee managers" },
+      "experienced": { "one": "experienced manager", "a": "an experienced manager", "many": "experienced managers" },
+      "expert": { "one": "expert manager", "a": "an expert manager", "many": "expert managers" }
+    }
+  },
+  "directors": {
+    "grades": {
+      "promoted": { "a": "a promoted manager" },
+      "seasoned": { "a": "a seasoned director" },
+      "star": { "a": "a star director" }
+    }
+  },
+  "macro": {
+    "regimes": {
+      "expansion": { "a": "an expansion" },
+      "slowdown": { "a": "a slowdown" },
+      "recession": { "a": "a recession" },
+      "recovery": { "a": "a recovery" }
+    }
+  }
+}

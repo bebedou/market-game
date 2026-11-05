@@ -1,0 +1,810 @@
+{
+ "id": "euro",
+ "asOf": 2022,
+ "startDate": "2023-01-01",
+ "sources": [
+  "Households: Eurostat lfst_hhnhtych. Population: demo_gind.",
+  "Income: disposable income of households, nasa_10_nf_tr (B6G, S14_S15), split by the survey shares in ilc_di01. It includes imputed rents, so it runs above what surveys report.",
+  "Spending: national accounts, nama_10_co3_p3, less VAT, split between classes by the budget survey, hbs_str_t223 and hbs_exp_t133 (2020). Italy takes the average split of the others.",
+  "Margins and turnover: structural business statistics, sbs_ovw_act. Restaurants' goods are assumed at 30% of sales.",
+  "Stores: local units, sbs_r_nuts06_r2.",
+  "Cycle: household consumption volumes, 2000 to 2019, nama_10_gdp and nama_10_co3_p3. Amplitude is the euro area's spread over the spread of the prototype's regimes.",
+  "Chains are fictional. See build_euro.py for what their shares follow and which figures are rough estimates."
+ ],
+ "amplitude": "0.2144",
+ "storeResponse": "2.0",
+ "fitOut": "0.25",
+ "startRegime": "expansion",
+ "regimes": [
+  {
+   "id": "expansion",
+   "name": "Expansion",
+   "meanMonths": 36,
+   "inflation": "0.025",
+   "realWageGrowth": "0.010",
+   "demand": "1.02"
+  },
+  {
+   "id": "slowdown",
+   "name": "Slowdown",
+   "meanMonths": 9,
+   "inflation": "0.020",
+   "realWageGrowth": "0",
+   "demand": "0.97"
+  },
+  {
+   "id": "recession",
+   "name": "Recession",
+   "meanMonths": 12,
+   "inflation": "0.005",
+   "realWageGrowth": "-0.005",
+   "demand": "0.88"
+  },
+  {
+   "id": "recovery",
+   "name": "Recovery",
+   "meanMonths": 12,
+   "inflation": "0.015",
+   "realWageGrowth": "0.005",
+   "demand": "0.97"
+  }
+ ],
+ "classes": [
+  {
+   "id": "lowest",
+   "name": "Lowest 20%",
+   "priceFactor": "1.4"
+  },
+  {
+   "id": "lower",
+   "name": "Lower 20%",
+   "priceFactor": "1.2"
+  },
+  {
+   "id": "middle",
+   "name": "Middle 20%",
+   "priceFactor": "1.0"
+  },
+  {
+   "id": "upper",
+   "name": "Upper 20%",
+   "priceFactor": "0.8"
+  },
+  {
+   "id": "highest",
+   "name": "Highest 20%",
+   "priceFactor": "0.6"
+  }
+ ],
+ "trades": [
+  {
+   "id": "grocery",
+   "name": "Groceries",
+   "description": "Food, drink, tobacco and household goods",
+   "cycle": "0.5908",
+   "incomeElasticity": "0.6350"
+  },
+  {
+   "id": "restaurants",
+   "name": "Restaurants",
+   "description": "Restaurants, cafes and takeaways",
+   "cycle": "1.4132",
+   "incomeElasticity": "1.0827"
+  },
+  {
+   "id": "electronics",
+   "name": "Electronics",
+   "description": "Computers, TVs, audio and phones",
+   "cycle": "1.9332",
+   "incomeElasticity": "0.9202"
+  }
+ ],
+ "countries": [
+  {
+   "id": "de",
+   "name": "Germany",
+   "population": 83237124,
+   "cycle": "0.3450",
+   "householdGrowth": "0.0031",
+   "realGrowth": "0.0075",
+   "corporateTax": "0.2990",
+   "classes": [
+    {
+     "class": "lowest",
+     "households": 8190900,
+     "income": "26954.68",
+     "spending": {
+      "grocery": "3631.04",
+      "restaurants": "602.22",
+      "electronics": "321.14"
+     }
+    },
+    {
+     "class": "lower",
+     "households": 8190900,
+     "income": "42312.58",
+     "spending": {
+      "grocery": "4948.16",
+      "restaurants": "1082.49",
+      "electronics": "480.77"
+     }
+    },
+    {
+     "class": "middle",
+     "households": 8190900,
+     "income": "54849.63",
+     "spending": {
+      "grocery": "6352.48",
+      "restaurants": "1512.59",
+      "electronics": "718.67"
+     }
+    },
+    {
+     "class": "upper",
+     "households": 8190900,
+     "income": "71147.81",
+     "spending": {
+      "grocery": "8109.16",
+      "restaurants": "2199.68",
+      "electronics": "952.22"
+     }
+    },
+    {
+     "class": "highest",
+     "households": 8190900,
+     "income": "118161.79",
+     "spending": {
+      "grocery": "10292.56",
+      "restaurants": "3403.42",
+      "electronics": "1624.39"
+     }
+    }
+   ],
+   "trades": {
+    "grocery": {
+     "goods": "0.7194",
+     "staff": "0.1226",
+     "other": "0.0936",
+     "stores": 117422,
+     "turnover": "278372360000.00"
+    },
+    "restaurants": {
+     "goods": "0.3000",
+     "staff": "0.3029",
+     "other": "0.1940",
+     "stores": 219311,
+     "turnover": "75461680000.00"
+    },
+    "electronics": {
+     "goods": "0.7182",
+     "staff": "0.1250",
+     "other": "0.0978",
+     "stores": 19196,
+     "turnover": "29613790000.00"
+    }
+   },
+   "chains": [
+    {
+     "name": "Hansemarkt",
+     "trade": "grocery",
+     "stores": 11000,
+     "share": "0.26",
+     "price": "1.02"
+    },
+    {
+     "name": "Rheinkauf",
+     "trade": "grocery",
+     "stores": 8000,
+     "share": "0.19",
+     "price": "1.00"
+    },
+    {
+     "name": "Preisfels",
+     "trade": "grocery",
+     "stores": 4000,
+     "share": "0.18",
+     "price": "0.95"
+    },
+    {
+     "name": "Knauser",
+     "trade": "grocery",
+     "stores": 4100,
+     "share": "0.13",
+     "price": "0.92"
+    },
+    {
+     "name": "Independent groceries",
+     "trade": "grocery",
+     "stores": 90322,
+     "share": "0.2400",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Burger Eck",
+     "trade": "restaurants",
+     "stores": 1400,
+     "share": "0.05",
+     "price": "0.95"
+    },
+    {
+     "name": "Kaffeehaus Krone",
+     "trade": "restaurants",
+     "stores": 2500,
+     "share": "0.02",
+     "price": "1.05"
+    },
+    {
+     "name": "Independent restaurants",
+     "trade": "restaurants",
+     "stores": 215411,
+     "share": "0.9300",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Technohalle",
+     "trade": "electronics",
+     "stores": 450,
+     "share": "0.30",
+     "price": "0.98"
+    },
+    {
+     "name": "Bitladen",
+     "trade": "electronics",
+     "stores": 300,
+     "share": "0.05",
+     "price": "1.00"
+    },
+    {
+     "name": "Independent electronics",
+     "trade": "electronics",
+     "stores": 18446,
+     "share": "0.6500",
+     "price": "1.00",
+     "independent": true
+    }
+   ]
+  },
+  {
+   "id": "fr",
+   "name": "France",
+   "population": 68091703,
+   "cycle": "0.7882",
+   "householdGrowth": "0.0109",
+   "realGrowth": "0.0055",
+   "corporateTax": "0.2583",
+   "classes": [
+    {
+     "class": "lowest",
+     "households": 6285940,
+     "income": "22884.54",
+     "spending": {
+      "grocery": "3858.81",
+      "restaurants": "1015.43",
+      "electronics": "273.59"
+     }
+    },
+    {
+     "class": "lower",
+     "households": 6285940,
+     "income": "37051.16",
+     "spending": {
+      "grocery": "5328.70",
+      "restaurants": "1386.63",
+      "electronics": "286.72"
+     }
+    },
+    {
+     "class": "middle",
+     "households": 6285940,
+     "income": "47676.12",
+     "spending": {
+      "grocery": "7088.26",
+      "restaurants": "1932.69",
+      "electronics": "378.02"
+     }
+    },
+    {
+     "class": "upper",
+     "households": 6285940,
+     "income": "60480.57",
+     "spending": {
+      "grocery": "8705.98",
+      "restaurants": "2896.83",
+      "electronics": "653.45"
+     }
+    },
+    {
+     "class": "highest",
+     "households": 6285940,
+     "income": "104615.04",
+     "spending": {
+      "grocery": "11212.24",
+      "restaurants": "5326.04",
+      "electronics": "880.67"
+     }
+    }
+   ],
+   "trades": {
+    "grocery": {
+     "goods": "0.7973",
+     "staff": "0.1067",
+     "other": "0.0648",
+     "stores": 145682,
+     "turnover": "284592190000.00"
+    },
+    "restaurants": {
+     "goods": "0.3000",
+     "staff": "0.3516",
+     "other": "0.2889",
+     "stores": 331921,
+     "turnover": "87750660000.00"
+    },
+    "electronics": {
+     "goods": "0.7555",
+     "staff": "0.1419",
+     "other": "0.0609",
+     "stores": 13525,
+     "turnover": "10814770000.00"
+    }
+   },
+   "chains": [
+    {
+     "name": "Marché Central",
+     "trade": "grocery",
+     "stores": 720,
+     "share": "0.22",
+     "price": "0.97"
+    },
+    {
+     "name": "Bellevue",
+     "trade": "grocery",
+     "stores": 6000,
+     "share": "0.20",
+     "price": "1.02"
+    },
+    {
+     "name": "Commerçants Unis",
+     "trade": "grocery",
+     "stores": 1800,
+     "share": "0.16",
+     "price": "0.99"
+    },
+    {
+     "name": "Coop de l'Ouest",
+     "trade": "grocery",
+     "stores": 1600,
+     "share": "0.11",
+     "price": "1.00"
+    },
+    {
+     "name": "Grand Panier",
+     "trade": "grocery",
+     "stores": 600,
+     "share": "0.09",
+     "price": "1.00"
+    },
+    {
+     "name": "Petit Prix",
+     "trade": "grocery",
+     "stores": 1550,
+     "share": "0.08",
+     "price": "0.93"
+    },
+    {
+     "name": "Independent groceries",
+     "trade": "grocery",
+     "stores": 133412,
+     "share": "0.1400",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Le Burger",
+     "trade": "restaurants",
+     "stores": 1500,
+     "share": "0.07",
+     "price": "0.95"
+    },
+    {
+     "name": "Brasserie Dumas",
+     "trade": "restaurants",
+     "stores": 800,
+     "share": "0.02",
+     "price": "1.05"
+    },
+    {
+     "name": "Independent restaurants",
+     "trade": "restaurants",
+     "stores": 329621,
+     "share": "0.9100",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Numéra",
+     "trade": "electronics",
+     "stores": 500,
+     "share": "0.30",
+     "price": "1.00"
+    },
+    {
+     "name": "Maison Volt",
+     "trade": "electronics",
+     "stores": 200,
+     "share": "0.08",
+     "price": "0.98"
+    },
+    {
+     "name": "Independent electronics",
+     "trade": "electronics",
+     "stores": 12825,
+     "share": "0.6200",
+     "price": "1.00",
+     "independent": true
+    }
+   ]
+  },
+  {
+   "id": "it",
+   "name": "Italy",
+   "population": 59030133,
+   "cycle": "1.1900",
+   "householdGrowth": "0.0020",
+   "realGrowth": "0.0012",
+   "corporateTax": "0.2781",
+   "classes": [
+    {
+     "class": "lowest",
+     "households": 5230500,
+     "income": "17820.98",
+     "spending": {
+      "grocery": "4600.81",
+      "restaurants": "1017.62",
+      "electronics": "305.55"
+     }
+    },
+    {
+     "class": "lower",
+     "households": 5230500,
+     "income": "31876.96",
+     "spending": {
+      "grocery": "6377.20",
+      "restaurants": "1722.11",
+      "electronics": "423.33"
+     }
+    },
+    {
+     "class": "middle",
+     "households": 5230500,
+     "income": "43673.95",
+     "spending": {
+      "grocery": "8058.39",
+      "restaurants": "2377.38",
+      "electronics": "585.76"
+     }
+    },
+    {
+     "class": "upper",
+     "households": 5230500,
+     "income": "57478.93",
+     "spending": {
+      "grocery": "9791.11",
+      "restaurants": "3419.27",
+      "electronics": "876.06"
+     }
+    },
+    {
+     "class": "highest",
+     "households": 5230500,
+     "income": "100148.89",
+     "spending": {
+      "grocery": "12876.70",
+      "restaurants": "5698.15",
+      "electronics": "1246.04"
+     }
+    }
+   ],
+   "trades": {
+    "grocery": {
+     "goods": "0.7704",
+     "staff": "0.1021",
+     "other": "0.0730",
+     "stores": 181492,
+     "turnover": "148336440000.00"
+    },
+    "restaurants": {
+     "goods": "0.3000",
+     "staff": "0.2577",
+     "other": "0.3478",
+     "stores": 307935,
+     "turnover": "69719420000.00"
+    },
+    "electronics": {
+     "goods": "0.7718",
+     "staff": "0.1042",
+     "other": "0.0318",
+     "stores": 13471,
+     "turnover": "7252720000.00"
+    }
+   },
+   "chains": [
+    {
+     "name": "Consorzio Italia",
+     "trade": "grocery",
+     "stores": 3300,
+     "share": "0.15",
+     "price": "1.00"
+    },
+    {
+     "name": "Gruppo Aurora",
+     "trade": "grocery",
+     "stores": 3000,
+     "share": "0.145",
+     "price": "1.00"
+    },
+    {
+     "name": "Cooperativa Nazionale",
+     "trade": "grocery",
+     "stores": 1100,
+     "share": "0.123",
+     "price": "1.02"
+    },
+    {
+     "name": "Supermercati Lombardi",
+     "trade": "grocery",
+     "stores": 180,
+     "share": "0.083",
+     "price": "1.06"
+    },
+    {
+     "name": "Mercato Verde",
+     "trade": "grocery",
+     "stores": 3500,
+     "share": "0.075",
+     "price": "1.00"
+    },
+    {
+     "name": "Risparmio",
+     "trade": "grocery",
+     "stores": 1300,
+     "share": "0.069",
+     "price": "0.92"
+    },
+    {
+     "name": "Prezzo Giusto",
+     "trade": "grocery",
+     "stores": 700,
+     "share": "0.047",
+     "price": "0.93"
+    },
+    {
+     "name": "Independent groceries",
+     "trade": "grocery",
+     "stores": 168412,
+     "share": "0.3080",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Panino Veloce",
+     "trade": "restaurants",
+     "stores": 700,
+     "share": "0.02",
+     "price": "0.95"
+    },
+    {
+     "name": "Trattoria Roma",
+     "trade": "restaurants",
+     "stores": 300,
+     "share": "0.01",
+     "price": "1.05"
+    },
+    {
+     "name": "Independent restaurants",
+     "trade": "restaurants",
+     "stores": 306935,
+     "share": "0.9700",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Elettrocasa",
+     "trade": "electronics",
+     "stores": 500,
+     "share": "0.15",
+     "price": "0.98"
+    },
+    {
+     "name": "Tecnomondo",
+     "trade": "electronics",
+     "stores": 150,
+     "share": "0.12",
+     "price": "1.00"
+    },
+    {
+     "name": "Independent electronics",
+     "trade": "electronics",
+     "stores": 12821,
+     "share": "0.7300",
+     "price": "1.00",
+     "independent": true
+    }
+   ]
+  },
+  {
+   "id": "es",
+   "name": "Spain",
+   "population": 47486843,
+   "cycle": "2.2588",
+   "householdGrowth": "0.0067",
+   "realGrowth": "0.0087",
+   "corporateTax": "0.2500",
+   "classes": [
+    {
+     "class": "lowest",
+     "households": 3811160,
+     "income": "15471.55",
+     "spending": {
+      "grocery": "4185.08",
+      "restaurants": "1567.79",
+      "electronics": "143.94"
+     }
+    },
+    {
+     "class": "lower",
+     "households": 3811160,
+     "income": "28925.08",
+     "spending": {
+      "grocery": "5881.90",
+      "restaurants": "3115.52",
+      "electronics": "237.73"
+     }
+    },
+    {
+     "class": "middle",
+     "households": 3811160,
+     "income": "39687.90",
+     "spending": {
+      "grocery": "6937.64",
+      "restaurants": "4215.87",
+      "electronics": "331.92"
+     }
+    },
+    {
+     "class": "upper",
+     "households": 3811160,
+     "income": "53141.43",
+     "spending": {
+      "grocery": "7898.23",
+      "restaurants": "5772.98",
+      "electronics": "471.81"
+     }
+    },
+    {
+     "class": "highest",
+     "households": 3811160,
+     "income": "87223.69",
+     "spending": {
+      "grocery": "10349.24",
+      "restaurants": "9382.55",
+      "electronics": "626.37"
+     }
+    }
+   ],
+   "trades": {
+    "grocery": {
+     "goods": "0.7612",
+     "staff": "0.1171",
+     "other": "0.0630",
+     "stores": 171157,
+     "turnover": "120665380000.00"
+    },
+    "restaurants": {
+     "goods": "0.3000",
+     "staff": "0.3165",
+     "other": "0.2955",
+     "stores": 295393,
+     "turnover": "61241050000.00"
+    },
+    "electronics": {
+     "goods": "0.7261",
+     "staff": "0.1306",
+     "other": "0.0947",
+     "stores": 13348,
+     "turnover": "9209710000.00"
+    }
+   },
+   "chains": [
+    {
+     "name": "Mercado Levante",
+     "trade": "grocery",
+     "stores": 1620,
+     "share": "0.254",
+     "price": "0.98"
+    },
+    {
+     "name": "Hiper Iberia",
+     "trade": "grocery",
+     "stores": 1250,
+     "share": "0.097",
+     "price": "1.02"
+    },
+    {
+     "name": "Ahorra",
+     "trade": "grocery",
+     "stores": 650,
+     "share": "0.059",
+     "price": "0.94"
+    },
+    {
+     "name": "Barrio",
+     "trade": "grocery",
+     "stores": 2300,
+     "share": "0.048",
+     "price": "0.99"
+    },
+    {
+     "name": "Norte Cooperativa",
+     "trade": "grocery",
+     "stores": 1000,
+     "share": "0.042",
+     "price": "1.02"
+    },
+    {
+     "name": "Independent groceries",
+     "trade": "grocery",
+     "stores": 164337,
+     "share": "0.5000",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Burger Sol",
+     "trade": "restaurants",
+     "stores": 600,
+     "share": "0.02",
+     "price": "0.95"
+    },
+    {
+     "name": "Taberna Real",
+     "trade": "restaurants",
+     "stores": 300,
+     "share": "0.01",
+     "price": "1.05"
+    },
+    {
+     "name": "Independent restaurants",
+     "trade": "restaurants",
+     "stores": 294493,
+     "share": "0.9700",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Electromundo",
+     "trade": "electronics",
+     "stores": 110,
+     "share": "0.25",
+     "price": "0.98"
+    },
+    {
+     "name": "Tecnoplaza",
+     "trade": "electronics",
+     "stores": 200,
+     "share": "0.08",
+     "price": "1.00"
+    },
+    {
+     "name": "Independent electronics",
+     "trade": "electronics",
+     "stores": 13038,
+     "share": "0.6700",
+     "price": "1.00",
+     "independent": true
+    }
+   ]
+  }
+ ]
+}

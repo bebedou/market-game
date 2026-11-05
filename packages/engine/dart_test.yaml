@@ -1,0 +1,3 @@
+# Every test runs on the Dart VM (Android) and compiled to JavaScript (web):
+# the engine must produce identical results on both.
+platforms: [vm, node]

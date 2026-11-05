@@ -1,0 +1,188 @@
+{
+  "country": "Francia",
+  "tagline": "Dirige tiendas, restaurantes y cadenas en siete ciudades de Francia, y levanta un holding.",
+  "categories": {
+    "milk": "Leche",
+    "bread": "Pan",
+    "snacks": "Aperitivos",
+    "drinks": "Bebidas",
+    "produce": "Fruta y verdura",
+    "household": "Hogar",
+    "fastfood": "Menús rápidos",
+    "steak": "Carnes a la parrilla",
+    "finedining": "Alta cocina",
+    "gadgets": "Accesorios",
+    "phones": "Smartphones",
+    "smarthome": "Hogar inteligente"
+  },
+  "formats": {
+    "grocery": {
+      "name": "Tienda de barrio",
+      "a": "una tienda de barrio",
+      "blurb": "La compra de cada día: leche, pan, aperitivos, bebidas, fruta y verdura, productos del hogar. Un negocio constante con márgenes finos."
+    },
+    "fastfood": {
+      "name": "Comida rápida",
+      "a": "un restaurante de comida rápida",
+      "blurb": "Hamburguesas y patatas: muchas visitas rápidas a precios bajos, y un equipo que pagar todo el día."
+    },
+    "steakhouse": {
+      "name": "Asador",
+      "a": "un asador",
+      "blurb": "Comidas en mesa a precios medios, a mediodía y por la noche, con un equipo de cocina costoso."
+    },
+    "finedining": {
+      "name": "Alta cocina",
+      "a": "un restaurante de alta cocina",
+      "blurb": "Menús degustación para los más acomodados: pocas mesas, cuentas altas, y el personal y las instalaciones más caros."
+    },
+    "supermarket": {
+      "name": "Supermercado",
+      "a": "un supermercado",
+      "blurb": "Una gran tienda de alimentación con mucha variedad y menos personal para su volumen."
+    },
+    "electronics": {
+      "name": "Tienda de electrónica",
+      "a": "una tienda de electrónica",
+      "blurb": "Accesorios, móviles y hogar inteligente: stock caro, pocas ventas pero grandes, y productos nuevos que triunfan con los años."
+    }
+  },
+  "products": {
+    "milk_budget": "Leche económica 1 L",
+    "milk_premium": "Leche ecológica 1 L",
+    "bread_budget": "Pan de molde",
+    "bread_premium": "Pan de masa madre",
+    "snacks_budget": "Patatas fritas saladas",
+    "snacks_premium": "Patatas artesanas",
+    "drinks_budget": "Cola 1,5 L",
+    "drinks_premium": "Limonada con gas",
+    "produce_budget": "Plátanos 1 kg",
+    "produce_premium": "Manzanas ecológicas 1 kg",
+    "household_budget": "Lavavajillas líquido",
+    "household_premium": "Cápsulas de detergente ecológico",
+    "fastfood_budget": "Menú de hamburguesa",
+    "fastfood_premium": "Menú de hamburguesa gourmet",
+    "steak_budget": "Vacío con patatas",
+    "steak_premium": "Entrecot individual",
+    "finedining_budget": "Menú del día",
+    "finedining_premium": "Menú degustación",
+    "gadgets_budget": "Cable de carga",
+    "gadgets_premium": "Auriculares inalámbricos",
+    "phones_budget": "Smartphone económico",
+    "phones_premium": "Smartphone de gama alta",
+    "smarthome_budget": "Enchufe inteligente",
+    "smarthome_premium": "Altavoz inteligente"
+  },
+  "segments": {
+    "families": "Familias modestas",
+    "professionals": "Jóvenes profesionales",
+    "students": "Estudiantes",
+    "retirees": "Jubilados",
+    "singles": "Solteros que trabajan",
+    "comfortable": "Familias acomodadas"
+  },
+  "research": {
+    "quick": {
+      "name": "Encuesta rápida",
+      "a": "una encuesta rápida"
+    },
+    "standard": {
+      "name": "Estudio de mercado",
+      "a": "un estudio de mercado"
+    },
+    "full": {
+      "name": "Panel completo",
+      "a": "un panel completo"
+    }
+  },
+  "strategies": {
+    "discount": {
+      "name": "Descuento y volumen",
+      "advice": "Gana poco en una tienda pequeña. Compensa con el volumen de un supermercado, o unos meses para atraer clientes a una tienda nueva."
+    },
+    "balanced": "Equilibrada",
+    "premium": "Premium y cercanía",
+    "fastfood": "Servicio rápido",
+    "steakhouse": "Parrilla",
+    "finedining": "Gastronomía",
+    "electronics": "Comercio de electrónica"
+  },
+  "managers": {
+    "grades": {
+      "trainee": {
+        "name": "En prácticas",
+        "one": "gerente en prácticas",
+        "a": "un gerente en prácticas",
+        "many": "gerentes en prácticas"
+      },
+      "experienced": {
+        "name": "Con experiencia",
+        "one": "gerente con experiencia",
+        "a": "un gerente con experiencia",
+        "many": "gerentes con experiencia"
+      },
+      "expert": {
+        "name": "Experto",
+        "one": "gerente experto",
+        "a": "un gerente experto",
+        "many": "gerentes expertos"
+      }
+    }
+  },
+  "directors": {
+    "grades": {
+      "promoted": {
+        "name": "Gerente ascendido",
+        "a": "un gerente ascendido"
+      },
+      "seasoned": {
+        "name": "Director veterano",
+        "a": "un director veterano"
+      },
+      "star": {
+        "name": "Director estrella",
+        "a": "un director estrella"
+      }
+    }
+  },
+  "macro": {
+    "regimes": {
+      "expansion": {
+        "name": "Expansión",
+        "a": "una expansión"
+      },
+      "slowdown": {
+        "name": "Desaceleración",
+        "a": "una desaceleración"
+      },
+      "recession": {
+        "name": "Recesión",
+        "a": "una recesión"
+      },
+      "recovery": {
+        "name": "Recuperación",
+        "a": "una recuperación"
+      }
+    }
+  },
+  "sites": {
+    "station": "Metro Hénon",
+    "mtp_tram": "Parada de tranvía Boutonnet",
+    "mtp_campus": "Entrada del campus",
+    "mtp_arceaux": "Esquina de Arceaux",
+    "bdx_market": "Mercado de Chartrons",
+    "reze_center": "Ayuntamiento de Rezé",
+    "reze_park": "Parque comercial de la circunvalación",
+    "reze_chateau": "Barrio del Château",
+    "lille_metro": "Metro Gambetta",
+    "lille_halles": "Esquina del mercado de Wazemmes",
+    "mrs_metro": "Metro Notre-Dame-du-Mont",
+    "reze_halles": "Plaza del mercado de Rezé"
+  },
+  "companies": {
+    "player_co": "Tienda de la Esquina"
+  },
+  "stores": {
+    "player_store": "Tienda de la Esquina"
+  }
+}

@@ -1,0 +1,833 @@
+{
+  "id": "prototype",
+  "startDate": "2026-01-01",
+  "markets": [
+    {
+      "id": "neighborhood", "name": "Lyon, Croix-Rousse",
+      "households": { "families": 350, "professionals": 250, "students": 200, "retirees": 200, "singles": 450, "comfortable": 150 },
+      "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
+      "agents": 450
+    },
+    {
+      "id": "montpellier", "name": "Montpellier, Boutonnet",
+      "households": { "families": 120, "professionals": 200, "students": 550, "retirees": 80, "singles": 300, "comfortable": 40 },
+      "growth": {"families": "0.013", "professionals": "0.030", "students": "0.035", "retirees": "0.015", "singles": "0.035", "comfortable": "0.010"},
+      "agents": 400, "priceLevel": "0.95", "wageLevel": "0.90", "incomeLevel": "0.85"
+    },
+    {
+      "id": "bordeaux", "name": "Bordeaux, Chartrons",
+      "households": { "families": 150, "professionals": 420, "students": 80, "retirees": 200, "singles": 300, "comfortable": 200 },
+      "growth": {"families": "0.010", "professionals": "0.035", "students": "0.007", "retirees": "0.020", "singles": "0.030", "comfortable": "0.025"},
+      "agents": 400, "priceLevel": "1.08", "wageLevel": "1.10", "incomeLevel": "1.18"
+    },
+    {
+      "id": "reze", "name": "Nantes, Rezé",
+      "households": { "families": 650, "professionals": 180, "students": 70, "retirees": 300, "singles": 250, "comfortable": 300 },
+      "growth": {"families": "0.025", "professionals": "0.020", "students": "0.005", "retirees": "0.020", "singles": "0.020", "comfortable": "0.030"},
+      "agents": 450, "priceLevel": "0.97", "wageLevel": "0.95", "incomeLevel": "0.92"
+    },
+    {
+      "id": "lille", "name": "Lille, Wazemmes",
+      "households": { "families": 500, "professionals": 150, "students": 350, "retirees": 200, "singles": 450, "comfortable": 80 },
+      "growth": {"families": "0.010", "professionals": "0.025", "students": "0.030", "retirees": "0.010", "singles": "0.025", "comfortable": "0.010"},
+      "agents": 450, "priceLevel": "0.94", "wageLevel": "0.92", "incomeLevel": "0.82"
+    },
+    {
+      "id": "marseille", "name": "Marseille, Cours Julien",
+      "households": { "families": 350, "professionals": 250, "students": 300, "retirees": 250, "singles": 600, "comfortable": 100 },
+      "growth": {"families": "0.005", "professionals": "0.030", "students": "0.015", "retirees": "0.010", "singles": "0.030", "comfortable": "0.010"},
+      "agents": 450, "priceLevel": "0.98", "wageLevel": "0.95", "incomeLevel": "0.88"
+    },
+    {
+      "id": "paris", "name": "Paris, Batignolles",
+      "households": { "families": 100, "professionals": 700, "students": 100, "retirees": 300, "singles": 700, "comfortable": 400 },
+      "growth": {"families": "-0.010", "professionals": "0.025", "students": "0", "retirees": "0.010", "singles": "0.015", "comfortable": "0.015"},
+      "agents": 500, "priceLevel": "1.12", "wageLevel": "1.25", "incomeLevel": "1.15"
+    }
+  ],
+  "sites": [
+    { "id": "corner", "name": "Rue de Cuire", "market": "neighborhood", "location": "0.50", "rent": "660.00",
+      "shelfSlots": 8, "storageUnits": 1500, "openingCost": "30000.00", "buildDays": 21, "area": 120, "maxArea": 240 },
+    { "id": "prime", "name": "Place de la Croix-Rousse", "market": "neighborhood", "location": "0.60", "rent": "940.00",
+      "shelfSlots": 9, "storageUnits": 2500, "openingCost": "40000.00", "buildDays": 21, "area": 160, "maxArea": 280 },
+    { "id": "parade", "name": "Grande Rue", "market": "neighborhood", "location": "0.40", "rent": "500.00",
+      "shelfSlots": 8, "storageUnits": 1800, "openingCost": "25000.00", "buildDays": 21, "area": 110, "maxArea": 230 },
+    { "id": "station", "name": "Hénon metro", "market": "neighborhood", "location": "0.55", "rent": "770.00",
+      "shelfSlots": 8, "storageUnits": 2000, "openingCost": "35000.00", "buildDays": 28, "area": 130, "maxArea": 250 },
+    { "id": "backstreet", "name": "Rue du Mail", "market": "neighborhood", "location": "0.35", "rent": "390.00",
+      "shelfSlots": 7, "storageUnits": 1200, "openingCost": "20000.00", "buildDays": 21, "area": 90, "maxArea": 170 },
+    { "id": "mtp_tram", "name": "Boutonnet tram stop", "market": "montpellier", "location": "0.60", "rent": "480.00",
+      "shelfSlots": 8, "storageUnits": 1600, "openingCost": "26000.00", "buildDays": 21, "area": 110, "maxArea": 220 },
+    { "id": "mtp_campus", "name": "Campus gate", "market": "montpellier", "location": "0.55", "rent": "420.00",
+      "shelfSlots": 7, "storageUnits": 1300, "openingCost": "22000.00", "buildDays": 21, "area": 100, "maxArea": 200 },
+    { "id": "mtp_faubourg", "name": "Faubourg Boutonnet", "market": "montpellier", "location": "0.45", "rent": "360.00",
+      "shelfSlots": 7, "storageUnits": 1300, "openingCost": "21000.00", "buildDays": 21, "area": 95, "maxArea": 190 },
+    { "id": "mtp_arceaux", "name": "Arceaux corner", "market": "montpellier", "location": "0.40", "rent": "300.00",
+      "shelfSlots": 7, "storageUnits": 1200, "openingCost": "18000.00", "buildDays": 14, "area": 95, "maxArea": 190 },
+    { "id": "bdx_quai", "name": "Quai des Chartrons", "market": "bordeaux", "location": "0.60", "rent": "1890.00",
+      "shelfSlots": 9, "storageUnits": 2200, "openingCost": "53000.00", "buildDays": 28, "area": 150, "maxArea": 260 },
+    { "id": "bdx_notre_dame", "name": "Rue Notre-Dame", "market": "bordeaux", "location": "0.55", "rent": "1620.00",
+      "shelfSlots": 8, "storageUnits": 1800, "openingCost": "46000.00", "buildDays": 21, "area": 130, "maxArea": 230 },
+    { "id": "bdx_market", "name": "Chartrons market hall", "market": "bordeaux", "location": "0.50", "rent": "1440.00",
+      "shelfSlots": 8, "storageUnits": 1700, "openingCost": "41000.00", "buildDays": 21, "area": 120, "maxArea": 220 },
+    { "id": "bdx_cours", "name": "Cours Portal", "market": "bordeaux", "location": "0.40", "rent": "1080.00",
+      "shelfSlots": 7, "storageUnits": 1300, "openingCost": "32000.00", "buildDays": 21, "area": 100, "maxArea": 190 },
+    { "id": "bdx_bassins", "name": "Bassins à flot", "market": "bordeaux", "location": "0.45", "rent": "1260.00",
+      "shelfSlots": 8, "storageUnits": 1600, "openingCost": "37000.00", "buildDays": 21, "area": 140, "maxArea": 260 },
+    { "id": "reze_center", "name": "Rezé town hall", "market": "reze", "location": "0.55", "rent": "960.00",
+      "shelfSlots": 9, "storageUnits": 2600, "openingCost": "34000.00", "buildDays": 21, "area": 200, "maxArea": 360 },
+    { "id": "reze_park", "name": "Ring road retail park", "market": "reze", "location": "0.50", "rent": "800.00",
+      "shelfSlots": 9, "storageUnits": 3200, "openingCost": "38000.00", "buildDays": 28, "area": 220, "maxArea": 380 },
+    { "id": "reze_trentemoult", "name": "Trentemoult", "market": "reze", "location": "0.45", "rent": "670.00",
+      "shelfSlots": 8, "storageUnits": 2000, "openingCost": "28000.00", "buildDays": 21, "area": 160, "maxArea": 300 },
+    { "id": "reze_chateau", "name": "Château quarter", "market": "reze", "location": "0.40", "rent": "560.00",
+      "shelfSlots": 8, "storageUnits": 1800, "openingCost": "24000.00", "buildDays": 21, "area": 150, "maxArea": 280 },
+    { "id": "reze_pont", "name": "Pont-Rousseau", "market": "reze", "location": "0.40", "rent": "610.00",
+      "shelfSlots": 8, "storageUnits": 1800, "openingCost": "25000.00", "buildDays": 21, "area": 150, "maxArea": 280 },
+    { "id": "lyon_bellevue", "name": "Place Bellevue", "market": "neighborhood", "location": "0.50", "rent": "720.00",
+      "shelfSlots": 8, "storageUnits": 1800, "openingCost": "32000.00", "buildDays": 21, "area": 125, "maxArea": 240 },
+    { "id": "lyon_austerlitz", "name": "Rue d'Austerlitz", "market": "neighborhood", "location": "0.45", "rent": "570.00",
+      "shelfSlots": 7, "storageUnits": 1600, "openingCost": "28000.00", "buildDays": 21, "area": 110, "maxArea": 220 },
+    { "id": "mtp_universite", "name": "Rue de l'Université", "market": "montpellier", "location": "0.50", "rent": "400.00",
+      "shelfSlots": 7, "storageUnits": 1500, "openingCost": "24000.00", "buildDays": 21, "area": 105, "maxArea": 210 },
+    { "id": "bdx_martinique", "name": "Cours de la Martinique", "market": "bordeaux", "location": "0.50", "rent": "1480.00",
+      "shelfSlots": 8, "storageUnits": 1900, "openingCost": "44000.00", "buildDays": 21, "area": 130, "maxArea": 240 },
+    { "id": "reze_ragon", "name": "Ragon", "market": "reze", "location": "0.45", "rent": "640.00",
+      "shelfSlots": 7, "storageUnits": 2000, "openingCost": "27000.00", "buildDays": 21, "area": 160, "maxArea": 300 },
+    { "id": "lille_gambetta", "name": "Rue Gambetta", "market": "lille", "location": "0.60", "rent": "620.00",
+      "shelfSlots": 8, "storageUnits": 2000, "openingCost": "28000.00", "buildDays": 21, "area": 130, "maxArea": 250 },
+    { "id": "lille_place", "name": "Place de la Nouvelle Aventure", "market": "lille", "location": "0.55", "rent": "580.00",
+      "shelfSlots": 8, "storageUnits": 2200, "openingCost": "26000.00", "buildDays": 21, "area": 140, "maxArea": 260 },
+    { "id": "lille_metro", "name": "Gambetta metro", "market": "lille", "location": "0.50", "rent": "540.00",
+      "shelfSlots": 7, "storageUnits": 1700, "openingCost": "24000.00", "buildDays": 21, "area": 110, "maxArea": 220 },
+    { "id": "lille_solferino", "name": "Rue Solférino", "market": "lille", "location": "0.45", "rent": "500.00",
+      "shelfSlots": 7, "storageUnits": 1600, "openingCost": "22000.00", "buildDays": 21, "area": 105, "maxArea": 210 },
+    { "id": "lille_halles", "name": "Wazemmes halls corner", "market": "lille", "location": "0.50", "rent": "560.00",
+      "shelfSlots": 7, "storageUnits": 1800, "openingCost": "25000.00", "buildDays": 21, "area": 120, "maxArea": 230 },
+    { "id": "lille_moulins", "name": "Moulins", "market": "lille", "location": "0.40", "rent": "400.00",
+      "shelfSlots": 6, "storageUnits": 1500, "openingCost": "19000.00", "buildDays": 14, "area": 100, "maxArea": 200 },
+    { "id": "mrs_cours", "name": "Cours Julien", "market": "marseille", "location": "0.60", "rent": "810.00",
+      "shelfSlots": 8, "storageUnits": 1900, "openingCost": "32000.00", "buildDays": 21, "area": 120, "maxArea": 230 },
+    { "id": "mrs_plaine", "name": "Place Jean-Jaurès", "market": "marseille", "location": "0.55", "rent": "750.00",
+      "shelfSlots": 8, "storageUnits": 2100, "openingCost": "30000.00", "buildDays": 21, "area": 130, "maxArea": 250 },
+    { "id": "mrs_metro", "name": "Notre-Dame-du-Mont metro", "market": "marseille", "location": "0.50", "rent": "650.00",
+      "shelfSlots": 7, "storageUnits": 1800, "openingCost": "27000.00", "buildDays": 21, "area": 115, "maxArea": 220 },
+    { "id": "mrs_lodi", "name": "Rue de Lodi", "market": "marseille", "location": "0.45", "rent": "560.00",
+      "shelfSlots": 7, "storageUnits": 1600, "openingCost": "24000.00", "buildDays": 21, "area": 105, "maxArea": 210 },
+    { "id": "mrs_baille", "name": "Boulevard Baille", "market": "marseille", "location": "0.50", "rent": "700.00",
+      "shelfSlots": 7, "storageUnits": 1800, "openingCost": "28000.00", "buildDays": 21, "area": 120, "maxArea": 230 },
+    { "id": "mrs_bergers", "name": "Rue des Bergers", "market": "marseille", "location": "0.40", "rent": "480.00",
+      "shelfSlots": 6, "storageUnits": 1400, "openingCost": "20000.00", "buildDays": 14, "area": 95, "maxArea": 190 },
+    { "id": "par_lemercier", "name": "Rue Lemercier", "market": "paris", "location": "0.55", "rent": "5400.00",
+      "shelfSlots": 7, "storageUnits": 1500, "openingCost": "81000.00", "buildDays": 28, "area": 110, "maxArea": 180 },
+    { "id": "par_lobligeois", "name": "Place du Docteur-Lobligeois", "market": "paris", "location": "0.60", "rent": "6300.00",
+      "shelfSlots": 8, "storageUnits": 1800, "openingCost": "91000.00", "buildDays": 28, "area": 130, "maxArea": 200 },
+    { "id": "par_cardinet", "name": "Rue Cardinet", "market": "paris", "location": "0.50", "rent": "4800.00",
+      "shelfSlots": 7, "storageUnits": 1600, "openingCost": "75000.00", "buildDays": 28, "area": 115, "maxArea": 190 },
+    { "id": "par_legendre", "name": "Rue Legendre", "market": "paris", "location": "0.50", "rent": "5100.00",
+      "shelfSlots": 7, "storageUnits": 1500, "openingCost": "78000.00", "buildDays": 28, "area": 110, "maxArea": 190 },
+    { "id": "par_clichy", "name": "Avenue de Clichy", "market": "paris", "location": "0.55", "rent": "5700.00",
+      "shelfSlots": 8, "storageUnits": 1900, "openingCost": "86000.00", "buildDays": 28, "area": 130, "maxArea": 210 },
+    { "id": "par_square", "name": "Square des Batignolles", "market": "paris", "location": "0.45", "rent": "4500.00",
+      "shelfSlots": 6, "storageUnits": 1300, "openingCost": "68000.00", "buildDays": 28, "area": 95, "maxArea": 170 },
+    { "id": "lyon_boulevard", "name": "Boulevard de la Croix-Rousse", "market": "neighborhood", "location": "0.60", "rent": "770.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "26000.00", "buildDays": 28, "area": 110, "maxArea": 200 },
+    { "id": "lyon_ambre", "name": "Place Joannès-Ambre", "market": "neighborhood", "location": "0.50", "rent": "660.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "24000.00", "buildDays": 28, "area": 100, "maxArea": 180 },
+    { "id": "lyon_pailleron", "name": "Rue Pailleron", "market": "neighborhood", "location": "0.45", "rent": "570.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "22000.00", "buildDays": 28, "area": 90, "maxArea": 170 },
+    { "id": "lyon_grandecote", "name": "Montée de la Grande-Côte", "market": "neighborhood", "location": "0.40", "rent": "500.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "20000.00", "buildDays": 28, "area": 90, "maxArea": 160 },
+    { "id": "mtp_albert", "name": "Place Albert-Ier", "market": "montpellier", "location": "0.55", "rent": "450.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "20000.00", "buildDays": 28, "area": 100, "maxArea": 180 },
+    { "id": "mtp_pila", "name": "Rue du Pila-Saint-Gély", "market": "montpellier", "location": "0.45", "rent": "380.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "18000.00", "buildDays": 28, "area": 90, "maxArea": 170 },
+    { "id": "mtp_louisblanc", "name": "Boulevard Louis-Blanc", "market": "montpellier", "location": "0.50", "rent": "420.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "19000.00", "buildDays": 28, "area": 95, "maxArea": 170 },
+    { "id": "bdx_borie", "name": "Rue Borie", "market": "bordeaux", "location": "0.55", "rent": "1170.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "28000.00", "buildDays": 28, "area": 110, "maxArea": 190 },
+    { "id": "bdx_doumer", "name": "Place Paul-Doumer", "market": "bordeaux", "location": "0.60", "rent": "1300.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "30000.00", "buildDays": 28, "area": 120, "maxArea": 200 },
+    { "id": "bdx_bacalan", "name": "Quai de Bacalan", "market": "bordeaux", "location": "0.45", "rent": "940.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "24000.00", "buildDays": 28, "area": 110, "maxArea": 190 },
+    { "id": "reze_halles", "name": "Rezé market square", "market": "reze", "location": "0.55", "rent": "670.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "20000.00", "buildDays": 28, "area": 130, "maxArea": 230 },
+    { "id": "reze_trois", "name": "Trois-Moulins", "market": "reze", "location": "0.45", "rent": "580.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "18000.00", "buildDays": 28, "area": 120, "maxArea": 220 },
+    { "id": "reze_sud", "name": "Château-Sud", "market": "reze", "location": "0.40", "rent": "510.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "16000.00", "buildDays": 28, "area": 110, "maxArea": 200 },
+    { "id": "lille_sarrazins", "name": "Rue des Sarrazins", "market": "lille", "location": "0.55", "rent": "500.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "19000.00", "buildDays": 28, "area": 100, "maxArea": 180 },
+    { "id": "lille_esquermes", "name": "Rue d'Esquermes", "market": "lille", "location": "0.50", "rent": "460.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "18000.00", "buildDays": 28, "area": 100, "maxArea": 180 },
+    { "id": "lille_guesde", "name": "Rue Jules-Guesde", "market": "lille", "location": "0.45", "rent": "420.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "17000.00", "buildDays": 28, "area": 95, "maxArea": 170 },
+    { "id": "mrs_pastoret", "name": "Rue Pastoret", "market": "marseille", "location": "0.55", "rent": "600.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "22000.00", "buildDays": 28, "area": 100, "maxArea": 180 },
+    { "id": "mrs_ndmont", "name": "Place Notre-Dame-du-Mont", "market": "marseille", "location": "0.60", "rent": "680.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "24000.00", "buildDays": 28, "area": 110, "maxArea": 190 },
+    { "id": "mrs_sebastopol", "name": "Place Sébastopol", "market": "marseille", "location": "0.45", "rent": "520.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "20000.00", "buildDays": 28, "area": 100, "maxArea": 180 },
+    { "id": "par_dames", "name": "Rue des Dames", "market": "paris", "location": "0.55", "rent": "4500.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "48000.00", "buildDays": 28, "area": 90, "maxArea": 150 },
+    { "id": "par_nollet", "name": "Rue Nollet", "market": "paris", "location": "0.60", "rent": "5100.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "52000.00", "buildDays": 28, "area": 100, "maxArea": 160 },
+    { "id": "par_brochant", "name": "Rue Brochant", "market": "paris", "location": "0.50", "rent": "4200.00",
+      "shelfSlots": 4, "storageUnits": 600, "openingCost": "44000.00", "buildDays": 28, "area": 90, "maxArea": 150 },
+    { "id": "lyon_henon", "name": "Rue Hénon", "market": "neighborhood", "location": "0.55", "rent": "720.00",
+      "shelfSlots": 6, "storageUnits": 800, "openingCost": "30000.00", "buildDays": 28, "area": 110, "maxArea": 200 },
+    { "id": "bdx_course", "name": "Rue de la Course", "market": "bordeaux", "location": "0.55", "rent": "1260.00",
+      "shelfSlots": 6, "storageUnits": 800, "openingCost": "36000.00", "buildDays": 28, "area": 110, "maxArea": 200 },
+    { "id": "lille_wazemmes", "name": "Rue de Wazemmes", "market": "lille", "location": "0.55", "rent": "540.00",
+      "shelfSlots": 6, "storageUnits": 800, "openingCost": "26000.00", "buildDays": 28, "area": 105, "maxArea": 190 },
+    { "id": "par_batignolles", "name": "Rue des Batignolles", "market": "paris", "location": "0.55", "rent": "4800.00",
+      "shelfSlots": 6, "storageUnits": 800, "openingCost": "60000.00", "buildDays": 28, "area": 100, "maxArea": 170 }
+  ],
+  "finance": {
+    "bankReserves": "5000000.00", "bankMargin": "0.01", "guaranteedSpread": "0.01", "unsecuredSpread": "0.02",
+    "bankruptcySpread": "0.05", "reputationDays": 1825, "maxTermMonths": 84, "guaranteeMultiple": "2",
+    "earningsMultiple": "1.5", "graceDays": 30
+  },
+  "taxes": { "reducedRate": "0.15", "reducedLimit": "42500.00", "corporateRate": "0.25", "dividendRate": "0.30" },
+  "acquisitions": { "tangibleReturn": "0.08", "capitalization": "0.40", "distressFloor": "0.5", "fittingsLifeDays": 3650, "fittingsResidual": "0.25", "buyerReserve": "0.25", "intervalDays": 365 },
+  "categories": [
+    { "id": "milk", "name": "Milk" },
+    { "id": "bread", "name": "Bread" },
+    { "id": "snacks", "name": "Snacks" },
+    { "id": "drinks", "name": "Drinks" },
+    { "id": "produce", "name": "Fruit & veg" },
+    { "id": "household", "name": "Household" },
+    { "id": "fastfood", "name": "Fast food meals" },
+    { "id": "steak", "name": "Steakhouse meals" },
+    { "id": "finedining", "name": "Fine dining" },
+    { "id": "gadgets", "name": "Accessories" },
+    { "id": "phones", "name": "Smartphones" },
+    { "id": "smarthome", "name": "Smart home",
+      "diffusion": { "innovation": "0.03", "imitation": "0.38", "launched": "2022-01-01" } }
+  ],
+  "formats": [
+    { "id": "grocery", "overheads": "6.00", "name": "Convenience store", "categories": ["milk", "bread", "snacks", "drinks", "produce", "household"] },
+    { "id": "fastfood", "overheads": "12.00", "name": "Fast food", "categories": ["fastfood"], "fitOut": "1.6", "visitsPerStaff": 25, "wageFactor": "5" },
+    { "id": "steakhouse", "overheads": "7.00", "name": "Steakhouse", "categories": ["steak"], "fitOut": "2.0", "visitsPerStaff": 12, "wageFactor": "5" },
+    { "id": "finedining", "overheads": "13.00", "name": "Fine dining", "categories": ["finedining"], "fitOut": "2.8", "visitsPerStaff": 6, "wageFactor": "5" },
+    { "id": "supermarket", "overheads": "6.00", "name": "Supermarket", "categories": ["milk", "bread", "snacks", "drinks", "produce", "household"],
+      "fitOut": "1.8", "visitsPerStaff": 45, "minArea": 220, "slotBonus": 6, "storageBonus": 2500 },
+    { "id": "electronics", "overheads": "3.00", "name": "Electronics shop", "categories": ["gadgets", "phones", "smarthome"],
+      "fitOut": "2.2", "visitsPerStaff": 15, "wageFactor": "1.5" }
+  ],
+  "products": [
+    { "id": "milk_budget", "name": "Value Milk 1 L", "category": "milk", "tier": "budget", "shelfLifeDays": 10, "baseCost": "0.66", "referencePrice": "0.95" },
+    { "id": "milk_premium", "name": "Organic Milk 1 L", "category": "milk", "tier": "premium", "shelfLifeDays": 10, "baseCost": "1.26", "referencePrice": "1.75" },
+    { "id": "bread_budget", "name": "White Loaf", "category": "bread", "tier": "budget", "shelfLifeDays": 4, "baseCost": "0.84", "referencePrice": "1.15" },
+    { "id": "bread_premium", "name": "Sourdough Loaf", "category": "bread", "tier": "premium", "shelfLifeDays": 4, "baseCost": "1.92", "referencePrice": "2.69" },
+    { "id": "snacks_budget", "name": "Salted Crisps", "category": "snacks", "tier": "budget", "baseCost": "0.78", "referencePrice": "1.15" },
+    { "id": "snacks_premium", "name": "Kettle Chips", "category": "snacks", "tier": "premium", "baseCost": "1.44", "referencePrice": "2.29" },
+    { "id": "drinks_budget", "name": "Cola 1.5 L", "category": "drinks", "tier": "budget", "baseCost": "0.72", "referencePrice": "1.05" },
+    { "id": "drinks_premium", "name": "Sparkling Lemonade", "category": "drinks", "tier": "premium", "baseCost": "1.32", "referencePrice": "1.99" },
+    { "id": "produce_budget", "name": "Bananas 1 kg", "category": "produce", "tier": "budget", "shelfLifeDays": 6, "baseCost": "1.14", "referencePrice": "1.59" },
+    { "id": "produce_premium", "name": "Organic Apples 1 kg", "category": "produce", "tier": "premium", "shelfLifeDays": 12, "baseCost": "2.64", "referencePrice": "3.79" },
+    { "id": "household_budget", "name": "Washing-up Liquid", "category": "household", "tier": "budget", "baseCost": "1.02", "referencePrice": "1.55" },
+    { "id": "household_premium", "name": "Eco Laundry Pods", "category": "household", "tier": "premium", "baseCost": "5.28", "referencePrice": "7.90" },
+    { "id": "fastfood_budget", "name": "Burger menu", "category": "fastfood", "tier": "budget", "shelfLifeDays": 3, "baseCost": "2.60", "referencePrice": "8.90" },
+    { "id": "fastfood_premium", "name": "Gourmet burger menu", "category": "fastfood", "tier": "premium", "shelfLifeDays": 3, "baseCost": "4.20", "referencePrice": "13.90" },
+    { "id": "steak_budget", "name": "Bavette and fries", "category": "steak", "tier": "budget", "shelfLifeDays": 4, "baseCost": "6.50", "referencePrice": "18.90" },
+    { "id": "steak_premium", "name": "Rib steak for one", "category": "steak", "tier": "premium", "shelfLifeDays": 4, "baseCost": "13.00", "referencePrice": "32.00" },
+    { "id": "finedining_budget", "name": "Lunch menu", "category": "finedining", "tier": "budget", "shelfLifeDays": 4, "baseCost": "11.00", "referencePrice": "39.00" },
+    { "id": "finedining_premium", "name": "Tasting menu", "category": "finedining", "tier": "premium", "shelfLifeDays": 4, "baseCost": "28.00", "referencePrice": "95.00" },
+    { "id": "gadgets_budget", "name": "Charging cable", "category": "gadgets", "tier": "budget", "baseCost": "8.50", "referencePrice": "12.90" },
+    { "id": "gadgets_premium", "name": "Wireless earbuds", "category": "gadgets", "tier": "premium", "baseCost": "55.00", "referencePrice": "79.00" },
+    { "id": "phones_budget", "name": "Budget smartphone", "category": "phones", "tier": "budget", "baseCost": "135.00", "referencePrice": "179.00" },
+    { "id": "phones_premium", "name": "Flagship smartphone", "category": "phones", "tier": "premium", "baseCost": "690.00", "referencePrice": "899.00" },
+    { "id": "smarthome_budget", "name": "Smart plug", "category": "smarthome", "tier": "budget", "baseCost": "13.00", "referencePrice": "19.90" },
+    { "id": "smarthome_premium", "name": "Smart speaker", "category": "smarthome", "tier": "premium", "baseCost": "70.00", "referencePrice": "99.00" }
+  ],
+  "segments": [
+    {
+      "id": "families", "name": "Budget families", "tripIntervalDays": 3,
+      "priceSensitivity": "6", "convenienceWeight": "0.5", "loyaltyWeight": "1.5",
+      "priceTolerance": "0.05", "wordOfMouth": "0.05",
+      "missResponses": { "substitute": "0.55", "elsewhere": "0.20", "delay": "0.15", "skip": "0.10" },
+      "categories": {
+        "milk": { "dailyUnits": "0.45", "premiumShare": "0.10" },
+        "bread": { "dailyUnits": "0.30", "premiumShare": "0.10" },
+        "snacks": { "dailyUnits": "0.25", "premiumShare": "0.15" },
+        "drinks": { "dailyUnits": "0.35", "premiumShare": "0.10" },
+        "produce": { "dailyUnits": "0.40", "premiumShare": "0.10" },
+        "household": { "dailyUnits": "0.08", "premiumShare": "0.10" },
+        "fastfood": { "dailyUnits": "0.05", "premiumShare": "0.10" },
+        "steak": { "dailyUnits": "0.010", "premiumShare": "0.10" },
+        "finedining": { "dailyUnits": "0.0010", "premiumShare": "0.05" },
+        "gadgets": { "dailyUnits": "0.0017", "premiumShare": "0.15" },
+        "phones": { "dailyUnits": "0.0004", "premiumShare": "0.10" },
+        "smarthome": { "dailyUnits": "0.0010", "premiumShare": "0.15" }
+      },
+      "slots": { "morning": "0.15", "midday": "0.15", "evening": "0.60", "night": "0.10" }, "serviceWeight": "1.0", "sizeWeight": "2.5", "incomeSpread": "0.4"
+    },
+    {
+      "id": "professionals", "name": "Young professionals", "tripIntervalDays": 2,
+      "priceSensitivity": "2.4", "convenienceWeight": "2.0", "loyaltyWeight": "1.5",
+      "priceTolerance": "0.15", "wordOfMouth": "0.03",
+      "missResponses": { "substitute": "0.40", "elsewhere": "0.35", "delay": "0.10", "skip": "0.15" },
+      "categories": {
+        "milk": { "dailyUnits": "0.20", "premiumShare": "0.55" },
+        "bread": { "dailyUnits": "0.20", "premiumShare": "0.60" },
+        "snacks": { "dailyUnits": "0.20", "premiumShare": "0.50" },
+        "drinks": { "dailyUnits": "0.30", "premiumShare": "0.55" },
+        "produce": { "dailyUnits": "0.25", "premiumShare": "0.55" },
+        "household": { "dailyUnits": "0.05", "premiumShare": "0.50" },
+        "fastfood": { "dailyUnits": "0.04", "premiumShare": "0.40" },
+        "steak": { "dailyUnits": "0.025", "premiumShare": "0.35" },
+        "finedining": { "dailyUnits": "0.0150", "premiumShare": "0.30" },
+        "gadgets": { "dailyUnits": "0.0025", "premiumShare": "0.55" },
+        "phones": { "dailyUnits": "0.0005", "premiumShare": "0.55" },
+        "smarthome": { "dailyUnits": "0.0020", "premiumShare": "0.50" }
+      },
+      "slots": { "morning": "0.25", "midday": "0.10", "evening": "0.45", "night": "0.20" }, "serviceWeight": "2.0", "sizeWeight": "1.0", "incomeSpread": "0.5"
+    },
+    {
+      "id": "students", "name": "Students", "tripIntervalDays": 2,
+      "priceSensitivity": "4.8", "convenienceWeight": "1.5", "loyaltyWeight": "1.0",
+      "priceTolerance": "0.08", "wordOfMouth": "0.10",
+      "missResponses": { "substitute": "0.45", "elsewhere": "0.15", "delay": "0.10", "skip": "0.30" },
+      "categories": {
+        "milk": { "dailyUnits": "0.15", "premiumShare": "0.05" },
+        "bread": { "dailyUnits": "0.15", "premiumShare": "0.05" },
+        "snacks": { "dailyUnits": "0.35", "premiumShare": "0.20" },
+        "drinks": { "dailyUnits": "0.40", "premiumShare": "0.20" },
+        "produce": { "dailyUnits": "0.12", "premiumShare": "0.05" },
+        "household": { "dailyUnits": "0.04", "premiumShare": "0.05" },
+        "fastfood": { "dailyUnits": "0.08", "premiumShare": "0.10" },
+        "steak": { "dailyUnits": "0.005", "premiumShare": "0.05" },
+        "finedining": { "dailyUnits": "0.0005", "premiumShare": "0.05" },
+        "gadgets": { "dailyUnits": "0.0034", "premiumShare": "0.20" },
+        "phones": { "dailyUnits": "0.0005", "premiumShare": "0.15" },
+        "smarthome": { "dailyUnits": "0.0010", "premiumShare": "0.10" }
+      },
+      "slots": { "morning": "0.05", "midday": "0.25", "evening": "0.35", "night": "0.35" }, "serviceWeight": "0.5", "sizeWeight": "1.0", "incomeSpread": "0.3"
+    },
+    {
+      "id": "retirees", "name": "Retirees", "tripIntervalDays": 4,
+      "priceSensitivity": "3.6", "convenienceWeight": "1.0", "loyaltyWeight": "3.0",
+      "priceTolerance": "0.10", "wordOfMouth": "0.02",
+      "missResponses": { "substitute": "0.30", "elsewhere": "0.10", "delay": "0.40", "skip": "0.20" },
+      "categories": {
+        "milk": { "dailyUnits": "0.35", "premiumShare": "0.30" },
+        "bread": { "dailyUnits": "0.30", "premiumShare": "0.35" },
+        "snacks": { "dailyUnits": "0.08", "premiumShare": "0.20" },
+        "drinks": { "dailyUnits": "0.15", "premiumShare": "0.25" },
+        "produce": { "dailyUnits": "0.35", "premiumShare": "0.35" },
+        "household": { "dailyUnits": "0.05", "premiumShare": "0.25" },
+        "fastfood": { "dailyUnits": "0.01", "premiumShare": "0.20" },
+        "steak": { "dailyUnits": "0.015", "premiumShare": "0.25" },
+        "finedining": { "dailyUnits": "0.0080", "premiumShare": "0.25" },
+        "gadgets": { "dailyUnits": "0.0008", "premiumShare": "0.20" },
+        "phones": { "dailyUnits": "0.0002", "premiumShare": "0.20" },
+        "smarthome": { "dailyUnits": "0.0010", "premiumShare": "0.20" }
+      },
+      "slots": { "morning": "0.45", "midday": "0.45", "evening": "0.10", "night": "0" }, "serviceWeight": "1.5", "sizeWeight": "2.0", "incomeSpread": "0.5"
+    },
+    {
+      "id": "singles", "name": "Working singles", "tripIntervalDays": 2,
+      "priceSensitivity": "3.6", "convenienceWeight": "2.0", "loyaltyWeight": "1.0",
+      "priceTolerance": "0.10", "wordOfMouth": "0.05",
+      "missResponses": { "substitute": "0.45", "elsewhere": "0.25", "delay": "0.10", "skip": "0.20" },
+      "categories": {
+        "milk": { "dailyUnits": "0.12", "premiumShare": "0.30" },
+        "bread": { "dailyUnits": "0.12", "premiumShare": "0.35" },
+        "snacks": { "dailyUnits": "0.15", "premiumShare": "0.30" },
+        "drinks": { "dailyUnits": "0.25", "premiumShare": "0.30" },
+        "produce": { "dailyUnits": "0.15", "premiumShare": "0.30" },
+        "household": { "dailyUnits": "0.03", "premiumShare": "0.25" },
+        "fastfood": { "dailyUnits": "0.06", "premiumShare": "0.25" },
+        "steak": { "dailyUnits": "0.015", "premiumShare": "0.20" },
+        "finedining": { "dailyUnits": "0.0050", "premiumShare": "0.20" },
+        "gadgets": { "dailyUnits": "0.0025", "premiumShare": "0.35" },
+        "phones": { "dailyUnits": "0.0004", "premiumShare": "0.35" },
+        "smarthome": { "dailyUnits": "0.0015", "premiumShare": "0.30" }
+      },
+      "slots": { "morning": "0.15", "midday": "0.15", "evening": "0.50", "night": "0.20" }, "serviceWeight": "1.5", "sizeWeight": "0.8", "incomeSpread": "0.5"
+    },
+    {
+      "id": "comfortable", "name": "Comfortable families", "tripIntervalDays": 3,
+      "priceSensitivity": "3.0", "convenienceWeight": "1.0", "loyaltyWeight": "2.0",
+      "priceTolerance": "0.12", "wordOfMouth": "0.04",
+      "missResponses": { "substitute": "0.40", "elsewhere": "0.30", "delay": "0.20", "skip": "0.10" },
+      "categories": {
+        "milk": { "dailyUnits": "0.55", "premiumShare": "0.35" },
+        "bread": { "dailyUnits": "0.35", "premiumShare": "0.40" },
+        "snacks": { "dailyUnits": "0.30", "premiumShare": "0.30" },
+        "drinks": { "dailyUnits": "0.40", "premiumShare": "0.35" },
+        "produce": { "dailyUnits": "0.50", "premiumShare": "0.45" },
+        "household": { "dailyUnits": "0.10", "premiumShare": "0.40" },
+        "fastfood": { "dailyUnits": "0.035", "premiumShare": "0.35" },
+        "steak": { "dailyUnits": "0.025", "premiumShare": "0.35" },
+        "finedining": { "dailyUnits": "0.0100", "premiumShare": "0.30" },
+        "gadgets": { "dailyUnits": "0.0025", "premiumShare": "0.45" },
+        "phones": { "dailyUnits": "0.0005", "premiumShare": "0.45" },
+        "smarthome": { "dailyUnits": "0.0020", "premiumShare": "0.45" }
+      },
+      "slots": { "morning": "0.20", "midday": "0.10", "evening": "0.60", "night": "0.10" }, "serviceWeight": "1.5", "sizeWeight": "2.5", "incomeSpread": "0.4"
+    }
+  ],
+  "demand": { "neutralLoyalty": "0.50", "loyaltyRate": "0.20", "loyaltyDecay": "0.10", "substituteCredit": "0.50", "maxNeedDays": 7,
+    "offHoursPenalty": "1.5", "halfSizeArea": 150, "incomeEffect": "0.5",
+    "marketingWeight": "1.2", "halfGoodwill": "3000.00", "goodwillDecay": "0.02", "lossAversion": "1.5",
+    "reputationWeight": "0.5", "reputationDays": 300, "establishedReputation": "0.85", "openingReputation": "0.75" },
+  "macro": {
+    "startRegime": "expansion", "neutralRate": "0.02", "inflationTarget": "0.02",
+    "inflationResponse": "1.5", "gapResponse": "0.5", "minRate": "0.0025", "retailFeedback": "0.20",
+    "labour": { "naturalUnemployment": "0.075", "okunCoefficient": "2", "adjustment": "0.25",
+      "phillipsSlope": "0.5", "confidence": "1.5" },
+    "regimes": [
+      { "id": "expansion", "name": "Expansion", "meanMonths": 36, "inflation": "0.025", "realWageGrowth": "0.010",
+        "outputGap": "0.010", "demand": "1.02", "premiumShift": "0.02", "migration": "0.004" },
+      { "id": "slowdown", "name": "Slowdown", "meanMonths": 9, "inflation": "0.020", "realWageGrowth": "0",
+        "outputGap": "-0.005", "demand": "0.97", "premiumShift": "-0.03", "migration": "0" },
+      { "id": "recession", "name": "Recession", "meanMonths": 12, "inflation": "0.005", "realWageGrowth": "-0.005",
+        "outputGap": "-0.030", "demand": "0.88", "premiumShift": "-0.10", "migration": "-0.012" },
+      { "id": "recovery", "name": "Recovery", "meanMonths": 12, "inflation": "0.015", "realWageGrowth": "0.005",
+        "outputGap": "-0.010", "demand": "0.97", "premiumShift": "-0.03", "migration": "0.002" }
+    ]
+  },
+  "operations": { "slotWage": "10.00", "visitsPerStaff": 30, "maxStaffPerSlot": 6 },
+  "research": [
+    { "id": "quick", "name": "Quick survey", "cost": "400.00", "error": "0.30" },
+    { "id": "standard", "name": "Market study", "cost": "1200.00", "error": "0.15" },
+    { "id": "full", "name": "Full panel", "cost": "3000.00", "error": "0.05" }
+  ],
+  "expansion": { "stepArea": 40, "shelfSlots": 2, "storageUnits": 500, "costPerSqm": "150.00", "buildDays": 14 },
+  "managers": {
+    "forecastError": "0.80",
+    "priceError": "0.25",
+    "grades": [
+      { "id": "trainee", "name": "Trainee", "skill": "0.30", "salary": "3.00" },
+      { "id": "experienced", "name": "Experienced", "skill": "0.65", "salary": "5.00" },
+      { "id": "expert", "name": "Expert", "skill": "0.90", "salary": "7.00" }
+    ]
+  },
+  "directors": {
+    "judgmentError": "0.30",
+    "coaching": "0.50",
+    "grades": [
+      { "id": "promoted", "name": "Promoted manager", "skill": "0.40", "salary": "8.00" },
+      { "id": "seasoned", "name": "Seasoned director", "skill": "0.70", "salary": "14.00" },
+      { "id": "star", "name": "Star director", "skill": "0.95", "salary": "22.00" }
+    ]
+  },
+  "suppliers": [
+    {
+      "id": "bulkway", "name": "BulkWay Cash & Carry",
+      "leadTimeDays": 3, "paymentTermsDays": 0, "priceFactor": "1.00", "minOrderUnits": 48,
+      "volumeDiscounts": [
+        { "minUnits": 120, "discount": "0.04" },
+        { "minUnits": 240, "discount": "0.08" }
+      ],
+      "products": [
+        "milk_budget", "milk_premium", "bread_budget", "bread_premium",
+        "snacks_budget", "snacks_premium", "drinks_budget", "drinks_premium",
+        "produce_budget", "produce_premium", "household_budget", "household_premium"
+      ]
+    },
+    {
+      "id": "freshline", "name": "FreshLine Distribution",
+      "leadTimeDays": 1, "paymentTermsDays": 30, "priceFactor": "1.12", "minOrderUnits": 12,
+      "products": [
+        "milk_budget", "milk_premium", "bread_budget", "bread_premium", "snacks_premium", "drinks_premium",
+        "produce_budget", "produce_premium"
+      ]
+    },
+    {
+      "id": "chefsupply", "name": "ChefSupply Wholesale",
+      "leadTimeDays": 1, "paymentTermsDays": 14, "priceFactor": "1.00", "minOrderUnits": 4,
+      "volumeDiscounts": [{ "minUnits": 60, "discount": "0.05" }],
+      "products": [
+        "fastfood_budget", "fastfood_premium", "steak_budget", "steak_premium",
+        "finedining_budget", "finedining_premium"
+      ]
+    },
+    {
+      "id": "techdistri", "name": "TechDistri",
+      "leadTimeDays": 4, "paymentTermsDays": 30, "priceFactor": "1.00", "minOrderUnits": 4,
+      "volumeDiscounts": [{ "minUnits": 20, "discount": "0.04" }],
+      "products": [
+        "gadgets_budget", "gadgets_premium", "phones_budget", "phones_premium",
+        "smarthome_budget", "smarthome_premium"
+      ]
+    }
+  ],
+  "strategies": [
+    { "id": "discount", "name": "Discount and volume",
+      "markup": "0.30", "minMarkup": "0.08", "marketPosition": "-0.06", "marketWeight": "0.50",
+      "maxPriceStep": "0.05", "priceReviewDays": 7, "maxOverpricedShare": "0.10",
+      "premiumBias": "0.7", "assortmentReviewDays": 28, "assortmentHysteresis": "0.25",
+      "forecastDays": 14, "openingForecast": "30", "safetyDays": 2, "orderCycleDays": 3,
+      "reserveDays": 30, "expansionPaybackMonths": 16, "expansionIntervalDays": 730, "marginPerHousehold": "0.33",
+      "hours": ["morning", "midday", "evening"], "serviceTarget": "1.0", "openingTraffic": 25, "marketingShare": "0.010" },
+    { "id": "balanced", "name": "Balanced",
+      "markup": "0.45", "minMarkup": "0.10", "marketPosition": "0", "marketWeight": "0.50",
+      "maxPriceStep": "0.05", "priceReviewDays": 7, "maxOverpricedShare": "0.10",
+      "premiumBias": "1.0", "assortmentReviewDays": 28, "assortmentHysteresis": "0.25",
+      "forecastDays": 14, "openingForecast": "30", "safetyDays": 2, "orderCycleDays": 3,
+      "reserveDays": 30, "expansionPaybackMonths": 16, "expansionIntervalDays": 730, "marginPerHousehold": "0.33",
+      "hours": ["morning", "midday", "evening"], "serviceTarget": "1.2", "openingTraffic": 25, "marketingShare": "0.015" },
+    { "id": "premium", "name": "Premium and convenience",
+      "markup": "0.50", "minMarkup": "0.15", "marketPosition": "0.06", "marketWeight": "0.50",
+      "maxPriceStep": "0.05", "priceReviewDays": 7, "maxOverpricedShare": "0.10",
+      "premiumBias": "1.6", "assortmentReviewDays": 28, "assortmentHysteresis": "0.25",
+      "forecastDays": 14, "openingForecast": "30", "safetyDays": 3, "orderCycleDays": 2,
+      "reserveDays": 45, "expansionPaybackMonths": 16, "expansionIntervalDays": 730, "marginPerHousehold": "0.33",
+      "hours": ["morning", "midday", "evening", "night"], "serviceTarget": "1.5", "openingTraffic": 25, "marketingShare": "0.020" },
+    { "id": "fastfood", "name": "Quick service", "format": "fastfood",
+      "markup": "2.00", "minMarkup": "1.00", "marketPosition": "-0.05", "marketWeight": "0.50",
+      "maxPriceStep": "0.05", "priceReviewDays": 7, "maxOverpricedShare": "0.10",
+      "premiumBias": "1.0", "assortmentReviewDays": 28, "assortmentHysteresis": "0.25",
+      "forecastDays": 14, "openingForecast": "20", "safetyDays": 1, "orderCycleDays": 2,
+      "reserveDays": 30, "expansionPaybackMonths": 16, "expansionIntervalDays": 730, "marginPerHousehold": "0.21",
+      "hours": ["midday", "evening", "night"], "serviceTarget": "1.1", "openingTraffic": 40, "marketingShare": "0.040" },
+    { "id": "steakhouse", "name": "Grill house", "format": "steakhouse",
+      "markup": "1.60", "minMarkup": "0.80", "marketPosition": "0", "marketWeight": "0.50",
+      "maxPriceStep": "0.05", "priceReviewDays": 7, "maxOverpricedShare": "0.10",
+      "premiumBias": "1.0", "assortmentReviewDays": 28, "assortmentHysteresis": "0.25",
+      "forecastDays": 14, "openingForecast": "10", "safetyDays": 1, "orderCycleDays": 2,
+      "reserveDays": 30, "expansionPaybackMonths": 16, "expansionIntervalDays": 730, "marginPerHousehold": "0.11",
+      "hours": ["midday", "evening"], "serviceTarget": "1.2", "openingTraffic": 25, "marketingShare": "0.030" },
+    { "id": "finedining", "name": "Gastronomy", "format": "finedining",
+      "markup": "2.30", "minMarkup": "1.20", "marketPosition": "0.05", "marketWeight": "0.50",
+      "maxPriceStep": "0.05", "priceReviewDays": 7, "maxOverpricedShare": "0.10",
+      "premiumBias": "1.0", "assortmentReviewDays": 28, "assortmentHysteresis": "0.25",
+      "forecastDays": 14, "openingForecast": "5", "safetyDays": 1, "orderCycleDays": 2,
+      "reserveDays": 30, "expansionPaybackMonths": 16, "expansionIntervalDays": 730, "marginPerHousehold": "0.10",
+      "hours": ["midday", "evening"], "serviceTarget": "1.3", "openingTraffic": 12, "marketingShare": "0.030" },
+    { "id": "electronics", "name": "Electronics retail", "format": "electronics",
+      "markup": "0.40", "minMarkup": "0.10", "marketPosition": "0", "marketWeight": "0.50",
+      "maxPriceStep": "0.05", "priceReviewDays": 7, "maxOverpricedShare": "0.10",
+      "premiumBias": "1.2", "assortmentReviewDays": 28, "assortmentHysteresis": "0.25",
+      "forecastDays": 28, "openingForecast": "1.5", "safetyDays": 7, "orderCycleDays": 7,
+      "reserveDays": 45, "expansionPaybackMonths": 8, "expansionIntervalDays": 730, "marginPerHousehold": "0.06",
+      "hours": ["morning", "midday", "evening"], "serviceTarget": "1.2", "openingTraffic": 15, "marketingShare": "0.030" }
+  ],
+  "persons": [
+    { "id": "player", "name": "You", "cash": "20000.00", "player": true },
+    { "id": "owner_quickstop", "name": "Nadia Benali", "cash": "60000.00", "strategy": "balanced" },
+    { "id": "owner_dailybasket", "name": "Tom Reyes", "cash": "45000.00", "strategy": "premium" },
+    { "id": "entrepreneur", "name": "Samir Haddad", "cash": "80000.00", "strategy": "discount" },
+    { "id": "owner_lune", "name": "Inès Moreau", "cash": "35000.00", "strategy": "premium", "local": true },
+    { "id": "owner_bonplan", "name": "Karim Lefèvre", "cash": "40000.00", "strategy": "discount", "local": true },
+    { "id": "owner_comptoir", "name": "Hélène Marchal", "cash": "70000.00", "strategy": "premium" },
+    { "id": "owner_fabre", "name": "Julien Fabre", "cash": "55000.00", "strategy": "balanced", "local": true },
+    { "id": "owner_legoff", "name": "Thomas Le Goff", "cash": "55000.00", "strategy": "discount" },
+    { "id": "owner_guerin", "name": "Sophie Guérin", "cash": "45000.00", "strategy": "balanced", "local": true },
+    { "id": "entrepreneur_premium", "name": "Amélie Rousseau", "cash": "75000.00", "strategy": "premium" },
+    { "id": "owner_bellevue", "name": "Lucie Bernard", "cash": "45000.00", "strategy": "balanced", "local": true },
+    { "id": "owner_universite", "name": "Baptiste Roux", "cash": "35000.00", "strategy": "balanced", "local": true },
+    { "id": "owner_martinique", "name": "Nicolas Lambert", "cash": "50000.00", "strategy": "discount", "local": true },
+    { "id": "owner_ragon", "name": "Camille Petit", "cash": "40000.00", "strategy": "premium", "local": true },
+    { "id": "owner_gambetta", "name": "Yasmine Haddou", "cash": "45000.00", "strategy": "discount", "local": true },
+    { "id": "owner_aventure", "name": "Arnaud Deschamps", "cash": "40000.00", "strategy": "balanced", "local": true },
+    { "id": "owner_nuit", "name": "Léa Vandenberghe", "cash": "35000.00", "strategy": "premium", "local": true },
+    { "id": "owner_cours", "name": "Chloé Marchetti", "cash": "45000.00", "strategy": "premium", "local": true },
+    { "id": "owner_plaine", "name": "Karim Mansouri", "cash": "45000.00", "strategy": "balanced", "local": true },
+    { "id": "owner_provence", "name": "Antoine Giraud", "cash": "45000.00", "strategy": "discount", "local": true },
+    { "id": "owner_lemercier", "name": "Charlotte Morel", "cash": "120000.00", "strategy": "premium", "local": true },
+    { "id": "owner_lobligeois", "name": "Hugo Perrin", "cash": "130000.00", "strategy": "balanced" },
+    { "id": "owner_cardinet", "name": "Mathieu Garcia", "cash": "110000.00", "strategy": "discount", "local": true },
+    { "id": "entrepreneur_balanced", "name": "Thibault Martin", "cash": "90000.00", "strategy": "balanced" },
+    { "id": "owner_crocburger", "name": "Kevin Dubreuil", "cash": "60000.00", "strategy": "fastfood" },
+    { "id": "owner_grill", "name": "Pascal Rivière", "cash": "70000.00", "strategy": "steakhouse" },
+    { "id": "owner_saone", "name": "Élodie Chevalier", "cash": "60000.00", "strategy": "finedining", "local": true },
+    { "id": "owner_campus_snack", "name": "Rachid Amrani", "cash": "30000.00", "strategy": "fastfood", "local": true },
+    { "id": "owner_braise", "name": "Florian Blanc", "cash": "40000.00", "strategy": "steakhouse", "local": true },
+    { "id": "owner_gourmand", "name": "Isabelle Duval", "cash": "70000.00", "strategy": "finedining", "local": true },
+    { "id": "owner_boeuf", "name": "Grégoire Faure", "cash": "50000.00", "strategy": "steakhouse", "local": true },
+    { "id": "owner_rezeburger", "name": "Damien Leroux", "cash": "35000.00", "strategy": "fastfood", "local": true },
+    { "id": "owner_grill_ragon", "name": "Nathalie Brun", "cash": "40000.00", "strategy": "steakhouse", "local": true },
+    { "id": "owner_frites", "name": "Mathis Lemaire", "cash": "30000.00", "strategy": "fastfood", "local": true },
+    { "id": "owner_flamand", "name": "Céline Dumont", "cash": "40000.00", "strategy": "steakhouse", "local": true },
+    { "id": "owner_vieuxport", "name": "Yanis Belkacem", "cash": "35000.00", "strategy": "fastfood", "local": true },
+    { "id": "owner_table_plaine", "name": "Margaux Rossi", "cash": "60000.00", "strategy": "finedining", "local": true },
+    { "id": "owner_batignolles", "name": "Laurent Fournier", "cash": "150000.00", "strategy": "finedining", "local": true },
+    { "id": "owner_steakco", "name": "Sébastien Roy", "cash": "120000.00", "strategy": "steakhouse", "local": true },
+    { "id": "entrepreneur_gastro", "name": "Maxime Delorme", "cash": "150000.00", "strategy": "finedining" },
+    { "id": "owner_pixel", "name": "Bastien Girard", "cash": "90000.00", "strategy": "electronics" },
+    { "id": "owner_chartronstech", "name": "Manon Rey", "cash": "60000.00", "strategy": "electronics", "local": true },
+    { "id": "owner_wazemmesmobile", "name": "Victor Lefebvre", "cash": "45000.00", "strategy": "electronics", "local": true },
+    { "id": "owner_batignolleshifi", "name": "Romain Petitjean", "cash": "120000.00", "strategy": "electronics", "local": true }
+  ],
+  "companies": [
+    { "id": "player_co", "name": "Corner Shop", "owner": "player", "cash": "15000.00" },
+    { "id": "quickstop", "name": "QuickStop Market", "owner": "owner_quickstop", "cash": "25000.00" },
+    { "id": "dailybasket", "name": "Daily Basket", "owner": "owner_dailybasket", "cash": "20000.00" },
+    { "id": "lune", "name": "Lune Épicerie", "owner": "owner_lune", "cash": "18000.00" },
+    { "id": "bonplan", "name": "Bon Plan Market", "owner": "owner_bonplan", "cash": "18000.00" },
+    { "id": "comptoir", "name": "Comptoir des Quais", "owner": "owner_comptoir", "cash": "30000.00" },
+    { "id": "fabre", "name": "Fabre & Fils", "owner": "owner_fabre", "cash": "25000.00" },
+    { "id": "legoff", "name": "Le Goff Discount", "owner": "owner_legoff", "cash": "25000.00" },
+    { "id": "guerin", "name": "Marché Guérin", "owner": "owner_guerin", "cash": "22000.00" },
+    { "id": "bellevue", "name": "Épicerie Bellevue", "owner": "owner_bellevue", "cash": "20000.00" },
+    { "id": "universite", "name": "Le Comptoir Étudiant", "owner": "owner_universite", "cash": "16000.00" },
+    { "id": "martinique", "name": "Prix Chartrons", "owner": "owner_martinique", "cash": "22000.00" },
+    { "id": "ragon", "name": "Les Paniers de Ragon", "owner": "owner_ragon", "cash": "20000.00" },
+    { "id": "gambetta", "name": "Prix du Nord", "owner": "owner_gambetta", "cash": "20000.00" },
+    { "id": "aventure", "name": "Épicerie de la Place", "owner": "owner_aventure", "cash": "18000.00" },
+    { "id": "nuit", "name": "Nuit Blanche", "owner": "owner_nuit", "cash": "16000.00" },
+    { "id": "cours", "name": "La Plaine Gourmande", "owner": "owner_cours", "cash": "20000.00" },
+    { "id": "plaine", "name": "Marché Jaurès", "owner": "owner_plaine", "cash": "20000.00" },
+    { "id": "provence", "name": "Discount Provence", "owner": "owner_provence", "cash": "20000.00" },
+    { "id": "lemercier", "name": "Maison Lemercier", "owner": "owner_lemercier", "cash": "50000.00" },
+    { "id": "lobligeois", "name": "Les Halles Lobligeois", "owner": "owner_lobligeois", "cash": "55000.00" },
+    { "id": "cardinet", "name": "Prix Cardinet", "owner": "owner_cardinet", "cash": "45000.00" },
+    { "id": "crocburger", "name": "Croc Burger", "owner": "owner_crocburger", "cash": "20000.00" },
+    { "id": "grill", "name": "Le Grill Lyonnais", "owner": "owner_grill", "cash": "25000.00" },
+    { "id": "saone", "name": "Maison Saône", "owner": "owner_saone", "cash": "30000.00" },
+    { "id": "campus_snack", "name": "Snack du Campus", "owner": "owner_campus_snack", "cash": "12000.00" },
+    { "id": "braise", "name": "La Braise", "owner": "owner_braise", "cash": "18000.00" },
+    { "id": "gourmand", "name": "Le Comptoir Gourmand", "owner": "owner_gourmand", "cash": "35000.00" },
+    { "id": "boeuf", "name": "Bœuf & Bordeaux", "owner": "owner_boeuf", "cash": "25000.00" },
+    { "id": "rezeburger", "name": "Rezé Burger", "owner": "owner_rezeburger", "cash": "14000.00" },
+    { "id": "grill_ragon", "name": "Le Grill de Ragon", "owner": "owner_grill_ragon", "cash": "18000.00" },
+    { "id": "frites", "name": "Frites & Co", "owner": "owner_frites", "cash": "12000.00" },
+    { "id": "flamand", "name": "Le Grill Flamand", "owner": "owner_flamand", "cash": "18000.00" },
+    { "id": "vieuxport", "name": "Burger du Cours", "owner": "owner_vieuxport", "cash": "14000.00" },
+    { "id": "table_plaine", "name": "La Table de la Plaine", "owner": "owner_table_plaine", "cash": "30000.00" },
+    { "id": "batignolles", "name": "Table Batignolles", "owner": "owner_batignolles", "cash": "70000.00" },
+    { "id": "steakco", "name": "Steak & Co", "owner": "owner_steakco", "cash": "60000.00" },
+    { "id": "pixel", "name": "Pixel", "owner": "owner_pixel", "cash": "40000.00" },
+    { "id": "chartronstech", "name": "Chartrons Tech", "owner": "owner_chartronstech", "cash": "35000.00" },
+    { "id": "wazemmesmobile", "name": "Wazemmes Mobile", "owner": "owner_wazemmesmobile", "cash": "25000.00" },
+    { "id": "batignolleshifi", "name": "Batignolles Hi-Fi", "owner": "owner_batignolleshifi", "cash": "60000.00" }
+  ],
+  "stores": [
+    {
+      "id": "player_store", "name": "Corner Shop", "company": "player_co", "site": "corner",
+      "staff": { "morning": 1, "midday": 1, "evening": 2 },
+      "prices": {
+        "milk_budget": "0.95", "milk_premium": "1.69", "bread_budget": "1.19", "bread_premium": "2.79",
+        "snacks_budget": "1.19", "drinks_budget": "1.09"
+      }
+    },
+    {
+      "id": "quickstop_store", "name": "QuickStop Market", "company": "quickstop", "site": "prime",
+      "staff": { "morning": 1, "midday": 1, "evening": 2 },
+      "prices": {
+        "milk_budget": "0.89", "milk_premium": "1.75", "bread_budget": "1.09",
+        "snacks_budget": "1.09", "snacks_premium": "2.39", "drinks_budget": "0.99", "drinks_premium": "2.09"
+      }
+    },
+    {
+      "id": "dailybasket_store", "name": "Daily Basket", "company": "dailybasket", "site": "parade",
+      "staff": { "morning": 1, "midday": 1, "evening": 1, "night": 1 },
+      "prices": {
+        "milk_budget": "0.99", "milk_premium": "1.59", "bread_budget": "1.25", "bread_premium": "2.59",
+        "snacks_premium": "2.19", "drinks_premium": "1.89"
+      }
+    },
+    {
+      "id": "lune_store", "name": "Lune Épicerie", "company": "lune", "site": "mtp_tram",
+      "staff": { "morning": 1, "midday": 1, "evening": 2, "night": 1 },
+      "prices": {
+        "milk_budget": "0.95", "bread_budget": "1.15", "snacks_budget": "1.15", "snacks_premium": "2.25",
+        "drinks_budget": "1.05", "drinks_premium": "1.95"
+      }
+    },
+    {
+      "id": "bonplan_store", "name": "Bon Plan Market", "company": "bonplan", "site": "mtp_campus",
+      "staff": { "morning": 1, "midday": 1, "evening": 2 },
+      "prices": {
+        "milk_budget": "0.85", "milk_premium": "1.59", "bread_budget": "1.03", "snacks_budget": "1.02",
+        "drinks_budget": "0.93"
+      }
+    },
+    {
+      "id": "comptoir_store", "name": "Comptoir des Quais", "company": "comptoir", "site": "bdx_quai",
+      "staff": { "morning": 1, "midday": 1, "evening": 2, "night": 1 },
+      "prices": {
+        "milk_budget": "1.12", "milk_premium": "2.05", "bread_budget": "1.35", "bread_premium": "3.15",
+        "snacks_premium": "2.69", "drinks_budget": "1.25", "drinks_premium": "2.35"
+      }
+    },
+    {
+      "id": "fabre_store", "name": "Fabre & Fils", "company": "fabre", "site": "bdx_notre_dame",
+      "staff": { "morning": 1, "midday": 1, "evening": 2 },
+      "prices": {
+        "milk_budget": "1.05", "milk_premium": "1.95", "bread_budget": "1.29", "bread_premium": "2.99",
+        "snacks_budget": "1.29", "drinks_budget": "1.15"
+      }
+    },
+    {
+      "id": "legoff_store", "name": "Le Goff Discount", "company": "legoff", "site": "reze_park", "format": "supermarket",
+      "staff": { "morning": 1, "midday": 2, "evening": 2 },
+      "prices": {
+        "milk_budget": "0.87", "milk_premium": "1.59", "bread_budget": "1.05", "bread_premium": "2.45",
+        "snacks_budget": "1.05", "drinks_budget": "0.95", "drinks_premium": "1.85"
+      }
+    },
+    {
+      "id": "guerin_store", "name": "Marché Guérin", "company": "guerin", "site": "reze_center",
+      "staff": { "morning": 1, "midday": 1, "evening": 2 },
+      "prices": {
+        "milk_budget": "0.93", "milk_premium": "1.69", "bread_budget": "1.12", "bread_premium": "2.59",
+        "snacks_budget": "1.12", "drinks_budget": "1.02", "drinks_premium": "1.95"
+      }
+    },
+    {
+      "id": "bellevue_store", "name": "Épicerie Bellevue", "company": "bellevue", "site": "lyon_bellevue",
+      "staff": { "morning": 1, "midday": 1, "evening": 2 },
+      "prices": { "milk_budget": "0.95", "milk_premium": "1.75", "bread_budget": "1.15", "bread_premium": "2.69", "snacks_budget": "1.15", "drinks_budget": "1.05", "produce_budget": "1.59", "produce_premium": "3.79" }
+    },
+    {
+      "id": "universite_store", "name": "Le Comptoir Étudiant", "company": "universite", "site": "mtp_universite",
+      "staff": { "morning": 1, "midday": 1, "evening": 2 },
+      "prices": { "milk_budget": "0.90", "milk_premium": "1.66", "bread_budget": "1.09", "bread_premium": "2.56", "snacks_budget": "1.09", "drinks_budget": "1.00", "produce_budget": "1.51" }
+    },
+    {
+      "id": "martinique_store", "name": "Prix Chartrons", "company": "martinique", "site": "bdx_martinique",
+      "staff": { "morning": 1, "midday": 2, "evening": 2 },
+      "prices": { "milk_budget": "0.98", "bread_budget": "1.18", "snacks_budget": "1.18", "drinks_budget": "1.08", "produce_budget": "1.64", "household_budget": "1.60", "milk_premium": "1.80", "drinks_premium": "2.05" }
+    },
+    {
+      "id": "ragon_store", "name": "Les Paniers de Ragon", "company": "ragon", "site": "reze_ragon",
+      "staff": { "morning": 1, "midday": 1, "evening": 2, "night": 1 },
+      "prices": { "milk_premium": "1.80", "bread_premium": "2.77", "snacks_premium": "2.35", "drinks_premium": "2.05", "produce_premium": "3.90", "household_premium": "8.12", "milk_budget": "0.98" }
+    },
+    {
+      "id": "gambetta_store", "name": "Prix du Nord", "company": "gambetta", "site": "lille_gambetta",
+      "staff": { "morning": 1, "midday": 2, "evening": 2 },
+      "prices": { "milk_budget": "0.82", "bread_budget": "0.99", "snacks_budget": "0.99", "drinks_budget": "0.91", "produce_budget": "1.38", "household_budget": "1.34", "milk_premium": "1.51", "drinks_premium": "1.72" }
+    },
+    {
+      "id": "aventure_store", "name": "Épicerie de la Place", "company": "aventure", "site": "lille_place",
+      "staff": { "morning": 1, "midday": 1, "evening": 2 },
+      "prices": { "milk_budget": "0.89", "milk_premium": "1.65", "bread_budget": "1.08", "bread_premium": "2.53", "snacks_budget": "1.08", "drinks_budget": "0.99", "produce_budget": "1.49", "produce_premium": "3.56" }
+    },
+    {
+      "id": "nuit_store", "name": "Nuit Blanche", "company": "nuit", "site": "lille_metro",
+      "staff": { "morning": 1, "midday": 1, "evening": 2, "night": 1 },
+      "prices": { "milk_premium": "1.74", "bread_premium": "2.68", "snacks_premium": "2.28", "drinks_premium": "1.98", "produce_premium": "3.78", "household_premium": "7.87", "milk_budget": "0.95" }
+    },
+    {
+      "id": "cours_store", "name": "La Plaine Gourmande", "company": "cours", "site": "mrs_cours",
+      "staff": { "morning": 1, "midday": 1, "evening": 2, "night": 1 },
+      "prices": { "milk_premium": "1.82", "bread_premium": "2.79", "snacks_premium": "2.38", "drinks_premium": "2.07", "produce_premium": "3.94", "household_premium": "8.21", "milk_budget": "0.99", "bread_budget": "1.19" }
+    },
+    {
+      "id": "plaine_store", "name": "Marché Jaurès", "company": "plaine", "site": "mrs_plaine",
+      "staff": { "morning": 1, "midday": 1, "evening": 2 },
+      "prices": { "milk_budget": "0.93", "milk_premium": "1.71", "bread_budget": "1.13", "bread_premium": "2.64", "snacks_budget": "1.13", "drinks_budget": "1.03", "produce_budget": "1.56", "produce_premium": "3.71" }
+    },
+    {
+      "id": "provence_store", "name": "Discount Provence", "company": "provence", "site": "mrs_metro",
+      "staff": { "morning": 1, "midday": 2, "evening": 2 },
+      "prices": { "milk_budget": "0.86", "bread_budget": "1.04", "snacks_budget": "1.04", "drinks_budget": "0.95", "produce_budget": "1.43", "household_budget": "1.40", "milk_premium": "1.58" }
+    },
+    {
+      "id": "lemercier_store", "name": "Maison Lemercier", "company": "lemercier", "site": "par_lemercier",
+      "staff": { "morning": 1, "midday": 1, "evening": 2, "night": 1 },
+      "prices": { "milk_premium": "2.41", "bread_premium": "3.71", "snacks_premium": "3.16", "drinks_premium": "2.74", "produce_premium": "5.22", "household_premium": "10.89", "milk_budget": "1.31" }
+    },
+    {
+      "id": "lobligeois_store", "name": "Les Halles Lobligeois", "company": "lobligeois", "site": "par_lobligeois",
+      "staff": { "morning": 1, "midday": 1, "evening": 2 },
+      "prices": { "milk_budget": "1.23", "milk_premium": "2.27", "bread_budget": "1.49", "bread_premium": "3.50", "snacks_budget": "1.49", "drinks_budget": "1.37", "produce_budget": "2.07", "produce_premium": "4.93" }
+    },
+    {
+      "id": "cardinet_store", "name": "Prix Cardinet", "company": "cardinet", "site": "par_cardinet",
+      "staff": { "morning": 1, "midday": 2, "evening": 2 },
+      "prices": { "milk_budget": "1.14", "bread_budget": "1.38", "snacks_budget": "1.38", "drinks_budget": "1.26", "produce_budget": "1.90", "household_budget": "1.85", "milk_premium": "2.09" }
+    },
+    {
+      "id": "crocburger_store", "name": "Croc Burger", "company": "crocburger", "site": "lyon_boulevard", "format": "fastfood",
+      "staff": { "midday": 2, "evening": 2, "night": 1 },
+      "prices": { "fastfood_budget": "8.90", "fastfood_premium": "13.90" }
+    },
+    {
+      "id": "grill_store", "name": "Le Grill Lyonnais", "company": "grill", "site": "lyon_ambre", "format": "steakhouse",
+      "staff": { "midday": 2, "evening": 3 },
+      "prices": { "steak_budget": "18.90", "steak_premium": "32.00" }
+    },
+    {
+      "id": "saone_store", "name": "Maison Saône", "company": "saone", "site": "lyon_pailleron", "format": "finedining",
+      "staff": { "midday": 3, "evening": 4 },
+      "prices": { "finedining_budget": "39.00", "finedining_premium": "95.00" }
+    },
+    {
+      "id": "campus_snack_store", "name": "Snack du Campus", "company": "campus_snack", "site": "mtp_albert", "format": "fastfood",
+      "staff": { "midday": 2, "evening": 2, "night": 1 },
+      "prices": { "fastfood_budget": "8.46", "fastfood_premium": "13.21" }
+    },
+    {
+      "id": "braise_store", "name": "La Braise", "company": "braise", "site": "mtp_pila", "format": "steakhouse",
+      "staff": { "midday": 2, "evening": 3 },
+      "prices": { "steak_budget": "17.95", "steak_premium": "30.40" }
+    },
+    {
+      "id": "gourmand_store", "name": "Le Comptoir Gourmand", "company": "gourmand", "site": "bdx_doumer", "format": "finedining",
+      "staff": { "midday": 3, "evening": 4 },
+      "prices": { "finedining_budget": "42.12", "finedining_premium": "102.60" }
+    },
+    {
+      "id": "boeuf_store", "name": "Bœuf & Bordeaux", "company": "boeuf", "site": "bdx_borie", "format": "steakhouse",
+      "staff": { "midday": 2, "evening": 3 },
+      "prices": { "steak_budget": "20.41", "steak_premium": "34.56" }
+    },
+    {
+      "id": "rezeburger_store", "name": "Rezé Burger", "company": "rezeburger", "site": "reze_halles", "format": "fastfood",
+      "staff": { "midday": 2, "evening": 2, "night": 1 },
+      "prices": { "fastfood_budget": "8.63", "fastfood_premium": "13.48" }
+    },
+    {
+      "id": "grill_ragon_store", "name": "Le Grill de Ragon", "company": "grill_ragon", "site": "reze_trois", "format": "steakhouse",
+      "staff": { "midday": 2, "evening": 3 },
+      "prices": { "steak_budget": "18.33", "steak_premium": "31.04" }
+    },
+    {
+      "id": "frites_store", "name": "Frites & Co", "company": "frites", "site": "lille_sarrazins", "format": "fastfood",
+      "staff": { "midday": 2, "evening": 2, "night": 1 },
+      "prices": { "fastfood_budget": "8.37", "fastfood_premium": "13.07" }
+    },
+    {
+      "id": "flamand_store", "name": "Le Grill Flamand", "company": "flamand", "site": "lille_esquermes", "format": "steakhouse",
+      "staff": { "midday": 2, "evening": 3 },
+      "prices": { "steak_budget": "17.77", "steak_premium": "30.08" }
+    },
+    {
+      "id": "vieuxport_store", "name": "Burger du Cours", "company": "vieuxport", "site": "mrs_pastoret", "format": "fastfood",
+      "staff": { "midday": 2, "evening": 2, "night": 1 },
+      "prices": { "fastfood_budget": "8.72", "fastfood_premium": "13.62" }
+    },
+    {
+      "id": "table_plaine_store", "name": "La Table de la Plaine", "company": "table_plaine", "site": "mrs_ndmont", "format": "finedining",
+      "staff": { "midday": 3, "evening": 4 },
+      "prices": { "finedining_budget": "38.22", "finedining_premium": "93.10" }
+    },
+    {
+      "id": "batignolles_store", "name": "Table Batignolles", "company": "batignolles", "site": "par_nollet", "format": "finedining",
+      "staff": { "midday": 3, "evening": 4 },
+      "prices": { "finedining_budget": "47.58", "finedining_premium": "115.90" }
+    },
+    {
+      "id": "steakco_store", "name": "Steak & Co", "company": "steakco", "site": "par_dames", "format": "steakhouse",
+      "staff": { "midday": 2, "evening": 3 },
+      "prices": { "steak_budget": "23.06", "steak_premium": "39.04" }
+    },
+    {
+      "id": "pixel_store", "name": "Pixel Croix-Rousse", "company": "pixel", "site": "lyon_henon", "format": "electronics",
+      "staff": { "morning": 1, "midday": 1, "evening": 1 },
+      "prices": { "gadgets_budget": "12.90", "gadgets_premium": "79.00", "phones_budget": "179.00", "phones_premium": "899.00", "smarthome_budget": "19.90", "smarthome_premium": "99.00" }
+    },
+    {
+      "id": "chartronstech_store", "name": "Chartrons Tech", "company": "chartronstech", "site": "bdx_course", "format": "electronics",
+      "staff": { "morning": 1, "midday": 1, "evening": 1 },
+      "prices": { "gadgets_budget": "13.93", "gadgets_premium": "85.32", "phones_budget": "193.32", "phones_premium": "970.92", "smarthome_budget": "21.49", "smarthome_premium": "106.92" }
+    },
+    {
+      "id": "wazemmesmobile_store", "name": "Wazemmes Mobile", "company": "wazemmesmobile", "site": "lille_wazemmes", "format": "electronics",
+      "staff": { "morning": 1, "midday": 1, "evening": 1 },
+      "prices": { "gadgets_budget": "12.13", "gadgets_premium": "74.26", "phones_budget": "168.26", "phones_premium": "845.06", "smarthome_budget": "18.71", "smarthome_premium": "93.06" }
+    },
+    {
+      "id": "batignolleshifi_store", "name": "Batignolles Hi-Fi", "company": "batignolleshifi", "site": "par_batignolles", "format": "electronics",
+      "staff": { "morning": 1, "midday": 1, "evening": 1 },
+      "prices": { "gadgets_budget": "14.45", "gadgets_premium": "88.48", "phones_budget": "200.48", "phones_premium": "1006.88", "smarthome_budget": "22.29", "smarthome_premium": "110.88" }
+    }
+  ]
+}
