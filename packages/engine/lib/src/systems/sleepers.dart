@@ -1,0 +1,379 @@
+import '../content/content_db.dart';
+import '../core/calendar.dart';
+import '../core/fx.dart';
+import '../core/money.dart';
+import '../core/rng.dart';
+import '../core/safe_int.dart';
+import '../neighbourhoods/neighbourhood_generator.dart';
+import '../observation/outlook.dart';
+import '../policies/retail_policy.dart' show closingLoss;
+import '../state/sleepers.dart';
+import '../state/world_state.dart';
+import 'tick_system.dart';
+
+/// Months a new shop takes to draw as well as those already known here.
+const _settlingMonths = 24;
+
+/// How a shop still settling draws against those already known.
+const _settlingDraw = Fx.raw(8000);
+
+/// The chance in a month that someone is ready to open where it would pay.
+const _openingChance = Fx.raw(300);
+
+/// What a shop must have earned in a year, against the works' cost, to enlarge
+/// the first time. It takes more each time, by the square: each round of shelves
+/// holds what sells less than the last.
+const _enlargingReturn = 3;
+
+/// What the shops of a neighbourhood do once settled: unlike a new shop's habits
+/// ([ShopHabits]), these were fitted to the same places simulated in full for
+/// ten years.
+typedef _Settled = ({
+  /// What it turns into sales of what households here would buy from it.
+  Fx capture,
+
+  /// How it draws shoppers against the others of its trade.
+  Fx draw,
+
+  /// What its goods cost beyond the list.
+  Fx goodsExtra,
+
+  /// The staff it keeps for its busiest hours, against its average.
+  Fx peakStaff,
+});
+
+_Settled _settled(FormatDef format) => switch (format.key) {
+  'supermarket' => const (
+    capture: Fx.raw(9500),
+    draw: Fx.raw(12000),
+    goodsExtra: Fx.raw(-250),
+    peakStaff: Fx.raw(10000),
+  ),
+  'fastfood' => const (
+    capture: Fx.raw(8500),
+    draw: Fx.one,
+    goodsExtra: Fx.raw(1800),
+    peakStaff: Fx.raw(15000),
+  ),
+  'steakhouse' => const (
+    capture: Fx.raw(9400),
+    draw: Fx.one,
+    goodsExtra: Fx.raw(800),
+    peakStaff: Fx.raw(14000),
+  ),
+  'finedining' => const (
+    capture: Fx.raw(9450),
+    draw: Fx.one,
+    goodsExtra: Fx.raw(1800),
+    peakStaff: Fx.raw(14400),
+  ),
+  'electronics' => const (
+    capture: Fx.raw(9700),
+    draw: Fx.one,
+    goodsExtra: Fx.zero,
+    peakStaff: Fx.raw(16800),
+  ),
+  _ => const (
+    capture: Fx.raw(9500),
+    draw: Fx.one,
+    goodsExtra: Fx.raw(-200),
+    peakStaff: Fx.raw(13000),
+  ),
+};
+
+/// Runs every sleeping neighbourhood by formula, on the first of each month:
+/// households come and go; what they spend, at the economy of the day, is shared
+/// among the shops of each trade by location, size and price; each shop books
+/// its month; those losing money for a year close, as an AI owner would close
+/// them, those doing well enlarge, and someone opens on a free site when it
+/// would pay back soon enough. The neighbourhoods touch nothing else: no shop
+/// in the simulated world feels them, nor any account.
+final class SleeperSystem implements TickSystem {
+  const SleeperSystem();
+
+  @override
+  void run(WorldState world, TickContext context) {
+    final content = context.content;
+    if (!context.day.isFirstOfMonth || context.day <= content.startDay) return;
+    final start = content.startDay.date;
+    final now = context.day.date;
+    final month = (now.year - start.year) * 12 + now.month - start.month;
+    for (final sleeper in world.sleepers) {
+      sleeper.sites ??= plannedSites(content, sleeper.row, seed: world.seed);
+      final rng = context.rng(RngStream.neighbourhoods, 1000 + sleeper.row);
+      _grow(world, content, sleeper);
+      _trade(world, content, sleeper, context.day, month);
+      _closeAndEnlarge(world, content, sleeper, month);
+      _open(world, content, sleeper, month, rng);
+    }
+  }
+
+  void _grow(
+    WorldState world,
+    ContentDb content,
+    SleepingNeighbourhood sleeper,
+  ) {
+    final row = content.neighbourhoods[sleeper.row];
+    final migration = content.macro.regimes[world.macro.regime.index].migration;
+    for (var s = 0; s < sleeper.households.length; s++) {
+      final rate = row.growth[s] + migration;
+      final owed =
+          sleeper.pending[s] +
+          Fx.raw(mulDivRound(sleeper.households[s] * rate.raw, 1, 12));
+      final whole = owed.raw ~/ Fx.scale;
+      sleeper.pending[s] = owed - Fx.fromInt(whole);
+      sleeper.households[s] += whole;
+      if (sleeper.households[s] < 0) sleeper.households[s] = 0;
+    }
+  }
+
+  void _trade(
+    WorldState world,
+    ContentDb content,
+    SleepingNeighbourhood sleeper,
+    Day day,
+    int month,
+  ) {
+    final row = content.neighbourhoods[sleeper.row];
+    final macro = world.macro;
+    final regime = content.macro.regimes[macro.regime.index];
+    var cycle = regime.demand;
+    if (content.macro.labour case final labour?) {
+      cycle *= labour.confidenceFactor(macro.unemployment);
+    }
+    final sites = sleeper.sites!;
+    final byChannel = <int, List<SleepingShop>>{};
+    for (final shop in sleeper.shops) {
+      (byChannel[content.formatChannels[shop.format.index]] ??= []).add(shop);
+    }
+    // Channels in order, as a map's would depend on who opened first.
+    final channels = byChannel.keys.toList()..sort();
+    for (final channel in channels) {
+      final shops = byChannel[channel]!;
+      final demand = tradeDemand(
+        content,
+        households: sleeper.households,
+        incomeLevel: row.incomeLevel,
+        priceLevel: row.priceLevel,
+        priceIndex: macro.priceIndex,
+        today: day,
+        format: content.formats[shops.first.format.index],
+      );
+      // What it would sell at the strategy's prices, against normal ones.
+      Fx pricing(SleepingShop shop) {
+        final strategy = content.strategies[shop.strategy.index];
+        return demand.spending <= Money.zero
+            ? Fx.one
+            : Fx.raw(
+                mulDivRound(
+                  demand.atLevel.times(Fx.one + strategy.markup).cents,
+                  Fx.scale,
+                  demand.spending.cents,
+                ),
+              );
+      }
+
+      Fx weight(SleepingShop shop) {
+        final site = sites[shop.site];
+        var draw =
+            shopPull(content, site.location, shop.area) *
+            priceDraw(pricing(shop) - Fx.one) *
+            _settled(content.formats[shop.format.index]).draw;
+        if (month - shop.openedMonth < _settlingMonths) draw *= _settlingDraw;
+        return draw;
+      }
+
+      var total = Fx.zero;
+      for (final shop in shops) {
+        total += weight(shop);
+      }
+      for (final shop in shops) {
+        final format = content.formats[shop.format.index];
+        final strategy = content.strategies[shop.strategy.index];
+        final habits = _settled(format);
+        final site = sites[shop.site];
+        final served = weight(shop).div(total) * habits.capture * cycle;
+        final bought = demand.goods.times(served);
+        final sales = demand.atLevel
+            .times(Fx.one + strategy.markup)
+            .times(served);
+        final wages = yearlyWages(
+          content,
+          format,
+          strategy,
+          wageIndex: macro.wageIndex,
+          wageLevel: row.wageLevel,
+          unitsServed: demand.units * served,
+          unitsPerVisit: habitsOf(format).unitsPerVisit,
+          peak: habits.peakStaff,
+        );
+        final premises =
+            (site.rentFor(shop.area) + format.overheadsFor(shop.area))
+                .times(macro.priceIndex)
+                .timesInt(12);
+        final yearly =
+            sales -
+            bought -
+            bought.times(habits.goodsExtra) -
+            sales.times(strategy.marketingShare) -
+            wages -
+            premises;
+        final sold = Money(mulDivRound(sales.cents, 1, 12));
+        final earned = Money(mulDivRound(yearly.cents, 1, 12));
+        shop.remember(sold, earned);
+        // After tax it stays in the company until that's well stocked, then
+        // goes to its owner; a loss falls on the company, then the owner.
+        final taxed = earned > Money.zero
+            ? earned - earned.times(_taxRate(content))
+            : earned;
+        shop.cash += taxed;
+        final reserve = Money(
+          mulDivRound(
+            (bought + wages + premises).cents,
+            strategy.reserveDays,
+            365,
+          ),
+        );
+        if (shop.cash > reserve) {
+          shop.ownerCash += shop.cash - reserve;
+          shop.cash = reserve;
+        } else if (shop.cash.isNegative) {
+          shop.ownerCash += shop.cash;
+          shop.cash = Money.zero;
+        }
+      }
+    }
+  }
+
+  Fx _taxRate(ContentDb content) => content.taxes?.corporateRate ?? Fx.zero;
+
+  void _closeAndEnlarge(
+    WorldState world,
+    ContentDb content,
+    SleepingNeighbourhood sleeper,
+    int month,
+  ) {
+    final sites = sleeper.sites!;
+    final expansion = content.expansion;
+    final closing = <SleepingShop>[];
+    for (final shop in sleeper.shops) {
+      final format = content.formats[shop.format.index];
+      final strategy = content.strategies[shop.strategy.index];
+      final age = month - shop.openedMonth;
+      final broke = shop.ownerCash.isNegative;
+      final losing =
+          age >= 24 &&
+          shop.sales.length == sleepingMonthsKept &&
+          -shop.yearProfit > shop.yearSales.times(closingLoss);
+      if (broke || losing) {
+        closing.add(shop);
+        continue;
+      }
+      // Enlarging is for shelves: only a grocer ever runs out of them.
+      final sold = content.products
+          .where((product) => format.sells[product.category.index])
+          .length;
+      final site = sites[shop.site];
+      final steps = (shop.area - site.area) ~/ expansion.stepArea;
+      final slots =
+          site.shelfSlots + format.slotBonus + steps * expansion.shelfSlots;
+      final cost = expansion.cost(world.macro.priceIndex);
+      if (slots < sold &&
+          shop.area + expansion.stepArea <= site.maxArea &&
+          (month - shop.enlargedMonth) * 30 >= strategy.expansionIntervalDays &&
+          shop.yearProfit >=
+              cost.timesInt(_enlargingReturn * (steps + 1) * (steps + 1)) &&
+          shop.cash + shop.ownerCash >= cost) {
+        shop.area += expansion.stepArea;
+        shop.enlargedMonth = month;
+        shop.cash -= cost;
+        if (shop.cash.isNegative) {
+          shop.ownerCash += shop.cash;
+          shop.cash = Money.zero;
+        }
+      }
+    }
+    for (final shop in closing) {
+      sleeper.shops.remove(shop);
+      sleeper.closed++;
+    }
+  }
+
+  /// Now and then, someone ready to open looks over the free sites as an AI
+  /// owner would, and takes the one that would pay back soonest, if it would
+  /// within what its strategy allows.
+  void _open(
+    WorldState world,
+    ContentDb content,
+    SleepingNeighbourhood sleeper,
+    int month,
+    Rng rng,
+  ) {
+    if (!rng.chance(_openingChance)) return;
+    final row = content.neighbourhoods[sleeper.row];
+    final sites = sleeper.sites!;
+    final macro = world.macro;
+    final taken = {for (final shop in sleeper.shops) shop.site};
+    final total = sleeper.households.fold(0, (sum, count) => sum + count);
+    FormatDef? bestFormat;
+    StrategyDef? bestStrategy;
+    PlannedSite? bestSite;
+    var bestPayback = 0;
+    for (final format in content.formats) {
+      final strategy = usualStrategy(content, format);
+      if (strategy.expansionPaybackMonths == 0) continue;
+      for (final site in sites) {
+        if (taken.contains(site.number) || site.area < format.minArea) continue;
+        // Each draws by location and size, as shoppers weigh size.
+        final mine = shopPull(content, site.location, site.area);
+        var pull = mine;
+        for (final shop in sleeper.shops) {
+          if (content.formatChannels[shop.format.index] ==
+              content.formatChannels[format.id.index]) {
+            pull += shopPull(content, sites[shop.site].location, shop.area);
+          }
+        }
+        final daily = strategy.marginPerHousehold
+            .times(macro.priceIndex * row.priceLevel * row.incomeLevel)
+            .timesInt(total)
+            .times(mine.div(pull));
+        final wages = content.operations.slotWage
+            .times(macro.wageIndex * row.wageLevel * format.wageFactor)
+            .timesInt(strategy.hours.where((open) => open).length);
+        final premises = (site.rent + format.overheadsFor(site.area)).times(
+          macro.priceIndex,
+        );
+        final monthly = (daily - wages).timesInt(30) - premises;
+        if (monthly <= Money.zero) continue;
+        final fitting = site.openingCost
+            .times(format.fitOut)
+            .times(macro.priceIndex);
+        final payback = (fitting.cents + monthly.cents - 1) ~/ monthly.cents;
+        if (payback > strategy.expansionPaybackMonths) continue;
+        if (bestSite == null || payback < bestPayback) {
+          bestFormat = format;
+          bestStrategy = strategy;
+          bestSite = site;
+          bestPayback = payback;
+        }
+      }
+    }
+    if (bestSite == null) return;
+    final fitting = bestSite.openingCost.times(macro.priceIndex);
+    sleeper.shops.add(
+      SleepingShop(
+        site: bestSite.number,
+        format: bestFormat!.id,
+        strategy: bestStrategy!.id,
+        name: newShopName(bestFormat, rng),
+        owner: newOwnerName(rng),
+        area: bestSite.area,
+        cash: fitting,
+        ownerCash: fitting,
+        openedMonth: month,
+        enlargedMonth: month,
+      ),
+    );
+    sleeper.opened++;
+  }
+}

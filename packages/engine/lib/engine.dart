@@ -34,6 +34,7 @@ export 'src/commands/command.dart'
         SetMarketing,
         SetPrice,
         SetStaffing,
+        WakeNeighbourhood,
         TakeLoan;
 export 'src/commands/refusal.dart' show Refusal;
 export 'src/content/content_db.dart';
@@ -55,6 +56,8 @@ export 'src/observation/observation.dart'
         StoreMonths,
         ShelfView,
         StoreView;
+export 'src/observation/outlook.dart'
+    show ShopOutlook, shopOutlook, tradeSpending;
 export 'src/persistence/save_file.dart' show SaveFile;
 export 'src/policies/cushion.dart'
     show
@@ -85,6 +88,7 @@ export 'src/state/market.dart' show Census;
 export 'src/state/orders.dart' show OrderLine;
 export 'src/state/public_record.dart' show EconomicMonth, Filing;
 export 'src/state/research.dart' show ResearchReport, SegmentEstimate;
+export 'src/state/sleepers.dart' show SleepingNeighbourhood, SleepingShop;
 export 'src/state/store.dart' show ManagerDuty, StoreStatus, Works;
 export 'src/state/valuation.dart' show Valuation, symbolicPrice;
 export 'src/systems/events.dart';

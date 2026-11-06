@@ -737,6 +737,9 @@ class _StudyTile extends StatelessWidget {
           Line(
             game.view.shelves[store.index].name,
             percent(share, decimals: 0),
+            hint: content
+                .formats[game.view.shelves[store.index].format.index]
+                .name,
           ),
       ],
     );

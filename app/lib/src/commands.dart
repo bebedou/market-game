@@ -65,6 +65,7 @@ String describeCommand(Command command, ContentDb content, Observation view) {
         'site': content.sites[site.index].name,
         'loan': _loan(borrow, termMonths),
       }),
+    WakeNeighbourhood() => '',
     SetMarketing(store: final s, :final share) =>
       share == Fx.zero
           ? tr('commands.stopMarketing', {'store': store(s)})

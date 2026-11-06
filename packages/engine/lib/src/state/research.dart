@@ -41,8 +41,8 @@ final class ResearchReport {
   /// Indexed by [SegmentId].
   final List<SegmentEstimate> segments;
 
-  /// Each trading store's share of the units sold in the market over the
-  /// last 28 days.
+  /// Each trading store's share of the units its channel sold in the market
+  /// over the last 28 days: a store takes nothing from another channel's.
   final List<({StoreId store, Fx share})> unitShares;
 
   void write(StateWriter writer) {

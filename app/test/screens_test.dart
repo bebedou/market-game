@@ -64,6 +64,7 @@ void main() {
     expect(find.text('France'), findsOneWidget);
     expect(find.text('Central bank rate'), findsOneWidget);
     expect(find.text('Unemployment'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Competitors'), 300);
     await openIndex(tester, 'Competitors');
     // The player's own company first, then rivals in Lyon.
     expect(find.text('Corner Shop'), findsWidgets);
@@ -76,8 +77,150 @@ void main() {
     expect(find.text('Montpellier, Boutonnet'), findsOneWidget);
     expect(find.text('Bordeaux, Chartrons'), findsOneWidget);
     await goBack(tester);
+    // Back up to the economy, above the player's patch.
+    await tester.scrollUntilVisible(
+      find.widgetWithText(IndexRow, 'More on the economy'),
+      -300,
+    );
     await openIndex(tester, 'More on the economy');
     await tester.scrollUntilVisible(find.text('Economic history'), 300);
+  });
+
+  testWidgets('the world tab says where to open next, trade by trade', (
+    tester,
+  ) async {
+    final game = newController();
+    for (var i = 0; i < 70; i++) {
+      game.step();
+    }
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Your patch'), 300);
+    expect(find.text('Corner Shop'), findsWidgets);
+    await tester.scrollUntilVisible(find.text('Where to open next'), 300);
+    // Grocers to begin with, the player's own trade, in every city with room.
+    await tester.scrollUntilVisible(find.textContaining('Show all'), 300);
+    await tester.ensureVisible(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Paris, Batignolles'), 300);
+    expect(find.textContaining('3 rivals'), findsWidgets);
+    // A burger bar's rivals are burger bars, however many grocers are there.
+    await tester.scrollUntilVisible(find.text('Fast food'), -300);
+    await tester.ensureVisible(find.text('Fast food'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Fast food'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('3 rivals'), findsNothing);
+    await tester.scrollUntilVisible(find.text('Bordeaux, Chartrons'), 300);
+    await openIndex(tester, 'Bordeaux, Chartrons');
+    expect(find.text('Fast food: a new shop'), findsOneWidget);
+    expect(find.text('Best free site'), findsOneWidget);
+    expect(find.textContaining('about 100%'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Who and what is here'), 300);
+    await tester.scrollUntilVisible(find.text('Vacant sites'), 300);
+  });
+
+  testWidgets('a neighbourhood asleep is in the list, and wakes', (
+    tester,
+  ) async {
+    final game = newController();
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.textContaining('Show all'), 300);
+    await tester.ensureVisible(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    final row = find.widgetWithText(IndexRow, 'Lyon, Part-Dieu');
+    await openIndex(tester, 'Lyon, Part-Dieu');
+    expect(row, findsNothing);
+    expect(find.text('Convenience store: a new shop'), findsOneWidget);
+    await tester.scrollUntilVisible(find.textContaining('without you'), 300);
+    final markets = game.content.markets.length;
+    final stores = game.view.shelves.length;
+    game.wake(
+      game.content.neighbourhoods.indexWhere(
+        (r) => r.name == 'Lyon, Part-Dieu',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(game.content.markets, hasLength(markets + 1));
+    expect(game.view.shelves.length, greaterThan(stores));
+    // The same page, from the game now.
+    expect(find.textContaining('without you'), findsNothing);
+    expect(find.text('Convenience store: a new shop'), findsOneWidget);
+    // Nothing more to wake it for, and the game goes on.
+    game.step();
+    await tester.pump();
+  });
+
+  testWidgets('a neighbourhood asleep trades on, and says how it is doing', (
+    tester,
+  ) async {
+    final game = newController();
+    for (var day = 0; day < 100; day++) {
+      game.step();
+    }
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.textContaining('Show all'), 300);
+    await tester.ensureVisible(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await openIndex(tester, 'Lyon, Part-Dieu');
+    final row = game.content.neighbourhoods.indexWhere(
+      (r) => r.name == 'Lyon, Part-Dieu',
+    );
+    final shop = game.sleeper(row)!.shops.first;
+    expect(shop.sales, isNotEmpty);
+    await tester.scrollUntilVisible(find.text(shop.name), 300);
+    expect(find.textContaining('a year'), findsWidgets);
+  });
+
+  testWidgets('opening on a site asleep wakes its neighbourhood', (
+    tester,
+  ) async {
+    final game = newController();
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.textContaining('Show all'), 300);
+    await tester.ensureVisible(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await openIndex(tester, 'Lyon, Part-Dieu');
+    final markets = game.content.markets.length;
+    final open = find.widgetWithText(OutlinedButton, 'Open').first;
+    await tester.scrollUntilVisible(open, 300);
+    await tester.ensureVisible(open);
+    await tester.pumpAndSettle();
+    await tester.tap(open);
+    await tester.pumpAndSettle();
+    // Still asleep while the player makes up their mind.
+    expect(game.content.markets, hasLength(markets));
+    await tester.enterText(find.byType(TextField).last, '20000');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FilledButton).last);
+    await tester.pumpAndSettle();
+    expect(game.content.markets, hasLength(markets + 1));
+    final woken = game.content.markets.last;
+    expect(woken.name, 'Lyon, Part-Dieu');
+    game.step();
+    await tester.pump();
+    final mine = {for (final company in game.view.companies) company.id};
+    expect(
+      game.view.shelves.where(
+        (shelf) => shelf.market == woken.id && mine.contains(shelf.company),
+      ),
+      hasLength(1),
+    );
   });
 
   testWidgets('the finance tab shows the accounts and the taxes', (

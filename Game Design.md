@@ -123,6 +123,8 @@ Not part of the first release, in no fixed order:
 - **Lending and savings.** Credit priced from a business's risk (it is already sized on its earnings), fixed or variable rates, an overdraft line, deposit interest and government bonds; rival owners who borrow.
 - **Owning the chain.** Each trade climbs its own ladder upstream: a store brand, farms, a lab and a factory (see Owning the chain).
 - **Countries by formula.** Countries described by real statistics (households by income class, what each earns and spends per trade, margins, the cycle), with fictional chains as blocks, cheap enough to run many at once. France, Germany, Italy and Spain are built, not yet in the game; see Engine Architecture.md. The aim: a player can stay local, shop by shop, or rise to run businesses across a whole world.
+- **Neighbourhoods from figures.** A neighbourhood's sites, shops and owners generated from its households and costs and a seed. Cities now hold more neighbourhoods than the seven simulated from the start. They run by formula every month, at next to no cost: households come and go, shops of each trade share what they spend, make money or lose it, and open and close. When the player opens a shop there, the place comes to life as its history left it. See Engine Architecture.md. Still to come: the seven cities themselves sleeping until the player arrives, and zooming in from a country.
+- **City plan.** A drawn plan of each city once the engine is hardened: neighbourhoods as blocks sized by their households, shaded by spending, rent or rivals, with the player's shops marked. It would take the game a step away from being fully textual. It needs a plan for every generated city, so it comes after neighbourhoods run by formula.
 - **Executives.** Named people with strengths and characters, hired and fired, who run whole layers of the holding (see Managing at scale). Directors, one per company, are the first step.
 
 ## Owning the chain
@@ -210,6 +212,8 @@ The player controls one store.
 - *Availability:* a stockout loses the sale and erodes future visits.
 - *Loyalty and reputation:* habit and word of mouth create inertia, so customers don't switch over a one-cent difference. Each store also has a reputation everyone knows: it builds over months from keeping the shelves stocked with what shoppers ask for and serving them without queues. A new store opens with less of it than one the city has known for years, so a well-run store's custom grows over its first years.
 - *Marketing:* advertising builds goodwill that draws shoppers from rivals, with diminishing returns: each extra point of sales spent buys less pull. The store screen shows what each share costs and the pull it builds, so the player can find where more stops paying, often a few percent of sales.
+
+**Market share.** A shop's share only ever counts against the shops that compete with it: a restaurant takes nothing from a convenience store. Convenience stores and supermarkets share one trade; fast food, steakhouses and fine dining don't take customers from each other, so each is its own.
 
 **Substitution.** When a product is out of stock or overpriced, each segment has its own odds to substitute the other tier of the same category in-store, buy it at another store, delay the purchase, or skip it. A price too dear can't be waited out and is never answered by paying more: households take a cheaper tier, try another store or go without. So even a shop with no rival in its city can only charge so much. Every outcome also nudges loyalty.
 

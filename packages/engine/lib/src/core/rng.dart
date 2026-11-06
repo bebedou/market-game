@@ -42,6 +42,9 @@ abstract final class RngStream {
   /// The shared cycle's turns and when chains' openings and closings fall,
   /// in the countries run by formula.
   static const countries = 12;
+
+  /// A generated neighbourhood's sites and who opens where.
+  static const neighbourhoods = 13;
 }
 
 /// Deterministic random numbers (xoshiro128**).

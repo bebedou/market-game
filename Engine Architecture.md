@@ -49,6 +49,7 @@ market_game/
   packages/engine/           # pure Dart, no Flutter imports
     lib/engine.dart          # public API
     lib/countries.dart       # countries run by formula, which the game doesn't use yet
+    lib/neighbourhoods.dart  # the neighbourhood generator, for tools
     lib/src/
       core/                  # Money, Fx, ids, calendar, rng, hashing
       content/               # definitions, scenario loader
@@ -61,6 +62,7 @@ market_game/
       reports/               # attribution counters, period rollups
       persistence/           # canonical writer/reader, save format
       countries/             # country tables, the monthly formula model, its link to the shop level
+      neighbourhoods/        # the generator: a row of figures and a seed to a scenario's cities
     test/
     tool/                    # headless runner, exp-table generator
   content/                   # scenario data, a tiny package the app bundles
@@ -344,6 +346,8 @@ Policies are stateless: everything they remember is in the world, such as each s
 
 AI policies get exactly this view, so they too have to infer demand from their own sales. A debug "god view" exists only in development builds.
 
+**What a new shop might do.** `shopOutlook` (`observation/outlook.dart`) estimates a settled year for a new shop of a format on a site, from what anyone can see: households at the latest census by the scenario's mix, what they buy at normal prices, the rivals of its own channel by location, size and shelf prices, and what the site and staff cost. It reads and changes nothing in the state, so no hash depends on it. A store's rivals are only those of its channel, and so is any share: restaurants take nothing from grocers. A market study's shares (`ResearchReport.unitShares`) and the `share` column in `tool/sim.dart` count the same way. The World tab shows the player's own shops with their share of their trade, then ranks every neighbourhood with room, for the trade the player picks, by that estimate.
+
 ## Persistence (`persistence/`)
 
 - **One canonical serializer.** Each entity has a hand-written `write(StateWriter)` and `read(StateReader)`. The same code produces both save files and the state hash, so the two can't disagree.
@@ -418,6 +422,36 @@ A second, far cheaper level of the economy, in its own library (`package:engine/
 - **Calibration.** `tool/calibrate_countries.dart` runs the full simulation and writes `content/countries/calibration.json`: what shops capture of what households want, how much of staff goes with being open, and the price response, from controlled runs (below). A test fails if the formula and the full simulation drift apart, which is the signal to run it again after a balance change.
 
 Not there yet: saves, chains that decide anything (prices are set from outside), entry of new chains, the player, and zooming in: generating a neighbourhood from its row, with its households taken out of the row so totals still add up.
+
+## Neighbourhoods from figures (`neighbourhoods/`)
+
+The way to bigger cities and to zooming in from a country: a neighbourhood built from a row of figures and a seed, rather than by hand, and simulated only once the player trades there. `generateScenario` takes a scenario and rows, and returns the scenario with its cities replaced, so everything that plays a scenario can play the result (`tool/generate_neighbourhoods.dart`, then `tool/sim.dart --scenario`).
+
+**Asleep and awake.** A scenario's `neighbourhoods` start a game as rows, with no market, site, store or person, and run by formula until the player trades there. `WorldState.sleepers` holds each one's households and its shops (`state/sleepers.dart`): who they are, how big, what the shop and its owner hold, and twelve months of sales and profit. Its sites come from the row and the seed, so they aren't kept.
+
+`SleeperSystem` (`systems/sleepers.dart`) runs last, on the first of each month:
+
+- Households grow by the row's rates and the regime's migration, as `PopulationSystem` would have them.
+- What they spend on each channel (`tradeDemand`), at the regime and confidence of the day, is shared among that channel's shops only, by location, size and price (`shopPull`, `priceDraw`), a shop in its first two years drawing 0.8 of what an established one does.
+- Each shop books its sales, goods, staff, premises and marketing. Tax comes off a profit; what's beyond a working reserve goes to its owner, and a loss falls on the company, then on the owner. How settled shops turn demand into sales and what their goods and busiest hours cost are fitted by trade (`_settled`), and they aren't the same as `ShopHabits`, which describe a new shop for `shopOutlook`.
+- A shop closes as `losingStore` would have it: two years old, and more than 3% of a year's sales lost. It also closes when its owner's money runs out.
+- A grocer short of shelves enlarges when a year's profit is three times the works' cost, and then 12 and 27 times, as each round of shelves holds what sells less. Restaurants and electronics shops have the shelves they need.
+- With a chance of 3% a month, someone takes the free site that would pay back soonest by the entrepreneur's rule, if it would within the strategy's limit.
+
+There are no purchases and no chains in the formula: each shop stays its own company, and no bot or owner decides anything. The sleepers touch nothing else. They stay out of `world.write`, so a game plays the same with rows as without; `stateHash` adds them only if there are any, and a save writes them after the pending commands.
+
+`Simulation.plan` is the content with every sleeper generated as it stands, remade each month, for screens and estimates and for nothing else. `WakeNeighbourhood` adds one for real: its row is generated with the formula's households and shops in place of the ones it started with, appended at the end of the content's lists, and `growWorld` brings the world up to that content, as it does when a saved game meets a scenario that has grown. Stores take back their area, shelves and storage; those over two years old are as well known as any established shop. It takes effect as it is submitted, not with the day's commands, as those may refer to its sites. A save's header lists what woke, with its households and shops at that moment, so the content can be grown to match before the rest is read; a replay wakes them from the command log.
+
+A row (`NeighbourhoodRow`) holds households and growth by segment, the price, wage and income levels, a month's rent per m², a grocer's usual and largest area, and how far a site can grow. `rowsFromScenario` reads today's cities that way, and nothing else of them gets through. From a row:
+
+- **Cohorts** are 250 plus 11% of the households, to the nearest 50, which is what the seven cities have. Fewer break the economy.
+- **Grocers** number 2 plus one per 400,000 of the neighbourhood's yearly margin on groceries, with 2 plus one per 1,500 households of sites left vacant. Sites form a ladder of locations from 0.60 to 0.40, a quarter of them a step off. A better location is bigger, with shelves by area, 15 units of stock per m², and rent and fitting out that rise with both. Grocers take the best sites and follow premium, balanced and discount in a seeded order. If the largest site has room for a supermarket, it is one, at discount.
+- **Other shops** open where they would pay: what a shop alone would keep of its sales, from households' spending at the strategy's own markup, less waste, the staff such a shop settles at, rent and overheads, must reach 8%. One restaurant site stays vacant.
+- **The player** keeps their store, prices and cash, on a site of usual size at a location of 0.50 with a tighter stockroom (12.5 units per m²). Their rivals spread along the ladder instead of holding its top, and none starts at discount. Their old city was built that way.
+- **Starting shelves** are the staples, which the scenario lists first, two slots short of full, for the owner to choose the rest. A strategy favouring premium goods takes them first; a discounter takes every category's cheaper line first.
+- **Owners** each have one company, with cash in proportion to its site's fitting out.
+
+Names are drawn from short lists, the same in every language. Rows don't yet come from a country's table: the country level has five income classes and the shop level six segments, and nothing maps one to the other.
 
 ## Testing and the headless runner
 
@@ -1016,6 +1050,84 @@ A rise costs three to four times what a cut brings. In electronics even a cut lo
 Over 20 years and 8 seeds: real growth of 0.1 to 1.8% a year by trade and country, margins within half a point of normal, no chain failing, and shop counts moving by −0.04 to +1.26% a year.
 
 Assumptions, not data: restaurants' goods at 30% of sales, how price-sensitive each class is against the average (1.4 to 0.6), how fast stores respond to margins, fit-out at 25% of a store's yearly sales, starting cash, restaurant and electronics shares, store counts per chain and all price positions. Every chain in a trade and country earns the same margin, as nothing yet separates a discounter's costs from anyone else's. The shop level's recession cuts demand 12%, about five times the size of real ones, so the two levels differ there, which zooming in will have to settle.
+
+### What a new shop might do
+
+`shopOutlook` against shops actually opened: one per format and city, three months into a game, held at normal prices and otherwise run by an AI owner, four seeds, their years 2 and 3. Across the 35 shops, half of the profit estimates come within about 4,000 a year, three quarters within 16,000, and the worst is 51,000 off. Half of the sales estimates come within 10%. The neighbourhood it ranks first is the one that did best for grocers, fast food and electronics, but only third for steakhouses and fifth for fine dining.
+
+The largest miss is a steakhouse in Paris that took 82% of its trade against an estimated 53%, probably as its rival changed later on, which an estimate can't foresee, though none of the misses has been traced one by one. It takes a shop as run well at normal prices, with no manager. At those prices a new fast food next to a rival charging 13% less gets only a fifth to a third of the trade, so shelf prices count; they count only between 15% under and 5% over normal, as a new game's dear shops soon settle. Its numbers (`_Habits`) are fitted to these same shops.
+
+### Neighbourhoods from figures
+
+Today's seven cities generated from their figures alone, against the hand-made ones. Eight seeds of 3,650 days, with three generated worlds. Player's net a year:
+
+| Bot | By hand | World 1 | World 2 | World 3 |
+|---|---|---|---|---|
+| Experienced manager, balanced | 39.1k | 43.8k | 40.0k | 39.5k |
+| Experienced manager, premium | 47.7k | 42.7k | 47.7k | 48.1k |
+| Experienced manager, discount | 9.6k | 20.3k | | |
+| Owner-run balanced | 42.0k | 32.9k | | |
+| Seasoned director with loans | 117.6k | 105.6k | | |
+
+Under the balanced manager, grocers' sales over ten years stay within about 3% in every city and world, and within 1% overall. There are as many restaurants and electronics shops as by hand, 15 and 4, but not in the same cities: the rule drops La Braise and Wazemmes Mobile and Rezé Burger, which often closed, and opens a steakhouse and an electronics shop in Marseille and a fast food in Paris. So restaurants sell 11 to 14% more overall, and electronics 7 to 8%. Rivals earn about the same by format, fast food 21k against 20 to 26k, steakhouses 25k against 25 to 26k, fine dining 48k against 46 to 50k, electronics 26k against 26 to 27k, grocers 47k against 40 to 46k. Nobody is wound up, and a game day takes the same (8.2 ms against 7.7 ms).
+
+What doesn't match:
+
+- Stores change hands more than twice as often: 205 to 235 purchases over the eight games, against 87. They are mostly marginal restaurants and weak grocers passed between owners. So one company more often ends up with over 70% of a neighbourhood's grocery trade: 14 to 20 times across the eight games, against 2.
+- A discount player earns about twice as much, in the one world tried, on a thin 9.6k. An owner-run player earns about a fifth less and a director with loans about a tenth less, also in one world, though those two swing widely with the seeds even by hand.
+- In world 1, a premium rival on Lyon's best site becomes a supermarket within two months, and the player's first two years come in 24% and 44% lower, then higher from year 5.
+
+What was found on the way, all from changing today's Lyon one detail at a time: rivals' starting shelves matter most. Listing what earns most, rather than the staples, took the player from 18k to 31k a year in the first three years, as rivals then didn't stock what the player does. The player's stockroom comes next: 1,800 units rather than 1,500 is worth 5k a year. Rivals' cash and the player's opening cost change nothing in three years, and one rival's site little.
+
+The rules were fitted on these same seven cities, so this shows they reproduce them, not that they hold for a different kind of place: see the next section for that. `test/neighbourhoods/neighbourhood_generator_test.dart` compares groceries over two years, within 8% per city, and fails if the two drift apart after a balance change.
+
+### Neighbourhoods asleep
+
+The scenario holds 18 rows beside the seven cities: six more in Lyon, two more in each of the others. Their households, levels and rents are invented, and their names are real places. They first slept frozen, which isn't what the owner had approved; see "Neighbourhoods by formula" below, which replaced that.
+
+Those 18 woken on day 90 of a game, two seeds, with a test shop per trade opened in each at normal prices, years 2 and 3. Places the rules and `shopOutlook` weren't fitted to:
+
+- No company is wound up. 121 of 1,379 shops have closed by the end of the third year, with every place given one more rival than it was made for.
+- The profit estimate is off by about 8,000 at the median, three quarters within 13,000, the worst 35,000, and sales by 14%. That's worse than on the seven cities, as expected, and it runs high: grocers 29k against 18k, fast food 29k against 12k, fine dining 16k against 6k.
+- It ranks well: the place it puts first is the best in fact for four trades of five, and second for grocers.
+
+All 18 awake takes a game day about 5.4 times as long, so about 2 ms each on a desktop against today's 7.8 ms in all (a contended measure, five games at once).
+
+How little the cities depend on each other, from today's game with only Lyon awake and the other six as rows, ten years, eight seeds. A day falls from 7.81 to 1.67 ms, which is under the phone target of 5 ms, though the phone itself hasn't been timed:
+
+| Bot | All seven awake | Only Lyon |
+|---|---|---|
+| Experienced manager, balanced | 39.1k | 37.9k |
+| Experienced manager, premium | 47.7k | 46.9k |
+| Experienced manager, discount | 9.6k | 11.9k |
+| Owner-run balanced | 42.0k | 28.4k |
+
+The manager's year-by-year figures barely move (20.2k to 19.3k in year 1, 55.0k to 55.5k in year 10), so what happens in another city hardly touches a shop. The owner-run bot earns less because it grows by buying and opening in the other cities, which it can't do when it can't wake them. The game doesn't work this way yet: today's seven cities are all awake from the start. These runs had the six other cities frozen. The formula wouldn't change Lyon's results, as it touches nothing simulated, but they haven't been repeated with the six running by formula.
+
+### Neighbourhoods by formula
+
+The same 18 places over ten years, by formula and simulated in full from day 0, with the same seeds. The figures by trade were fitted on seeds 1 and 2. These are seeds 3 and 4, which they weren't fitted on, so the shops differ, though the places are the same:
+
+| Year 5 | Sales, formula | Sales, in full | Profit per shop, formula | Profit per shop, in full |
+|---|---|---|---|---|
+| Convenience stores | 28.4m | 29.5m | 50.0k | 54.9k |
+| Supermarkets (2) | 1.56m | 1.94m | 88.6k | 113.2k |
+| Fast food | 5.08m | 4.97m | 28.4k | 32.0k |
+| Steakhouses | 4.87m | 4.95m | 35.7k | 42.6k |
+| Fine dining | 4.12m | 4.20m | 63.3k | 71.7k |
+| Electronics | 3.80m | 3.79m | 36.7k | 37.4k |
+
+- One trade in one place, by sales: half within 4%, three quarters within 7%, nine in ten within 14% in years 2 to 5 and 11% in years 6 to 10. Seeds 1 and 2 give about the same.
+- By year 10 the formula runs higher but for supermarkets, by 2% for convenience stores to 17% for steakhouses, which lost two shops in full. Both seeds end in a downturn, and it bites harder in full.
+- New shops, nearly all fast food: 10 against 12 by year 5, and 16 against 13.5 by year 10. Closures: 1 against 4 by year 10 on these seeds, 1 against 2 on the others. So the formula closes too few.
+- Grocers' area matches: 174 m² against 171 by year 5, 175 against 176 by year 10.
+- Supermarkets sell about 20% too little in year 5, and there are only two to fit on.
+
+Waking all 18 after five years by formula, then three years in full, seeds 1 and 2. No wave of failures: one company in the whole world wound up by the end of each game. The first year in full counts only 11 months and looks low, 6 to 26% under the formula's last year, and supermarkets up to 32%. A game's own first year is also about 15% under its second. The next year is 7 to 20% above the formula's last, but for supermarkets on one seed, 7% under.
+
+A month of the formula costs 39 µs a place, about 0.023 ms per game day for all 18, against 7.15 ms for the day as a whole on a desktop. So a place costs about 0.0013 ms a day by formula, and about 2 ms awake (the contended measure above).
+
+What it isn't: no purchases or chains, so it says nothing of how trade concentrates; no bots, managers or shop-level price wars; the fit is on these 18 invented places only. The recession is the shop level's size, 12%, kept so that the two levels agree until that decision is made. `shopOutlook` still counts a sleeping place's rivals at the size they started, so it slightly overrates a new shop's share where grocers have enlarged.
 
 ## Build order
 

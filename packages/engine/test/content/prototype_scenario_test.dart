@@ -11,6 +11,73 @@ void main() {
     File('../../content/scenarios/prototype.json').readAsStringSync(),
   );
 
+  test('holds neighbourhoods asleep, every one of which can wake', () {
+    expect(content.neighbourhoods, isNotEmpty);
+    final simulation = Simulation.newGame(content, seed: 1);
+    final plan = simulation.plan!;
+    expect(
+      plan.markets,
+      hasLength(content.markets.length + content.neighbourhoods.length),
+    );
+    // Each has shops and sites to spare, and at least grocers to compete with.
+    for (final market in plan.markets.skip(content.markets.length)) {
+      final stores = plan.stores.where(
+        (store) => plan.sites[store.site.index].market == market.id,
+      );
+      final sites = plan.sites.where((site) => site.market == market.id);
+      expect(stores.length, greaterThanOrEqualTo(2), reason: market.key);
+      expect(sites.length, greaterThan(stores.length), reason: market.key);
+    }
+    for (final (row, _) in content.neighbourhoods.indexed) {
+      simulation.submit(WakeNeighbourhood(content.player, row: row));
+    }
+    expect(simulation.sleeping, isEmpty);
+    expect(simulation.content.markets, hasLength(plan.markets.length));
+    for (var day = 0; day < 30; day++) {
+      simulation.step();
+    }
+  });
+
+  test('a market study counts each store\'s share within its own trade', () {
+    final simulation = Simulation.newGame(
+      content,
+      seed: 1,
+      policies: standardPolicies(content),
+    );
+    for (var day = 0; day < 60; day++) {
+      simulation.step();
+    }
+    simulation
+      ..submit(
+        BuyResearch(
+          content.player,
+          company: const CompanyId(0),
+          market: const MarketId(0),
+          tier: content.researchTiers.last.id,
+        ),
+      )
+      ..step();
+    final view = simulation.observe(content.player);
+    final report = view.reports.single;
+    String formatOf(StoreId store) =>
+        content.formats[view.shelves[store.index].format.index].key;
+    // Alone in its trade in Lyon, a burger bar has about all of it, however
+    // much the grocers sell.
+    final burgers = report.unitShares.singleWhere(
+      (row) => formatOf(row.store) == 'fastfood',
+    );
+    expect(burgers.share.raw, greaterThan(Fx.parse('0.9').raw));
+    final grocers = [
+      for (final (:store, :share) in report.unitShares)
+        if (formatOf(store) == 'grocery') share.raw,
+    ];
+    expect(grocers, hasLength(4));
+    expect(
+      grocers.fold(0, (sum, share) => sum + share),
+      closeTo(Fx.scale, Fx.parse('0.1').raw),
+    );
+  });
+
   test('matches the prototype described in the design doc', () {
     expect(content.markets.map((m) => m.name), [
       'Lyon, Croix-Rousse',

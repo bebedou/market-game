@@ -9,8 +9,9 @@ import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
 
-/// The world outside: the country's economy on top, with its history a
-/// page away, then the competitors and the cities, each a page of its own.
+/// The world outside: the country's economy on top, with its history a page
+/// away, the player's patch, where to open next, then the competitors and the
+/// cities, each a page of its own.
 class MarketScreen extends StatelessWidget {
   const MarketScreen({super.key});
 
@@ -35,6 +36,8 @@ class MarketScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       children: [
         const _EconomySummary(),
+        const _YourPatch(),
+        const _WhereToOpen(),
         Section(
           title: tr('market.theMarket'),
           children: [
@@ -68,6 +71,385 @@ class MarketScreen extends StatelessWidget {
             ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+/// [amount] to the nearest thousand, for what is only an estimate.
+String _roughly(Money amount) =>
+    money(Money((amount.cents / 100000).round() * 100000), cents: false);
+
+/// A page on what a shop of [format] might do in the market [key], then who
+/// and what is there.
+void _openNeighbourhood(
+  BuildContext context,
+  MarketDef market,
+  FormatDef format,
+) => context.openPage(
+  market.name,
+  (context) => [_Neighbourhood(marketKey: market.key, format: format)],
+);
+
+/// A neighbourhood's page: from its plan while it sleeps, from the game once
+/// it wakes, which the player opening there does.
+class _Neighbourhood extends StatelessWidget {
+  const _Neighbourhood({required this.marketKey, required this.format});
+
+  final String marketKey;
+  final FormatDef format;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final awake = game.content.markets
+        .where((market) => market.key == marketKey)
+        .firstOrNull;
+    final plan = awake == null ? game.plan : null;
+    final market =
+        awake ?? plan!.markets.firstWhere((market) => market.key == marketKey);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Prospect(market: market, format: format, plan: plan),
+        Section(
+          title: tr('market.whoIsHere'),
+          children: [
+            if (plan == null)
+              _City(market: market, open: true)
+            else
+              _PlannedCity(plan: plan, market: market),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Who and what is in a neighbourhood still asleep, and its free sites. Opening
+/// on one wakes it.
+class _PlannedCity extends StatelessWidget {
+  const _PlannedCity({required this.plan, required this.market});
+
+  final ContentDb plan;
+  final MarketDef market;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ledger = Ledger.of(context);
+    final row = plan.neighbourhoods.indexWhere((r) => r.key == market.key);
+    final taken = {
+      for (final store in plan.stores)
+        if (plan.sites[store.site.index].market == market.id) store.site.index,
+    };
+    final vacant = [
+      for (final site in plan.sites)
+        if (site.market == market.id && !taken.contains(site.id.index)) site,
+    ];
+    final sleeper = context.game.sleeper(row);
+    if (sleeper == null) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Line(
+          tr('common.households'),
+          '${market.households.fold(0, (sum, count) => sum + count)}',
+        ),
+        if (sleeper.opened > 0 || sleeper.closed > 0)
+          Line(
+            tr('market.openedClosed'),
+            '${sleeper.opened} / ${sleeper.closed}',
+          ),
+        for (final shop in sleeper.shops)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                TradeMark(
+                  ledger.trade(plan.formats[shop.format.index]),
+                  size: 10,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(shop.name),
+                      Text(
+                        [
+                          plan.formats[shop.format.index].name,
+                          if (shop.sales.isNotEmpty)
+                            tr('market.yearAbout', {
+                              // A shop not a year old yet, at its pace.
+                              'amount': _roughly(
+                                Money(
+                                  shop.yearSales.cents *
+                                      12 ~/
+                                      shop.sales.length,
+                                ),
+                              ),
+                            }),
+                        ].join(', '),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const Divider(),
+        Text(tr('market.vacantSites'), style: theme.textTheme.titleSmall),
+        for (final site in vacant) _VacantSite(site: site, wakeRow: row),
+        Hint(tr('market.plannedHint')),
+      ],
+    );
+  }
+}
+
+/// The player's own shops: what each earns, and what it sells against all that
+/// households here spend on its trade. Its rivals are only those of its trade.
+class _YourPatch extends StatelessWidget {
+  const _YourPatch();
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final content = game.content;
+    final stores = [
+      for (final (_, store) in game.myStores)
+        if (store.status != StoreStatus.closed) store,
+    ];
+    if (stores.isEmpty) return const SizedBox.shrink();
+    return Section(
+      title: tr('market.yourPatch'),
+      children: [
+        for (final store in stores)
+          () {
+            final market = content.markets[store.market.index];
+            final format = content.formats[store.format.index];
+            final (:revenue, :profit, :days) = store.recentMonths;
+            final spending = tradeSpending(game.view, content, market, format);
+            final known = days > 0 && spending > Money.zero;
+            final share = known
+                ? (revenue.cents * 365 / days / spending.cents * 100)
+                      .clamp(0, 100)
+                      .round()
+                : 0;
+            return IndexRow(
+              title: game.view.shelves[store.id.index].name,
+              subtitle: known
+                  ? tr('market.patchLine', {
+                      'city': market.name,
+                      'share': percentOf(share),
+                    })
+                  : tr('market.patchTooSoon', {'city': market.name}),
+              value: known ? money(profit, cents: false) : null,
+              valueColor: known && profit.isNegative
+                  ? Ledger.of(context).loss
+                  : null,
+              mark: Ledger.of(context).trade(format),
+              onTap: () => _openNeighbourhood(context, market, format),
+            );
+          }(),
+      ],
+    );
+  }
+}
+
+/// The neighbourhoods with room for a shop of the chosen trade, best first, by
+/// what a new one on the best free site might earn.
+class _WhereToOpen extends StatefulWidget {
+  const _WhereToOpen();
+
+  @override
+  State<_WhereToOpen> createState() => _WhereToOpenState();
+}
+
+class _WhereToOpenState extends State<_WhereToOpen> {
+  /// The most places shown before the player asks for them all.
+  static const _shown = 8;
+
+  FormatId? _format;
+  bool _all = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final view = game.view;
+    final content = game.content;
+    final plan = game.plan;
+    final vacant = [
+      for (final id in view.vacantSites) content.sites[id.index],
+      if (plan != null) ..._plannedVacant(plan, content),
+    ];
+    final formats = [
+      for (final format in content.formats)
+        if (vacant.any((site) => site.area >= format.minArea)) format,
+    ];
+    if (formats.isEmpty) return const SizedBox.shrink();
+    // The player's own trade to begin with, while there's room for it.
+    final wanted = _format ?? game.myStores.firstOrNull?.$2.format;
+    final chosen = formats.firstWhere(
+      (format) => format.id == wanted,
+      orElse: () => formats.first,
+    );
+    final prospects = [
+      ..._prospects(view, content, chosen),
+      if (plan != null) ..._plannedProspects(view, plan, content, chosen),
+    ]..sort((a, b) => b.$3.profit.cents.compareTo(a.$3.profit.cents));
+    final shown = _all ? prospects : prospects.take(_shown);
+    final ledger = Ledger.of(context);
+    return Section(
+      title: tr('market.whereToOpen'),
+      children: [
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final format in formats)
+              ChoiceChip(
+                label: Text(format.name),
+                selected: format.id == chosen.id,
+                onSelected: (_) => setState(() => _format = format.id),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        for (final (market, site, outlook) in shown)
+          IndexRow(
+            title: market.name,
+            subtitle: tr('market.outlookLine', {
+              'rent': money(
+                site.rent.times(view.macro.priceIndex),
+                cents: false,
+              ),
+              'rivals': outlook.rivals == 0
+                  ? tr('market.noRivals')
+                  : tr('market.nRivals', {'count': outlook.rivals}),
+            }),
+            value: _roughly(outlook.profit),
+            valueColor: outlook.profit.isNegative ? ledger.loss : null,
+            onTap: () => _openNeighbourhood(context, market, chosen),
+          ),
+        if (!_all && prospects.length > _shown)
+          TextButton(
+            onPressed: () => setState(() => _all = true),
+            child: Text(tr('market.showAll', {'count': prospects.length})),
+          ),
+        Hint(tr('market.whereToOpenHint')),
+      ],
+    );
+  }
+}
+
+/// For each market with a free site big enough for [format], that site which
+/// would do best and what a new shop might do on it.
+Iterable<(MarketDef, SiteDef, ShopOutlook)> _prospects(
+  Observation view,
+  ContentDb content,
+  FormatDef format,
+) sync* {
+  for (final market in content.markets) {
+    SiteDef? best;
+    ShopOutlook? outlook;
+    for (final id in view.vacantSites) {
+      final site = content.sites[id.index];
+      if (site.market != market.id || site.area < format.minArea) continue;
+      final here = shopOutlook(view, content, site, format);
+      if (outlook == null || here.profit > outlook.profit) {
+        best = site;
+        outlook = here;
+      }
+    }
+    if (best != null) yield (market, best, outlook!);
+  }
+}
+
+/// The sites free in [plan]'s neighbourhoods, those [content] doesn't hold yet.
+Iterable<SiteDef> _plannedVacant(ContentDb plan, ContentDb content) sync* {
+  final taken = {for (final store in plan.stores) store.site.index};
+  for (final site in plan.sites.skip(content.sites.length)) {
+    if (!taken.contains(site.id.index)) yield site;
+  }
+}
+
+/// For each neighbourhood asleep with a free site big enough for [format], that
+/// site which would do best and what a new shop might do on it.
+Iterable<(MarketDef, SiteDef, ShopOutlook)> _plannedProspects(
+  Observation view,
+  ContentDb plan,
+  ContentDb content,
+  FormatDef format,
+) sync* {
+  final vacant = _plannedVacant(plan, content).toList();
+  for (final market in plan.markets.skip(content.markets.length)) {
+    SiteDef? best;
+    ShopOutlook? outlook;
+    for (final site in vacant) {
+      if (site.market != market.id || site.area < format.minArea) continue;
+      final here = shopOutlook(view, plan, site, format);
+      if (outlook == null || here.profit > outlook.profit) {
+        best = site;
+        outlook = here;
+      }
+    }
+    if (best != null) yield (market, best, outlook!);
+  }
+}
+
+/// What a new shop of [format] might do in [market], by estimate; [plan] holds
+/// the neighbourhood if it's still asleep.
+class _Prospect extends StatelessWidget {
+  const _Prospect({required this.market, required this.format, this.plan});
+
+  final MarketDef market;
+  final FormatDef format;
+  final ContentDb? plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final view = game.view;
+    final content = game.content;
+    final prospect =
+        (plan == null
+                ? _prospects(view, content, format)
+                : _plannedProspects(view, plan!, content, format))
+            .where((prospect) => prospect.$1.id == market.id)
+            .firstOrNull;
+    return Section(
+      title: tr('market.prospectTitle', {'format': format.name}),
+      mark: Ledger.of(context).trade(format),
+      children: [
+        Line(
+          tr('market.spentHere'),
+          tr('market.about', {
+            'amount': _roughly(
+              tradeSpending(view, plan ?? content, market, format),
+            ),
+          }),
+        ),
+        if (prospect case (_, final site, final outlook)) ...[
+          Line(tr('market.bestSite'), site.name),
+          Line(
+            tr('market.newShopShare'),
+            tr('market.about', {'amount': percent(outlook.share, decimals: 0)}),
+          ),
+          Line(
+            tr('market.newShopSales'),
+            tr('market.about', {'amount': _roughly(outlook.sales)}),
+          ),
+          Line(
+            tr('market.newShopProfit'),
+            tr('market.about', {'amount': _roughly(outlook.profit)}),
+            strong: true,
+            color: outlook.profit.isNegative ? Ledger.of(context).loss : null,
+          ),
+        ] else
+          Hint(tr('market.noSiteFor')),
+        Hint(tr('market.prospectHint')),
       ],
     );
   }
@@ -1029,9 +1411,12 @@ class _CitiesCard extends StatelessWidget {
 /// One city: what living and trading there costs, its households, its
 /// stores and its vacant sites. Cities where the player trades start open.
 class _City extends StatelessWidget {
-  const _City({required this.market});
+  const _City({required this.market, this.open = false});
 
   final MarketDef market;
+
+  /// Whether it starts open wherever the player trades.
+  final bool open;
 
   @override
   Widget build(BuildContext context) {
@@ -1064,7 +1449,7 @@ class _City extends StatelessWidget {
       // Its own key, so its open state isn't confused with the list's
       // scroll position in the page storage.
       key: PageStorageKey('city ${market.key}'),
-      initiallyExpanded: here || content.markets.length == 1,
+      initiallyExpanded: open || here || content.markets.length == 1,
       tilePadding: EdgeInsets.zero,
       childrenPadding: const EdgeInsets.only(bottom: 8),
       expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1367,12 +1752,19 @@ class _NewBusinessState extends State<NewBusiness> {
 }
 
 class _VacantSite extends StatelessWidget {
-  const _VacantSite({required this.site, this.subsidiary = false});
+  const _VacantSite({
+    required this.site,
+    this.subsidiary = false,
+    this.wakeRow,
+  });
 
   final SiteDef site;
 
   /// Whether to offer opening it as a company of its own.
   final bool subsidiary;
+
+  /// The neighbourhood asleep that opening here would wake, if any.
+  final int? wakeRow;
 
   @override
   Widget build(BuildContext context) {
@@ -1397,7 +1789,11 @@ class _VacantSite extends StatelessWidget {
           context: context,
           builder: (_) => GameScope(
             controller: game,
-            child: _OpenStoreDialog(site: site, subsidiary: subsidiary),
+            child: _OpenStoreDialog(
+              site: site,
+              subsidiary: subsidiary,
+              wakeRow: wakeRow,
+            ),
           ),
         ),
         child: Text(tr('market.open')),
@@ -1407,9 +1803,16 @@ class _VacantSite extends StatelessWidget {
 }
 
 class _OpenStoreDialog extends StatefulWidget {
-  const _OpenStoreDialog({required this.site, this.subsidiary = false});
+  const _OpenStoreDialog({
+    required this.site,
+    this.subsidiary = false,
+    this.wakeRow,
+  });
 
   final SiteDef site;
+
+  /// The neighbourhood asleep that opening here wakes, if any.
+  final int? wakeRow;
 
   /// Whether it opens as a company of its own unless the player says not.
   final bool subsidiary;
@@ -1576,10 +1979,18 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
           onPressed: capital == null || _name.text.trim().isEmpty || !ready
               ? null
               : () {
+                  // The site's number is only settled once it has woken.
+                  var site = widget.site.id;
+                  if (widget.wakeRow case final row?) {
+                    game.wake(row);
+                    site = game.content.sites
+                        .firstWhere((other) => other.key == widget.site.key)
+                        .id;
+                  }
                   game.submit(
                     OpenStore(
                       game.player,
-                      site: widget.site.id,
+                      site: site,
                       name: _name.text.trim(),
                       company: separate ? null : company.id,
                       capital: capital,

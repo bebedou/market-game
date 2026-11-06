@@ -16,6 +16,7 @@ import 'market.dart';
 import 'public_record.dart';
 import 'orders.dart';
 import 'research.dart';
+import 'sleepers.dart';
 import 'store.dart';
 
 /// All mutable truth about the world. Only commands and tick systems change
@@ -49,6 +50,10 @@ final class WorldState {
     required this.economicHistory,
     this.start,
   });
+
+  /// The neighbourhoods run by formula, not yet woken. Saved beside the world
+  /// and not in it, as nothing in the world depends on them.
+  final sleepers = <SleepingNeighbourhood>[];
 
   /// The world at the scenario's start date, the player's first store where
   /// and as [start] chose if given. Opening cash is the only money ever

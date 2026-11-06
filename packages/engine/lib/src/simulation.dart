@@ -8,6 +8,7 @@ import 'core/rng.dart';
 import 'core/hash32.dart';
 import 'core/ids.dart';
 import 'observation/observation.dart' as observation show observe, PublicView;
+import 'neighbourhoods/neighbourhood_generator.dart';
 import 'observation/observation.dart' show Observation;
 import 'persistence/save_file.dart';
 import 'persistence/state_io.dart';
@@ -17,7 +18,9 @@ import 'policies/policy.dart';
 import 'reports/attribution.dart';
 import 'reports/period_report.dart';
 import 'state/game_start.dart';
+import 'state/growth.dart';
 import 'state/invariants.dart';
+import 'state/sleepers.dart';
 import 'state/world_state.dart';
 import 'systems/events.dart';
 import 'systems/tick_system.dart';
@@ -61,13 +64,15 @@ final class TickResult {
 /// save only continues identically under the setup that produced it.
 final class Simulation {
   Simulation._(
-    this.content,
+    this._content,
     this.systems,
     Map<PersonId, Policy>? policies,
     this.world,
     this._log,
-    this._pending,
-  ) : policies = Map.unmodifiable(policies ?? standardPolicies(content));
+    this._pending, [
+    List<WokenNeighbourhood>? woken,
+  ]) : policies = Map.unmodifiable(policies ?? standardPolicies(_content)),
+       _woken = woken ?? [];
 
   /// A new game, starting from [content]'s initial world, with the
   /// player's first store as [start] chose if given: see [startTerms].
@@ -81,7 +86,11 @@ final class Simulation {
     content,
     systems,
     policies,
-    WorldState.initial(content, seed: seed, start: start),
+    WorldState.initial(content, seed: seed, start: start)
+      ..sleepers.addAll([
+        for (var row = 0; row < content.neighbourhoods.length; row++)
+          newSleeper(content, row, seed: seed),
+      ]),
     [],
     [],
   );
@@ -94,14 +103,28 @@ final class Simulation {
     Map<PersonId, Policy>? policies,
   }) {
     final save = SaveData.decode(content, file);
-    return Simulation._(
-      content,
+    final simulation = Simulation._(
+      save.content,
       systems,
       policies,
       save.world,
       save.log,
       save.pending,
+      List.of(save.woken),
     );
+    // A row the save doesn't know of starts its formula now.
+    final known = {
+      for (final sleeper in save.world.sleepers) sleeper.row,
+      for (final wake in save.woken) wake.row,
+    };
+    for (var row = 0; row < save.content.neighbourhoods.length; row++) {
+      if (!known.contains(row)) {
+        save.world.sleepers.add(
+          newSleeper(save.content, row, seed: save.world.seed),
+        );
+      }
+    }
+    return simulation;
   }
 
   /// Rebuilds the game saved in [file] from its seed and command log alone,
@@ -133,11 +156,49 @@ final class Simulation {
     return simulation;
   }
 
-  final ContentDb content;
+  ContentDb _content;
+
+  /// The scenario, and the neighbourhoods woken since the start.
+  ContentDb get content => _content;
   final List<TickSystem> systems;
 
   /// The AI policy acting for each actor it controls.
-  final Map<PersonId, Policy> policies;
+  Map<PersonId, Policy> policies;
+
+  final List<WokenNeighbourhood> _woken;
+
+  /// The neighbourhoods woken so far, in order.
+  List<WokenNeighbourhood> get woken => List.unmodifiable(_woken);
+
+  /// The rows of [ContentDb.neighbourhoods] still asleep.
+  List<int> get sleeping => [for (final sleeper in world.sleepers) sleeper.row];
+
+  ContentDb? _plan;
+  int _planMonth = -1;
+
+  WokenNeighbourhood _standing(SleepingNeighbourhood sleeper) => (
+    row: sleeper.row,
+    day: today,
+    priceIndex: world.macro.priceIndex,
+    households: sleeper.households,
+    shops: sleeper.shops,
+  );
+
+  /// The neighbourhoods still asleep, as they stand and would wake today:
+  /// [content] with them all added, to look at and not to play. Null if none
+  /// sleep. It's redone each month, when the formula has moved them.
+  ContentDb? get plan {
+    if (world.sleepers.isEmpty) return null;
+    final date = today.date;
+    final month = date.year * 12 + date.month;
+    if (_plan == null || _planMonth != month) {
+      _planMonth = month;
+      _plan = withNeighbourhoods(content, [
+        for (final sleeper in world.sleepers) _standing(sleeper),
+      ], seed: world.seed);
+    }
+    return _plan;
+  }
 
   /// The full world state, for engine internals and tests. The app will read
   /// observations instead.
@@ -153,12 +214,67 @@ final class Simulation {
   /// [policies] aren't logged: they regenerate on replay.
   List<LoggedCommand> get commandLog => List.unmodifiable(_log);
 
-  /// Queues [command] to be applied at the start of the next [step].
-  void submit(Command command) => _pending.add(command);
+  /// Queues [command] to be applied at the start of the next [step], or does
+  /// it at once if it wakes a neighbourhood, as what's queued after it may
+  /// refer to its sites.
+  void submit(Command command) {
+    if (command is WakeNeighbourhood) {
+      _wake(command);
+    } else {
+      _pending.add(command);
+    }
+  }
+
+  /// Adds the neighbourhood of [command] to the world: its sites, households,
+  /// shops and owners, on today's date. The shops have traded here for years.
+  /// Nothing happens if it is awake already or there's no such row.
+  void _wake(WakeNeighbourhood command) {
+    final sleeper = world.sleepers
+        .where((sleeper) => sleeper.row == command.row)
+        .firstOrNull;
+    if (sleeper == null) return;
+    final wake = _standing(sleeper);
+    final grown = withNeighbourhoods(content, [wake], seed: world.seed);
+    final stores = world.stores.length;
+    final persons = content.persons.length;
+    growWorld(world, grown);
+    world.sleepers.remove(sleeper);
+    // Each shop is as big as its history made it, and as well known.
+    final months = _monthsSinceStart();
+    final expansion = grown.expansion;
+    for (final (i, shop) in sleeper.shops.indexed) {
+      final store = world.stores[stores + i];
+      final site = grown.sites[store.site.index];
+      final steps = (shop.area - site.area) ~/ expansion.stepArea;
+      store
+        ..area = shop.area
+        ..shelfSlots += steps * expansion.shelfSlots
+        ..storageUnits += steps * expansion.storageUnits
+        ..reputation = months - shop.openedMonth >= 24
+            ? grown.demand.establishedReputation
+            : grown.demand.openingReputation;
+    }
+    final standard = standardPolicies(grown);
+    policies = Map.unmodifiable({
+      ...policies,
+      for (final MapEntry(:key, :value) in standard.entries)
+        if (key.index >= persons) key: value,
+    });
+    _content = grown;
+    _plan = null;
+    _woken.add(wake);
+    _log.add((day: today, command: command));
+  }
 
   /// What [actor] can see now, before the next [step].
   Observation observe(PersonId actor) =>
       observation.observe(world, content, actor);
+
+  int _monthsSinceStart() {
+    final start = content.startDay.date;
+    final now = today.date;
+    return (now.year - start.year) * 12 + now.month - start.month;
+  }
 
   /// Simulates one day: the policies decide from what their actors see,
   /// their commands and the queued ones are applied, then the tick systems
@@ -273,13 +389,22 @@ final class Simulation {
   List<PeriodReport> reports(CompanyId company, ReportPeriod period) =>
       companyReports(world, company, period);
 
-  SaveFile save() =>
-      SaveData(world: world, log: _log, pending: _pending).encode(content);
+  SaveFile save() => SaveData(
+    content: content,
+    world: world,
+    log: _log,
+    pending: _pending,
+    woken: _woken,
+  ).encode();
 
-  /// A hash of the canonical encoding of the world.
+  /// A hash of the canonical encoding of the world, with its neighbourhoods
+  /// run by formula if there are any.
   int stateHash() {
     final writer = StateWriter();
     world.write(writer);
+    for (final sleeper in world.sleepers) {
+      sleeper.write(writer);
+    }
     return (Hash32()..addBytes(writer.toBytes())).finish();
   }
 }

@@ -69,7 +69,12 @@ ResearchReport commissionStudy(
       if (store.market == market && store.status == StoreStatus.open) store,
   ];
   final sold = [for (final store in trading) _unitsSold(world, store)];
-  final total = sold.fold(0, (sum, units) => sum + units);
+  // Shoppers choose among the stores of a channel, so a share is of that.
+  final channelOf = content.formatChannels;
+  final totals = List.filled(content.channelCount, 0);
+  for (final (i, store) in trading.indexed) {
+    totals[channelOf[store.format.index]] += sold[i];
+  }
   return ResearchReport(
     number: number,
     buyer: buyer,
@@ -81,9 +86,13 @@ ResearchReport commissionStudy(
       for (final (i, store) in trading.indexed)
         (
           store: store.id,
-          share: total == 0
+          share: totals[channelOf[store.format.index]] == 0
               ? Fx.zero
-              : estimate(Fx.fromInt(sold[i]).div(Fx.fromInt(total))),
+              : estimate(
+                  Fx.fromInt(
+                    sold[i],
+                  ).div(Fx.fromInt(totals[channelOf[store.format.index]])),
+                ),
         ),
     ]),
   );

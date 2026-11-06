@@ -357,9 +357,11 @@ JobResult runJob(Job job, {bool writeCsv = false}) {
   var purchases = 0;
   var rescues = 0;
   final regimeDays = List.filled(content.macro.regimes.length, 0);
-  // Visits in the final year, by market and company.
-  final finalCompanyVisits = <(int, CompanyId), int>{};
-  final finalMarketVisits = List.filled(content.markets.length, 0);
+  // Visits in the final year, by market, channel and company: stores only take
+  // shoppers from those of their own channel.
+  final channelOf = content.formatChannels;
+  final finalCompanyVisits = <(int, int, CompanyId), int>{};
+  final finalChannelVisits = <(int, int), int>{};
   // An idle player's store never stocks anything, by design.
   final unchecked = job.bot == 'idle' ? content.player : null;
   final csv = StringBuffer(
@@ -484,15 +486,19 @@ JobResult runJob(Job job, {bool writeCsv = false}) {
       missed[miss.store.index][miss.reason.index] += units;
     }
     final visits = result.attribution.visits;
-    final marketVisits = List.filled(content.markets.length, 0);
+    final channelVisits = <(int, int), int>{};
     for (final store in world.stores) {
-      marketVisits[store.market.index] += visits[store.id.index];
+      final key = (store.market.index, channelOf[store.format.index]);
+      channelVisits[key] = (channelVisits[key] ?? 0) + visits[store.id.index];
     }
     final inFinalYear = day >= job.days - finalDays;
     if (inFinalYear) {
       for (final store in world.stores) {
-        final key = (store.market.index, store.company);
-        finalMarketVisits[store.market.index] += visits[store.id.index];
+        final channel = channelOf[store.format.index];
+        final key = (store.market.index, channel, store.company);
+        finalChannelVisits[(store.market.index, channel)] =
+            (finalChannelVisits[(store.market.index, channel)] ?? 0) +
+            visits[store.id.index];
         finalCompanyVisits[key] =
             (finalCompanyVisits[key] ?? 0) + visits[store.id.index];
       }
@@ -536,7 +542,11 @@ JobResult runJob(Job job, {bool writeCsv = false}) {
       if (inFinalYear && open) {
         summary
           ..finalVisits += visits[i]
-          ..finalMarketVisits += marketVisits[store.market.index]
+          ..finalMarketVisits +=
+              channelVisits[(
+                store.market.index,
+                channelOf[store.format.index],
+              )]!
           ..finalDaysOpen += 1;
         if (index != null) summary.finalPriceIndexSum += index;
       }
@@ -579,9 +589,15 @@ JobResult runJob(Job job, {bool writeCsv = false}) {
     }
   }
   final flags = <String>{};
-  for (final MapEntry(key: (market, _), value: visits)
+  // A shop alone in its trade has all of it, which is no one dominating.
+  final companiesIn = <(int, int), int>{};
+  for (final (market, channel, _) in finalCompanyVisits.keys) {
+    companiesIn[(market, channel)] = (companiesIn[(market, channel)] ?? 0) + 1;
+  }
+  for (final MapEntry(key: (market, channel, _), value: visits)
       in finalCompanyVisits.entries) {
-    if (_rate(visits, finalMarketVisits[market]) > dominantShare) {
+    if (companiesIn[(market, channel)]! > 1 &&
+        _rate(visits, finalChannelVisits[(market, channel)]!) > dominantShare) {
       flags.add('one company dominates ${content.markets[market].key}');
     }
   }

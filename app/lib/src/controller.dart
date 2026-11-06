@@ -57,7 +57,7 @@ typedef HoldingPeriod = ({Day start, Money profit, Money trading, int days});
 /// changes waiting for the next day, the news, and saving. Widgets read the
 /// player's [view] and reports from here, never the engine's world.
 class SimulationController extends ChangeNotifier {
-  SimulationController(this.content, Simulation simulation, {this.saves})
+  SimulationController(ContentDb content, Simulation simulation, {this.saves})
     : _simulation = simulation,
       _view = simulation.observe(content.player) {
     // What a loaded game had already reached isn't news.
@@ -107,7 +107,26 @@ class SimulationController extends ChangeNotifier {
   /// The most alerts kept.
   static const alertsKept = 100;
 
-  final ContentDb content;
+  /// The scenario, and any neighbourhoods woken since the start.
+  ContentDb get content => _simulation.content;
+
+  /// The neighbourhoods still asleep, as they would wake today, with the
+  /// scenario's content; null if none sleep. To look at, not to play.
+  ContentDb? get plan => _simulation.plan;
+
+  /// The neighbourhood of [row] as the formula runs it, while it sleeps.
+  SleepingNeighbourhood? sleeper(int row) => _simulation.world.sleepers
+      .where((sleeper) => sleeper.row == row)
+      .firstOrNull;
+
+  /// Starts simulating a neighbourhood asleep, for the player to open there:
+  /// [row] is its place in the scenario's list. The clock needn't have stepped
+  /// for its sites to exist.
+  void wake(int row) {
+    _simulation.submit(WakeNeighbourhood(player, row: row));
+    _view = _simulation.observe(player);
+    notifyListeners();
+  }
 
   /// Where the game is saved, if anywhere.
   final SaveStore? saves;

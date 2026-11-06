@@ -28,6 +28,8 @@ Refusal? applyCommand(
     return const Refusal('unknownActor');
   }
   return switch (command) {
+    // Done when it was submitted: see [Simulation.submit].
+    WakeNeighbourhood() => null,
     SetPrice() => _setPrice(world, content, command),
     PlaceOrder() => _placeOrder(world, content, command),
     ListProduct() => _listProduct(world, content, command),

@@ -45,7 +45,7 @@ final class StateWriter {
 /// The newest layout of saved state. Bump it whenever the layout or the
 /// simulation rules change, and have readers of older layouts fill in what
 /// they lack: see [StateReader.version].
-const int currentStateVersion = 22;
+const int currentStateVersion = 24;
 
 /// Reads what [StateWriter] wrote. Malformed or truncated data throws a
 /// [FormatException].

@@ -13,6 +13,7 @@ import 'operations.dart';
 import 'population.dart';
 import 'report.dart';
 import 'settlement.dart';
+import 'sleepers.dart';
 import 'solvency.dart';
 import 'spoilage.dart';
 import 'taxes.dart';
@@ -61,4 +62,5 @@ const List<TickSystem> standardSystems = [
   SolvencySystem(),
   CloseSystem(),
   ReportSystem(),
+  SleeperSystem(),
 ];

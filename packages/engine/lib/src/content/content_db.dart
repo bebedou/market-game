@@ -34,9 +34,18 @@ final class ContentDb {
     required this.persons,
     required this.companies,
     required this.stores,
+    this.neighbourhoods = const [],
+    this.source = '',
   });
 
   final String scenarioId;
+
+  /// Neighbourhoods not simulated until the player trades there: only their
+  /// figures, from which they are generated (see `Simulation.submit`).
+  final List<NeighbourhoodRow> neighbourhoods;
+
+  /// The JSON this was loaded from, for growing it.
+  final String source;
 
   /// A hash of the scenario's canonical JSON. A save only loads with the
   /// content it was made with, since IDs are positions in these lists.
@@ -137,6 +146,53 @@ final class ContentDb {
 
   final List<CompanySetup> companies;
   final List<StoreSetup> stores;
+}
+
+/// The figures a neighbourhood is generated from: who lives there and what
+/// things cost. Sites, shops and owners all follow from these and a seed.
+final class NeighbourhoodRow {
+  const NeighbourhoodRow({
+    required this.key,
+    required this.name,
+    required this.households,
+    required this.growth,
+    required this.priceLevel,
+    required this.wageLevel,
+    required this.incomeLevel,
+    required this.rent,
+    required this.typicalArea,
+    required this.largestArea,
+    required this.room,
+    this.playerStartsHere = false,
+  });
+
+  final String key;
+  final String name;
+
+  /// Households, and their yearly growth, indexed by segment.
+  final List<int> households;
+  final List<Fx> growth;
+
+  final Fx priceLevel;
+  final Fx wageLevel;
+  final Fx incomeLevel;
+
+  /// A month's rent per m² of a grocer's site at a location of 0.5.
+  final Money rent;
+
+  /// A grocer's usual selling area, in m².
+  final int typicalArea;
+
+  /// The biggest grocer's site, in m²: where there's space for a supermarket.
+  final int largestArea;
+
+  /// How many m² a grocer's site can grow by.
+  final int room;
+
+  /// Whether the player's first store is here.
+  final bool playerStartsHere;
+
+  int get totalHouseholds => households.fold(0, (sum, count) => sum + count);
 }
 
 final class MarketDef {

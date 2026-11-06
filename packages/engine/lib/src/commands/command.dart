@@ -25,6 +25,7 @@ sealed class Command {
     final tag = reader.readInt();
     final actor = PersonId(reader.readInt());
     return switch (tag) {
+      WakeNeighbourhood.tag => WakeNeighbourhood(actor, row: reader.readInt()),
       SetPrice.tag => SetPrice(
         actor,
         store: StoreId(reader.readInt()),
@@ -937,4 +938,27 @@ final class BuyCompany extends Command {
   String toString() =>
       'BuyCompany(actor: ${actor.index}, company: ${company.index}, '
       'borrow: ${borrow.toDecimalString()}, termMonths: $termMonths)';
+}
+
+/// Starts simulating a neighbourhood the game only held figures for, so its
+/// sites can be opened on and its shops compete. It takes effect at once, not
+/// with the day's other commands, as they may refer to its sites.
+final class WakeNeighbourhood extends Command {
+  const WakeNeighbourhood(super.actor, {required this.row});
+
+  static const int tag = 26;
+
+  /// Its place in [ContentDb.neighbourhoods].
+  final int row;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(row);
+  }
+
+  @override
+  String toString() => 'WakeNeighbourhood(actor: ${actor.index}, row: $row)';
 }

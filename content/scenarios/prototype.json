@@ -829,5 +829,133 @@
       "staff": { "morning": 1, "midday": 1, "evening": 1 },
       "prices": { "gadgets_budget": "14.45", "gadgets_premium": "88.48", "phones_budget": "200.48", "phones_premium": "1006.88", "smarthome_budget": "22.29", "smarthome_premium": "110.88" }
     }
+  ],
+  "neighbourhoods": [
+    {
+      "id": "presquile", "name": "Lyon, Presqu'île",
+      "households": {"families": 95, "professionals": 570, "students": 95, "retirees": 190, "singles": 570, "comfortable": 380},
+      "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
+      "priceLevel": "1.10", "wageLevel": "1.10", "incomeLevel": "1.25",
+      "rent": "14.00", "typicalArea": 110, "largestArea": 140, "room": 60
+    },
+    {
+      "id": "partdieu", "name": "Lyon, Part-Dieu",
+      "households": {"families": 312, "professionals": 780, "students": 260, "retirees": 208, "singles": 910, "comfortable": 130},
+      "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
+      "priceLevel": "1.02", "wageLevel": "1.02", "incomeLevel": "1.05",
+      "rent": "8.00", "typicalArea": 125, "largestArea": 180, "room": 90
+    },
+    {
+      "id": "villeurbanne", "name": "Lyon, Villeurbanne",
+      "households": {"families": 1020, "professionals": 272, "students": 850, "retirees": 306, "singles": 850, "comfortable": 102},
+      "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
+      "priceLevel": "0.96", "wageLevel": "0.95", "incomeLevel": "0.85",
+      "rent": "4.00", "typicalArea": 135, "largestArea": 190, "room": 120
+    },
+    {
+      "id": "confluence", "name": "Lyon, Confluence",
+      "households": {"families": 240, "professionals": 420, "students": 60, "retirees": 60, "singles": 180, "comfortable": 240},
+      "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
+      "priceLevel": "1.06", "wageLevel": "1.05", "incomeLevel": "1.20",
+      "rent": "9.00", "typicalArea": 130, "largestArea": 170, "room": 100
+    },
+    {
+      "id": "vaise", "name": "Lyon, Vaise",
+      "households": {"families": 525, "professionals": 180, "students": 75, "retirees": 300, "singles": 300, "comfortable": 120},
+      "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
+      "priceLevel": "0.97", "wageLevel": "0.96", "incomeLevel": "0.90",
+      "rent": "3.80", "typicalArea": 150, "largestArea": 230, "room": 130
+    },
+    {
+      "id": "gerland", "name": "Lyon, Gerland",
+      "households": {"families": 360, "professionals": 360, "students": 540, "retirees": 90, "singles": 360, "comfortable": 90},
+      "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
+      "priceLevel": "0.98", "wageLevel": "0.97", "incomeLevel": "0.92",
+      "rent": "4.60", "typicalArea": 120, "largestArea": 165, "room": 110
+    },
+    {
+      "id": "antigone", "name": "Montpellier, Antigone",
+      "households": {"families": 150, "professionals": 450, "students": 375, "retirees": 75, "singles": 375, "comfortable": 75},
+      "growth": {"families": "0.013", "professionals": "0.030", "students": "0.035", "retirees": "0.015", "singles": "0.035", "comfortable": "0.010"},
+      "priceLevel": "0.97", "wageLevel": "0.92", "incomeLevel": "0.95",
+      "rent": "4.40", "typicalArea": 115, "largestArea": 150, "room": 100
+    },
+    {
+      "id": "comedie", "name": "Montpellier, Comédie",
+      "households": {"families": 55, "professionals": 275, "students": 275, "retirees": 110, "singles": 275, "comfortable": 110},
+      "growth": {"families": "0.013", "professionals": "0.030", "students": "0.035", "retirees": "0.015", "singles": "0.035", "comfortable": "0.010"},
+      "priceLevel": "1.02", "wageLevel": "0.94", "incomeLevel": "1.05",
+      "rent": "7.00", "typicalArea": 100, "largestArea": 130, "room": 70
+    },
+    {
+      "id": "saintmichel", "name": "Bordeaux, Saint-Michel",
+      "households": {"families": 240, "professionals": 240, "students": 400, "retirees": 160, "singles": 480, "comfortable": 80},
+      "growth": {"families": "0.010", "professionals": "0.035", "students": "0.007", "retirees": "0.020", "singles": "0.030", "comfortable": "0.025"},
+      "priceLevel": "1.02", "wageLevel": "1.05", "incomeLevel": "0.95",
+      "rent": "7.50", "typicalArea": 110, "largestArea": 150, "room": 90
+    },
+    {
+      "id": "meriadeck", "name": "Bordeaux, Mériadeck",
+      "households": {"families": 120, "professionals": 480, "students": 60, "retirees": 120, "singles": 300, "comfortable": 120},
+      "growth": {"families": "0.010", "professionals": "0.035", "students": "0.007", "retirees": "0.020", "singles": "0.030", "comfortable": "0.025"},
+      "priceLevel": "1.08", "wageLevel": "1.10", "incomeLevel": "1.20",
+      "rent": "10.00", "typicalArea": 125, "largestArea": 160, "room": 90
+    },
+    {
+      "id": "bouffay", "name": "Nantes, Bouffay",
+      "households": {"families": 140, "professionals": 420, "students": 210, "retirees": 140, "singles": 420, "comfortable": 70},
+      "growth": {"families": "0.025", "professionals": "0.020", "students": "0.005", "retirees": "0.020", "singles": "0.020", "comfortable": "0.030"},
+      "priceLevel": "1.02", "wageLevel": "0.98", "incomeLevel": "1.05",
+      "rent": "6.50", "typicalArea": 110, "largestArea": 150, "room": 80
+    },
+    {
+      "id": "chantenay", "name": "Nantes, Chantenay",
+      "households": {"families": 595, "professionals": 170, "students": 85, "retirees": 340, "singles": 340, "comfortable": 170},
+      "growth": {"families": "0.025", "professionals": "0.020", "students": "0.005", "retirees": "0.020", "singles": "0.020", "comfortable": "0.030"},
+      "priceLevel": "0.95", "wageLevel": "0.94", "incomeLevel": "0.90",
+      "rent": "3.80", "typicalArea": 150, "largestArea": 220, "room": 130
+    },
+    {
+      "id": "vieuxlille", "name": "Lille, Vieux-Lille",
+      "households": {"families": 130, "professionals": 390, "students": 130, "retirees": 195, "singles": 260, "comfortable": 195},
+      "growth": {"families": "0.010", "professionals": "0.025", "students": "0.030", "retirees": "0.010", "singles": "0.025", "comfortable": "0.010"},
+      "priceLevel": "1.04", "wageLevel": "0.96", "incomeLevel": "1.15",
+      "rent": "8.00", "typicalArea": 105, "largestArea": 135, "room": 70
+    },
+    {
+      "id": "fives", "name": "Lille, Fives",
+      "households": {"families": 800, "professionals": 100, "students": 300, "retirees": 300, "singles": 440, "comfortable": 60},
+      "growth": {"families": "0.010", "professionals": "0.025", "students": "0.030", "retirees": "0.010", "singles": "0.025", "comfortable": "0.010"},
+      "priceLevel": "0.92", "wageLevel": "0.90", "incomeLevel": "0.75",
+      "rent": "3.20", "typicalArea": 130, "largestArea": 180, "room": 120
+    },
+    {
+      "id": "joliette", "name": "Marseille, La Joliette",
+      "households": {"families": 210, "professionals": 490, "students": 70, "retirees": 70, "singles": 420, "comfortable": 140},
+      "growth": {"families": "0.005", "professionals": "0.030", "students": "0.015", "retirees": "0.010", "singles": "0.030", "comfortable": "0.010"},
+      "priceLevel": "1.02", "wageLevel": "0.98", "incomeLevel": "1.05",
+      "rent": "7.00", "typicalArea": 125, "largestArea": 170, "room": 100
+    },
+    {
+      "id": "castellane", "name": "Marseille, Castellane",
+      "households": {"families": 400, "professionals": 300, "students": 200, "retirees": 400, "singles": 600, "comfortable": 100},
+      "growth": {"families": "0.005", "professionals": "0.030", "students": "0.015", "retirees": "0.010", "singles": "0.030", "comfortable": "0.010"},
+      "priceLevel": "0.98", "wageLevel": "0.95", "incomeLevel": "0.90",
+      "rent": "5.00", "typicalArea": 110, "largestArea": 150, "room": 90
+    },
+    {
+      "id": "belleville", "name": "Paris, Belleville",
+      "households": {"families": 390, "professionals": 520, "students": 390, "retirees": 260, "singles": 962, "comfortable": 78},
+      "growth": {"families": "-0.010", "professionals": "0.025", "students": "0", "retirees": "0.010", "singles": "0.015", "comfortable": "0.015"},
+      "priceLevel": "1.06", "wageLevel": "1.20", "incomeLevel": "0.95",
+      "rent": "26.00", "typicalArea": 100, "largestArea": 130, "room": 60
+    },
+    {
+      "id": "passy", "name": "Paris, Passy",
+      "households": {"families": 180, "professionals": 450, "students": 54, "retirees": 396, "singles": 270, "comfortable": 450},
+      "growth": {"families": "-0.010", "professionals": "0.025", "students": "0", "retirees": "0.010", "singles": "0.015", "comfortable": "0.015"},
+      "priceLevel": "1.18", "wageLevel": "1.28", "incomeLevel": "1.45",
+      "rent": "58.00", "typicalArea": 115, "largestArea": 140, "room": 50
+    }
   ]
 }

@@ -719,6 +719,54 @@ ContentDb loadScenario(String jsonText) {
     );
     node.finish();
   }
+  final neighbourhoods = <NeighbourhoodRow>[];
+  for (final node
+      in root.has('neighbourhoods')
+          ? root.objects('neighbourhoods')
+          : const <_Node>[]) {
+    final key = node.string('id');
+    // Once it has woken, it's among the markets too.
+    final woken = node.has('woken') && node.flag('woken');
+    if ((!woken && markets.any((market) => market.key == key)) ||
+        neighbourhoods.any((row) => row.key == key)) {
+      node._fail('id', 'there is already a place called "$key"');
+    }
+    final households = List.filled(segments.length, 0);
+    final householdNode = node.object('households');
+    for (final segmentKey in householdNode.keys.toList()) {
+      households[segmentKeys.resolve(
+        segmentKey,
+        householdNode.pathOf(segmentKey),
+      )] = householdNode.nonNegativeInt(
+        segmentKey,
+      );
+    }
+    householdNode.finish();
+    final growth = List.filled(segments.length, Fx.zero);
+    if (node.optionalObject('growth') case final growthNode?) {
+      for (final segmentKey in growthNode.keys.toList()) {
+        growth[segmentKeys.resolve(segmentKey, growthNode.pathOf(segmentKey))] =
+            growthNode.yearlyRate(segmentKey);
+      }
+      growthNode.finish();
+    }
+    neighbourhoods.add(
+      NeighbourhoodRow(
+        key: key,
+        name: node.string('name'),
+        households: List.unmodifiable(households),
+        growth: List.unmodifiable(growth),
+        priceLevel: node.level('priceLevel'),
+        wageLevel: node.level('wageLevel'),
+        incomeLevel: node.level('incomeLevel'),
+        rent: node.money('rent'),
+        typicalArea: node.positiveInt('typicalArea'),
+        largestArea: node.positiveInt('largestArea'),
+        room: node.positiveInt('room'),
+      ),
+    );
+    node.finish();
+  }
   root.finish();
 
   final structure = <ContentList>[
@@ -768,6 +816,8 @@ ContentDb loadScenario(String jsonText) {
     persons: List.unmodifiable(persons),
     companies: List.unmodifiable(companies),
     stores: List.unmodifiable(stores),
+    neighbourhoods: List.unmodifiable(neighbourhoods),
+    source: jsonText,
   );
 }
 

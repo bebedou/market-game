@@ -1,0 +1,329 @@
+import '../content/content_db.dart';
+import '../core/calendar.dart';
+import '../core/exp_neg.dart';
+import '../core/fx.dart';
+import '../core/money.dart';
+import '../core/safe_int.dart';
+import '../state/store.dart';
+import 'observation.dart';
+
+/// What a new shop might do on a site, by estimate.
+typedef ShopOutlook = ({
+  /// A settled year's sales, at today's prices.
+  Money sales,
+
+  /// A settled year's profit before tax.
+  Money profit,
+
+  /// What households here spend on what the shop's channel sells, a year.
+  Money spending,
+
+  /// Its share of that: a shop takes nothing from any other channel's.
+  Fx share,
+
+  /// The shops of its channel trading here now.
+  int rivals,
+});
+
+/// What a typical new shop of a format does with its neighbourhood's trade,
+/// fitted to new shops opened in test games.
+final class ShopHabits {
+  const ShopHabits({
+    required this.capture,
+    required this.draw,
+    required this.goodsExtra,
+    this.unitsPerVisit = 1,
+  });
+
+  /// What it turns into sales of what households here would buy from it.
+  final Fx capture;
+
+  /// How it draws shoppers against the shops already here, for its site.
+  final Fx draw;
+
+  /// What its goods cost beyond the list: what it throws away, less what its
+  /// suppliers take off for volume.
+  final Fx goodsExtra;
+
+  final int unitsPerVisit;
+}
+
+const _grocer = ShopHabits(
+  capture: Fx.raw(9500),
+  draw: Fx.one,
+  goodsExtra: Fx.raw(-200),
+  unitsPerVisit: 3,
+);
+
+ShopHabits habitsOf(FormatDef format) => switch (format.key) {
+  'fastfood' => const ShopHabits(
+    capture: Fx.one,
+    draw: Fx.one,
+    goodsExtra: Fx.raw(2200),
+  ),
+  'steakhouse' => const ShopHabits(
+    capture: Fx.one,
+    draw: Fx.one,
+    goodsExtra: Fx.raw(1600),
+  ),
+  'finedining' => const ShopHabits(
+    capture: Fx.one,
+    draw: Fx.one,
+    goodsExtra: Fx.raw(3000),
+  ),
+  'electronics' => const ShopHabits(
+    capture: Fx.raw(11000),
+    draw: Fx.raw(12000),
+    goodsExtra: Fx.zero,
+  ),
+  _ => _grocer,
+};
+
+/// How much a rival's prices against normal weigh on who shoppers choose.
+const _priceWeight = Fx.raw(50000);
+const _dearest = Fx.raw(500);
+const _cheapest = Fx.raw(-1500);
+
+/// Staff for the shoppers a shop serves, against what the strategy aims for:
+/// shoppers don't come evenly through the day.
+const _peakStaff = Fx.raw(15000);
+
+/// What [households], by segment, buy in a year of what [format] sells: at
+/// normal prices; at what the goods cost; at that cost at the place's prices,
+/// which a strategy's markup goes on; and how many units that is.
+({Money spending, Money goods, Money atLevel, Fx units}) tradeDemand(
+  ContentDb content, {
+  required List<int> households,
+  required Fx incomeLevel,
+  required Fx priceLevel,
+  required Fx priceIndex,
+  required Day today,
+  required FormatDef format,
+}) {
+  final level = priceIndex * priceLevel;
+  var spending = Money.zero;
+  var goods = Money.zero;
+  var atLevel = Money.zero;
+  var units = Fx.zero;
+  for (final segment in content.segments) {
+    final count = households[segment.id.index];
+    if (count == 0) continue;
+    for (final product in content.products) {
+      final c = product.category.index;
+      if (!format.sells[c]) continue;
+      var yearly = segment.dailyUnits[c].timesInt(365);
+      final adoption = content.categories[c].diffusion?.adoption(today);
+      if (adoption != null) yearly *= adoption;
+      var premium = segment.premiumShare[c] * incomeLevel;
+      if (premium > Fx.one) premium = Fx.one;
+      final tier = product.tier == ProductTier.premium
+          ? premium
+          : Fx.one - premium;
+      final bought = (yearly * tier).timesInt(count);
+      spending += product.referencePrice.times(level).times(bought);
+      goods += product.baseCost.times(priceIndex).times(bought);
+      atLevel += product.baseCost.times(level).times(bought);
+      units += bought;
+    }
+  }
+  return (spending: spending, goods: goods, atLevel: atLevel, units: units);
+}
+
+/// What households in [market] buy in a year of what [format] sells. Households
+/// by type are the scenario's mix at the latest census.
+({Money spending, Money goods, Money atLevel, Fx units}) _demand(
+  Observation view,
+  ContentDb content,
+  MarketDef market,
+  FormatDef format,
+) {
+  final mix = market.households.fold(0, (sum, count) => sum + count);
+  // A neighbourhood still asleep has had no census: it's as its plan says.
+  final census = market.id.index < view.households.length
+      ? view.households[market.id.index]
+      : mix;
+  return tradeDemand(
+    content,
+    households: [
+      for (final count in market.households)
+        mix == 0 ? 0 : mulDivRound(count, census, mix),
+    ],
+    incomeLevel: market.incomeLevel,
+    priceLevel: market.priceLevel,
+    priceIndex: view.macro.priceIndex,
+    today: view.today,
+    format: format,
+  );
+}
+
+/// How a shop's [location] and [area] draw shoppers, as they weigh size.
+Fx shopPull(ContentDb content, Fx location, int area) =>
+    location *
+    Fx.raw(mulDivRound(area, Fx.scale, area + content.demand.halfSizeArea));
+
+/// A year's wages for a shop serving [unitsServed] a year: staff for the
+/// shoppers, and for every slot it opens at all.
+Money yearlyWages(
+  ContentDb content,
+  FormatDef format,
+  StrategyDef strategy, {
+  required Fx wageIndex,
+  required Fx wageLevel,
+  required Fx unitsServed,
+  required int unitsPerVisit,
+  Fx peak = _peakStaff,
+}) {
+  final visits = Fx.raw(mulDivRound(unitsServed.raw, 1, 365 * unitsPerVisit));
+  final staff = Fx.raw(
+    mulDivRound(
+      (visits * strategy.serviceTarget * peak).raw,
+      1,
+      format.visitsPerStaff,
+    ),
+  );
+  final slots = Fx.fromInt(strategy.hours.where((open) => open).length);
+  return content.operations.slotWage
+      .times(wageIndex * wageLevel * format.wageFactor)
+      .times(staff > slots ? staff : slots)
+      .timesInt(365);
+}
+
+/// What households in [market] spend in a year on what [format] sells: all the
+/// trade there is for its shops to share.
+Money tradeSpending(
+  Observation view,
+  ContentDb content,
+  MarketDef market,
+  FormatDef format,
+) => _demand(view, content, market, format).spending;
+
+/// The strategy a well-run shop of [format] follows: the balanced one of its
+/// channel if it has one, or else its channel's first.
+StrategyDef usualStrategy(ContentDb content, FormatDef format) {
+  final channel = content.formatChannels[format.id.index];
+  final own = [
+    for (final strategy in content.strategies)
+      if (content.formatChannels[strategy.format.index] == channel) strategy,
+  ];
+  if (own.isEmpty) return content.strategies.first;
+  return own.firstWhere(
+    (strategy) => strategy.key == 'balanced',
+    orElse: () => own.first,
+  );
+}
+
+/// How a shop's shelf [prices] against normal draw shoppers: a cheaper one
+/// more.
+Fx _priceDraw(
+  ContentDb content,
+  List<Money?> prices,
+  MarketDef market,
+  MacroView macro,
+) {
+  final level = macro.priceIndex * market.priceLevel;
+  var atShelf = 0;
+  var normal = 0;
+  for (final (p, price) in prices.indexed) {
+    if (price == null) continue;
+    atShelf += price.cents;
+    normal += content.products[p].referencePrice.times(level).cents;
+  }
+  if (normal == 0) return Fx.one;
+  return priceDraw(Fx.raw(mulDivRound(atShelf - normal, Fx.scale, normal)));
+}
+
+/// How prices [gap] above normal draw shoppers, within what lasts: a shop far
+/// from normal doesn't stay there, as a new game's dear shops soon settle.
+Fx priceDraw(Fx gap) {
+  if (gap > _dearest) gap = _dearest;
+  if (gap < _cheapest) gap = _cheapest;
+  return gap.isNegative
+      ? Fx.one.div(expNeg(_priceWeight * -gap))
+      : expNeg(_priceWeight * gap);
+}
+
+/// What a new shop of [format] on [site] might do, from what anyone can see,
+/// or, for a neighbourhood still asleep, from its plan ([content] being
+/// `Simulation.plan`):
+/// who lives in the neighbourhood and buys what, the rivals of its own channel
+/// on its streets and their prices, and what the site and staff cost. It
+/// assumes normal prices
+/// and a shop that is run well, past its first months, with no manager.
+ShopOutlook shopOutlook(
+  Observation view,
+  ContentDb content,
+  SiteDef site,
+  FormatDef format,
+) {
+  final market = content.markets[site.market.index];
+  final habits = habitsOf(format);
+  final macro = view.macro;
+  final (:spending, :goods, :units, atLevel: _) = _demand(
+    view,
+    content,
+    market,
+    format,
+  );
+  Fx pull(Fx location, int area) => shopPull(content, location, area);
+  final channel = content.formatChannels[format.id.index];
+  final mine = pull(site.location, site.area) * habits.draw;
+  var total = mine;
+  var rivals = 0;
+  // Shops of a neighbourhood asleep are in its plan alone.
+  if (market.id.index >= view.households.length) {
+    for (final store in content.stores) {
+      final there = content.sites[store.site.index];
+      if (there.market != market.id ||
+          content.formatChannels[store.format.index] != channel) {
+        continue;
+      }
+      total +=
+          pull(there.location, there.area) *
+          _priceDraw(content, store.prices, market, macro);
+      rivals++;
+    }
+  }
+  for (final shelf in view.shelves) {
+    if (shelf.market != market.id ||
+        content.formatChannels[shelf.format.index] != channel ||
+        shelf.status == StoreStatus.closed) {
+      continue;
+    }
+    total +=
+        pull(shelf.location, shelf.area) *
+        _priceDraw(content, shelf.prices, market, macro);
+    rivals++;
+  }
+  final share = mine.div(total);
+  final served = share * habits.capture;
+  final sales = spending.times(served);
+  final bought = goods.times(served);
+
+  final strategy = usualStrategy(content, format);
+  final wages = yearlyWages(
+    content,
+    format,
+    strategy,
+    wageIndex: macro.wageIndex,
+    wageLevel: market.wageLevel,
+    unitsServed: units * served,
+    unitsPerVisit: habits.unitsPerVisit,
+  );
+  final premises = (site.rent + format.overheadsFor(site.area))
+      .times(macro.priceIndex)
+      .timesInt(12);
+  final profit =
+      sales -
+      bought -
+      bought.times(habits.goodsExtra) -
+      sales.times(strategy.marketingShare) -
+      wages -
+      premises;
+  return (
+    sales: sales,
+    profit: profit,
+    spending: spending,
+    share: share,
+    rivals: rivals,
+  );
+}

@@ -3,7 +3,10 @@ import 'dart:typed_data';
 import '../commands/command.dart';
 import '../content/content_db.dart';
 import '../core/calendar.dart';
+import '../core/fx.dart';
+import '../neighbourhoods/neighbourhood_generator.dart';
 import '../state/growth.dart';
+import '../state/sleepers.dart';
 import '../state/world_state.dart';
 import 'state_io.dart';
 
@@ -22,12 +25,22 @@ const int oldestReadableVersion = 6;
 /// save can check how the content grew.
 const int _structureVersion = 9;
 
+/// The first format whose header says which neighbourhoods woke, so the
+/// content can be grown to match before anything else is read.
+const int _wokenVersion = 24;
+
 const String _magic = 'market-game-save';
 
 /// What a save holds: a snapshot of the world, the full command log since the
 /// start (for replays), and commands queued for the next step.
 final class SaveData {
-  SaveData({required this.world, required this.log, required this.pending});
+  SaveData({
+    required this.content,
+    required this.world,
+    required this.log,
+    required this.pending,
+    this.woken = const [],
+  });
 
   /// Reads [file], from any format since [oldestReadableVersion], and grows
   /// its world into [content] if the scenario gained markets, sites, people
@@ -35,7 +48,7 @@ final class SaveData {
   /// from a format this engine doesn't read, was made with content whose
   /// lists changed other than by growing, or is damaged. Changed numbers are
   /// fine: that is how balance tweaks keep saves.
-  factory SaveData.decode(ContentDb content, SaveFile file) {
+  factory SaveData.decode(ContentDb scenario, SaveFile file) {
     final reader = StateReader(file.bytes);
     String magic;
     try {
@@ -55,6 +68,35 @@ final class SaveData {
     }
     reader.version = version;
     final scenarioId = reader.readString();
+    final woken = <WokenNeighbourhood>[];
+    var content = scenario;
+    if (version >= _wokenVersion) {
+      final seed = reader.readInt();
+      for (var i = 0, n = reader.readInt(); i < n; i++) {
+        woken.add((
+          row: reader.readInt(),
+          day: Day(reader.readInt()),
+          priceIndex: Fx.raw(reader.readInt()),
+          households: [
+            for (var h = 0, m = reader.readInt(); h < m; h++) reader.readInt(),
+          ],
+          shops: [
+            for (var s = 0, m = reader.readInt(); s < m; s++)
+              SleepingShop.read(reader),
+          ],
+        ));
+      }
+      if (woken.isNotEmpty) {
+        if (woken.any((w) => w.row >= scenario.neighbourhoods.length)) {
+          throw const FormatException(
+            'The save was made with different content (neighbourhoods)',
+          );
+        }
+        for (final wake in woken) {
+          content = withNeighbourhoods(content, [wake], seed: seed);
+        }
+      }
+    }
     String? problem;
     if (version >= _structureVersion) {
       problem = _structureProblem(_readStructure(reader), content.structure);
@@ -79,6 +121,11 @@ final class SaveData {
     final pending = [
       for (var i = 0, n = reader.readInt(); i < n; i++) Command.read(reader),
     ];
+    if (version >= _wokenVersion) {
+      for (var i = 0, n = reader.readInt(); i < n; i++) {
+        world.sleepers.add(SleepingNeighbourhood.read(reader));
+      }
+    }
     reader.expectEnd();
     if (version < _structureVersion) {
       if (growthProblem(world, content) case final problem?) {
@@ -88,19 +135,44 @@ final class SaveData {
       }
     }
     growWorld(world, content);
-    return SaveData(world: world, log: log, pending: pending);
+    return SaveData(
+      content: content,
+      world: world,
+      log: log,
+      pending: pending,
+      woken: woken,
+    );
   }
 
+  /// The content the world goes with: the scenario's, plus what woke.
+  final ContentDb content;
+
+  /// The neighbourhoods woken, in order.
+  final List<WokenNeighbourhood> woken;
   final WorldState world;
   final List<LoggedCommand> log;
   final List<Command> pending;
 
-  SaveFile encode(ContentDb content) {
+  SaveFile encode() {
     final writer = StateWriter()
       ..writeString(_magic)
       ..writeInt(saveFormatVersion)
       ..writeString(content.scenarioId)
-      ..writeInt(content.structure.length);
+      ..writeInt(world.seed)
+      ..writeInt(woken.length);
+    for (final (:row, :day, :priceIndex, :households, :shops) in woken) {
+      writer
+        ..writeInt(row)
+        ..writeInt(day.number)
+        ..writeInt(priceIndex.raw)
+        ..writeInt(households.length);
+      households.forEach(writer.writeInt);
+      writer.writeInt(shops.length);
+      for (final shop in shops) {
+        shop.write(writer);
+      }
+    }
+    writer.writeInt(content.structure.length);
     for (final (:name, :keys) in content.structure) {
       writer
         ..writeString(name)
@@ -116,6 +188,10 @@ final class SaveData {
     writer.writeInt(pending.length);
     for (final command in pending) {
       command.write(writer);
+    }
+    writer.writeInt(world.sleepers.length);
+    for (final sleeper in world.sleepers) {
+      sleeper.write(writer);
     }
     return SaveFile(writer.toBytes());
   }
