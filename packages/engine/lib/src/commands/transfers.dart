@@ -1,6 +1,7 @@
 import '../accounting/ledger.dart';
 import '../content/content_db.dart';
 import '../core/money.dart';
+import '../state/brands.dart';
 import '../state/entities.dart';
 import '../state/store.dart';
 import '../state/valuation.dart';
@@ -117,6 +118,7 @@ Company? sellToBestBuyer(
     );
   }
   transferStore(world, ledger, store, buyer, value.price);
+  takeOverName(world, content, store, buyer.owner);
   return buyer;
 }
 

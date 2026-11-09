@@ -59,8 +59,9 @@ const List<TickSystem> standardSystems = [
   OperationsSystem(),
   DemandSystem(),
   SettlementSystem(),
+  // Before solvency and reports: chains' shops in districts book there.
+  SleeperSystem(),
   SolvencySystem(),
   CloseSystem(),
   ReportSystem(),
-  SleeperSystem(),
 ];

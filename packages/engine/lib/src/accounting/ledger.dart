@@ -135,6 +135,9 @@ enum PartyType {
 
   /// The state, which collects taxes.
   government,
+
+  /// Everyone beyond the districts played in full: see `Elsewhere`.
+  elsewhere,
 }
 
 /// Who a journal entry belongs to: a party type and its index.

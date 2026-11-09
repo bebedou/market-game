@@ -17,6 +17,14 @@ typedef OrderQuantity = ({ProductId product, int quantity});
 ///
 /// Each command type has a serialization tag. Never renumber one: saved
 /// command logs depend on it.
+/// A brand a command names, in a save that has them.
+BrandId? _readBrand(StateReader reader) => reader.version >= 25
+    ? switch (reader.readNullableInt()) {
+        final index? => BrandId(index),
+        null => null,
+      }
+    : null;
+
 sealed class Command {
   const Command(this.actor);
 
@@ -88,6 +96,26 @@ sealed class Command {
             : const FormatId(0),
         borrow: reader.version >= 21 ? Money(reader.readInt()) : Money.zero,
         termMonths: reader.version >= 21 ? reader.readInt() : 0,
+        brand: _readBrand(reader),
+      ),
+      CreateBrand.tag => CreateBrand(
+        actor,
+        name: reader.readString(),
+        format: FormatId(reader.readInt()),
+      ),
+      OpenInDistrict.tag => OpenInDistrict(
+        actor,
+        row: reader.readInt(),
+        site: reader.readInt(),
+        company: CompanyId(reader.readInt()),
+        format: FormatId(reader.readInt()),
+        capital: Money(reader.readInt()),
+      ),
+      BuyInDistrict.tag => BuyInDistrict(
+        actor,
+        row: reader.readInt(),
+        site: reader.readInt(),
+        company: CompanyId(reader.readInt()),
       ),
       CloseStore.tag => CloseStore(actor, store: StoreId(reader.readInt())),
       SetStaffing.tag => SetStaffing(
@@ -145,6 +173,7 @@ sealed class Command {
         company: CompanyId(reader.readInt()),
         borrow: reader.version >= 21 ? Money(reader.readInt()) : Money.zero,
         termMonths: reader.version >= 21 ? reader.readInt() : 0,
+        brand: _readBrand(reader),
       ),
       SellStore.tag => SellStore(actor, store: StoreId(reader.readInt())),
       BuyCompany.tag => BuyCompany(
@@ -441,6 +470,7 @@ final class OpenStore extends Command {
     this.format = const FormatId(0),
     this.borrow = Money.zero,
     this.termMonths = 0,
+    this.brand,
   });
 
   static const int tag = 9;
@@ -457,6 +487,10 @@ final class OpenStore extends Command {
   final Money borrow;
   final int termMonths;
 
+  /// The actor's brand to open it under, which names it, if any. An AI
+  /// owner's shops always trade under its brand.
+  final BrandId? brand;
+
   @override
   void write(StateWriter writer) {
     writer
@@ -468,7 +502,8 @@ final class OpenStore extends Command {
       ..writeInt(capital.cents)
       ..writeInt(format.index)
       ..writeInt(borrow.cents)
-      ..writeInt(termMonths);
+      ..writeInt(termMonths)
+      ..writeNullableInt(brand?.index);
   }
 
   @override
@@ -476,7 +511,111 @@ final class OpenStore extends Command {
       'OpenStore(actor: ${actor.index}, site: ${site.index}, name: $name, '
       'company: ${company?.index}, capital: ${capital.toDecimalString()}, '
       'format: ${format.index}, borrow: ${borrow.toDecimalString()}, '
-      'termMonths: $termMonths)';
+      'termMonths: $termMonths, brand: ${brand?.index})';
+}
+
+/// Opens a shop of [company]'s in a district run by formula, under the
+/// actor's brand: it trades by formula, in the company's books, until the
+/// district wakes. Only an AI owner's chain does this: a shop of the
+/// player's wakes the district instead.
+final class OpenInDistrict extends Command {
+  const OpenInDistrict(
+    super.actor, {
+    required this.row,
+    required this.site,
+    required this.company,
+    required this.format,
+    this.capital = Money.zero,
+  });
+
+  static const int tag = 28;
+
+  /// The district's place in the scenario's neighbourhoods.
+  final int row;
+
+  /// The site's number in the district.
+  final int site;
+  final CompanyId company;
+  final FormatId format;
+
+  /// What the actor puts into the company towards it first.
+  final Money capital;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(row)
+      ..writeInt(site)
+      ..writeInt(company.index)
+      ..writeInt(format.index)
+      ..writeInt(capital.cents);
+  }
+
+  @override
+  String toString() =>
+      'OpenInDistrict(actor: ${actor.index}, row: $row, site: $site, '
+      'company: ${company.index}, format: ${format.index}, '
+      'capital: ${capital.toDecimalString()})';
+}
+
+/// Buys the shop on [site] of a district run by formula, at its asking
+/// price, for [company], which puts it under the actor's brand. Only an AI
+/// owner's chain does this.
+final class BuyInDistrict extends Command {
+  const BuyInDistrict(
+    super.actor, {
+    required this.row,
+    required this.site,
+    required this.company,
+  });
+
+  static const int tag = 29;
+
+  final int row;
+  final int site;
+  final CompanyId company;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(row)
+      ..writeInt(site)
+      ..writeInt(company.index);
+  }
+
+  @override
+  String toString() =>
+      'BuyInDistrict(actor: ${actor.index}, row: $row, site: $site, '
+      'company: ${company.index})';
+}
+
+/// Starts a brand for one type of business, which the actor's shops can then
+/// be opened or bought under.
+final class CreateBrand extends Command {
+  const CreateBrand(super.actor, {required this.name, required this.format});
+
+  static const int tag = 27;
+
+  final String name;
+  final FormatId format;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeString(name)
+      ..writeInt(format.index);
+  }
+
+  @override
+  String toString() =>
+      'CreateBrand(actor: ${actor.index}, name: $name, '
+      'format: ${format.index})';
 }
 
 /// Closes a store for good: its stock is written off and its site is freed.
@@ -850,6 +989,7 @@ final class BuyStore extends Command {
     required this.company,
     this.borrow = Money.zero,
     this.termMonths = 0,
+    this.brand,
   });
 
   static const int tag = 20;
@@ -863,6 +1003,10 @@ final class BuyStore extends Command {
   final Money borrow;
   final int termMonths;
 
+  /// The actor's brand to put it under, if any; without one, it keeps its
+  /// name. An AI owner puts it under its own brand.
+  final BrandId? brand;
+
   @override
   void write(StateWriter writer) {
     writer
@@ -871,14 +1015,15 @@ final class BuyStore extends Command {
       ..writeInt(store.index)
       ..writeInt(company.index)
       ..writeInt(borrow.cents)
-      ..writeInt(termMonths);
+      ..writeInt(termMonths)
+      ..writeNullableInt(brand?.index);
   }
 
   @override
   String toString() =>
       'BuyStore(actor: ${actor.index}, store: ${store.index}, '
       'company: ${company.index}, borrow: ${borrow.toDecimalString()}, '
-      'termMonths: $termMonths)';
+      'termMonths: $termMonths, brand: ${brand?.index})';
 }
 
 /// Sells one of the actor's stores at its asking price to the AI owner of

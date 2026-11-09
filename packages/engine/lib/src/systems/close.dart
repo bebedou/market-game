@@ -25,12 +25,15 @@ final class CloseSystem implements TickSystem {
         [for (final _ in SalesCount.values) List.filled(products, 0)],
     ];
     for (final entry in context.ledger.entries) {
+      // A chain's month in a district run by formula is no store's.
+      final (store, product) = (entry.store, entry.product);
       if (entry.reason != EntryReason.sale ||
-          entry.party.type != PartyType.company) {
+          entry.party.type != PartyType.company ||
+          store == null ||
+          product == null) {
         continue;
       }
-      final sold = counts[entry.store!.index][SalesCount.sold.index];
-      sold[entry.product!.index] += entry.units;
+      counts[store.index][SalesCount.sold.index][product.index] += entry.units;
     }
     for (final MapEntry(key: miss, value: units)
         in context.attribution.misses.entries) {

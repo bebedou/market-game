@@ -119,7 +119,7 @@ void main() {
     expect(find.text('Fast food: a new shop'), findsOneWidget);
     expect(find.text('Best free site'), findsOneWidget);
     expect(find.textContaining('about 100%'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Who and what is here'), 300);
+    await tester.scrollUntilVisible(find.text('Businesses'), 300);
     await tester.scrollUntilVisible(find.text('Vacant sites'), 300);
   });
 
@@ -139,7 +139,7 @@ void main() {
     await openIndex(tester, 'Lyon, Part-Dieu');
     expect(row, findsNothing);
     expect(find.text('Convenience store: a new shop'), findsOneWidget);
-    await tester.scrollUntilVisible(find.textContaining('without you'), 300);
+    await tester.scrollUntilVisible(find.textContaining("you don't own"), 300);
     final markets = game.content.markets.length;
     final stores = game.view.shelves.length;
     game.wake(
@@ -151,7 +151,7 @@ void main() {
     expect(game.content.markets, hasLength(markets + 1));
     expect(game.view.shelves.length, greaterThan(stores));
     // The same page, from the game now.
-    expect(find.textContaining('without you'), findsNothing);
+    expect(find.textContaining("you don't own"), findsNothing);
     expect(find.text('Convenience store: a new shop'), findsOneWidget);
     // Nothing more to wake it for, and the game goes on.
     game.step();
@@ -221,6 +221,131 @@ void main() {
       ),
       hasLength(1),
     );
+  });
+
+  testWidgets('a brand is created in the holding and names a shop opened '
+      'under it', (tester) async {
+    final game = newController();
+    await pumpGame(tester, game);
+    await openIndex(tester, 'Create a brand');
+    await tester.enterText(find.byType(TextField), 'Coin Malin');
+    await tester.pump();
+    await tester.tap(find.text('Create brand'));
+    await tester.pumpAndSettle();
+    // There at once, for a shop to open under it today.
+    expect(game.myBrands.single.name, 'Coin Malin');
+    await scrollTo(tester, find.widgetWithText(IndexRow, 'Coin Malin'));
+    expect(find.text('Convenience store · 0 stores'), findsOneWidget);
+    // A second of the same name isn't allowed.
+    await openIndex(tester, 'Create a brand');
+    await tester.enterText(find.byType(TextField), 'coin malin');
+    await tester.pump();
+    expect(find.text('That name is taken'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.textContaining('Show all'), 300);
+    await tester.ensureVisible(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await openIndex(tester, 'Lyon, Part-Dieu');
+    final open = find.widgetWithText(OutlinedButton, 'Open').first;
+    await tester.scrollUntilVisible(open, 300);
+    await tester.ensureVisible(open);
+    await tester.pumpAndSettle();
+    await tester.tap(open);
+    await tester.pumpAndSettle();
+    // The brand is picked, so the shop is named after it, not by hand.
+    expect(find.text('Named Coin Malin Part-Dieu'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Store name'), findsNothing);
+    await tester.enterText(find.byType(TextField).last, '20000');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FilledButton).last);
+    await tester.pumpAndSettle();
+    game.step();
+    await tester.pump();
+    final store = game.myStores.last.$2;
+    expect(game.view.shelves[store.id.index].name, 'Coin Malin Part-Dieu');
+    expect(game.myBrands.single.shops, 1);
+  });
+
+  testWidgets('a chain\'s shops in districts are among its stores', (
+    tester,
+  ) async {
+    final game = newController();
+    final chain = PersonId(
+      prototype.persons.indexWhere((p) => p.key == 'owner_quickstop'),
+    );
+    final company = CompanyId(
+      prototype.companies.indexWhere((c) => c.key == 'quickstop'),
+    );
+    final district = game.view.districts.firstWhere(
+      (d) => d.name == 'Lyon, Part-Dieu',
+    );
+    final site = district.free.firstWhere((site) => site.area >= 100);
+    game
+      ..submit(
+        OpenInDistrict(
+          chain,
+          row: district.row,
+          site: site.number,
+          company: company,
+          format: format('grocery'),
+          capital: Money.parse('30000.00'),
+        ),
+      )
+      ..step();
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Competitors'), 300);
+    await openIndex(tester, 'Competitors');
+    final tile = find.text('QuickStop Market').first;
+    await tester.scrollUntilVisible(tile, 300);
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('QuickStop Market Part-Dieu'),
+      300,
+    );
+    expect(find.text('Convenience store, Lyon, Part-Dieu'), findsOneWidget);
+  });
+
+  testWidgets('with the cities asleep, only the home city is in play, and '
+      'another wakes with its own businesses', (tester) async {
+    final game = SimulationController.newGame(
+      prototype,
+      seed: 7,
+      citiesAsleep: true,
+    );
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.textContaining('Show all'), 300);
+    await tester.ensureVisible(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await openIndex(tester, 'Paris, Batignolles');
+    await tester.scrollUntilVisible(find.text('Maison Lemercier'), 300);
+    expect(find.text('Steak & Co'), findsOneWidget);
+    expect(game.content.markets.single.name, 'Lyon, Croix-Rousse');
+    game.wake(
+      game.content.neighbourhoods.indexWhere(
+        (row) => row.name == 'Paris, Batignolles',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(game.content.markets.last.name, 'Paris, Batignolles');
+    expect(
+      game.view.shelves.map((shelf) => shelf.name),
+      contains('Maison Lemercier'),
+    );
+    game.step();
+    await tester.pump();
   });
 
   testWidgets('the finance tab shows the accounts and the taxes', (

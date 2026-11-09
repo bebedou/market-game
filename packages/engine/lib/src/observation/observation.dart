@@ -5,6 +5,8 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../reports/period_report.dart' show ReportPeriod;
+import '../state/districts.dart';
+import '../state/brands.dart';
 import '../state/credit.dart';
 import '../state/director.dart';
 import '../state/entities.dart';
@@ -43,7 +45,20 @@ final class Observation {
     this.companyPrices = const [],
     this.companyCredits = const [],
     this.guaranteeRoom = Money.zero,
-  });
+    this.brands = const [],
+    List<DistrictView> Function() districts = _noDistricts,
+  }) : _districts = districts;
+
+  static List<DistrictView> _noDistricts() => const [];
+
+  final List<DistrictView> Function() _districts;
+
+  /// The districts run by formula, as anyone can see them, where chains may
+  /// open and buy. Worked out when first asked for, as few look.
+  List<DistrictView> get districts => _districts();
+
+  /// Every brand, whose names are on the shop fronts, by [BrandId].
+  final List<BrandView> brands;
 
   /// The day about to be simulated.
   final Day today;
@@ -484,7 +499,9 @@ final class PublicView {
       ]),
       valuations = List.unmodifiable([
         for (final store in world.stores) valueStore(world, content, store),
-      ]) {
+      ]),
+      _world = world,
+      _content = content {
     companyPrices = List.unmodifiable([
       for (final company in world.companies)
         companyPrice(world, content, company, values: valuations),
@@ -507,6 +524,11 @@ final class PublicView {
   final List<EconomicMonth> history;
   final List<PersonId> companyOwners;
   final List<Valuation?> valuations;
+  final WorldState _world;
+  final ContentDb _content;
+
+  /// The districts run by formula, worked out the first time anyone looks.
+  late final List<DistrictView> districts = districtViews(_world, _content);
   late final List<Money?> companyPrices;
   late final List<Money?> companyCredits;
 
@@ -566,6 +588,18 @@ Observation observe(
     }
   }
   return Observation(
+    brands: [
+      for (final brand in world.brands)
+        (
+          id: brand.id,
+          name: brand.name,
+          format: brand.format,
+          owner: brand.owner,
+          shops: world.stores
+              .where((store) => store.brand == brand.id && store.isTrading)
+              .length,
+        ),
+    ],
     today: world.today,
     actor: actor,
     cash: person.accounts[AccountKind.cash],
@@ -642,6 +676,7 @@ Observation observe(
     valuations: shared.valuations,
     companyPrices: shared.companyPrices,
     companyCredits: shared.companyCredits,
+    districts: () => shared.districts,
     guaranteeRoom: guaranteeRoom(world, content, person),
     reports: List.unmodifiable([
       for (final report in world.reports)

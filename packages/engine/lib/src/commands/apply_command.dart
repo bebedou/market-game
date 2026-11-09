@@ -3,7 +3,11 @@ import '../content/content_db.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
+import '../state/brands.dart';
 import '../state/credit.dart';
+import '../state/districts.dart';
+import '../state/sleepers.dart';
+import '../observation/outlook.dart' show usualStrategy;
 import '../state/director.dart';
 import '../state/entities.dart';
 import '../state/orders.dart';
@@ -39,6 +43,10 @@ Refusal? applyCommand(
     TakeLoan() => _takeLoan(world, content, ledger, command),
     RepayLoan() => _repayLoan(world, ledger, command),
     OpenStore() => _openStore(world, content, ledger, command),
+    // Done when it was submitted too, as there's nothing to wait for.
+    CreateBrand() => _createBrand(world, content, command),
+    OpenInDistrict() => _openInDistrict(world, content, ledger, command),
+    BuyInDistrict() => _buyInDistrict(world, content, ledger, command),
     CloseStore() => _closeStore(world, ledger, command),
     SetStaffing() => _setStaffing(world, content, command),
     BuyResearch() => _buyResearch(world, content, ledger, command),
@@ -72,8 +80,206 @@ Refusal? _renameStore(WorldState world, RenameStore command) {
   if (store == null) return error;
   final problem = _nameProblem(command.name);
   if (problem != null) return problem;
+  if (store.brand != null) return const Refusal('brandedStoreName');
   store.name = command.name;
   return null;
+}
+
+Refusal? _createBrand(
+  WorldState world,
+  ContentDb content,
+  CreateBrand command,
+) {
+  final name = command.name.trim();
+  final problem = _nameProblem(name);
+  if (problem != null) return problem;
+  if (!_inRange(command.format.index, content.formats.length)) {
+    return const Refusal('unknownFormat');
+  }
+  if (brandNameTaken(world, name)) return const Refusal('brandNameTaken');
+  addBrand(world, name, command.format, command.actor);
+  return null;
+}
+
+/// The district run by formula in [row], if it still sleeps.
+SleepingNeighbourhood? _sleeper(WorldState world, int row) {
+  for (final sleeper in world.sleepers) {
+    if (sleeper.row == row) return sleeper;
+  }
+  return null;
+}
+
+Refusal? _openInDistrict(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  OpenInDistrict command,
+) {
+  // The player's shop wakes the district: see WakeNeighbourhood.
+  if (command.actor == world.player) return const Refusal('wakeToOpen');
+  final sleeper = _sleeper(world, command.row);
+  if (sleeper == null) return const Refusal('unknownDistrict');
+  final sites = sitesOf(world, content, sleeper);
+  if (!_inRange(command.site, sites.length)) {
+    return const Refusal('unknownSite');
+  }
+  if (sleeper.shops.any((shop) => shop.site == command.site)) {
+    return const Refusal('siteTaken');
+  }
+  if (!_inRange(command.format.index, content.formats.length)) {
+    return const Refusal('unknownFormat');
+  }
+  final format = content.formats[command.format.index];
+  final site = sites[command.site];
+  if (format.minArea > site.area) {
+    return Refusal('siteTooSmall', format: format.id);
+  }
+  if (command.capital.isNegative) return const Refusal('capitalNegative');
+  final person = world.persons[command.actor.index];
+  if (person.accounts[AccountKind.cash] < command.capital) {
+    return const Refusal('notEnoughPersonalCash');
+  }
+  final (company, error) = _ownedCompany(world, command.actor, command.company);
+  if (company == null) return error;
+  final cost = site.openingCost
+      .times(format.fitOut)
+      .times(world.macro.priceIndex);
+  if (company.accounts[AccountKind.cash] + command.capital < cost) {
+    return Refusal('cannotPayOpening', amount: cost);
+  }
+  if (command.capital > Money.zero) {
+    injectCapital(ledger, person, company, command.capital);
+  }
+  if (cost > Money.zero) {
+    ledger.pay(
+      payer: company,
+      payerAccount: AccountKind.openingCosts,
+      payee: world.elsewhere,
+      payeeAccount: AccountKind.revenue,
+      amount: cost,
+      reason: EntryReason.openingCosts,
+    );
+  }
+  final brand = aiBrand(world, content, command.actor, format.id, company.name);
+  final month = monthsSinceStart(content, world.today);
+  sleeper.shops.add(
+    SleepingShop(
+      site: site.number,
+      format: format.id,
+      strategy: _chainStrategy(content, command.actor, format),
+      name: districtShopName(content, sleeper, brand, site),
+      owner: person.name,
+      area: site.area,
+      cash: Money.zero,
+      ownerCash: Money.zero,
+      openedMonth: month,
+      enlargedMonth: month,
+      company: company.id,
+      brand: brand.id,
+    ),
+  );
+  sleeper.opened++;
+  return null;
+}
+
+/// How [actor] runs a shop of [format]: their strategy, if it's for that
+/// trade, or else the trade's usual one.
+StrategyId _chainStrategy(ContentDb content, PersonId actor, FormatDef format) {
+  if (actor.index < content.persons.length) {
+    if (content.persons[actor.index].strategy case final id?) {
+      final strategy = content.strategies[id.index];
+      if (content.formatChannels[strategy.format.index] ==
+          content.formatChannels[format.id.index]) {
+        return id;
+      }
+    }
+  }
+  return usualStrategy(content, format).id;
+}
+
+Refusal? _buyInDistrict(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  BuyInDistrict command,
+) {
+  if (content.acquisitions == null) return _nothingForSale;
+  if (command.actor == world.player) return const Refusal('wakeToOpen');
+  final sleeper = _sleeper(world, command.row);
+  if (sleeper == null) return const Refusal('unknownDistrict');
+  final shop = sleeper.shops
+      .where((shop) => shop.site == command.site)
+      .firstOrNull;
+  if (shop == null) return const Refusal('unknownStore');
+  final (company, error) = _ownedCompany(world, command.actor, command.company);
+  if (company == null) return error;
+  final seller = switch (shop.company) {
+    final id? => world.companies[id.index],
+    null => null,
+  };
+  if (seller?.owner == command.actor) return const Refusal('alreadyOwnStore');
+  final month = monthsSinceStart(content, world.today);
+  if (shop.acquiredMonth == month) return const Refusal('justChangedHands');
+  final sites = sitesOf(world, content, sleeper);
+  final value = valueSleepingShop(
+    world,
+    content,
+    sites[shop.site],
+    shop,
+    month,
+  )!;
+  if (company.accounts[AccountKind.cash] < value.price) {
+    return Refusal('cannotPayPrice', amount: value.price);
+  }
+  // A shopkeeper of the district's own takes the money with them.
+  ledger.pay(
+    payer: company,
+    payerAccount: AccountKind.businessAssets,
+    payee: seller ?? world.elsewhere,
+    payeeAccount: seller != null ? AccountKind.disposals : AccountKind.revenue,
+    amount: value.price,
+    reason: EntryReason.storeSale,
+  );
+  final brand = aiBrand(
+    world,
+    content,
+    command.actor,
+    shop.format,
+    company.name,
+  );
+  shop
+    ..company = company.id
+    ..brand = brand.id
+    ..name = districtShopName(
+      content,
+      sleeper,
+      brand,
+      sites[shop.site],
+      except: shop,
+    )
+    ..cash = Money.zero
+    ..ownerCash = Money.zero
+    ..acquiredMonth = month;
+  return null;
+}
+
+/// The brand [id] of [actor]'s, for a shop of [format], or why not.
+(Brand?, Refusal?) _actorsBrand(
+  WorldState world,
+  PersonId actor,
+  BrandId? id,
+  FormatId format,
+) {
+  if (id == null) return (null, null);
+  if (!_inRange(id.index, world.brands.length)) {
+    return (null, const Refusal('unknownBrand'));
+  }
+  final brand = world.brands[id.index];
+  if (brand.owner != actor) return (null, const Refusal('brandNotYours'));
+  if (brand.format != format) {
+    return (null, Refusal('brandWrongFormat', format: brand.format));
+  }
+  return (brand, null);
 }
 
 Refusal? _renameCompany(WorldState world, RenameCompany command) {
@@ -421,11 +627,20 @@ Refusal? _openStore(
   }
   final site = content.sites[command.site.index];
   if (world.storeAt(site.id) != null) return const Refusal('siteTaken');
-  if (command.name.isEmpty) return const Refusal('storeNeedsName');
+  if (command.brand == null && command.name.isEmpty) {
+    return const Refusal('storeNeedsName');
+  }
   if (!_inRange(command.format.index, content.formats.length)) {
     return const Refusal('unknownFormat');
   }
   final format = content.formats[command.format.index];
+  var (brand, brandError) = _actorsBrand(
+    world,
+    command.actor,
+    command.brand,
+    format.id,
+  );
+  if (brandError != null) return brandError;
   if (format.minArea > site.area) {
     return Refusal('siteTooSmall', format: format.id);
   }
@@ -470,7 +685,11 @@ Refusal? _openStore(
   if (command.borrow != Money.zero && loan == null) {
     return const Refusal('bankWillNotLend');
   }
-  company ??= world.addCompany(command.name, person.id);
+  company ??= world.addCompany(brand?.name ?? command.name, person.id);
+  // An AI owner's shops all trade under its brand.
+  if (brand == null && command.actor != world.player) {
+    brand = aiBrand(world, content, command.actor, format.id, company.name);
+  }
   if (command.capital > Money.zero) {
     injectCapital(ledger, person, company, command.capital);
   }
@@ -487,6 +706,7 @@ Refusal? _openStore(
     opensOn: world.today + site.buildDays,
     format: format.id,
   );
+  if (brand != null) brandStore(world, content, store, brand);
   if (openingCost > Money.zero) {
     ledger.pay(
       payer: company,
@@ -892,6 +1112,13 @@ Refusal? _buyStore(
   if (store.acquiredOn == world.today) {
     return const Refusal('justChangedHands');
   }
+  final (brand, brandError) = _actorsBrand(
+    world,
+    command.actor,
+    command.brand,
+    store.format,
+  );
+  if (brandError != null) return brandError;
   final value = valueStore(world, content, store)!;
   final price = value.price;
   if (company.accounts[AccountKind.cash] + command.borrow < price) {
@@ -922,6 +1149,11 @@ Refusal? _buyStore(
     _lendFor(world, content, ledger, company, buyer, loan, command.termMonths);
   }
   transferStore(world, ledger, store, company, price);
+  if (brand != null) {
+    brandStore(world, content, store, brand);
+  } else {
+    takeOverName(world, content, store, command.actor);
+  }
   return null;
 }
 
@@ -997,5 +1229,14 @@ Refusal? _buyCompany(
     price,
     financed: command.borrow,
   );
+  // Its shops can't stay under the seller's brands.
+  for (final store in world.stores) {
+    final brand = store.brand;
+    if (store.company == company.id &&
+        brand != null &&
+        world.brands[brand.index].owner != buyer.id) {
+      takeOverName(world, content, store, buyer.id);
+    }
+  }
   return null;
 }

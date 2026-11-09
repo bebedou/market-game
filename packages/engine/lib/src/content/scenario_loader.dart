@@ -768,6 +768,11 @@ ContentDb loadScenario(String jsonText) {
         typicalArea: node.positiveInt('typicalArea'),
         largestArea: node.positiveInt('largestArea'),
         room: node.positiveInt('room'),
+        layout: switch (node._value('layout')) {
+          null => null,
+          final Map<String, Object?> layout => layout,
+          _ => node._fail('layout', 'expected an object'),
+        },
       ),
     );
     node.finish();

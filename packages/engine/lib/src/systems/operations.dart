@@ -1,4 +1,5 @@
 import '../core/fx.dart';
+import '../state/brands.dart';
 import '../state/store.dart';
 import '../state/world_state.dart';
 import 'tick_system.dart';
@@ -37,6 +38,16 @@ final class OperationsSystem implements TickSystem {
             ..format = format
             ..shelfSlots += next.slotBonus
             ..storageUnits += next.storageBonus;
+          // A brand is for one type of business only.
+          if (store.brand case final id?
+              when world.brands[id.index].format != format) {
+            takeOverName(
+              world,
+              context.content,
+              store,
+              world.companies[store.company.index].owner,
+            );
+          }
         }
       }
       for (var slot = 0; slot < store.staff.length; slot++) {

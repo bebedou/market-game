@@ -33,6 +33,7 @@ class DashboardScreen extends StatelessWidget {
         ..._toDo(context, game),
         const _KeyFigures(),
         const _Companies(),
+        const _Brands(),
         _Stores(onOpen: onOpen),
         const _Reading(),
       ],
@@ -548,6 +549,127 @@ class _Companies extends StatelessWidget {
         .where((store) => store.status != StoreStatus.closed)
         .length;
     return tr('common.stores', {'count': trading});
+  }
+}
+
+/// The player's brands, each for one type of business, and the way to start
+/// one.
+class _Brands extends StatelessWidget {
+  const _Brands();
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final ledger = Ledger.of(context);
+    return Section(
+      title: tr('dashboard.brands'),
+      children: [
+        for (final brand in game.myBrands)
+          IndexRow(
+            title: brand.name,
+            subtitle:
+                '${game.content.formats[brand.format.index].name} · '
+                '${tr('common.stores', {'count': brand.shops})}',
+            mark: ledger.trade(game.content.formats[brand.format.index]),
+            onTap: null,
+          ),
+        IndexRow(
+          icon: Icons.storefront_outlined,
+          title: tr('dashboard.createBrand'),
+          subtitle: tr('dashboard.createBrandPitch'),
+          onTap: () => showDialog<void>(
+            context: context,
+            builder: (_) =>
+                GameScope(controller: game, child: const _CreateBrandDialog()),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A brand's name and its one type of business.
+class _CreateBrandDialog extends StatefulWidget {
+  const _CreateBrandDialog();
+
+  @override
+  State<_CreateBrandDialog> createState() => _CreateBrandDialogState();
+}
+
+class _CreateBrandDialogState extends State<_CreateBrandDialog> {
+  final _name = TextEditingController();
+  FormatId _format = const FormatId(0);
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final theme = Theme.of(context);
+    final name = _name.text.trim();
+    final taken = game.view.brands.any(
+      (brand) => brand.name.toLowerCase() == name.toLowerCase(),
+    );
+    return AlertDialog(
+      title: Text(tr('dashboard.newBrand')),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _name,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: tr('dashboard.brandName'),
+                errorText: taken ? tr('dashboard.brandTaken') : null,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              tr('dashboard.brandFormat'),
+              style: theme.textTheme.labelLarge,
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final format in game.content.formats)
+                  ChoiceChip(
+                    avatar: Icon(formatIcon(format), size: 18),
+                    label: Text(format.name),
+                    selected: format.id == _format,
+                    onSelected: (_) => setState(() => _format = format.id),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Hint(tr('dashboard.brandHint')),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(tr('common.cancel')),
+        ),
+        FilledButton(
+          onPressed: name.isEmpty || taken
+              ? null
+              : () {
+                  game.createBrand(name, _format);
+                  Navigator.pop(context);
+                },
+          child: Text(tr('dashboard.createBrandButton')),
+        ),
+      ],
+    );
   }
 }
 

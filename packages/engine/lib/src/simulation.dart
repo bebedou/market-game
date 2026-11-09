@@ -4,6 +4,8 @@ import 'commands/command.dart';
 import 'commands/refusal.dart';
 import 'content/content_db.dart';
 import 'core/calendar.dart';
+import 'core/fx.dart';
+import 'core/money.dart';
 import 'core/rng.dart';
 import 'core/hash32.dart';
 import 'core/ids.dart';
@@ -71,29 +73,46 @@ final class Simulation {
     this._log,
     this._pending, [
     List<WokenNeighbourhood>? woken,
+    this._asleep,
   ]) : policies = Map.unmodifiable(policies ?? standardPolicies(_content)),
        _woken = woken ?? [];
 
+  /// Whether the cities but the player's have run by formula from the start,
+  /// and how the game started then.
+  final CitiesAsleep? _asleep;
+
   /// A new game, starting from [content]'s initial world, with the
   /// player's first store as [start] chose if given: see [startTerms].
+  ///
+  /// If [citiesAsleep], every city but the player's runs by formula until
+  /// the player trades there, its businesses trading in their books: see
+  /// [withCitiesAsleep].
   factory Simulation.newGame(
     ContentDb content, {
     required int seed,
     GameStart? start,
     List<TickSystem> systems = standardSystems,
     Map<PersonId, Policy>? policies,
-  }) => Simulation._(
-    content,
-    systems,
-    policies,
-    WorldState.initial(content, seed: seed, start: start)
-      ..sleepers.addAll([
-        for (var row = 0; row < content.neighbourhoods.length; row++)
-          newSleeper(content, row, seed: seed),
-      ]),
-    [],
-    [],
-  );
+    bool citiesAsleep = false,
+  }) {
+    var game = content;
+    var begin = start;
+    if (citiesAsleep) (game, begin) = withCitiesAsleep(content, start: start);
+    return Simulation._(
+      game,
+      systems,
+      policies,
+      WorldState.initial(game, seed: seed, start: begin)
+        ..sleepers.addAll([
+          for (var row = 0; row < game.neighbourhoods.length; row++)
+            newSleeper(game, row, seed: seed),
+        ]),
+      [],
+      [],
+      [],
+      citiesAsleep ? (start: start) : null,
+    );
+  }
 
   /// Resumes the game saved in [file] from its snapshot.
   factory Simulation.load(
@@ -111,6 +130,7 @@ final class Simulation {
       save.log,
       save.pending,
       List.of(save.woken),
+      save.asleep,
     );
     // A row the save doesn't know of starts its formula now.
     final known = {
@@ -141,9 +161,13 @@ final class Simulation {
     final simulation = Simulation.newGame(
       content,
       seed: save.world.seed,
-      start: save.world.start,
+      start: switch (save.asleep) {
+        (:final start) => start,
+        null => save.world.start,
+      },
       systems: systems,
       policies: policies,
+      citiesAsleep: save.asleep != null,
     );
     var next = 0;
     while (simulation.today < save.world.today) {
@@ -193,9 +217,12 @@ final class Simulation {
     final month = date.year * 12 + date.month;
     if (_plan == null || _planMonth != month) {
       _planMonth = month;
-      _plan = withNeighbourhoods(content, [
-        for (final sleeper in world.sleepers) _standing(sleeper),
-      ], seed: world.seed);
+      _plan = withNeighbourhoods(
+        content,
+        [for (final sleeper in world.sleepers) _standing(sleeper)],
+        seed: world.seed,
+        withChains: true,
+      );
     }
     return _plan;
   }
@@ -220,6 +247,12 @@ final class Simulation {
   void submit(Command command) {
     if (command is WakeNeighbourhood) {
       _wake(command);
+    } else if (command is CreateBrand) {
+      // A brand is a name until shops trade under it: it's there at once,
+      // for a shop to open under it the same day.
+      if (applyCommand(world, content, Ledger(today), command) == null) {
+        _log.add((day: today, command: command));
+      }
     } else {
       _pending.add(command);
     }
@@ -234,17 +267,46 @@ final class Simulation {
         .firstOrNull;
     if (sleeper == null) return;
     final wake = _standing(sleeper);
-    final grown = withNeighbourhoods(content, [wake], seed: world.seed);
+    final chains = <(SleepingShop, String, List<Money?>, List<int>)>[];
+    final grown = withNeighbourhoods(
+      content,
+      [wake],
+      seed: world.seed,
+      onChain: (shop, site, prices, staff) =>
+          chains.add((shop, site, prices, staff)),
+    );
     final stores = world.stores.length;
     final persons = content.persons.length;
     growWorld(world, grown);
     world.sleepers.remove(sleeper);
     // Each shop is as well known as its history made it.
     final months = _monthsSinceStart();
-    for (final (i, shop) in sleeper.shops.indexed) {
-      world.stores[stores + i].reputation = months - shop.openedMonth >= 24
-          ? grown.demand.establishedReputation
-          : grown.demand.openingReputation;
+    Fx known(SleepingShop shop) => months - shop.openedMonth >= 24
+        ? grown.demand.establishedReputation
+        : grown.demand.openingReputation;
+    final own = [
+      for (final shop in sleeper.shops)
+        if (shop.company == null) shop,
+    ];
+    for (final (i, shop) in own.indexed) {
+      world.stores[stores + i].reputation = known(shop);
+    }
+    // A chain's shops become stores of its company, under its brand.
+    for (final (shop, siteKey, prices, staff) in chains) {
+      final store = world.addStore(
+        grown,
+        name: shop.name,
+        company: shop.company!,
+        site: grown.sites.firstWhere((site) => site.key == siteKey),
+        prices: prices,
+        staff: staff,
+        opensOn: today,
+        format: shop.format,
+        area: shop.area,
+      );
+      store
+        ..brand = shop.brand
+        ..reputation = known(shop);
     }
     final standard = standardPolicies(grown);
     policies = Map.unmodifiable({
@@ -387,6 +449,7 @@ final class Simulation {
     log: _log,
     pending: _pending,
     woken: _woken,
+    asleep: _asleep,
   ).encode();
 
   /// A hash of the canonical encoding of the world, with its neighbourhoods

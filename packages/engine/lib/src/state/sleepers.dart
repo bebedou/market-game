@@ -17,10 +17,14 @@ final class PlannedSite {
     required this.area,
     required this.maxArea,
     required this.shelfSlots,
+    this.name = '',
   });
 
   /// Its place among the neighbourhood's sites.
   final int number;
+
+  /// Its street.
+  final String name;
   final Fx location;
 
   /// A month's rent at [area], at a price index of 1.
@@ -48,6 +52,9 @@ final class SleepingShop {
     required this.ownerCash,
     required this.openedMonth,
     required this.enlargedMonth,
+    this.company,
+    this.brand,
+    this.acquiredMonth,
     List<Money>? sales,
     List<Money>? profits,
   }) : sales = sales ?? [],
@@ -71,13 +78,36 @@ final class SleepingShop {
       profits = [
         for (var i = 0, n = reader.readInt(); i < n; i++)
           Money(reader.readInt()),
-      ];
+      ],
+      company = reader.version >= 26
+          ? switch (reader.readNullableInt()) {
+              final index? => CompanyId(index),
+              null => null,
+            }
+          : null,
+      brand = reader.version >= 26
+          ? switch (reader.readNullableInt()) {
+              final index? => BrandId(index),
+              null => null,
+            }
+          : null,
+      acquiredMonth = reader.version >= 26 ? reader.readNullableInt() : null;
 
   /// Its site's number in the neighbourhood.
   final int site;
   final FormatId format;
   final StrategyId strategy;
-  final String name;
+  String name;
+
+  /// The chain's company it belongs to, whose books it trades in; null for a
+  /// shopkeeper of the district's own.
+  CompanyId? company;
+
+  /// The brand it trades under, if a chain's.
+  BrandId? brand;
+
+  /// When it last changed hands, in months since the game's start, if ever.
+  int? acquiredMonth;
 
   /// Its owner's name.
   final String owner;
@@ -130,6 +160,10 @@ final class SleepingShop {
     for (final month in profits) {
       writer.writeInt(month.cents);
     }
+    writer
+      ..writeNullableInt(company?.index)
+      ..writeNullableInt(brand?.index)
+      ..writeNullableInt(acquiredMonth);
   }
 }
 

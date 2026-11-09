@@ -1,3 +1,6 @@
+import '../accounting/ledger.dart';
+import '../state/brands.dart';
+import '../state/entities.dart';
 import '../content/content_db.dart';
 import '../core/calendar.dart';
 import '../core/fx.dart';
@@ -45,10 +48,20 @@ typedef _Settled = ({
   Fx peakStaff,
 });
 
+/// What a shop's strategy draws beyond its prices, against a balanced shop's,
+/// fitted like [_settled]: a premium shop's late hours, service and advertising
+/// win it more than its dearer prices lose, and a discounter's prices win it
+/// less than they alone would say.
+Fx _beyondPrices(StrategyDef strategy) => switch (strategy.key) {
+  'premium' => const Fx.raw(14800),
+  'discount' => const Fx.raw(7400),
+  _ => Fx.one,
+};
+
 _Settled _settled(FormatDef format) => switch (format.key) {
   'supermarket' => const (
     capture: Fx.raw(9500),
-    draw: Fx.raw(12000),
+    draw: Fx.raw(19000),
     goodsExtra: Fx.raw(-250),
     peakStaff: Fx.raw(10000),
   ),
@@ -112,8 +125,8 @@ final class SleeperSystem implements TickSystem {
       sleeper.sites ??= plannedSites(content, sleeper.row, seed: world.seed);
       final rng = context.rng(RngStream.neighbourhoods, 1000 + sleeper.row);
       _grow(world, content, sleeper);
-      _trade(world, content, sleeper, context.day, month);
-      _closeAndEnlarge(world, content, sleeper, month, rng);
+      _trade(world, content, context.ledger, sleeper, context.day, month);
+      _closeAndEnlarge(world, content, context.ledger, sleeper, month, rng);
       _open(world, content, sleeper, month, rng);
     }
   }
@@ -140,6 +153,7 @@ final class SleeperSystem implements TickSystem {
   void _trade(
     WorldState world,
     ContentDb content,
+    Ledger ledger,
     SleepingNeighbourhood sleeper,
     Day day,
     int month,
@@ -193,8 +207,12 @@ final class SleeperSystem implements TickSystem {
         var draw =
             shopPull(content, site.location, shop.area) *
             priceDraw(pricing(shop) - Fx.one) *
+            _beyondPrices(content.strategies[shop.strategy.index]) *
             _settled(content.formats[shop.format.index]).draw;
-        if (month - shop.openedMonth < _settlingMonths) draw *= _settlingDraw;
+        if (month - shop.openedMonth < _settlingMonths &&
+            !_knownNearby(world, content, sleeper, shop)) {
+          draw *= _settlingDraw;
+        }
         return draw;
       }
 
@@ -234,6 +252,23 @@ final class SleeperSystem implements TickSystem {
             wages -
             premises;
         final sold = Money(mulDivRound(sales.cents, 1, 12));
+        if (shop.company case final id?) {
+          shop.remember(
+            sold,
+            _book(
+              world,
+              ledger,
+              world.companies[id.index],
+              sold: sold,
+              goods: bought + bought.times(habits.goodsExtra),
+              marketing: sales.times(strategy.marketingShare),
+              wages: wages,
+              rent: site.rentFor(shop.area).times(macro.priceIndex),
+              overheads: format.overheadsFor(shop.area).times(macro.priceIndex),
+            ),
+          );
+          continue;
+        }
         final earned = Money(mulDivRound(yearly.cents, 1, 12));
         shop.remember(sold, earned);
         // After tax it stays in the company until that's well stocked, then
@@ -262,9 +297,85 @@ final class SleeperSystem implements TickSystem {
 
   Fx _taxRate(ContentDb content) => content.taxes?.corporateRate ?? Fx.zero;
 
+  /// Books a month of a chain's shop in [company]'s accounts, against those
+  /// it trades with elsewhere: its [sold], and its year's [goods],
+  /// [marketing] and [wages] and a month's [rent] and [overheads]. Its tax
+  /// is the company's, at the year's end. Returns its month's profit.
+  Money _book(
+    WorldState world,
+    Ledger ledger,
+    Company company, {
+    required Money sold,
+    required Money goods,
+    required Money marketing,
+    required Money wages,
+    required Money rent,
+    required Money overheads,
+  }) {
+    Money month(Money yearly) => Money(mulDivRound(yearly.cents, 1, 12));
+    if (sold > Money.zero) {
+      ledger.pay(
+        payer: world.elsewhere,
+        payerAccount: AccountKind.spending,
+        payee: company,
+        payeeAccount: AccountKind.revenue,
+        amount: sold,
+        reason: EntryReason.sale,
+      );
+    }
+    var profit = sold;
+    for (final (amount, account, reason) in [
+      (month(goods), AccountKind.costOfGoods, EntryReason.costOfSale),
+      (month(marketing), AccountKind.marketing, EntryReason.marketing),
+      (month(wages), AccountKind.wages, EntryReason.wages),
+      (rent, AccountKind.rent, EntryReason.rent),
+      (overheads, AccountKind.overheads, EntryReason.overheads),
+    ]) {
+      if (amount <= Money.zero) continue;
+      ledger.pay(
+        payer: company,
+        payerAccount: account,
+        payee: world.elsewhere,
+        payeeAccount: AccountKind.revenue,
+        amount: amount,
+        reason: reason,
+      );
+      profit -= amount;
+    }
+    return profit;
+  }
+
+  /// Whether [shop]'s brand trades elsewhere in its city already, so that
+  /// shoppers know it from the first day.
+  bool _knownNearby(
+    WorldState world,
+    ContentDb content,
+    SleepingNeighbourhood sleeper,
+    SleepingShop shop,
+  ) {
+    final brand = shop.brand;
+    if (brand == null) return false;
+    final city = cityOf(content.neighbourhoods[sleeper.row].name);
+    for (final store in world.stores) {
+      if (store.brand == brand &&
+          store.isTrading &&
+          cityOf(content.markets[store.market.index].name) == city) {
+        return true;
+      }
+    }
+    for (final other in world.sleepers) {
+      if (cityOf(content.neighbourhoods[other.row].name) != city) continue;
+      for (final rival in other.shops) {
+        if (rival != shop && rival.brand == brand) return true;
+      }
+    }
+    return false;
+  }
+
   void _closeAndEnlarge(
     WorldState world,
     ContentDb content,
+    Ledger ledger,
     SleepingNeighbourhood sleeper,
     int month,
     Rng rng,
@@ -276,7 +387,14 @@ final class SleeperSystem implements TickSystem {
       final format = content.formats[shop.format.index];
       final strategy = content.strategies[shop.strategy.index];
       final age = month - shop.openedMonth;
-      final broke = shop.ownerCash.isNegative;
+      // A chain's shop goes with its company.
+      final chain = switch (shop.company) {
+        final id? => world.companies[id.index],
+        null => null,
+      };
+      final broke = chain != null
+          ? chain.status != CompanyStatus.active
+          : shop.ownerCash.isNegative;
       final losing =
           age >= 24 &&
           shop.sales.length == sleepingMonthsKept &&
@@ -306,9 +424,22 @@ final class SleeperSystem implements TickSystem {
           (month - shop.enlargedMonth) * 30 >= strategy.expansionIntervalDays &&
           shop.yearProfit - extra >=
               cost.timesInt(_enlargingReturn * (steps + 1) * (steps + 1)) &&
-          shop.cash + shop.ownerCash >= cost) {
+          (chain != null
+              ? chain.accounts[AccountKind.cash] >= cost
+              : shop.cash + shop.ownerCash >= cost)) {
         shop.area += expansion.stepArea;
         shop.enlargedMonth = month;
+        if (chain != null) {
+          ledger.pay(
+            payer: chain,
+            payerAccount: AccountKind.openingCosts,
+            payee: world.elsewhere,
+            payeeAccount: AccountKind.revenue,
+            amount: cost,
+            reason: EntryReason.expansion,
+          );
+          continue;
+        }
         shop.cash -= cost;
         if (shop.cash.isNegative) {
           shop.ownerCash += shop.cash;

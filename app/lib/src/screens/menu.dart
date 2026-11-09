@@ -91,6 +91,7 @@ class _MainMenuState extends State<MainMenu> {
       seed: newSeed(),
       start: start,
       saves: widget.saves.slot(slot),
+      citiesAsleep: true,
     );
     await game.save();
     if (!mounted) return;

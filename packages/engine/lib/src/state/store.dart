@@ -208,6 +208,7 @@ final class Store {
     this.manager,
     this.works,
     this.enlargedOn,
+    this.brand,
     this.marketingShare = Fx.zero,
     this.goodwill = Money.zero,
     this.boughtFor = Money.zero,
@@ -276,9 +277,13 @@ final class Store {
               null => null,
             }
           : null,
-      reputation = reader.version >= 17
-          ? Fx.raw(reader.readInt())
-          : Fx.zero;
+      reputation = reader.version >= 17 ? Fx.raw(reader.readInt()) : Fx.zero,
+      brand = reader.version >= 25
+          ? switch (reader.readNullableInt()) {
+              final index? => BrandId(index),
+              null => null,
+            }
+          : null;
 
   static T _skipped<T>(StateReader reader, bool present, T value) {
     if (present) reader.readInt();
@@ -332,6 +337,9 @@ final class Store {
 
   /// When its owner bought it, if they did.
   Day? acquiredOn;
+
+  /// The brand it trades under, if any.
+  BrandId? brand;
 
   /// What the store sold a day, at today's shelf prices, over the last
   /// [days] days before [today], or as many as it has been open.
@@ -440,6 +448,7 @@ final class Store {
       ..writeInt(goodwill.cents)
       ..writeInt(boughtFor.cents)
       ..writeNullableInt(acquiredOn?.number)
-      ..writeInt(reputation.raw);
+      ..writeInt(reputation.raw)
+      ..writeNullableInt(brand?.index);
   }
 }

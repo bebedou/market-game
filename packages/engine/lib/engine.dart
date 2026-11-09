@@ -12,6 +12,8 @@ export 'src/commands/command.dart'
         CloseStore,
         Command,
         ConvertStore,
+        BuyInDistrict,
+        CreateBrand,
         DelistProduct,
         ExpandStore,
         FireDirector,
@@ -21,6 +23,7 @@ export 'src/commands/command.dart'
         InjectCapital,
         ListProduct,
         LoggedCommand,
+        OpenInDistrict,
         OpenStore,
         OrderQuantity,
         PayDividend,
@@ -87,6 +90,8 @@ export 'src/state/history.dart' show SalesCount, salesHistoryDays;
 export 'src/state/market.dart' show Census;
 export 'src/state/orders.dart' show OrderLine;
 export 'src/state/public_record.dart' show EconomicMonth, Filing;
+export 'src/state/brands.dart' show BrandView;
+export 'src/state/districts.dart' show DistrictShop, DistrictSite, DistrictView;
 export 'src/state/research.dart' show ResearchReport, SegmentEstimate;
 export 'src/state/sleepers.dart' show SleepingNeighbourhood, SleepingShop;
 export 'src/state/store.dart' show ManagerDuty, StoreStatus, Works;

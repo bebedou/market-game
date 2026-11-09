@@ -346,6 +346,8 @@ Policies are stateless: everything they remember is in the world, such as each s
 
 AI policies get exactly this view, so they too have to infer demand from their own sales. A debug "god view" exists only in development builds.
 
+**Brands.** `world.brands` (`state/brands.dart`) holds each brand: a name, the one format it's for, and the person who owns it. A store carries the `BrandId` it trades under, if any. `brandStore` names a store after its brand and its market's district, with its site's name when the brand already trades in that market, and raises its reputation to the brand's average there in the same city, or anywhere, if that's higher. `OpenStore` and `BuyStore` take the actor's brand; an AI actor's always use `aiBrand`, its brand for the format, created from its company name the first time, when its other stores of that format join it. `takeOverName` runs whenever a store changes hands (`BuyStore`, `sellToBestBuyer`, `BuyCompany`) or format: an AI owner brands it, the player's keeps its name without a brand. `CreateBrand` takes effect when it's submitted, as `WakeNeighbourhood` does, so a shop can open under it the same day, and is logged for replays. `RenameStore` refuses a branded store. Saves are version 25.
+
 **What a new shop might do.** `shopOutlook` (`observation/outlook.dart`) estimates a settled year for a new shop of a format on a site, from what anyone can see: households at the latest census by the scenario's mix, what they buy at normal prices, the rivals of its own channel by location, size and shelf prices, and what the site and staff cost. For a neighbourhood still asleep these come from `Simulation.plan`, where each shop is at the size the formula has reached and charges its strategy's markup on what it pays: the best any supplier gives for its usual order. It reads and changes nothing in the state, so no hash depends on it. A store's rivals are only those of its channel, and so is any share: restaurants take nothing from grocers. A market study's shares (`ResearchReport.unitShares`) and the `share` column in `tool/sim.dart` count the same way. The World tab shows the player's own shops with their share of their trade, then ranks every neighbourhood with room, for the trade the player picks, by that estimate.
 
 ## Persistence (`persistence/`)
@@ -429,18 +431,20 @@ The way to bigger cities and to zooming in from a country: a neighbourhood built
 
 **Asleep and awake.** A scenario's `neighbourhoods` start a game as rows, with no market, site, store or person, and run by formula until the player trades there. `WorldState.sleepers` holds each one's households and its shops (`state/sleepers.dart`): who they are, how big, what the shop and its owner hold, and twelve months of sales and profit. Its sites come from the row and the seed, so they aren't kept.
 
-`SleeperSystem` (`systems/sleepers.dart`) runs last, on the first of each month:
+`SleeperSystem` (`systems/sleepers.dart`) runs on the first of each month, before solvency and reports:
 
 - Households grow by the row's rates and the regime's migration, as `PopulationSystem` would have them.
-- What they spend on each channel (`tradeDemand`), at the regime and confidence of the day, buying dearer as real wages rise and trading down by the regime's `premiumShift`, is shared among that channel's shops only, by location, size and price (`shopPull`, `priceDraw`), a shop in its first two years drawing 0.8 of what an established one does.
+- What they spend on each channel (`tradeDemand`), at the regime and confidence of the day, buying dearer as real wages rise and trading down by the regime's `premiumShift`, is shared among that channel's shops only, by location, size, price and strategy (`shopPull`, `priceDraw`, `_beyondPrices`), a shop in its first two years drawing 0.8 of what an established one does. A premium grocer draws 1.48 times what its prices alone would give it, for its late hours, service and advertising, and a discounter 0.74 times.
 - Each shop books its sales, goods, staff, premises and marketing. Tax comes off a profit; what's beyond a working reserve goes to its owner, and a loss falls on the company, then on the owner. How settled shops turn demand into sales and what their goods and busiest hours cost are fitted by trade (`_settled`), and they aren't the same as `ShopHabits`, which describe a new shop for `shopOutlook`.
 - A shop closes as `losingStore` would have it: two years old, and more than 3% of a year's sales lost. It also closes when its owner's money runs out. And real shops scatter around what the formula gives them, so one earning under 3% of its sales may close anyway: a 3% chance a month at no profit, scaling with its margin.
 - A grocer short of shelves enlarges when a year's profit, beyond what the extra room would cost, is twice the works' cost, and then 8 and 18 times, as each round of shelves holds what sells less. Restaurants and electronics shops have the shelves they need.
 - With a chance of 3% a month for every 2,000 households, someone takes the free site that would pay back soonest by the entrepreneur's rule, if it would within the strategy's limit.
 
-There are no purchases, chains or conversions to supermarkets in the formula: each shop stays its own company, and no bot or owner decides anything. The sleepers touch nothing else. They stay out of `world.write`, so a game plays the same with rows as without; `stateHash` adds them only if there are any, and a save writes them after the pending commands.
+A district's own shopkeepers never buy one another, and nobody converts to a supermarket there. Chains come from the game instead. An AI chain, an owner whose company trades, may open or buy a shop in a district (`OpenInDistrict`, `BuyInDistrict`): it then belongs to the chain's company and trades under its brand, still by formula. Each month such a shop books its sales, goods, marketing, wages, rent and overheads in its company's accounts against `world.elsewhere`, a ledger party standing for everyone beyond the districts played in full, so the company's reports, taxes and solvency count it like any of its stores; it pays for its works from the company, and closes if the company is wound up. `SleeperSystem` runs before `SolvencySystem` and `ReportSystem` for that. `EntrepreneurPolicy` weighs a district's free sites and struggling shops (`Observation.districts`, worked out only when someone asks, as it costs about half a millisecond) by the same payback as anywhere, and takes the best of both. The player's shop wakes a district instead, and a player's director never goes there. Otherwise the sleepers touch nothing: they stay out of `world.write`, so a game plays the same with rows as without; `stateHash` adds them only if there are any, and a save writes them after the pending commands. Saves are version 26.
 
-`Simulation.plan` is the content with every sleeper generated as it stands, remade each month, for screens and estimates and for nothing else. `WakeNeighbourhood` adds one for real: its row is generated with the formula's households and shops in place of the ones it started with, appended at the end of the content's lists, and `growWorld` brings the world up to that content, as it does when a saved game meets a scenario that has grown. A store's optional `area` in a scenario takes it beyond its site's, with the shelves and storage each round of works adds, which is how shops take back their size; those over two years old are as well known as any established shop. Waking shops charge settled prices, as `plan` shows them, where a world just begun charges around normal ones. It takes effect as it is submitted, not with the day's commands, as those may refer to its sites. A save's header lists what woke, with its households and shops at that moment, so the content can be grown to match before the rest is read; a replay wakes them from the command log.
+**Cities asleep.** `Simulation.newGame(citiesAsleep: true)`, which the app uses for every new game, plays only the player's city in full. `withCitiesAsleep` turns each of the other cities into a row of `neighbourhoods`, after those already there, whose `layout` holds its market, sites and stores as the scenario wrote them; its figures come from `rowsFromScenario`. Its companies and their owners stay in the content, so the world has them as before: their shops sleep as a chain's do, with the company's id, and trade in its books. So every city's chains can open and buy anywhere, and a city woken gives back its own businesses, under their own names, with no new company made. The player's store moves to the chosen site if the scenario put it in a city that sleeps, and its company keeps the cash it would have had. A save's header says so, with the start chosen, for loading and replays to make the same content; tests and the simulation tool play every city in full unless they ask.
+
+`Simulation.plan` is the content with every sleeper generated as it stands, remade each month, for screens and estimates and for nothing else. `WakeNeighbourhood` adds one for real: its row is generated with the formula's households and shops in place of the ones it started with, appended at the end of the content's lists, and `growWorld` brings the world up to that content, as it does when a saved game meets a scenario that has grown. A chain's shops are handed to `onChain` rather than written as businesses of their own, and become stores of its company, under its brand, with the same prices and staff a woken shopkeeper's would have. A store's optional `area` in a scenario takes it beyond its site's, with the shelves and storage each round of works adds, which is how shops take back their size; those over two years old are as well known as any established shop. Waking shops charge settled prices, as `plan` shows them, where a world just begun charges around normal ones. It takes effect as it is submitted, not with the day's commands, as those may refer to its sites. A save's header lists what woke, with its households and shops at that moment, so the content can be grown to match before the rest is read; a replay wakes them from the command log.
 
 A row (`NeighbourhoodRow`) holds households and growth by segment, the price, wage and income levels, a month's rent per m², a grocer's usual and largest area, and how far a site can grow. `rowsFromScenario` reads today's cities that way, and nothing else of them gets through. From a row:
 
@@ -1102,7 +1106,7 @@ How little the cities depend on each other, from today's game with only Lyon awa
 | Experienced manager, discount | 9.6k | 11.9k |
 | Owner-run balanced | 42.0k | 28.4k |
 
-The manager's year-by-year figures barely move (20.2k to 19.3k in year 1, 55.0k to 55.5k in year 10), so what happens in another city hardly touches a shop. The owner-run bot earns less because it grows by buying and opening in the other cities, which it can't do when it can't wake them. The game doesn't work this way yet: today's seven cities are all awake from the start. These runs had the six other cities frozen. The formula wouldn't change Lyon's results, as it touches nothing simulated, but they haven't been repeated with the six running by formula.
+The manager's year-by-year figures barely move (20.2k to 19.3k in year 1, 55.0k to 55.5k in year 10), so what happens in another city hardly touches a shop. The owner-run bot earns less because it grows by buying and opening in the other cities, which it can't do when it can't wake them. New games have worked this way since 2026-11-09 (see "Cities asleep"). These runs had the six other cities frozen. The formula wouldn't change Lyon's results, as it touches nothing simulated, but they haven't been repeated with the six running by formula.
 
 ### Neighbourhoods by formula
 
@@ -1191,6 +1195,17 @@ Closures needed more. Of 26 shops closing in full on three seeds, 15 did in a re
 
 So it still closes too few, and it's a statistical stand-in rather than a reason: which shop closes is chance, and its rivals in a place stay more alike than real ones. The size of the recession itself, 12%, remains the open decision noted under the country layer.
 
+### Chains in districts
+
+The game's 18 districts over ten years, four seeds, by formula with AI chains free to open and buy there, against the same places simulated in full from day 0. Shops of the seven cities' chains in the 18 by year 10:
+
+| Seed | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| By formula | 4 | 2 | 8 | 4 |
+| In full | 5 | 2 | 5 | 6 |
+
+The same 4.5 on average, though not the same chains: by formula Les Halles Lobligeois goes there most, in full Daily Basket and Pixel. In full, AI owners with no business yet also opened two or three there each game, named after their street; by formula, the district's own openings stand for them. No invariant broke. A day took about 22 ms by formula against 188 ms in full, four games at once on a desktop. What elsewhere took in less what it paid out ended between -612,000 and -148,000: chains made money there on the whole. Not compared yet: what those shops earn against the same shops in full.
+
 ### The estimate refitted
 
 `shopOutlook` against shops actually opened in the 18 places: a test shop per trade in each at normal prices, on seeds 3 and 4, which nothing here was fitted to, in its years 2 and 3 of trading. Before is the estimate as it stood, after is as it stands:
@@ -1217,6 +1232,28 @@ In the seven cities, same four seeds and so partly fitted, half the profit estim
 Ranking barely moves. In the 18 places, the top third by estimate holds 5 or 6 of the true top 6 in every trade, as before, and the first pick is the true best in 2 or 3 trades of 5, against 3 or 4. It's still high for steakhouses and fine dining, by 3,000 to 6,000 in the 18 places, and for fine dining in the seven cities by 9,000, where shops alone in a place lose money the estimate says they'd make.
 
 Measuring this found a flaw in the earlier test tools: a month after a test shop had closed counted as a month of no sales. So the figures under "What a new shop might do" and "Neighbourhoods asleep" overstate how far short of the estimate losing shops fell. One wrong turn followed from that: a new fast food looked to win far less against a rival than it does.
+
+### Cities asleep
+
+The prototype over ten years with Lyon in play and the six other cities by formula, against all seven in play, four seeds. A day took about 4 ms against 19 ms, four games at once on a desktop, and no invariant broke.
+
+Each city's trade sold about the same either way, years 2 to 4 on seeds 1 and 2: grocers and supermarkets by formula 0.97 to 1.08 times what they sold in play, restaurants and electronics within 4% where the same shops traded. Otherwise closings and openings differed: Lille's electronics shop closed by formula in one game of two, Montpellier's steakhouse in play in one, and in some games a fast food opened by formula in Bordeaux and in Paris. Where a trade's sales went didn't match at first. The formula weighed a grocer's strategy by its prices alone, so the discounter drew most, while in play premium grocers sold most: open at night when the others aren't, better served and advertising more. It now draws by strategy beyond prices too, fitted on the 18 districts against the same places in full (`_beyondPrices`), with the supermarkets' draw raised to match, as all of theirs are discounters. A year's sales per shop by formula against in full:
+
+| | Discount | Balanced | Premium | Shares off, per place |
+|---|---|---|---|---|
+| 18 districts, before | 1.32 | 0.98 | 0.67 | 0.43 |
+| After | 0.98 | 0.98 | 1.01 | 0.21 |
+| Six cities' grocers, before | 2.15 | 1.08 | 0.62 | |
+| After | 1.56 | 1.06 | 0.90 | |
+
+Discounters still sell too much in the six cities because in play three of their five fail, and others take their sites, while by formula they carry on. Supermarkets draw 1.9 times a grocer, from 1.2: they sell 0.93 and 0.95 times what they do in full in the two districts that have one, and Nantes's 1.07 times.
+
+Over ten years on seeds 1 and 2, the six cities' businesses made 2.96 million by formula and 2.89 million in play. Their cash together with their owners' came to 12.4 million and 11.9 million. The businesses alone hold less by formula, as their owners keep the money: in play owners put savings into their companies, for reserves, stock and growth, and take dividends out, while a shop by formula holds no stock and needs no reserve.
+
+What still differs:
+
+- Lyon's chains grow less into the cities asleep. On seed 1 by year 10, QuickStop has 2 shops against 4 in play, Daily Basket 1 against 4, Le Grill Lyonnais 1 against 4, and Lyon's businesses made 0.48 million against 0.95 million over ten years. Both ways judge a free site alike; the difference is buying. In play a store's earnings come from its last weeks of sales and dip below zero now and then, and a chain buys it. A sleeping shop's are its year, smooth, so the cities' own shops rarely look for sale.
+- Fewer of the cities' own businesses fail by formula: in Montpellier all five carry on, where in play two close in the first year.
 
 ## Build order
 
@@ -1246,6 +1283,8 @@ A throwaway debug screen after step 4 helps catch nonsense early.
 - Wages are paid to the market's households, their first income; households still spend more than they earn until a fuller income model exists.
 - Research is one kind of study, in grades of accuracy; AI owners don't buy it yet.
 - A liquidated company's stores are sold to whoever can buy them, at their asking price; only the stock of stores no one buys is written off.
+- Only AI chains open or buy in districts run by formula, where their shops trade in their books; the player's shop wakes the district: approved on 2026-11-09 (option A of the chains mockup).
+- A brand is a person's, for one format, and its name is unique across the world. A new or bought shop of the brand starts as well known as the brand's shops in its city: approved on 2026-11-09, with names of brand and district.
 - Every business has a public asking price and sells at it: no negotiation. The player's stores and companies are sold only when the player says so, and only stores, not companies, can be sold by the player.
 - The player's chosen start costs what the scenario's first store would have: no free fittings for a dearer site or business.
 - Reports are calendar weeks from Monday and calendar months, kept for 13 weeks and 24 months, for every company.

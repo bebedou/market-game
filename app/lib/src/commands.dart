@@ -66,6 +66,9 @@ String describeCommand(Command command, ContentDb content, Observation view) {
         'loan': _loan(borrow, termMonths),
       }),
     WakeNeighbourhood() => '',
+    CreateBrand() => '',
+    // Only AI chains open and buy in districts run by formula.
+    OpenInDistrict() || BuyInDistrict() => '',
     SetMarketing(store: final s, :final share) =>
       share == Fx.zero
           ? tr('commands.stopMarketing', {'store': store(s)})

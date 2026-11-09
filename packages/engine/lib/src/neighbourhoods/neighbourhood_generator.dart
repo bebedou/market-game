@@ -237,6 +237,133 @@ String generateScenario(
   return jsonEncode(world.scenario());
 }
 
+/// [content] with every city but the one [start] is in, or else the one the
+/// player starts in, run by formula: each becomes a row of
+/// [ContentDb.neighbourhoods], after those already there, with its own
+/// market, sites and stores ([NeighbourhoodRow.layout]); its businesses and
+/// their owners stay, to trade there in their books, as a chain does in a
+/// district. Returns that content, and [start] for it.
+///
+/// The player's store moves to [start]'s site if the scenario put it in a
+/// city that sleeps, and the company keeps the cash it would have had.
+(ContentDb, GameStart?) withCitiesAsleep(
+  ContentDb content, {
+  GameStart? start,
+}) {
+  final setup = playerSetup(content);
+  final playerSite = setup == null
+      ? null
+      : content.sites[content.stores[setup.store].site.index];
+  final keep = start != null
+      ? content.sites[start.site.index].market
+      : playerSite?.market ?? const MarketId(0);
+  final root = jsonDecode(content.source) as Map<String, dynamic>;
+  final figures = rowsFromScenario(content);
+  final asleep = {
+    for (final market in content.markets)
+      if (market.id != keep) market.key,
+  };
+  final siteMarket = {
+    for (final site in content.sites)
+      site.key: content.markets[site.market.index].key,
+  };
+  List<Map<String, dynamic>> list(String name) => [
+    for (final item in (root[name] as List?) ?? const [])
+      item as Map<String, dynamic>,
+  ];
+  final markets = list('markets');
+  final sites = list('sites');
+  final stores = list('stores');
+  final rows = <Object?>[...((root['neighbourhoods'] as List?) ?? const [])];
+  // The player's store first, if it stood in a city that now sleeps.
+  if (setup != null &&
+      start != null &&
+      playerSite != null &&
+      playerSite.market != keep) {
+    final json = stores.firstWhere(
+      (store) => store['id'] == content.stores[setup.store].key,
+    );
+    final chosen = content.sites[start.site.index];
+    json['site'] = chosen.key;
+    final fitOut =
+        content.formats[content.stores[setup.store].format.index].fitOut;
+    final company = list('companies').firstWhere(
+      (company) => company['id'] == content.companies[setup.company].key,
+    );
+    company['cash'] =
+        (Money.parse(company['cash']! as String) +
+                playerSite.openingCost.times(fitOut) -
+                chosen.openingCost.times(fitOut))
+            .toDecimalString();
+  }
+  for (final market in content.markets) {
+    if (!asleep.contains(market.key)) continue;
+    final row = figures[market.id.index];
+    final own = [
+      for (final site in sites)
+        if (siteMarket[site['id']] == market.key) site,
+    ];
+    final ownKeys = {for (final site in own) site['id']};
+    rows.add({
+      'id': market.key,
+      'name': market.name,
+      'households': {
+        for (final segment in content.segments)
+          if (row.households[segment.id.index] > 0)
+            segment.key: row.households[segment.id.index],
+      },
+      'growth': {
+        for (final segment in content.segments)
+          segment.key: row.growth[segment.id.index].toDecimalString(),
+      },
+      'priceLevel': row.priceLevel.toDecimalString(),
+      'wageLevel': row.wageLevel.toDecimalString(),
+      'incomeLevel': row.incomeLevel.toDecimalString(),
+      'rent': row.rent.toDecimalString(),
+      'typicalArea': row.typicalArea,
+      'largestArea': row.largestArea,
+      'room': row.room,
+      'layout': {
+        'market': markets.firstWhere((json) => json['id'] == market.key),
+        'sites': own,
+        'stores': [
+          for (final store in stores)
+            if (ownKeys.contains(store['site'])) store,
+        ],
+      },
+    });
+  }
+  root
+    ..['markets'] = [
+      for (final json in markets)
+        if (!asleep.contains(json['id'])) json,
+    ]
+    ..['sites'] = [
+      for (final json in sites)
+        if (!asleep.contains(siteMarket[json['id']])) json,
+    ]
+    ..['stores'] = [
+      for (final json in stores)
+        if (!asleep.contains(siteMarket[json['site']])) json,
+    ]
+    ..['neighbourhoods'] = rows;
+  final asleepContent = loadScenario(jsonEncode(root));
+  return (
+    asleepContent,
+    start == null
+        ? null
+        : GameStart(
+            site: asleepContent.sites
+                .firstWhere(
+                  (site) => site.key == content.sites[start.site.index].key,
+                )
+                .id,
+            format: start.format,
+            name: start.name,
+          ),
+  );
+}
+
 /// A neighbourhood as it stood when the player woke it: which row of
 /// [ContentDb.neighbourhoods], on what day, the price index then, and its
 /// households and shops as the formula had left them.
@@ -251,13 +378,22 @@ typedef WokenNeighbourhood = ({
 /// [content] with the neighbourhoods of [woken] added at the end of its lists:
 /// their sites as generated from their rows and [seed], always the same, and
 /// their households and shops as they stood.
+///
+/// A chain's shop there isn't a business of its own: it's handed to
+/// [onChain], with its site's key and what it lists and staffs, to become a
+/// store of the chain's company; unless [withChains], for a plan to look at,
+/// where it's written like any other.
 ContentDb withNeighbourhoods(
   ContentDb content,
   List<WokenNeighbourhood> woken, {
   required int seed,
+  bool withChains = false,
+  ChainShelf? onChain,
 }) {
   final root = jsonDecode(content.source) as Map<String, dynamic>;
-  final world = _World.adding(content, root, seed);
+  final world = _World.adding(content, root, seed)
+    ..withChains = withChains
+    ..onChain = onChain;
   final rows = root['neighbourhoods'] as List;
   for (final (:row, day: _, :priceIndex, :households, :shops) in woken) {
     (rows[row] as Map<String, dynamic>)['woken'] = true;
@@ -271,6 +407,16 @@ ContentDb withNeighbourhoods(
   }
   return loadScenario(jsonEncode(world.scenario()));
 }
+
+/// What a chain's shop of a woken district takes up as a store: its site's
+/// key, and its prices and staff by [ProductId] and [DaySlot].
+typedef ChainShelf =
+    void Function(
+      SleepingShop shop,
+      String siteKey,
+      List<Money?> prices,
+      List<int> staff,
+    );
 
 /// The neighbourhood of [row] as it starts a game, to run by formula.
 SleepingNeighbourhood newSleeper(
@@ -370,6 +516,11 @@ final class _World {
     return street;
   }
 
+  /// Whether chains' shops are written as businesses of their own, and
+  /// where they go otherwise: see [withNeighbourhoods].
+  bool withChains = true;
+  ChainShelf? onChain;
+
   /// The latest neighbourhood's sites, and the shops it would start with.
   final plannedSites = <PlannedSite>[];
   final planned = <SleepingShop>[];
@@ -413,6 +564,105 @@ final class _World {
     _names = Rng.keyed(seed, RngStream.neighbourhoods, index, 1);
     _unusedStreets = List.of(_streets);
     _shuffle(_unusedStreets, _names);
+    if (row.layout case final layout?) {
+      _addOwn(row, layout, people);
+    } else {
+      _addGenerated(index, row, people);
+    }
+    final here = shops ?? planned;
+    for (final shop in here) {
+      final channel = content.formatChannels[shop.format.index];
+      _emit(
+        row,
+        shop,
+        sharing: shops == null
+            ? null
+            : here
+                  .where(
+                    (other) =>
+                        content.formatChannels[other.format.index] == channel,
+                  )
+                  .length,
+      );
+    }
+  }
+
+  /// A place of the game's own, run by formula: its market, sites and shops
+  /// as the scenario wrote them, its households as they stand. Its shops are
+  /// its businesses', which stay in the game.
+  void _addOwn(
+    NeighbourhoodRow row,
+    Map<String, Object?> layout,
+    List<int> people,
+  ) {
+    markets.add({
+      ...layout['market']! as Map<String, Object?>,
+      'households': {
+        for (final segment in content.segments)
+          if (people[segment.id.index] > 0)
+            segment.key: people[segment.id.index],
+      },
+    });
+    final own = [
+      for (final site in layout['sites']! as List) site as Map<String, Object?>,
+    ];
+    for (final (number, json) in own.indexed) {
+      sites.add(json);
+      final location = Fx.parse(json['location']! as String);
+      final area = json['area']! as int;
+      final slots = json['shelfSlots']! as int;
+      _sitesHere.add(
+        _Site(json['id']! as String, number, location, area, slots),
+      );
+      plannedSites.add(
+        PlannedSite(
+          number: number,
+          location: location,
+          rent: Money.parse(json['rent']! as String),
+          openingCost: Money.parse(json['openingCost']! as String),
+          area: area,
+          maxArea: (json['maxArea'] as int?) ?? area,
+          shelfSlots: slots,
+          name: json['name']! as String,
+        ),
+      );
+    }
+    for (final store in layout['stores']! as List) {
+      final json = store as Map<String, Object?>;
+      final site = own.indexWhere((site) => site['id'] == json['site']);
+      final company = content.companies.indexWhere(
+        (company) => company.key == json['company'],
+      );
+      final owner = content.persons[content.companies[company].owner.index];
+      final format = _format(
+        (json['format'] as String?) ?? content.formats.first.key,
+      );
+      planned.add(
+        SleepingShop(
+          site: site,
+          format: format.id,
+          strategy: owner.strategy ?? _strategy(_usualKey(format)).id,
+          name: json['name']! as String,
+          owner: owner.name,
+          area: (json['area'] as int?) ?? plannedSites[site].area,
+          cash: Money.zero,
+          ownerCash: Money.zero,
+          openedMonth: _veteran,
+          enlargedMonth: 0,
+          company: CompanyId(company),
+        ),
+      );
+    }
+  }
+
+  /// The key of the strategy a shop of [format] follows by default.
+  static String _usualKey(FormatDef format) =>
+      format.key == 'grocery' || format.key == 'supermarket'
+      ? 'balanced'
+      : format.key;
+
+  /// A place generated from its figures.
+  void _addGenerated(int index, NeighbourhoodRow row, List<int> people) {
     markets.add({
       'id': row.key,
       'name': row.name,
@@ -433,22 +683,6 @@ final class _World {
     final rng = Rng.keyed(seed, RngStream.neighbourhoods, index, 0);
     _addGrocers(row, rng);
     _addShops(row, rng);
-    final here = shops ?? planned;
-    for (final shop in here) {
-      final channel = content.formatChannels[shop.format.index];
-      _emit(
-        row,
-        shop,
-        sharing: shops == null
-            ? null
-            : here
-                  .where(
-                    (other) =>
-                        content.formatChannels[other.format.index] == channel,
-                  )
-                  .length,
-      );
-    }
   }
 
   /// A cohort stands for a few households, more in a bigger neighbourhood:
@@ -663,10 +897,11 @@ final class _World {
         .times(Fx.one + location - _centre)
         .times(rent);
     final cost = _opening(row, area, location, opening);
+    final street =
+        '${_streetKinds[_names.nextInt(_streetKinds.length)]} ${_street()}';
     sites.add({
       'id': key,
-      'name':
-          '${_streetKinds[_names.nextInt(_streetKinds.length)]} ${_street()}',
+      'name': street,
       'market': row.key,
       'location': location.toDecimalString(),
       'rent': _money(monthly, 1000),
@@ -688,6 +923,7 @@ final class _World {
         area: area,
         maxArea: _rounded(area + room, 10),
         shelfSlots: slots,
+        name: street,
       ),
     );
     return made;
@@ -737,6 +973,33 @@ final class _World {
     final format = content.formats[shop.format.index];
     final strategy = content.strategies[shop.strategy.index];
     final key = '${row.key}_${site.number}';
+    Money price(ProductDef product) =>
+        (sharing != null
+                ? _usualCost(
+                    row,
+                    product,
+                    strategy,
+                    sharing,
+                  ).times(Fx.one + strategy.markup)
+                : product.referencePrice.times(
+                    Fx.one + strategy.marketPosition,
+                  ))
+            .times(row.priceLevel)
+            .times(_prices);
+    final listed = _listing(format, strategy, site.slots);
+    if (shop.company != null && !withChains) {
+      final staff = _openingStaff[strategy.key] ?? const <String, int>{};
+      onChain?.call(
+        shop,
+        site.key,
+        [
+          for (final product in content.products)
+            listed.contains(product) ? price(product) : null,
+        ],
+        [for (final slot in DaySlot.values) staff[slot.name] ?? 0],
+      );
+      return;
+    }
     stores.add({
       'id': '${key}_store',
       'name': shop.name,
@@ -746,21 +1009,8 @@ final class _World {
       if (shop.area != site.area) 'area': shop.area,
       'staff': _openingStaff[strategy.key],
       'prices': {
-        for (final product in _listing(format, strategy, site.slots))
-          product.key:
-              (sharing != null
-                      ? _usualCost(
-                          row,
-                          product,
-                          strategy,
-                          sharing,
-                        ).times(Fx.one + strategy.markup)
-                      : product.referencePrice.times(
-                          Fx.one + strategy.marketPosition,
-                        ))
-                  .times(row.priceLevel)
-                  .times(_prices)
-                  .toDecimalString(),
+        for (final product in listed)
+          product.key: price(product).toDecimalString(),
       },
     });
     companies.add({

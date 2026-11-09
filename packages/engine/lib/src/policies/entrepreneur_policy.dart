@@ -5,6 +5,7 @@ import '../core/fx.dart';
 import '../core/safe_int.dart';
 import '../core/money.dart';
 import '../observation/observation.dart';
+import '../state/districts.dart';
 import '../state/entities.dart';
 import '../state/store.dart';
 import 'policy.dart';
@@ -22,6 +23,10 @@ import 'policy.dart';
 /// the one that would repay its price soonest, within the payback period,
 /// if its latest store opened or was bought long enough ago and its company
 /// and personal cash cover the price and a reserve.
+///
+/// A chain, an owner with a company that trades, weighs the free sites and
+/// struggling shops of the districts run by formula the same way, and opens
+/// or buys there when that pays back sooner.
 ///
 /// It sees no more than anyone else: its estimate splits an assumed margin
 /// per household, at the latest census and scaled by the market's price and
@@ -66,12 +71,49 @@ final class EntrepreneurPolicy implements Policy {
         bestPayback = payback;
       }
     }
-    if (best == null) return const [];
-    final capital = startingCapital(view, content, best);
-    if (view.cash < capital) return const [];
     final company = view.companies
         .where((company) => company.status == CompanyStatus.active)
         .firstOrNull;
+    // A chain may do better in a district run by formula.
+    if (company != null && _trades(view, company)) {
+      final format = content.formats[strategy.format.index];
+      (DistrictView, DistrictSite)? there;
+      for (final district in view.districts) {
+        for (final site in district.free) {
+          if (site.area < format.minArea) continue;
+          final payback = districtPaybackMonths(view, content, district, (
+            location: site.location,
+            area: site.area,
+            rent: site.rent,
+            openingCost: site.openingCost,
+          ));
+          if (payback == null ||
+              payback > strategy.expansionPaybackMonths ||
+              (best != null || there != null) && payback >= bestPayback) {
+            continue;
+          }
+          there = (district, site);
+          bestPayback = payback;
+        }
+      }
+      if (there case (final district, final site)) {
+        final capital = _districtCapital(view, content, district, site);
+        if (view.cash < capital) return const [];
+        return [
+          OpenInDistrict(
+            view.actor,
+            row: district.row,
+            site: site.number,
+            company: company.id,
+            format: strategy.format,
+            capital: capital,
+          ),
+        ];
+      }
+    }
+    if (best == null) return const [];
+    final capital = startingCapital(view, content, best);
+    if (view.cash < capital) return const [];
     return [
       OpenStore(
         view.actor,
@@ -109,11 +151,31 @@ final class EntrepreneurPolicy implements Policy {
         averageCost.times(level).timesInt(stockUnits);
   }
 
+  /// What a chain puts in to open on [site] of [district]: its fitting out
+  /// and [startingMonths] of rent and wages. The formula keeps no stock.
+  Money _districtCapital(
+    Observation view,
+    ContentDb content,
+    DistrictView district,
+    DistrictSite site,
+  ) {
+    final level = view.macro.priceIndex;
+    final monthly =
+        _monthlyCostsAt(content, site.rent, site.area).times(level) +
+        _dailyWagesAt(view, content, district.wageLevel).timesInt(30);
+    return site.openingCost
+            .times(content.formats[strategy.format.index].fitOut)
+            .times(level) +
+        monthly.timesInt(startingMonths);
+  }
+
   /// [site]'s rent and the strategy's format's overheads there, a month at
   /// a price index of 1.
   Money _monthlyCosts(ContentDb content, SiteDef site) =>
-      site.rent +
-      content.formats[strategy.format.index].overheadsFor(site.area);
+      _monthlyCostsAt(content, site.rent, site.area);
+
+  Money _monthlyCostsAt(ContentDb content, Money rent, int area) =>
+      rent + content.formats[strategy.format.index].overheadsFor(area);
 
   /// What fitting out [site] costs for the strategy's format.
   Money _fitOut(ContentDb content, SiteDef site) =>
@@ -122,10 +184,15 @@ final class EntrepreneurPolicy implements Policy {
   /// One member of staff in each slot the strategy opens, at [site]'s wages
   /// for the strategy's format.
   Money _dailyWages(Observation view, ContentDb content, SiteDef site) =>
+      _dailyWagesAt(
+        view,
+        content,
+        content.markets[site.market.index].wageLevel,
+      );
+
+  Money _dailyWagesAt(Observation view, ContentDb content, Fx wageLevel) =>
       content.operations.slotWage
-          .times(
-            view.macro.wageIndex * content.markets[site.market.index].wageLevel,
-          )
+          .times(view.macro.wageIndex * wageLevel)
           .times(content.formats[strategy.format.index].wageFactor)
           .timesInt(strategy.hours.where((open) => open).length);
 
@@ -140,7 +207,7 @@ final class EntrepreneurPolicy implements Policy {
     final company = view.companies
         .where((company) => company.status == CompanyStatus.active)
         .firstOrNull;
-    if (company == null || company.stores.isEmpty) return const [];
+    if (company == null || !_trades(view, company)) return const [];
     if (!_readyToGrow(view, terms.intervalDays)) return const [];
     ShelfView? best;
     var bestPayback = 0;
@@ -176,7 +243,44 @@ final class EntrepreneurPolicy implements Policy {
         price = value.price;
       }
     }
-    if (best == null) return const [];
+    (DistrictView, DistrictShop)? there;
+    for (final district in view.districts) {
+      for (final shop in district.shops) {
+        final value = shop.value;
+        if (shop.format != strategy.format ||
+            value == null ||
+            !value.earnings.isNegative ||
+            shop.company != null &&
+                (view.companyOwners[shop.company!.index] == view.actor ||
+                    view.companyOwners[shop.company!.index] ==
+                        content.player)) {
+          continue;
+        }
+        if (view.today.number - shop.since.number < 365) continue;
+        final payback = districtPaybackMonths(
+          view,
+          content,
+          district,
+          (
+            location: shop.location,
+            area: shop.area,
+            rent: shop.rent,
+            openingCost: Money.zero,
+          ),
+          cost: value.price,
+          existing: true,
+        );
+        if (payback == null ||
+            payback > strategy.expansionPaybackMonths ||
+            (best != null || there != null) && payback >= bestPayback) {
+          continue;
+        }
+        there = (district, shop);
+        bestPayback = payback;
+        price = value.price;
+      }
+    }
+    if (best == null && there == null) return const [];
     final needed = price + price.times(terms.buyerReserve);
     if (company.cash + view.cash < needed) return const [];
     // What the company lacks; on the first, when its owner may take a
@@ -186,9 +290,24 @@ final class EntrepreneurPolicy implements Policy {
     return [
       if (capital > Money.zero)
         InjectCapital(view.actor, company: company.id, amount: capital),
-      BuyStore(view.actor, store: best.id, company: company.id),
+      if (there case (final district, final shop))
+        BuyInDistrict(
+          view.actor,
+          row: district.row,
+          site: shop.site,
+          company: company.id,
+        )
+      else
+        BuyStore(view.actor, store: best!.id, company: company.id),
     ];
   }
+
+  /// Whether [company] has a shop anywhere, here or run by formula.
+  bool _trades(Observation view, CompanyView company) =>
+      company.stores.isNotEmpty ||
+      view.districts.any(
+        (district) => district.shops.any((shop) => shop.company == company.id),
+      );
 
   /// True for a newcomer; for an owner who trades, true if its companies are
   /// in profit overall and its latest store opened or was bought at least
@@ -208,6 +327,14 @@ final class EntrepreneurPolicy implements Policy {
       for (final store in company.stores) {
         final since = store.acquiredOn ?? store.opensOn;
         if (since.number > latest) latest = since.number;
+      }
+      // Its shops in districts run by formula count too.
+      for (final district in view.districts) {
+        for (final shop in district.shops) {
+          if (shop.company == company.id && shop.since.number > latest) {
+            latest = shop.since.number;
+          }
+        }
       }
     }
     if (latest < 0) return true;
@@ -259,6 +386,48 @@ final class EntrepreneurPolicy implements Policy {
         _monthlyCosts(content, site).times(level);
     if (monthly <= Money.zero) return null;
     final opening = cost ?? _fitOut(content, site).times(level);
+    return (opening.cents + monthly.cents - 1) ~/ monthly.cents;
+  }
+
+  /// [paybackMonths] for a [site] of a district run by formula: its
+  /// households as they stand, its shops of the channel as rivals.
+  int? districtPaybackMonths(
+    Observation view,
+    ContentDb content,
+    DistrictView district,
+    ({Fx location, int area, Money rent, Money openingCost}) site, {
+    Money? cost,
+    bool existing = false,
+  }) {
+    final half = content.demand.halfSizeArea;
+    Fx pull(Fx location, int area) =>
+        location * Fx.raw(mulDivRound(area, Fx.scale, area + half));
+    final mine = pull(site.location, site.area);
+    var total = existing ? Fx.zero : mine;
+    for (final shop in district.shops) {
+      if (content.formatChannels[shop.format.index] ==
+          content.formatChannels[strategy.format.index]) {
+        total += pull(shop.location, shop.area);
+      }
+    }
+    if (total <= Fx.zero) return null;
+    final share = mine.div(total);
+    final level = view.macro.priceIndex;
+    final daily = strategy.marginPerHousehold
+        .times(level * district.priceLevel * district.incomeLevel)
+        .timesInt(district.households)
+        .times(share);
+    final monthly =
+        (daily - _dailyWagesAt(view, content, district.wageLevel)).timesInt(
+          30,
+        ) -
+        _monthlyCostsAt(content, site.rent, site.area).times(level);
+    if (monthly <= Money.zero) return null;
+    final opening =
+        cost ??
+        site.openingCost
+            .times(content.formats[strategy.format.index].fitOut)
+            .times(level);
     return (opening.cents + monthly.cents - 1) ~/ monthly.cents;
   }
 }

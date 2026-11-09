@@ -231,6 +231,24 @@ final class Services implements LedgerParty {
   void write(StateWriter writer) => accounts.write(writer);
 }
 
+/// The shoppers, staff, landlords and suppliers of the districts run by
+/// formula, where chains may trade: they buy from those shops and are paid
+/// by them. Its cash is what it has taken in less what it has paid out, and
+/// may be less than nothing, as it stands for a whole country beyond.
+final class Elsewhere implements LedgerParty {
+  Elsewhere({required this.accounts});
+
+  Elsewhere.read(StateReader reader) : accounts = Accounts.read(reader);
+
+  @override
+  final Accounts accounts;
+
+  @override
+  PartyRef get partyRef => (type: PartyType.elsewhere, index: 0);
+
+  void write(StateWriter writer) => accounts.write(writer);
+}
+
 /// The owners of every site, who collect rent and fit out new stores.
 /// The state's books: taxes are paid here.
 final class Government implements LedgerParty {

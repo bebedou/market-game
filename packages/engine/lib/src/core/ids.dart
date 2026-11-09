@@ -24,6 +24,8 @@ extension type const CohortId(int index) {}
 
 extension type const StrategyId(int index) {}
 
+extension type const BrandId(int index) {}
+
 extension type const RegimeId(int index) {}
 
 extension type const ResearchTierId(int index) {}

@@ -16,6 +16,7 @@ import 'market.dart';
 import 'public_record.dart';
 import 'orders.dart';
 import 'research.dart';
+import 'brands.dart';
 import 'sleepers.dart';
 import 'store.dart';
 
@@ -54,6 +55,12 @@ final class WorldState {
   /// The neighbourhoods run by formula, not yet woken. Saved beside the world
   /// and not in it, as nothing in the world depends on them.
   final sleepers = <SleepingNeighbourhood>[];
+
+  /// The brands shops trade under, by [BrandId].
+  final brands = <Brand>[];
+
+  /// Everyone beyond the districts played in full.
+  Elsewhere elsewhere = Elsewhere(accounts: Accounts());
 
   /// The world at the scenario's start date, the player's first store where
   /// and as [start] chose if given. Opening cash is the only money ever
@@ -264,6 +271,12 @@ final class WorldState {
         );
       }
     }
+    if (reader.version >= 25) {
+      world.brands.addAll(
+        _readList(reader, (i) => Brand.read(BrandId(i), reader)),
+      );
+    }
+    if (reader.version >= 26) world.elsewhere = Elsewhere.read(reader);
     return world;
   }
 
@@ -343,6 +356,7 @@ final class WorldState {
     landlords,
     services,
     government,
+    elsewhere,
   ];
 
   LedgerParty party(PartyRef ref) => switch (ref.type) {
@@ -354,6 +368,7 @@ final class WorldState {
     PartyType.landlords => landlords,
     PartyType.services => services,
     PartyType.government => government,
+    PartyType.elsewhere => elsewhere,
   };
 
   /// The store trading at [site], if any.
@@ -474,6 +489,8 @@ final class WorldState {
     );
     writer.writeBool(start != null);
     start?.write(writer);
+    _writeList(writer, brands, (brand) => brand.write(writer));
+    elsewhere.write(writer);
   }
 }
 

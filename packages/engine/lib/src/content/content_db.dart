@@ -164,10 +164,16 @@ final class NeighbourhoodRow {
     required this.largestArea,
     required this.room,
     this.playerStartsHere = false,
+    this.layout,
   });
 
   final String key;
   final String name;
+
+  /// The place's own market, sites and stores, as a scenario writes them,
+  /// for a city of the game's run by formula: see `withCitiesAsleep`. Null
+  /// for a place generated from its figures.
+  final Map<String, Object?>? layout;
 
   /// Households, and their yearly growth, indexed by segment.
   final List<int> households;

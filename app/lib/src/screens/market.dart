@@ -679,6 +679,16 @@ class _Competitors extends StatelessWidget {
       if (shelf.status == StoreStatus.closed) continue;
       (byCompany[shelf.company.index] ??= []).add(shelf);
     }
+    // A chain's shops in the districts it trades in beyond the game's.
+    final away = <int, List<(DistrictView, DistrictShop)>>{};
+    for (final district in view.districts) {
+      for (final shop in district.shops) {
+        if (shop.company case final id?) {
+          (away[id.index] ??= []).add((district, shop));
+          byCompany[id.index] ??= [];
+        }
+      }
+    }
     Filing? latest(int company) => view.filings
         .where((f) => f.company.index == company)
         .fold<Filing?>(
@@ -712,6 +722,7 @@ class _Competitors extends StatelessWidget {
           _CompanyTile(
             company: CompanyId(company),
             shelves: byCompany[company]!,
+            away: away[company] ?? const [],
             mine: mine.contains(CompanyId(company)),
           ),
       ],
@@ -723,11 +734,15 @@ class _CompanyTile extends StatelessWidget {
   const _CompanyTile({
     required this.company,
     required this.shelves,
+    required this.away,
     required this.mine,
   });
 
   final CompanyId company;
   final List<ShelfView> shelves;
+
+  /// Its shops in districts beyond the game's, with each one's district.
+  final List<(DistrictView, DistrictShop)> away;
   final bool mine;
 
   @override
@@ -742,8 +757,12 @@ class _CompanyTile extends StatelessWidget {
     ]..sort((a, b) => b.year.compareTo(a.year));
     final last = filings.firstOrNull;
     final before = filings.length > 1 ? filings[1] : null;
-    final formats = {for (final s in shelves) s.format};
+    final formats = {
+      for (final s in shelves) s.format,
+      for (final (_, shop) in away) shop.format,
+    };
     final cities = {for (final s in shelves) s.market};
+    final districts = {for (final (district, _) in away) district.row};
     String change(Money now, Money then) {
       if (then.cents == 0) return '';
       final pct = (now.cents - then.cents) * 100 ~/ then.cents.abs();
@@ -779,13 +798,13 @@ class _CompanyTile extends StatelessWidget {
       ),
       subtitle: Text(
         [
-          tr('common.stores', {'count': shelves.length}),
+          tr('common.stores', {'count': shelves.length + away.length}),
           if (last != null)
             tr('market.salesLine', {
               'amount': money(last.revenue, cents: false),
             }),
-          if (content.markets.length > 1)
-            tr('common.cities', {'count': cities.length}),
+          if (content.markets.length > 1 || districts.isNotEmpty)
+            tr('common.cities', {'count': cities.length + districts.length}),
         ].join(' · '),
       ),
       children: [
@@ -830,6 +849,32 @@ class _CompanyTile extends StatelessWidget {
           ],
         ),
         for (final shelf in shelves) _RivalStore(shelf: shelf, mine: mine),
+        for (final (district, shop) in away)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                TradeMark(
+                  Ledger.of(context).trade(content.formats[shop.format.index]),
+                  size: 10,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(shop.name),
+                      Text(
+                        '${content.formats[shop.format.index].name}, '
+                        '${district.name}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         if (!mine && view.companyPrices[company.index] != null)
           _BuyCompany(company: company),
       ],
@@ -1054,6 +1099,9 @@ class BuyStoreDialog extends StatefulWidget {
 }
 
 class _BuyStoreDialogState extends State<BuyStoreDialog> {
+  /// The brand to put it under; none keeps its name.
+  BrandId? _brand;
+
   late CompanyId _buyer = _companies
       .reduce((best, c) => c.cash > best.cash ? c : best)
       .id;
@@ -1146,6 +1194,18 @@ class _BuyStoreDialogState extends State<BuyStoreDialog> {
                   'cash': money(buyer.cash, cents: false),
                 }),
               ),
+            if ([
+                  for (final brand in game.myBrands)
+                    if (brand.format == shelf.format) brand,
+                ]
+                case final brands when brands.isNotEmpty)
+              _BrandChoice(
+                brands: brands,
+                market: game.content.markets[shelf.market.index],
+                chosen: _brand,
+                noBrandHint: tr('market.noBrandBuy'),
+                onChanged: (id) => setState(() => _brand = id),
+              ),
             if (amount > Money.zero)
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -1189,6 +1249,7 @@ class _BuyStoreDialogState extends State<BuyStoreDialog> {
                       company: _buyer,
                       borrow: borrow ? amount : Money.zero,
                       termMonths: borrow ? _months : 0,
+                      brand: _brand,
                     ),
                   );
                   Navigator.pop(context);
@@ -1196,6 +1257,68 @@ class _BuyStoreDialogState extends State<BuyStoreDialog> {
           child: Text(borrow ? tr('market.buyWithLoan') : tr('common.buy')),
         ),
       ],
+    );
+  }
+}
+
+/// The player's [brands] for a shop in [market], or none: a brand names the
+/// shop after itself and its district.
+class _BrandChoice extends StatelessWidget {
+  const _BrandChoice({
+    required this.brands,
+    required this.market,
+    required this.chosen,
+    required this.noBrandHint,
+    required this.onChanged,
+  });
+
+  final List<BrandView> brands;
+  final MarketDef market;
+  final BrandId? chosen;
+
+  /// What happens to the name without a brand.
+  final String noBrandHint;
+  final ValueChanged<BrandId?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final picked = brands.where((brand) => brand.id == chosen).firstOrNull;
+    final comma = market.name.lastIndexOf(', ');
+    final district = comma < 0 ? market.name : market.name.substring(comma + 2);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(tr('market.brand'), style: theme.textTheme.labelLarge),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final brand in brands)
+                ChoiceChip(
+                  label: Text(brand.name),
+                  selected: brand.id == chosen,
+                  onSelected: (_) => onChanged(brand.id),
+                ),
+              ChoiceChip(
+                label: Text(tr('market.noBrand')),
+                selected: picked == null,
+                onSelected: (_) => onChanged(null),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            picked == null
+                ? noBrandHint
+                : tr('market.brandNamed', {'name': '${picked.name} $district'}),
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1829,6 +1952,11 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
   late bool _newCompany = widget.subsidiary;
   FormatId _format = const FormatId(0);
 
+  /// The brand picked, once the player has picked; before that, their first
+  /// for the type of business.
+  BrandId? _brand;
+  bool _brandPicked = false;
+
   /// Whether to borrow: by default, when the company can't pay outright.
   bool? _borrow;
   late int _months = longestTerm(context.game.content);
@@ -1888,6 +2016,18 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
       note: separate ? tr('market.newCompanyNote') : null,
     );
     final ready = borrow ? terms.split != null : short <= Money.zero;
+    // A site asleep is in the plan, not yet in the game's content.
+    final source = widget.wakeRow != null
+        ? (game.plan ?? game.content)
+        : game.content;
+    final market = source.markets[widget.site.market.index];
+    final brands = [
+      for (final brand in game.myBrands)
+        if (brand.format == _format) brand,
+    ];
+    final brand = _brandPicked
+        ? brands.where((brand) => brand.id == _brand).firstOrNull
+        : brands.firstOrNull;
     return AlertDialog(
       title: Text(tr('market.openStoreAt', {'site': widget.site.name})),
       content: SingleChildScrollView(
@@ -1917,11 +2057,25 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
                 ],
               ),
             ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: _name,
-              decoration: InputDecoration(labelText: tr('common.storeName')),
-            ),
+            if (brands.isNotEmpty)
+              _BrandChoice(
+                brands: brands,
+                market: market,
+                chosen: brand?.id,
+                noBrandHint: tr('market.noBrandOpen'),
+                onChanged: (id) => setState(() {
+                  _brand = id;
+                  _brandPicked = true;
+                }),
+              ),
+            if (brand == null) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _name,
+                decoration: InputDecoration(labelText: tr('common.storeName')),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
             if (hasCompany)
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -1976,7 +2130,10 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
           child: Text(tr('common.cancel')),
         ),
         FilledButton(
-          onPressed: capital == null || _name.text.trim().isEmpty || !ready
+          onPressed:
+              capital == null ||
+                  (brand == null && _name.text.trim().isEmpty) ||
+                  !ready
               ? null
               : () {
                   // The site's number is only settled once it has woken.
@@ -1991,12 +2148,13 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
                     OpenStore(
                       game.player,
                       site: site,
-                      name: _name.text.trim(),
+                      name: brand?.name ?? _name.text.trim(),
                       company: separate ? null : company.id,
                       capital: capital,
                       format: _format,
                       borrow: borrow ? amount : Money.zero,
                       termMonths: borrow ? _months : 0,
+                      brand: brand?.id,
                     ),
                   );
                   Navigator.pop(context);

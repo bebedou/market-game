@@ -132,7 +132,9 @@ class OrdersScreen extends StatelessWidget {
         PartyType.households => tr('orders.creditors.wages'),
         PartyType.services => tr('orders.creditors.services'),
         PartyType.government => tr('orders.creditors.taxes'),
-        PartyType.person || PartyType.company => tr('orders.creditors.other'),
+        PartyType.person ||
+        PartyType.company ||
+        PartyType.elsewhere => tr('orders.creditors.other'),
       };
 
   void _order(

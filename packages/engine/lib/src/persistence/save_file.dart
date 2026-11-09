@@ -5,6 +5,7 @@ import '../content/content_db.dart';
 import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../neighbourhoods/neighbourhood_generator.dart';
+import '../state/game_start.dart';
 import '../state/growth.dart';
 import '../state/sleepers.dart';
 import '../state/world_state.dart';
@@ -29,10 +30,17 @@ const int _structureVersion = 9;
 /// content can be grown to match before anything else is read.
 const int _wokenVersion = 24;
 
+/// The first format that tells which cities slept from the start.
+const int _asleepVersion = 26;
+
 const String _magic = 'market-game-save';
 
 /// What a save holds: a snapshot of the world, the full command log since the
 /// start (for replays), and commands queued for the next step.
+/// A game whose cities but the player's run by formula from the start, and
+/// the start the player chose: see [withCitiesAsleep].
+typedef CitiesAsleep = ({GameStart? start});
+
 final class SaveData {
   SaveData({
     required this.content,
@@ -40,6 +48,7 @@ final class SaveData {
     required this.log,
     required this.pending,
     this.woken = const [],
+    this.asleep,
   });
 
   /// Reads [file], from any format since [oldestReadableVersion], and grows
@@ -70,8 +79,13 @@ final class SaveData {
     final scenarioId = reader.readString();
     final woken = <WokenNeighbourhood>[];
     var content = scenario;
+    CitiesAsleep? asleep;
     if (version >= _wokenVersion) {
       final seed = reader.readInt();
+      if (version >= _asleepVersion && reader.readBool()) {
+        asleep = (start: reader.readBool() ? GameStart.read(reader) : null);
+        (content, _) = withCitiesAsleep(content, start: asleep.start);
+      }
       for (var i = 0, n = reader.readInt(); i < n; i++) {
         woken.add((
           row: reader.readInt(),
@@ -87,7 +101,7 @@ final class SaveData {
         ));
       }
       if (woken.isNotEmpty) {
-        if (woken.any((w) => w.row >= scenario.neighbourhoods.length)) {
+        if (woken.any((w) => w.row >= content.neighbourhoods.length)) {
           throw const FormatException(
             'The save was made with different content (neighbourhoods)',
           );
@@ -141,8 +155,13 @@ final class SaveData {
       log: log,
       pending: pending,
       woken: woken,
+      asleep: asleep,
     );
   }
+
+  /// Whether the game's cities but the player's run by formula from the
+  /// start, and how it started.
+  final CitiesAsleep? asleep;
 
   /// The content the world goes with: the scenario's, plus what woke.
   final ContentDb content;
@@ -159,7 +178,12 @@ final class SaveData {
       ..writeInt(saveFormatVersion)
       ..writeString(content.scenarioId)
       ..writeInt(world.seed)
-      ..writeInt(woken.length);
+      ..writeBool(asleep != null);
+    if (asleep case (:final start)) {
+      writer.writeBool(start != null);
+      start?.write(writer);
+    }
+    writer.writeInt(woken.length);
     for (final (:row, :day, :priceIndex, :households, :shops) in woken) {
       writer
         ..writeInt(row)

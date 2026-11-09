@@ -93,14 +93,22 @@ class SimulationController extends ChangeNotifier {
   final _nameReached = <StoreId, Fx>{};
 
   /// A new game, the player's first store as [start] chose if given.
+  /// A new game; with [citiesAsleep], only the player's city is played in
+  /// full, the others by formula until the player trades there.
   SimulationController.newGame(
     ContentDb content, {
     required int seed,
     GameStart? start,
     SaveStore? saves,
+    bool citiesAsleep = false,
   }) : this(
          content,
-         Simulation.newGame(content, seed: seed, start: start),
+         Simulation.newGame(
+           content,
+           seed: seed,
+           start: start,
+           citiesAsleep: citiesAsleep,
+         ),
          saves: saves,
        );
 
@@ -228,6 +236,19 @@ class SimulationController extends ChangeNotifier {
 
   void cancel(Command command) {
     _pending.remove(command);
+    notifyListeners();
+  }
+
+  /// The player's brands.
+  List<BrandView> get myBrands => [
+    for (final brand in _view.brands)
+      if (brand.owner == player) brand,
+  ];
+
+  /// Starts a brand at once, for a shop to open under it the same day.
+  void createBrand(String name, FormatId format) {
+    _simulation.submit(CreateBrand(player, name: name, format: format));
+    _view = _simulation.observe(player);
     notifyListeners();
   }
 
@@ -823,25 +844,27 @@ class SimulationController extends ChangeNotifier {
       } else if (previous.company != shelf.company) {
         final seller = after.companyNames[previous.company.index];
         final wasMine = before.companies.any((c) => c.id == previous.company);
+        // By the name it was known by: a chain puts it under its brand.
+        final known = previous.name;
         add(
           AlertKind.stores,
           liquidated.contains(shelf.id)
               ? tr('alerts.woundUp', {
-                  'store': shelf.name,
+                  'store': known,
                   'owner': owner,
                   'seller': seller,
                 })
               : myStores.contains(shelf.id)
               ? tr('alerts.youBought', {
-                  'store': shelf.name,
+                  'store': known,
                   'site': site,
                   'seller': seller,
                 })
               : wasMine
-              ? tr('alerts.youSold', {'store': shelf.name, 'owner': owner})
+              ? tr('alerts.youSold', {'store': known, 'owner': owner})
               : tr('alerts.rivalBought', {
                   'owner': owner,
-                  'store': shelf.name,
+                  'store': known,
                   'site': site,
                   'seller': seller,
                 }),
