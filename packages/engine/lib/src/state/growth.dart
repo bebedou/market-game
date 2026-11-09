@@ -163,6 +163,7 @@ void growWorld(WorldState world, ContentDb content) {
       staff: setup.staff,
       opensOn: day,
       format: setup.format,
+      area: setup.area,
     );
   }
 }

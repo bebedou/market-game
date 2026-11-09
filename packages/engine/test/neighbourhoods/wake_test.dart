@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:engine/engine.dart';
+import 'package:engine/src/observation/outlook.dart';
 import 'package:engine/src/persistence/state_io.dart';
 import 'package:test/test.dart';
 
@@ -108,6 +109,35 @@ void main() {
       }
     });
 
+    test('has an outlook that counts rivals at the size they have reached', () {
+      Fx share({required bool enlarged}) {
+        final game = _game(_content([_row('partdieu')]));
+        final content = game.content;
+        if (enlarged) {
+          for (final shop in game.world.sleepers.single.shops) {
+            if (content.formats[shop.format.index].key == 'grocery') {
+              shop.area += content.expansion.stepArea;
+            }
+          }
+        }
+        final plan = game.plan!;
+        final market = _market(plan, 'partdieu');
+        final taken = {for (final store in plan.stores) store.site.index};
+        final site = plan.sites.firstWhere(
+          (site) => site.market == market.id && !taken.contains(site.id.index),
+        );
+        final grocery = plan.formats.firstWhere((f) => f.key == 'grocery');
+        return shopOutlook(
+          game.observe(plan.player),
+          plan,
+          site,
+          grocery,
+        ).share;
+      }
+
+      expect(share(enlarged: true) < share(enlarged: false), isTrue);
+    });
+
     test('a scenario can\'t call one what it calls a market', () {
       expect(
         () => _content([_row('neighborhood')]),
@@ -118,6 +148,47 @@ void main() {
         throwsA(isA<ContentException>()),
       );
     });
+  });
+
+  test('households trade down in a downturn and up as they can afford it', () {
+    final content = loadScenario(_scenario);
+    final format = content.formats.firstWhere((f) => f.key == 'grocery');
+    ({Money spending, Money goods, Money atLevel, Fx units}) demand({
+      Fx power = Fx.one,
+      Fx shift = Fx.zero,
+    }) => tradeDemand(
+      content,
+      households: [for (final _ in content.segments) 500],
+      incomeLevel: Fx.one,
+      priceLevel: Fx.one,
+      priceIndex: Fx.one,
+      today: content.startDay,
+      format: format,
+      power: power,
+      premiumShift: shift,
+    );
+
+    final normal = demand();
+    final downturn = demand(shift: Fx.parse('-0.10'));
+    final richer = demand(power: Fx.parse('1.20'));
+    expect(downturn.spending < normal.spending, isTrue);
+    expect(downturn.goods < normal.goods, isTrue);
+    expect(downturn.units.raw, closeTo(normal.units.raw, 100));
+    expect(richer.spending > normal.spending, isTrue);
+    // However far they trade down, they still buy.
+    final all = demand(shift: Fx.parse('-2'));
+    expect(all.units.raw, closeTo(normal.units.raw, 100));
+    expect(all.spending > Money.zero, isTrue);
+  });
+
+  test('a store in a scenario can\'t be bigger than its site allows', () {
+    final root = jsonDecode(_scenario) as Map<String, dynamic>;
+    final store = (root['stores'] as List).first as Map<String, dynamic>;
+    store['area'] = 100000;
+    expect(
+      () => loadScenario(jsonEncode(root)),
+      throwsA(isA<ContentException>()),
+    );
   });
 
   group('a neighbourhood run by formula', () {
@@ -224,6 +295,69 @@ void main() {
       },
     );
 
+    test('sells less and earns less in a recession', () {
+      Simulation month({required bool recession}) {
+        final game = _game(_content([_row('partdieu')]));
+        _advance(game, 20);
+        if (recession) {
+          game.world.macro.regime = game.content.macro.regimes
+              .firstWhere((regime) => regime.key == 'recession')
+              .id;
+        }
+        _advance(game, 20);
+        return game;
+      }
+
+      final normal = sleeper(month(recession: false)).shops;
+      final downturn = sleeper(month(recession: true)).shops;
+      for (final (i, shop) in downturn.indexed) {
+        expect(
+          shop.sales.last < normal[i].sales.last,
+          isTrue,
+          reason: shop.name,
+        );
+        expect(
+          shop.profits.last < normal[i].profits.last,
+          isTrue,
+          reason: shop.name,
+        );
+      }
+    });
+
+    test('opens more shops where more people live', () {
+      int opened(int households) {
+        final row = _row('partdieu');
+        row['households'] = {
+          'professionals': households,
+          'singles': households,
+        };
+        row['largestArea'] = 300;
+        row['room'] = 200;
+        final game = _game(_content([row]));
+        _advance(game, 365 * 4);
+        return sleeper(game).opened;
+      }
+
+      expect(opened(6000), greaterThan(opened(1000)));
+    });
+
+    test('enlarges less where the extra room costs more', () {
+      int area(String rent) {
+        final row = _row('partdieu');
+        row['rent'] = rent;
+        final game = _game(_content([row]));
+        _advance(game, 365 * 4);
+        return sleeper(game).shops
+            .where(
+              (shop) =>
+                  game.content.formats[shop.format.index].key == 'grocery',
+            )
+            .fold(0, (sum, shop) => sum + shop.area);
+      }
+
+      expect(area('4.00'), greaterThan(area('30.00')));
+    });
+
     test('is the same from the same seed, and saves and replays so', () {
       final content = _content([_row('partdieu'), _row('vaise')]);
       final game = _game(content);
@@ -247,15 +381,45 @@ void main() {
   });
 
   group('waking a neighbourhood', () {
+    test('finds its shops charging their markup on what they pay', () {
+      final content = _content([_row('partdieu')]);
+      final game = _game(content);
+      _advance(game, 400);
+      final left = game.world.sleepers.single.shops.toList();
+      final index = game.world.macro.priceIndex;
+      final first = game.world.stores.length;
+      game.submit(WakeNeighbourhood(content.player, row: 0));
+      final market = _market(game.content, 'partdieu');
+      for (final (i, shop) in left.indexed) {
+        final store = game.world.stores[first + i];
+        final strategy = content.strategies[shop.strategy.index];
+        for (final (p, price) in store.prices.indexed) {
+          if (price == null) continue;
+          final listed = content.products[p].baseCost
+              .times(Fx.one + strategy.markup)
+              .times(market.priceLevel)
+              .times(index);
+          // Its suppliers take something off for volume, and no more than this.
+          expect(
+            price.cents / listed.cents,
+            closeTo(0.95, 0.06),
+            reason: '${store.name}, ${content.products[p].key}',
+          );
+        }
+      }
+    });
+
     test('finds the shops its history left, as big as they became', () {
       final content = _content([_row('partdieu')]);
       final game = _game(content);
       _advance(game, 365 * 5);
       final left = game.world.sleepers.single.shops.toList();
       expect(left, isNotEmpty);
-      // One has been through two more rounds of works.
+      // One has been through two rounds of works.
       final enlarged = left.first;
-      enlarged.area += 2 * content.expansion.stepArea;
+      enlarged.area =
+          game.world.sleepers.single.sites![enlarged.site].area +
+          2 * content.expansion.stepArea;
       final first = game.world.stores.length;
       final cash = enlarged.cash;
       game.submit(WakeNeighbourhood(content.player, row: 0));
@@ -445,8 +609,9 @@ void main() {
       final normal = game.content.products[p].referencePrice
           .times(market.priceLevel)
           .times(index);
-      // Within what any strategy's position moves it.
-      expect(price!.cents / normal.cents, closeTo(1, 0.1));
+      // Its strategy's markup moves it from there, and its suppliers' discounts,
+      // but it has moved with the economy.
+      expect(price!.cents / normal.cents, closeTo(1, 0.2));
     });
   });
 }

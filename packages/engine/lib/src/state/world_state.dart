@@ -189,6 +189,7 @@ final class WorldState {
         staff: store.staff,
         opensOn: content.startDay,
         format: store.format,
+        area: store.area,
       );
       // The player's business is new; the others have traded for years.
       if (content.companies[store.company.index].owner != content.player) {
@@ -389,7 +390,11 @@ final class WorldState {
     required List<int> staff,
     required Day opensOn,
     FormatId format = const FormatId(0),
+    int? area,
   }) {
+    // Each round of works already done adds what it would have.
+    final expansion = content.expansion;
+    final rounds = area == null ? 0 : (area - site.area) ~/ expansion.stepArea;
     final store = Store(
       id: StoreId(stores.length),
       name: name,
@@ -400,10 +405,15 @@ final class WorldState {
       opensOn: opensOn,
       market: site.market,
       location: site.location,
-      shelfSlots: site.shelfSlots + content.formats[format.index].slotBonus,
+      shelfSlots:
+          site.shelfSlots +
+          content.formats[format.index].slotBonus +
+          rounds * expansion.shelfSlots,
       storageUnits:
-          site.storageUnits + content.formats[format.index].storageBonus,
-      area: site.area,
+          site.storageUnits +
+          content.formats[format.index].storageBonus +
+          rounds * expansion.storageUnits,
+      area: area ?? site.area,
       prices: List.of(prices),
       stock: [for (final _ in content.products) Stock()],
       history: SalesHistory(content.products.length),

@@ -1268,6 +1268,7 @@ final class StoreSetup {
     required this.prices,
     required this.staff,
     this.format = const FormatId(0),
+    this.area,
   });
 
   final String key;
@@ -1275,6 +1276,9 @@ final class StoreSetup {
   final CompanyId company;
   final SiteId site;
   final FormatId format;
+
+  /// Its area, if works have taken it beyond its site's.
+  final int? area;
 
   /// Staff per slot, indexed by [DaySlot]; a slot without staff is closed.
   final List<int> staff;

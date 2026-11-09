@@ -433,8 +433,21 @@ final class _World {
     final rng = Rng.keyed(seed, RngStream.neighbourhoods, index, 0);
     _addGrocers(row, rng);
     _addShops(row, rng);
-    for (final shop in shops ?? planned) {
-      _emit(row, shop);
+    final here = shops ?? planned;
+    for (final shop in here) {
+      final channel = content.formatChannels[shop.format.index];
+      _emit(
+        row,
+        shop,
+        sharing: shops == null
+            ? null
+            : here
+                  .where(
+                    (other) =>
+                        content.formatChannels[other.format.index] == channel,
+                  )
+                  .length,
+      );
     }
   }
 
@@ -716,7 +729,10 @@ final class _World {
   }
 
   /// Puts [shop] into the scenario, on its site in the neighbourhood of [row].
-  void _emit(NeighbourhoodRow row, SleepingShop shop) {
+  /// One that has traded for a while, [sharing] its trade with so many shops,
+  /// charges its strategy's markup on what it pays; in a world just begun, with
+  /// [sharing] null, shops charge around normal prices and soon move.
+  void _emit(NeighbourhoodRow row, SleepingShop shop, {required int? sharing}) {
     final site = _sitesHere[shop.site];
     final format = content.formats[shop.format.index];
     final strategy = content.strategies[shop.strategy.index];
@@ -727,14 +743,24 @@ final class _World {
       'company': '${key}_co',
       'site': site.key,
       'format': format.key,
+      if (shop.area != site.area) 'area': shop.area,
       'staff': _openingStaff[strategy.key],
       'prices': {
         for (final product in _listing(format, strategy, site.slots))
-          product.key: product.referencePrice
-              .times(row.priceLevel)
-              .times(_prices)
-              .times(Fx.one + strategy.marketPosition)
-              .toDecimalString(),
+          product.key:
+              (sharing != null
+                      ? _usualCost(
+                          row,
+                          product,
+                          strategy,
+                          sharing,
+                        ).times(Fx.one + strategy.markup)
+                      : product.referencePrice.times(
+                          Fx.one + strategy.marketPosition,
+                        ))
+                  .times(row.priceLevel)
+                  .times(_prices)
+                  .toDecimalString(),
       },
     });
     companies.add({
@@ -785,6 +811,41 @@ final class _World {
 
     sold.sort((a, b) => rank(a).compareTo(rank(b)));
     return sold.sublist(0, slots - 2);
+  }
+
+  /// What a shop of [strategy] pays for [product], at a price index of 1, when
+  /// [sharing] the trade here with so many: the best any supplier gives for its
+  /// usual order.
+  Money _usualCost(
+    NeighbourhoodRow row,
+    ProductDef product,
+    StrategyDef strategy,
+    int sharing,
+  ) {
+    var yearly = Fx.zero;
+    for (final segment in content.segments) {
+      yearly += _yearlyUnits(
+        row,
+        segment,
+        product,
+      ).timesInt(row.households[segment.id.index]);
+    }
+    final order = mulDivRound(
+      yearly.raw,
+      strategy.orderCycleDays,
+      365 * sharing * Fx.scale,
+    );
+    Money? best;
+    for (final supplier in content.suppliers) {
+      if (!supplier.carries[product.id.index]) continue;
+      final price = supplier.unitPrice(
+        product,
+        order > supplier.minOrderUnits ? order : supplier.minOrderUnits,
+        Fx.one,
+      );
+      if (best == null || price < best) best = price;
+    }
+    return best ?? product.baseCost;
   }
 
   /// What households here would buy of [product] in a year, in units.

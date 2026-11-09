@@ -32,6 +32,7 @@ final class ShopHabits {
     required this.capture,
     required this.draw,
     required this.goodsExtra,
+    required this.peakStaff,
     this.unitsPerVisit = 1,
   });
 
@@ -45,36 +46,45 @@ final class ShopHabits {
   /// suppliers take off for volume.
   final Fx goodsExtra;
 
+  /// The staff it keeps for its busiest hours, against its average: shoppers
+  /// don't come evenly through the day.
+  final Fx peakStaff;
+
   final int unitsPerVisit;
 }
 
 const _grocer = ShopHabits(
   capture: Fx.raw(9500),
-  draw: Fx.one,
+  draw: Fx.raw(9000),
   goodsExtra: Fx.raw(-200),
+  peakStaff: Fx.raw(14000),
   unitsPerVisit: 3,
 );
 
 ShopHabits habitsOf(FormatDef format) => switch (format.key) {
   'fastfood' => const ShopHabits(
     capture: Fx.one,
-    draw: Fx.one,
+    draw: Fx.raw(9000),
     goodsExtra: Fx.raw(2200),
+    peakStaff: Fx.raw(17000),
   ),
   'steakhouse' => const ShopHabits(
     capture: Fx.one,
     draw: Fx.one,
     goodsExtra: Fx.raw(1600),
+    peakStaff: Fx.raw(16000),
   ),
   'finedining' => const ShopHabits(
     capture: Fx.one,
-    draw: Fx.one,
+    draw: Fx.raw(14000),
     goodsExtra: Fx.raw(3000),
+    peakStaff: Fx.raw(17000),
   ),
   'electronics' => const ShopHabits(
     capture: Fx.raw(11000),
-    draw: Fx.raw(12000),
+    draw: Fx.raw(9000),
     goodsExtra: Fx.zero,
+    peakStaff: Fx.raw(15000),
   ),
   _ => _grocer,
 };
@@ -84,13 +94,11 @@ const _priceWeight = Fx.raw(50000);
 const _dearest = Fx.raw(500);
 const _cheapest = Fx.raw(-1500);
 
-/// Staff for the shoppers a shop serves, against what the strategy aims for:
-/// shoppers don't come evenly through the day.
-const _peakStaff = Fx.raw(15000);
-
 /// What [households], by segment, buy in a year of what [format] sells: at
 /// normal prices; at what the goods cost; at that cost at the place's prices,
-/// which a strategy's markup goes on; and how many units that is.
+/// which a strategy's markup goes on; and how many units that is. They buy dearer
+/// the more they have to spend, as [power] says against normal, and a downturn
+/// has them trade down by [premiumShift].
 ({Money spending, Money goods, Money atLevel, Fx units}) tradeDemand(
   ContentDb content, {
   required List<int> households,
@@ -99,6 +107,8 @@ const _peakStaff = Fx.raw(15000);
   required Fx priceIndex,
   required Day today,
   required FormatDef format,
+  Fx power = Fx.one,
+  Fx premiumShift = Fx.zero,
 }) {
   final level = priceIndex * priceLevel;
   var spending = Money.zero;
@@ -114,7 +124,9 @@ const _peakStaff = Fx.raw(15000);
       var yearly = segment.dailyUnits[c].timesInt(365);
       final adoption = content.categories[c].diffusion?.adoption(today);
       if (adoption != null) yearly *= adoption;
-      var premium = segment.premiumShare[c] * incomeLevel;
+      var premium =
+          segment.premiumShare[c] * incomeLevel * power + premiumShift;
+      if (premium.isNegative) premium = Fx.zero;
       if (premium > Fx.one) premium = Fx.one;
       final tier = product.tier == ProductTier.premium
           ? premium
@@ -171,7 +183,7 @@ Money yearlyWages(
   required Fx wageLevel,
   required Fx unitsServed,
   required int unitsPerVisit,
-  Fx peak = _peakStaff,
+  required Fx peak,
 }) {
   final visits = Fx.raw(mulDivRound(unitsServed.raw, 1, 365 * unitsPerVisit));
   final staff = Fx.raw(
@@ -182,9 +194,11 @@ Money yearlyWages(
     ),
   );
   final slots = Fx.fromInt(strategy.hours.where((open) => open).length);
+  // There's only so much room for staff, however many shoppers come.
+  final most = slots.timesInt(content.operations.maxStaffPerSlot);
   return content.operations.slotWage
       .times(wageIndex * wageLevel * format.wageFactor)
-      .times(staff > slots ? staff : slots)
+      .times(staff > most ? most : (staff > slots ? staff : slots))
       .timesInt(365);
 }
 
@@ -278,7 +292,7 @@ ShopOutlook shopOutlook(
         continue;
       }
       total +=
-          pull(there.location, there.area) *
+          pull(there.location, store.area ?? there.area) *
           _priceDraw(content, store.prices, market, macro);
       rivals++;
     }
@@ -308,6 +322,7 @@ ShopOutlook shopOutlook(
     wageLevel: market.wageLevel,
     unitsServed: units * served,
     unitsPerVisit: habits.unitsPerVisit,
+    peak: habits.peakStaff,
   );
   final premises = (site.rent + format.overheadsFor(site.area))
       .times(macro.priceIndex)

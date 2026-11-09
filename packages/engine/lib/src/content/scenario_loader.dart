@@ -674,6 +674,10 @@ ContentDb loadScenario(String jsonText) {
       node._fail('site', 'another store already trades at "${site.key}"');
     }
     final shelfSlots = site.shelfSlots;
+    final area = node.has('area') ? node.positiveInt('area') : null;
+    if (area != null && (area < site.area || area > site.maxArea)) {
+      node._fail('area', 'must be within what "${site.key}" allows');
+    }
     final staffNode = node.object('staff');
     final staff = _perSlot(staffNode, staffNode.nonNegativeInt, 0);
     for (final slot in DaySlot.values) {
@@ -715,6 +719,7 @@ ContentDb loadScenario(String jsonText) {
         prices: List.unmodifiable(prices),
         staff: List.unmodifiable(staff),
         format: format.id,
+        area: area,
       ),
     );
     node.finish();

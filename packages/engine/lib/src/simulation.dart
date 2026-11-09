@@ -239,20 +239,12 @@ final class Simulation {
     final persons = content.persons.length;
     growWorld(world, grown);
     world.sleepers.remove(sleeper);
-    // Each shop is as big as its history made it, and as well known.
+    // Each shop is as well known as its history made it.
     final months = _monthsSinceStart();
-    final expansion = grown.expansion;
     for (final (i, shop) in sleeper.shops.indexed) {
-      final store = world.stores[stores + i];
-      final site = grown.sites[store.site.index];
-      final steps = (shop.area - site.area) ~/ expansion.stepArea;
-      store
-        ..area = shop.area
-        ..shelfSlots += steps * expansion.shelfSlots
-        ..storageUnits += steps * expansion.storageUnits
-        ..reputation = months - shop.openedMonth >= 24
-            ? grown.demand.establishedReputation
-            : grown.demand.openingReputation;
+      world.stores[stores + i].reputation = months - shop.openedMonth >= 24
+          ? grown.demand.establishedReputation
+          : grown.demand.openingReputation;
     }
     final standard = standardPolicies(grown);
     policies = Map.unmodifiable({

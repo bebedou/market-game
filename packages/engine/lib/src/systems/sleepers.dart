@@ -17,13 +17,16 @@ const _settlingMonths = 24;
 /// How a shop still settling draws against those already known.
 const _settlingDraw = Fx.raw(8000);
 
-/// The chance in a month that someone is ready to open where it would pay.
+/// The chance in a month, for every so many households, that someone is ready
+/// to open where it would pay: the more people, the more would-be owners.
 const _openingChance = Fx.raw(300);
+const _openingHouseholds = 2000;
 
-/// What a shop must have earned in a year, against the works' cost, to enlarge
-/// the first time. It takes more each time, by the square: each round of shelves
-/// holds what sells less than the last.
-const _enlargingReturn = 3;
+/// What a shop must have earned in a year, beyond what the extra room would
+/// cost, against the works' cost, to enlarge the first time. It takes more each
+/// time, by the square: each round of shelves holds what sells less than the
+/// last.
+const _enlargingReturn = 2;
 
 /// What the shops of a neighbourhood do once settled: unlike a new shop's habits
 /// ([ShopHabits]), these were fitted to the same places simulated in full for
@@ -81,6 +84,13 @@ _Settled _settled(FormatDef format) => switch (format.key) {
   ),
 };
 
+/// The formula gives each shop what a shop like it does, while real shops scatter
+/// around that by a few points of margin. So one earning less than this, of its
+/// sales, may be closing anyway: with [_shakyChance] a month at no profit,
+/// scaling up as its margin falls.
+const _shakyMargin = Fx.raw(300);
+const _shakyChance = Fx.raw(300);
+
 /// Runs every sleeping neighbourhood by formula, on the first of each month:
 /// households come and go; what they spend, at the economy of the day, is shared
 /// among the shops of each trade by location, size and price; each shop books
@@ -103,7 +113,7 @@ final class SleeperSystem implements TickSystem {
       final rng = context.rng(RngStream.neighbourhoods, 1000 + sleeper.row);
       _grow(world, content, sleeper);
       _trade(world, content, sleeper, context.day, month);
-      _closeAndEnlarge(world, content, sleeper, month);
+      _closeAndEnlarge(world, content, sleeper, month, rng);
       _open(world, content, sleeper, month, rng);
     }
   }
@@ -158,6 +168,11 @@ final class SleeperSystem implements TickSystem {
         priceIndex: macro.priceIndex,
         today: day,
         format: content.formats[shops.first.format.index],
+        power: content.demand.purchasingPower(
+          macro.wageIndex,
+          macro.priceIndex,
+        ),
+        premiumShift: regime.premiumShift,
       );
       // What it would sell at the strategy's prices, against normal ones.
       Fx pricing(SleepingShop shop) {
@@ -252,6 +267,7 @@ final class SleeperSystem implements TickSystem {
     ContentDb content,
     SleepingNeighbourhood sleeper,
     int month,
+    Rng rng,
   ) {
     final sites = sleeper.sites!;
     final expansion = content.expansion;
@@ -265,7 +281,7 @@ final class SleeperSystem implements TickSystem {
           age >= 24 &&
           shop.sales.length == sleepingMonthsKept &&
           -shop.yearProfit > shop.yearSales.times(closingLoss);
-      if (broke || losing) {
+      if (broke || losing || _gaveUp(shop, age, rng)) {
         closing.add(shop);
         continue;
       }
@@ -278,10 +294,17 @@ final class SleeperSystem implements TickSystem {
       final slots =
           site.shelfSlots + format.slotBonus + steps * expansion.shelfSlots;
       final cost = expansion.cost(world.macro.priceIndex);
+      // What it must have earned leaves out what the extra room would cost.
+      final extra =
+          (site.rentFor(shop.area + expansion.stepArea) -
+                  site.rentFor(shop.area) +
+                  format.overheadsFor(expansion.stepArea))
+              .times(world.macro.priceIndex)
+              .timesInt(12);
       if (slots < sold &&
           shop.area + expansion.stepArea <= site.maxArea &&
           (month - shop.enlargedMonth) * 30 >= strategy.expansionIntervalDays &&
-          shop.yearProfit >=
+          shop.yearProfit - extra >=
               cost.timesInt(_enlargingReturn * (steps + 1) * (steps + 1)) &&
           shop.cash + shop.ownerCash >= cost) {
         shop.area += expansion.stepArea;
@@ -299,6 +322,18 @@ final class SleeperSystem implements TickSystem {
     }
   }
 
+  /// Whether a shop trading near the line, though not over it, closes this month.
+  bool _gaveUp(SleepingShop shop, int age, Rng rng) {
+    if (age < 24 || shop.sales.length < sleepingMonthsKept) return false;
+    final sold = shop.yearSales;
+    if (sold <= Money.zero) return false;
+    final margin = Fx.raw(
+      mulDivRound(shop.yearProfit.cents, Fx.scale, sold.cents),
+    );
+    if (margin >= _shakyMargin) return false;
+    return rng.chance(_shakyChance * (_shakyMargin - margin).div(_shakyMargin));
+  }
+
   /// Now and then, someone ready to open looks over the free sites as an AI
   /// owner would, and takes the one that would pay back soonest, if it would
   /// within what its strategy allows.
@@ -309,12 +344,15 @@ final class SleeperSystem implements TickSystem {
     int month,
     Rng rng,
   ) {
-    if (!rng.chance(_openingChance)) return;
+    final total = sleeper.households.fold(0, (sum, count) => sum + count);
+    final chance = Fx.raw(
+      mulDivRound(_openingChance.raw, total, _openingHouseholds),
+    );
+    if (!rng.chance(chance)) return;
     final row = content.neighbourhoods[sleeper.row];
     final sites = sleeper.sites!;
     final macro = world.macro;
     final taken = {for (final shop in sleeper.shops) shop.site};
-    final total = sleeper.households.fold(0, (sum, count) => sum + count);
     FormatDef? bestFormat;
     StrategyDef? bestStrategy;
     PlannedSite? bestSite;
