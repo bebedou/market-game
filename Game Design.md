@@ -7,6 +7,8 @@ A premium, mobile-first economic simulation combining the entrepreneurial progre
 
 The player starts with a small business and can eventually become a multinational business owner, industrialist, technology innovator, or corporate investor.
 
+**A Warren Buffett simulator.** Money is only the score. How rich the player gets depends on how good they are at spotting value and at running their businesses. A mistake costs time: expanding too fast just before a crisis, being overtaken by an innovation, or buying a stock that goes south sets the player back years. Only the player's own ruin ends the game.
+
 **Core philosophy:** The player operates within a living economy rather than a collection of disconnected business minigames.
 
 ## Fundamental gameplay principles
@@ -33,9 +35,9 @@ The player starts with a small business and can eventually become a multinationa
 
 **Borrowing to grow.** Borrowing is a lever for growth, not a side feature. The bank lends without a guarantee up to a year and a half of a company's earnings, and says how much on each company's accounts. Opening a store or buying a rival without the cash, the player is offered the rest there and then, with what it costs a month; buying a store, its own earnings count, so a profitable rival can largely pay for itself. A whole company can borrow part of its own price on its earnings, so buying out a rival chain takes less of the player's own cash. Long loans keep the payments small, and the cash cushion keeps the next one aside. A director can borrow too, if their brief lets them.
 
-**Goals.** A pure sandbox: the player sets their own goals. Replayability comes from new businesses, sectors and markets added in updates, and from choosing where and how to start. Goals, achievements and challenge seeds come after launch (see Roadmap).
+**Goals.** A sandbox with money as the score: no set goal, but how rich the player gets, and how fast, measures how well they play. Replayability comes from new businesses, sectors and markets added in updates, and from choosing where and how to start. Goals, achievements and challenge seeds come after launch (see Roadmap).
 
-**Failure.** Bankruptcy is recoverable. A bankrupt company is liquidated and its creditors are paid from company assets. The player keeps their personal assets minus any guaranteed debt, takes a reputation hit (worse borrowing terms, harder deals), and can start again in the same world.
+**Failure.** A company's bankruptcy costs time, not the game. The company is liquidated and its creditors are paid from its assets. The player keeps their personal assets minus any debt they guaranteed, takes a reputation hit (worse borrowing terms, harder deals), and can start again in the same world. The player's own bankruptcy ends the game: when the debts they personally guaranteed are more than everything they own.
 
 **Sessions.** The game must work for both short and long sessions:
 - *Short (5–15 min):* review the dashboard, react to what changed, adjust a few policies, advance time.
@@ -113,7 +115,7 @@ Companies can participate in multiple sectors and own different kinds of assets.
 
 ## Roadmap
 
-Not part of the first release, in no fixed order:
+Next, in this order: household sizes, countries, owning the chain, the new trades, then the stock market. The rest, not part of the first release, in no fixed order:
 
 - **Goals and milestones.** Net-worth tiers, first acquisition, leading a city's market, a first factory: marked on a timeline of the player's empire.
 - **Achievements.** For feats and odd paths: surviving a recession without a loan, a fine-dining empire, buying out the chain that beat you.
@@ -121,18 +123,21 @@ Not part of the first release, in no fixed order:
 - **Challenge scenarios.** A set start with a goal and a deadline ("turn around a failing chain in two years"), including ones built on real crises (2008, the 2022 inflation) through the macroeconomic engine.
 - **Showing the size of the empire.** The interface should make growth felt: the cities and sites the holding spans, its stores by trade colour, and its history over the years, not only longer lists.
 - **Lending and savings.** Credit priced from a business's risk (it is already sized on its earnings), fixed or variable rates, an overdraft line, deposit interest and government bonds; rival owners who borrow.
-- **Owning the chain.** Each trade climbs its own ladder upstream: a store brand, farms, a lab and a factory (see Owning the chain).
-- **Countries by formula.** Countries described by real statistics (households by income class, what each earns and spends per trade, margins, the cycle), with fictional chains as blocks, cheap enough to run many at once. France, Germany, Italy and Spain are built, not yet in the game; see Engine Architecture.md. The aim: a player can stay local, shop by shop, or rise to run businesses across a whole world.
+- **Owning the chain.** Each trade climbs its own ladder upstream: making its own goods, farms, a lab and a factory (see Owning the chain).
+- **Selling to businesses.** Businesses that sell to retailers or to other industries, by formula from each country's input-output table, and starts as a factory or a service business (see Selling to businesses).
+- **Clothing, cosmetics and luxury goods.** Three new trades, each with its own shops, shoppers and ladder upstream. Clothing sells by season: a collection is bought months ahead and loses value when the season turns, so a shop marks it down or carries it, and the sales are a high point of its year. Cosmetics sell often and in small baskets, in perfumeries and beauty shops, where brands and advice draw shoppers. Luxury sells rarely and dear, mostly to the comfortable, on a city's best streets, where the name counts for more than the price and a discount hurts it. All three keep goods that don't spoil but go out of fashion, and earn high margins against dear rents. What the engine lacks for them: seasons and markdowns, stock that ages rather than spoils, and a brand's prestige as well as its reputation. Their ladders: a workshop making its own clothes, a lab for cosmetics, a house making its own goods for luxury.
+- **Countries by formula.** Countries described by real statistics (households by income class, what each earns and spends per trade, margins, the cycle), with fictional chains as blocks, cheap enough to run many at once. France, Germany, Italy and Spain are built, not yet in the game; see Engine Architecture.md. The euro countries come first, in the first release; then the USA, the UK, Japan and Canada, which need currencies; then the BRICS, once the demo is out. The aim: a player can stay local, shop by shop, or rise to run businesses across a whole world.
 - **Neighbourhoods from figures.** A neighbourhood's sites, shops and owners generated from its households and costs and a seed. Cities now hold more neighbourhoods than the seven simulated from the start. They run by formula every month, at next to no cost: households come and go, shops of each trade share what they spend, make money or lose it, and open and close. When the player opens a shop there, the place comes to life as its history left it. A new game plays only the player's city in full: the six others run by formula too, with their own sites and shops, while their businesses stay in the game, trading in their books, and their chains can open and buy anywhere. See Engine Architecture.md. Still to come: zooming in from a country.
 - **City plan.** A drawn plan of each city once the engine is hardened: neighbourhoods as blocks sized by their households, shaded by spending, rent or rivals, with the player's shops marked. It would take the game a step away from being fully textual. It needs a plan for every generated city, so it comes after neighbourhoods run by formula.
 - **Executives.** Named people with strengths and characters, hired and fired, who run whole layers of the holding (see Managing at scale). Directors, one per company, are the first step.
+- **Talent.** A small company of exceptional people can grow very fast and change the world, as Google, Nvidia, SpaceX or Anthropic did. Employees' skills should count, and poaching a gifted engineer, designer or financier should change the course of a business. Today only managers' and directors' grades do. Executives are a first step (see Talent).
 
 ## Owning the chain
 
 Growing should not only mean more of the same store. Each trade can own more of its own chain, one rung at a time, until the player supplies themselves and, if they choose, their rivals. This is how the sectors connect: production comes in through the trades the player already runs, not as separate games.
 
 **Ladders by trade.** Each rung is a business unit of its own, with its costs, staff and capacity:
-- *Convenience store and supermarket:* a store-brand factory (cheaper goods, at a quality the player picks), then a distribution centre (shorter delivery times, less spoilage), then a dairy or market garden for fresh produce.
+- *Convenience store and supermarket:* a factory making goods the chain used to buy (cheaper, at a quality the player picks), then a distribution centre (shorter delivery times, less spoilage), then a dairy or market garden for fresh produce.
 - *Restaurants:* a central kitchen, then a farm or ranch for meat and vegetables, then the house dishes sold as frozen meals in supermarkets, which takes the player into food manufacturing.
 - *Electronics:* a repair workshop, then an R&D lab that invents the player's own gadgets and phones (see Post-launch direction), then a factory making the brand.
 
@@ -141,8 +146,25 @@ Growing should not only mean more of the same store. Each trade can own more of 
 2. **Sell to rivals, or keep it exclusive.** A farm or factory can sell to competitors: income and scale, at the price of helping them. AI owners buy from it under the same rules as from any supplier, and can climb ladders of their own.
 3. **One rung at a time.** Each rung should pay for itself before the next is worth building.
 4. **Legible.** Reports show what a rung saves or earns against buying from the market, and at what transfer price.
+5. **Made or bought, never both.** Goods the chain makes replace the ones it bought, outright: a shop never sells its own version beside the bought one, so there is no second line to price, stock or compare.
 
-**First step.** The store brand: a new product line from the player's own supplier is the smallest ladder to build and the best test of whether integration is fun. Prove it before building the others.
+**First step.** Own goods: a factory of the player's takes over a product the chain used to buy, and its goods replace the bought ones on the chain's shelves. It is the smallest ladder to build and the best test of whether integration is fun. Prove it before building the others.
+
+## Selling to businesses (roadmap)
+
+Owning the chain brings businesses that sell to other businesses, and a player may run only those, selling to retailers or to other industries. They work by formula, as the places beyond the player's city do, rather than simulating every company in the world.
+
+- *Market size.* Each sector's market is what other industries buy from it, plus what households, governments, investment and exports buy. That is a country's input-output table, which national statistics publish: the OECD and Eurostat have one for every country planned, by about 45 industries. Shops are only the households' part. A change carries through every step at once, so a chemicals maker four steps from the shops feels a recession through the chain, a little later. A supplier to a cyclical industry is a cyclical business itself, which a good player sees before buying one. Markets with no shops, such as space or defence, take their size from government budgets and investment. The game's sectors can be finer than the data's: space is a fixed part of a broader industry.
+- *Rivals.* A few named producers per sector, as figures: a share, a price to their buyers, a quality, a capacity. They follow the player's rules: they cut prices, invest, and innovate through R&D. They are natural companies to list on the stock market.
+- *Share.* The player's share follows what their product offers: value (quality for the price), appeal (brand, design talent, marketing to buyers) and reach (the countries they sell in). Buyers change suppliers slowly, for contracts and listings, so a share moves over months. Shares count within a sector only. Where buyers are few, as in space, defence or large industrial contracts, sales come as tenders instead: a few large contracts a year, each won or lost on the offer.
+- *Meeting the shops.* Only consumer goods meet shops directly, in the city played in full, where the player's factory is one more supplier under the rules shops already use. Everything further upstream is by formula, except the player's own chain, which goes through their books at a transfer price (see Open questions).
+- *Decisions.* Price to buyers, quality, capacity (a weight when idle in a downturn), marketing to buyers, and which countries to sell in. The player sees the market's size, their share against their rivals', and why it moved.
+- *Cost.* About 45 industries a country, once a month: next to nothing beside the shops.
+
+**Starts.** A player needn't start with a shop.
+- *A factory* (a chemicals company, or any industry) has a burn rate until its first product is made. First the build: a small site, rented or bought, and its fitting out, as a shop's. Then development: staff and rent every month with nothing to sell yet, and the runway shown ("14 months of cash at this rate"); talented engineers shorten it (see Talent). Then the first product: production starts small and ramps up, and the player looks for buyers, a share of the sector or a first tender. With no earnings yet, the bank lends only on the player's guarantee, so a slow development or a lost tender can bring the one bankruptcy that ends the game.
+- *A service business* (an advertising agency, or any service) sells no product: it builds a portfolio of customers and grows its staff to serve them. The founder and one or two people in a small office win their first clients by pitching, each pitch's chance following their reputation, their people's talent and their price. Each client pays a monthly fee, takes some of the staff's time and has a satisfaction level. The player hires as clients come: idle staff are a cost, and overloaded staff let quality slip, so clients leave. Leaning on a few large clients is the risk, and losing the largest costs time. The market is what businesses spend on the service, from the input-output table. An agency's is close at hand: the marketing every company in the game pays goes to an abstract services account today, and an agency would win a share of it, its clients including the chains the player competes with.
+- *Fundraising* grows out of the factory start: selling part of the company to investors for the cash to cover its burn rate, at a price set by how far it has got, its people and its market. It needs part-ownership, which comes with the stock market, so private rounds are the first step of the stock market, before listing. Until then a factory is funded by the founder's cash and the loans they guarantee.
 
 ## Managing at scale
 
@@ -158,7 +180,7 @@ Managers have a skill level and a salary. Skill determines how closely they hit 
 
 **AI competitors run on the same policy engine,** each with its own strategy. One decision system serves both player delegation and the living economy.
 
-**Brands.** A chain trades under a brand, as Carrefour's shops do. A brand is a name for one type of business, owned by a person and usable by any of their companies. Every shop opened under it is named after it and its district ("Marché Plus Part-Dieu"), with its street added when the brand already has a shop there, and starts as well known as the brand's shops in the same city. An AI owner's new and bought shops always go under its brand, which it names after its company the first time it opens or buys a shop, and its other shops of that type then join it. The player creates brands from the holding and, when opening or buying a shop, picks one of theirs or none. A branded shop can't be renamed on its own, and a shop that becomes another type of business, or changes hands, leaves its brand. This is a shop sign (an enseigne), not the own-label goods of "Owning the chain". Chains reach the districts beyond those played in full the same way, opening and buying there under their brands; those shops trade by formula in the chain's own books until the player arrives, when they become its stores there.
+**Brands.** A chain trades under a brand, as Carrefour's shops do. A brand is a name for one type of business, owned by a person and usable by any of their companies. Every shop opened under it is named after it and its district ("Marché Plus Part-Dieu"), with its street added when the brand already has a shop there, and starts as well known as the brand's shops in the same city. An AI owner's new and bought shops always go under its brand, which it names after its company the first time it opens or buys a shop, and its other shops of that type then join it. The player creates brands from the holding and, when opening or buying a shop, picks one of theirs or none. A branded shop can't be renamed on its own, and a shop that becomes another type of business, or changes hands, leaves its brand. This is a shop sign (an enseigne), not the goods a chain makes itself (see Owning the chain). Chains reach the districts beyond those played in full the same way, opening and buying there under their brands; those shops trade by formula in the chain's own books until the player arrives, when they become its stores there.
 
 ### Executives (roadmap)
 
@@ -181,6 +203,19 @@ Above the store managers, the holding gets a board, so the player can rise from 
 1. Delegating changes what the player decides; it never leaves them with nothing to decide.
 2. Mistakes come from skill and character, never from random blunders, as with managers.
 3. Executives decide through the same policy engine as managers and AI owners, with a wider remit and a personality.
+
+### Talent (roadmap)
+
+A small company of exceptional people can grow very fast. Talent sits in a company's key people, not in every employee: shop staff stay headcounts with wages, as they are.
+
+- *Key people.* A few named people per company: engineers and researchers, designers, financiers, operators and marketers. Five to twenty names can be followed on a phone; skills for every cashier would be busywork. Executives are key people who also decide: a finance director is a financier with a remit.
+- *Rare and lopsided.* Most are average, a few are worth ten ordinary ones. Talent multiplies what a company does rather than adding to it, so a small team of the best can beat a big budget.
+- *What each moves.* Engineers and researchers: the odds and size of R&D breakthroughs, budget and talent both counting. Designers: how many shoppers a shop or product draws. Financiers: borrowing terms, and how well the player reads a business's real value before buying it. Operators: running costs, as managers do today. Marketers: what advertising buys.
+- *A market for people.* A person's price follows their track record. The player poaches by paying more, and loses people to a rival who does. The best go where companies win, so success draws talent, and talent more success. Losing the best person is the risk, and it costs time.
+- *Same rules for everyone.* AI companies hire and poach too, the player's people included.
+- *Legible.* Each person's track record is shown, and their true level shows over time.
+
+Talent and R&D go together: R&D without talent is only money, and talent without R&D has little to change. In shops, talent makes a chain better and quicker to grow, not world-changing. Growth like Nvidia's or Anthropic's needs a trade where one breakthrough sells everywhere at once, such as chips, software or platforms (see Business sectors).
 
 ## Simulation model
 
@@ -275,6 +310,14 @@ Validate consumer demand, inventory, pricing, competition, cash flow, and the da
 
 **Innovation: stochastic discovery.** R&D spending buys chances at breakthroughs, and knowledge spills over between firms. Breakthrough odds must be visible to the player (legible causality). The product data model must allow new products and technologies to appear at runtime.
 
+**First iteration: an R&D budget, no tree.** A company spends on R&D as it does on marketing, and the spending turns into an innovation from time to time. There is no technology tree to design.
+- *Budget.* A share of sales, set for each company. AI chains spend what their strategy says.
+- *Knowledge.* Spending builds it up, and it fades slowly when spending stops. Each month it gives a chance of a breakthrough, and the odds are shown: "about one every four years at this budget".
+- *Breakthroughs.* Each takes a name from a list kept by trade in the data (for grocers: self-service tills, same-day delivery, a loyalty card). The name is flavour, so it needs no foresight, and when a list runs out it carries on as the next generation. A breakthrough makes the company's shops of that trade cheaper to run, or draws them more shoppers.
+- *Spreading.* Rivals in the trade catch up after a few years, faster if they spend on R&D themselves. Until they do, they lose shoppers to whoever has it.
+- *Disruption* is a rival's breakthrough. It is in the news, the player's share of the trade slips, and sales are lost until they catch up or sell up. The same rules hit rivals when the player innovates.
+- Places run by formula, districts and countries, take the same effect on shoppers and costs.
+
 ## Open questions
 
 1. **AI owners.** Under "same rules for everyone", do AI firms have AI owners with personal wealth who inject capital and take dividends? Where do AI entrepreneurs get the capital to enter a market? *(Provisional: AI owners are persons with scenario-given wealth; see Engine Architecture.md.)*
@@ -284,3 +327,4 @@ Validate consumer demand, inventory, pricing, competition, cash flow, and the da
 5. **Store model (decide near launch).** Paid upfront, or a free demo with a one-time $4.99 unlock?
 6. **Transfer prices.** When the player's farm or factory supplies their own stores, at what price: cost, market, or a price the player sets? It moves profit between companies, and so tax.
 7. **Executives' character.** How many traits, how strongly they bend policies, and how much is visible before hiring?
+8. **Era.** A start in today's world, where innovation is invented by companies' R&D as play goes on, or a start in the 1950s with a technology tree by sector that follows history? *(Decided: today's world. A tree of future technologies would need foresight nobody has, and history is known to players.)*
