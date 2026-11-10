@@ -89,32 +89,21 @@ final class ContentDb {
   int get channelCount =>
       formatChannels.fold(0, (most, c) => c >= most ? c + 1 : most);
 
-  List<int> _channels() {
-    final channel = List.filled(formats.length, -1);
-    var next = 0;
-    for (final format in formats) {
-      if (channel[format.id.index] >= 0) continue;
-      // Every format reachable through shared categories joins it.
-      final queue = [format];
-      channel[format.id.index] = next;
-      while (queue.isNotEmpty) {
-        final current = queue.removeLast();
-        for (final other in formats) {
-          if (channel[other.id.index] >= 0) continue;
-          final shared = [
-            for (var c = 0; c < categories.length; c++)
-              current.sells[c] && other.sells[c],
-          ].any((both) => both);
-          if (shared) {
-            channel[other.id.index] = next;
-            queue.add(other);
+  /// Each category's channel, indexed by [CategoryId]; a category no format
+  /// sells has none, and counts as the first.
+  late final List<int> categoryChannels = List.unmodifiable([
+    for (final category in categories)
+      () {
+        for (final format in formats) {
+          if (format.sells[category.id.index]) {
+            return formatChannels[format.id.index];
           }
         }
-      }
-      next++;
-    }
-    return List.unmodifiable(channel);
-  }
+        return 0;
+      }(),
+  ]);
+
+  List<int> _channels() => formatChannelsOf(formats, categories.length);
 
   final List<SegmentDef> segments;
   final DemandTuning demand;
@@ -165,6 +154,7 @@ final class NeighbourhoodRow {
     required this.room,
     this.playerStartsHere = false,
     this.layout,
+    this.scale = const [],
   });
 
   final String key;
@@ -178,6 +168,13 @@ final class NeighbourhoodRow {
   /// Households, and their yearly growth, indexed by segment.
   final List<int> households;
   final List<Fx> growth;
+
+  /// As [MarketDef.scale]: what households here buy of each channel against
+  /// their segments' habits.
+  final List<Fx> scale;
+
+  /// [scale] for [channel].
+  Fx scaleOf(int channel) => channel < scale.length ? scale[channel] : Fx.one;
 
   final Fx priceLevel;
   final Fx wageLevel;
@@ -201,6 +198,35 @@ final class NeighbourhoodRow {
   int get totalHouseholds => households.fold(0, (sum, count) => sum + count);
 }
 
+/// Each format's channel, indexed by [FormatId], as [ContentDb.formatChannels]
+/// has them.
+List<int> formatChannelsOf(List<FormatDef> formats, int categoryCount) {
+  final channel = List.filled(formats.length, -1);
+  var next = 0;
+  for (final format in formats) {
+    if (channel[format.id.index] >= 0) continue;
+    // Every format reachable through shared categories joins it.
+    final queue = [format];
+    channel[format.id.index] = next;
+    while (queue.isNotEmpty) {
+      final current = queue.removeLast();
+      for (final other in formats) {
+        if (channel[other.id.index] >= 0) continue;
+        final shared = [
+          for (var c = 0; c < categoryCount; c++)
+            current.sells[c] && other.sells[c],
+        ].any((both) => both);
+        if (shared) {
+          channel[other.id.index] = next;
+          queue.add(other);
+        }
+      }
+    }
+    next++;
+  }
+  return List.unmodifiable(channel);
+}
+
 final class MarketDef {
   const MarketDef({
     required this.id,
@@ -212,6 +238,7 @@ final class MarketDef {
     this.priceLevel = Fx.one,
     this.wageLevel = Fx.one,
     this.incomeLevel = Fx.one,
+    this.scale = const [],
   });
 
   final MarketId id;
@@ -219,8 +246,17 @@ final class MarketDef {
   final String name;
 
   /// How many households of each segment live here at the start, indexed by
-  /// [SegmentId].
+  /// [SegmentId]. A scenario gives a place its market in euros and the mix of
+  /// who lives there, and these follow from them (see [placeSize]).
   final List<int> households;
+
+  /// What households here buy of each channel's goods against what their
+  /// segments' habits say, indexed by channel: what makes the market the
+  /// scenario gave. Missing channels are one.
+  final List<Fx> scale;
+
+  /// [scale] for [channel].
+  Fx scaleOf(int channel) => channel < scale.length ? scale[channel] : Fx.one;
 
   /// Each segment's yearly population growth before migration, which can be
   /// negative, indexed by [SegmentId].

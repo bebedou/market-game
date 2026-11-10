@@ -100,7 +100,12 @@ class _NewGameScreenState extends State<NewGameScreen> {
     final site = _content.sites[_site.index];
     final format = _content.formats[_format.index];
     final (terms, problem) = startTerms(_content, _start);
-    final households = market.households.fold(0, (sum, n) => sum + n);
+    // What its shoppers spend a year, to the nearest thousand.
+    var spending = Money.zero;
+    for (var channel = 0; channel < _content.channelCount; channel++) {
+      spending += marketSpending(_content, market, channel);
+    }
+    spending = Money((spending.cents / 100000).round() * 100000);
     return Scaffold(
       appBar: AppBar(title: Text(tr('common.newGame'))),
       body: ListView(
@@ -139,7 +144,7 @@ class _NewGameScreenState extends State<NewGameScreen> {
               const SizedBox(height: 6),
               Hint(
                 tr('newGame.cityHint', {
-                  'households': households,
+                  'market': money(spending, cents: false),
                   'prices': percent(market.priceLevel, decimals: 0),
                   'incomes': percent(market.incomeLevel, decimals: 0),
                   'wages': percent(market.wageLevel, decimals: 0),

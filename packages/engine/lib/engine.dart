@@ -60,7 +60,12 @@ export 'src/observation/observation.dart'
         ShelfView,
         StoreView;
 export 'src/observation/outlook.dart'
-    show ShopOutlook, shopOutlook, tradeSpending;
+    show
+        ShopOutlook,
+        channelSpending,
+        marketSpending,
+        shopOutlook,
+        tradeSpending;
 export 'src/persistence/save_file.dart' show SaveFile;
 export 'src/policies/cushion.dart'
     show

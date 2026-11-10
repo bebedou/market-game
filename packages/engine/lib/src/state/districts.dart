@@ -54,6 +54,10 @@ typedef DistrictView = ({
   Fx priceLevel,
   Fx incomeLevel,
   Fx wageLevel,
+
+  /// What its households buy of each channel against their habits
+  /// ([MarketDef.scale]).
+  List<Fx> scale,
   List<DistrictSite> free,
   List<DistrictShop> shops,
 });
@@ -97,6 +101,7 @@ List<DistrictView> districtViews(WorldState world, ContentDb content) {
           priceLevel: row.priceLevel,
           incomeLevel: row.incomeLevel,
           wageLevel: row.wageLevel,
+          scale: row.scale,
           free: List<DistrictSite>.unmodifiable([
             for (final site in sites)
               if (!taken.contains(site.number))

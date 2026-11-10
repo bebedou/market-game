@@ -729,7 +729,11 @@ class _StudyTile extends StatelessWidget {
         for (final segment in content.segments.take(report.segments.length))
           if (report.segments[segment.id.index].households > 0) ...[
             Text(segment.name, style: theme.textTheme.titleSmall),
-            _segment(game, report.segments[segment.id.index]),
+            _segment(
+              game,
+              report.segments[segment.id.index],
+              report.segments.fold(0, (sum, each) => sum + each.households),
+            ),
             const SizedBox(height: 8),
           ],
         Text(tr('reports.unitShares'), style: theme.textTheme.titleSmall),
@@ -745,7 +749,12 @@ class _StudyTile extends StatelessWidget {
     );
   }
 
-  Widget _segment(SimulationController game, SegmentEstimate estimate) {
+  /// [estimate]'s segment, its households a share of [households] in all.
+  Widget _segment(
+    SimulationController game,
+    SegmentEstimate estimate,
+    int households,
+  ) {
     final content = game.content;
     final slots = [
       for (final slot in DaySlot.values)
@@ -754,7 +763,13 @@ class _StudyTile extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Line(tr('common.households'), '${estimate.households}'),
+        Line(
+          tr('reports.shareOfShoppers'),
+          percent(
+            Fx.raw((estimate.households * Fx.scale / households).round()),
+            decimals: 0,
+          ),
+        ),
         for (final category in content.categories.take(
           estimate.dailyUnits.length,
         ))

@@ -105,23 +105,37 @@ final class _ShoppingDay {
     final confidence = content.macro.labour?.confidenceFactor(
       world.macro.unemployment,
     );
-    for (final segment in content.segments) {
-      final daily = [
-        for (final (c, units) in segment.dailyUnits.indexed)
-          _withConfidence(switch (adoption[c]) {
-            final share? => units * regime.demand * share,
-            null => units * regime.demand,
-          }, confidence),
-      ];
-      dailyNeeds.add(daily);
-      // A need carries over at most a few days' worth, but always up to a
-      // whole unit, or what is bought less than weekly would never be.
-      needCaps.add([
-        for (final units in daily)
-          units == Fx.zero || units.timesInt(maxNeedDays) >= Fx.one
-              ? units.timesInt(maxNeedDays)
-              : Fx.one,
-      ]);
+    final habits = [
+      for (final segment in content.segments)
+        [
+          for (final (c, units) in segment.dailyUnits.indexed)
+            _withConfidence(switch (adoption[c]) {
+              final share? => units * regime.demand * share,
+              null => units * regime.demand,
+            }, confidence),
+        ],
+    ];
+    // Each market buys of each channel as much as its scale says.
+    for (final market in content.markets) {
+      final needs = <List<Fx>>[];
+      final caps = <List<Fx>>[];
+      for (final daily in habits) {
+        final scaled = [
+          for (final (c, units) in daily.indexed)
+            units * market.scaleOf(content.categoryChannels[c]),
+        ];
+        needs.add(scaled);
+        // A need carries over at most a few days' worth, but always up to a
+        // whole unit, or what is bought less than weekly would never be.
+        caps.add([
+          for (final units in scaled)
+            units == Fx.zero || units.timesInt(maxNeedDays) >= Fx.one
+                ? units.timesInt(maxNeedDays)
+                : Fx.one,
+        ]);
+      }
+      dailyNeeds.add(needs);
+      needCaps.add(caps);
     }
     final half = content.demand.halfSizeArea;
     final sizes = [
@@ -225,9 +239,9 @@ final class _ShoppingDay {
   }
 
   /// Each segment's need per household today, and the most it can carry
-  /// over, indexed by [SegmentId], then [CategoryId].
-  final List<List<Fx>> dailyNeeds = [];
-  final List<List<Fx>> needCaps = [];
+  /// over, indexed by [MarketId], then [SegmentId], then [CategoryId].
+  final List<List<List<Fx>>> dailyNeeds = [];
+  final List<List<List<Fx>>> needCaps = [];
 
   /// The pull of each store's size for each segment, indexed by [SegmentId],
   /// then [StoreId].
@@ -283,8 +297,8 @@ final class _ShoppingDay {
       tier == ProductTier.budget ? ProductTier.premium : ProductTier.budget;
 
   void accrueNeeds(HouseholdCohort cohort) {
-    final daily = dailyNeeds[cohort.segment.index];
-    final caps = needCaps[cohort.segment.index];
+    final daily = dailyNeeds[cohort.market.index][cohort.segment.index];
+    final caps = needCaps[cohort.market.index][cohort.segment.index];
     final needs = cohort.needs;
     for (var c = 0; c < needs.length; c++) {
       final need = needs[c] + daily[c];

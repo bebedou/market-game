@@ -49,7 +49,7 @@ Time controls should support both, e.g. "advance one week" and pausing on import
 
 **Real-world, modern day.** Real countries and cities; all companies, brands, and products are fictional.
 
-**Abstract markets.** There is no map and no walking. A market is a city (later a region or country) described by its statistics: households by segment, income, price level, rents, and competition. Location inside a market is an abstract attribute of a business (a location-quality tier that trades rent against convenience).
+**Abstract markets.** There is no map and no walking. A market is a city (later a region or country) described by its statistics: what its shoppers spend a year on each trade, in euros, the mix of who lives there, income, price level, rents, and competition. A market in euros stays meaningful without perfect data: one figure per trade, from any source. The mix only says how people shop (when, how much price matters, how loyal they are), and income only what they buy (dearer goods), not how much they spend, so a rich place's wealth isn't counted twice. Location inside a market is an abstract attribute of a business (a location-quality tier that trades rent against convenience).
 
 **Start points are data.** A scenario is an initial world state: date, markets, firms, macroeconomic parameters, and technology frontier. Launch ships one modern start. Historical start points are possible future content, not an engine feature.
 
@@ -115,7 +115,7 @@ Companies can participate in multiple sectors and own different kinds of assets.
 
 ## Roadmap
 
-Next, in this order: household sizes, countries, owning the chain, the new trades, then the stock market. The rest, not part of the first release, in no fixed order:
+Next, in this order: countries, owning the chain, the new trades, then the stock market. Household sizes came first and became markets in euros (see Setting and world). The rest, not part of the first release, in no fixed order:
 
 - **Goals and milestones.** Net-worth tiers, first acquisition, leading a city's market, a first factory: marked on a timeline of the player's empire.
 - **Achievements.** For feats and odd paths: surviving a recession without a loan, a fine-dining empire, buying out the chain that beat you.

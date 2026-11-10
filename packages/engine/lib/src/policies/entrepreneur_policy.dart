@@ -377,10 +377,11 @@ final class EntrepreneurPolicy implements Policy {
     final market = content.markets[site.market.index];
     // Margins follow what households here think normal, and how well off
     // they are.
+    final channel = content.formatChannels[strategy.format.index];
     final daily = strategy.marginPerHousehold
         .times(level * market.priceLevel * market.incomeLevel)
         .timesInt(households)
-        .times(share * judged);
+        .times(share * judged * market.scaleOf(channel));
     final monthly =
         (daily - _dailyWages(view, content, site)).timesInt(30) -
         _monthlyCosts(content, site).times(level);
@@ -413,10 +414,16 @@ final class EntrepreneurPolicy implements Policy {
     if (total <= Fx.zero) return null;
     final share = mine.div(total);
     final level = view.macro.priceIndex;
+    final channel = content.formatChannels[strategy.format.index];
     final daily = strategy.marginPerHousehold
         .times(level * district.priceLevel * district.incomeLevel)
         .timesInt(district.households)
-        .times(share);
+        .times(
+          share *
+              (channel < district.scale.length
+                  ? district.scale[channel]
+                  : Fx.one),
+        );
     final monthly =
         (daily - _dailyWagesAt(view, content, district.wageLevel)).timesInt(
           30,

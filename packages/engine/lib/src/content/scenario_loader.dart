@@ -7,6 +7,7 @@ import '../core/ids.dart';
 import '../core/money.dart';
 import '../state/history.dart' show salesHistoryDays;
 import 'content_db.dart';
+import 'household_demand.dart';
 
 /// A problem in a scenario file, with the JSON path where it was found.
 final class ContentException implements Exception {
@@ -168,20 +169,27 @@ ContentDb loadScenario(String jsonText) {
     node.finish();
   }
 
-  final markets = <MarketDef>[];
+  // A market's households follow from what it spends on each trade, so
+  // markets are made once the formats are read.
+  final pendingMarkets =
+      <
+        ({
+          _Node node,
+          MarketId id,
+          String key,
+          String name,
+          _Sizing sizing,
+          List<Fx> growth,
+          int? agents,
+          Fx priceLevel,
+          Fx wageLevel,
+          Fx incomeLevel,
+        })
+      >[];
   for (final node in root.objects('markets')) {
     final key = node.string('id');
     final id = MarketId(marketKeys.add(key, node.pathOf('id')));
-    final households = List.filled(segments.length, 0);
-    final householdNode = node.object('households');
-    for (final segmentKey in householdNode.keys.toList()) {
-      final segment = segmentKeys.resolve(
-        segmentKey,
-        householdNode.pathOf(segmentKey),
-      );
-      households[segment] = householdNode.nonNegativeInt(segmentKey);
-    }
-    householdNode.finish();
+    final sizing = _readSizing(node, segmentKeys, segments.length);
     final growth = List.filled(segments.length, Fx.zero);
     if (node.optionalObject('growth') case final growthNode?) {
       for (final segmentKey in growthNode.keys.toList()) {
@@ -193,24 +201,18 @@ ContentDb loadScenario(String jsonText) {
       }
       growthNode.finish();
     }
-    final agents = node.optionalPositiveInt('agents');
-    final total = households.fold(0, (sum, count) => sum + count);
-    if (agents != null && agents > total) {
-      node._fail('agents', 'at most one cohort per household ($total)');
-    }
-    markets.add(
-      MarketDef(
-        id: id,
-        key: key,
-        name: node.string('name'),
-        households: List.unmodifiable(households),
-        growth: List.unmodifiable(growth),
-        agents: agents,
-        priceLevel: node.level('priceLevel'),
-        wageLevel: node.level('wageLevel'),
-        incomeLevel: node.level('incomeLevel'),
-      ),
-    );
+    pendingMarkets.add((
+      node: node,
+      id: id,
+      key: key,
+      name: node.string('name'),
+      sizing: sizing,
+      growth: List.unmodifiable(growth),
+      agents: node.optionalPositiveInt('agents'),
+      priceLevel: node.level('priceLevel'),
+      wageLevel: node.level('wageLevel'),
+      incomeLevel: node.level('incomeLevel'),
+    ));
     node.finish();
   }
 
@@ -401,6 +403,48 @@ ContentDb loadScenario(String jsonText) {
     if (!formats.any((format) => format.sells[category.id.index])) {
       throw ContentException('formats', 'no format sells "${category.key}"');
     }
+  }
+
+  ({List<int> households, List<Fx> scale}) sized(
+    _Sizing sizing, {
+    required Fx incomeLevel,
+    required Fx priceLevel,
+  }) => _resolveSizing(
+    sizing,
+    segments: segments,
+    products: products,
+    categories: categories,
+    formats: formats,
+    formatKeys: formatKeys,
+    today: startDay,
+    incomeLevel: incomeLevel,
+    priceLevel: priceLevel,
+  );
+  final markets = <MarketDef>[];
+  for (final pending in pendingMarkets) {
+    final (:households, :scale) = sized(
+      pending.sizing,
+      incomeLevel: pending.incomeLevel,
+      priceLevel: pending.priceLevel,
+    );
+    final total = households.fold(0, (sum, count) => sum + count);
+    if (pending.agents case final agents? when agents > total) {
+      pending.node._fail('agents', 'at most one cohort per household ($total)');
+    }
+    markets.add(
+      MarketDef(
+        id: pending.id,
+        key: pending.key,
+        name: pending.name,
+        households: households,
+        growth: pending.growth,
+        agents: pending.agents,
+        priceLevel: pending.priceLevel,
+        wageLevel: pending.wageLevel,
+        incomeLevel: pending.incomeLevel,
+        scale: scale,
+      ),
+    );
   }
 
   final researchTiers = <ResearchTierDef>[];
@@ -736,17 +780,6 @@ ContentDb loadScenario(String jsonText) {
         neighbourhoods.any((row) => row.key == key)) {
       node._fail('id', 'there is already a place called "$key"');
     }
-    final households = List.filled(segments.length, 0);
-    final householdNode = node.object('households');
-    for (final segmentKey in householdNode.keys.toList()) {
-      households[segmentKeys.resolve(
-        segmentKey,
-        householdNode.pathOf(segmentKey),
-      )] = householdNode.nonNegativeInt(
-        segmentKey,
-      );
-    }
-    householdNode.finish();
     final growth = List.filled(segments.length, Fx.zero);
     if (node.optionalObject('growth') case final growthNode?) {
       for (final segmentKey in growthNode.keys.toList()) {
@@ -755,15 +788,23 @@ ContentDb loadScenario(String jsonText) {
       }
       growthNode.finish();
     }
+    final priceLevel = node.level('priceLevel');
+    final incomeLevel = node.level('incomeLevel');
+    final (:households, :scale) = sized(
+      _readSizing(node, segmentKeys, segments.length),
+      incomeLevel: incomeLevel,
+      priceLevel: priceLevel,
+    );
     neighbourhoods.add(
       NeighbourhoodRow(
         key: key,
         name: node.string('name'),
-        households: List.unmodifiable(households),
+        households: households,
         growth: List.unmodifiable(growth),
-        priceLevel: node.level('priceLevel'),
+        scale: scale,
+        priceLevel: priceLevel,
         wageLevel: node.level('wageLevel'),
-        incomeLevel: node.level('incomeLevel'),
+        incomeLevel: incomeLevel,
         rent: node.money('rent'),
         typicalArea: node.positiveInt('typicalArea'),
         largestArea: node.positiveInt('largestArea'),
@@ -1054,6 +1095,137 @@ final class _Node {
       if (!_read.contains(key)) _fail(key, 'unknown field');
     }
   }
+}
+
+/// How a scenario sizes a place: by its market, what it spends a year on each
+/// trade's goods, and the mix of who lives there; or, as generated content
+/// writes it, by its households by segment and the scale of what they buy of
+/// each trade against their habits. Trades are named by any of their formats.
+typedef _Sizing = ({
+  _Node node,
+  List<int>? households,
+  Map<String, Fx>? scale,
+  Map<String, Money>? market,
+  List<Fx>? mix,
+});
+
+_Sizing _readSizing(_Node node, _Keys segmentKeys, int segmentCount) {
+  final byHouseholds = node.has('households');
+  if (byHouseholds == node.has('market')) {
+    node._fail(
+      'market',
+      byHouseholds ? 'give a market or households, not both' : 'missing',
+    );
+  }
+  if (byHouseholds) {
+    final households = List.filled(segmentCount, 0);
+    final householdNode = node.object('households');
+    for (final segmentKey in householdNode.keys.toList()) {
+      households[segmentKeys.resolve(
+        segmentKey,
+        householdNode.pathOf(segmentKey),
+      )] = householdNode.nonNegativeInt(
+        segmentKey,
+      );
+    }
+    householdNode.finish();
+    Map<String, Fx>? scale;
+    if (node.optionalObject('scale') case final scaleNode?) {
+      scale = {
+        for (final trade in scaleNode.keys.toList())
+          trade: scaleNode.nonNegativeFx(trade),
+      };
+      scaleNode.finish();
+    }
+    return (
+      node: node,
+      households: households,
+      scale: scale,
+      market: null,
+      mix: null,
+    );
+  }
+  final marketNode = node.object('market');
+  final market = <String, Money>{};
+  for (final trade in marketNode.keys.toList()) {
+    final amount = marketNode.money(trade);
+    if (amount.isNegative) marketNode._fail(trade, 'must not be negative');
+    market[trade] = amount;
+  }
+  marketNode.finish();
+  final mix = List.filled(segmentCount, Fx.zero);
+  final mixNode = node.object('mix');
+  for (final segmentKey in mixNode.keys.toList()) {
+    mix[segmentKeys.resolve(segmentKey, mixNode.pathOf(segmentKey))] = mixNode
+        .fraction(segmentKey);
+  }
+  mixNode.finish();
+  if (mix.every((share) => share == Fx.zero)) {
+    node._fail('mix', 'someone must live here');
+  }
+  return (node: node, households: null, scale: null, market: market, mix: mix);
+}
+
+/// A place's households and scale by channel, from [sizing].
+({List<int> households, List<Fx> scale}) _resolveSizing(
+  _Sizing sizing, {
+  required List<SegmentDef> segments,
+  required List<ProductDef> products,
+  required List<CategoryDef> categories,
+  required List<FormatDef> formats,
+  required _Keys formatKeys,
+  required Day today,
+  required Fx incomeLevel,
+  required Fx priceLevel,
+}) {
+  final channels = formatChannelsOf(formats, categories.length);
+  final channelCount = channels.fold(0, (most, c) => c >= most ? c + 1 : most);
+  // Each trade named by one of its formats, and given once.
+  Map<int, T> byChannel<T>(Map<String, T> values, String field) {
+    final result = <int, T>{};
+    for (final MapEntry(:key, :value) in values.entries) {
+      final path = '${sizing.node.pathOf(field)}.$key';
+      final channel = channels[formatKeys.resolve(key, path)];
+      if (result.containsKey(channel)) {
+        throw ContentException(path, 'this trade is already given');
+      }
+      result[channel] = value;
+    }
+    return result;
+  }
+
+  if (sizing.households case final households?) {
+    final scale = List.filled(channelCount, Fx.one);
+    for (final MapEntry(:key, :value) in byChannel(
+      sizing.scale ?? const <String, Fx>{},
+      'scale',
+    ).entries) {
+      scale[key] = value;
+    }
+    return (
+      households: List.unmodifiable(households),
+      scale: List.unmodifiable(scale),
+    );
+  }
+  final market = byChannel(sizing.market!, 'market');
+  final (:households, :scale, :unbought) = placeSize(
+    segments,
+    products,
+    categories,
+    formats,
+    market: market,
+    mix: sizing.mix!,
+    incomeLevel: incomeLevel,
+    priceLevel: priceLevel,
+    today: today,
+  );
+  if (unbought.isNotEmpty) {
+    final trade = sizing.market!.keys.firstWhere(
+      (key) => channels[formatKeys.resolve(key, key)] == unbought.first,
+    );
+    sizing.node._fail('market.$trade', 'nobody here buys from this trade');
+  }
+  return (households: households, scale: scale);
 }
 
 LabourDef? _labour(_Node macro) {

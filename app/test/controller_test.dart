@@ -372,9 +372,12 @@ void main() {
       censuses.map((alert) => alert.kind),
       everyElement(AlertKind.economy),
     );
+    // The market moves with the households who shop there, in percent.
     expect(
       censuses.map((alert) => alert.message),
-      contains(contains('Lyon, Croix-Rousse has')),
+      contains(
+        allOf(contains('the market in Lyon, Croix-Rousse is'), contains('%')),
+      ),
     );
     expect(game.view.censuses.first, hasLength(2));
     expect(game.view.households.first, greaterThan(1000));

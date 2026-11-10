@@ -86,6 +86,37 @@ void main() {
     await tester.scrollUntilVisible(find.text('Economic history'), 300);
   });
 
+  testWidgets('a city shows what its shoppers spend on each trade, and yours', (
+    tester,
+  ) async {
+    // A manager runs the store, so it has sales to take a share with.
+    final game = newController()
+      ..submit(
+        HireManager(
+          prototype.player,
+          store: playerStore,
+          grade: grade('expert'),
+          strategy: strategy('balanced'),
+          duties: [for (final _ in ManagerDuty.values) true],
+        ),
+      );
+    for (var i = 0; i < 70; i++) {
+      game.step();
+    }
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Cities'), 300);
+    await openIndex(tester, 'Cities');
+    // Lyon, where the player trades, is open: its market by trade.
+    expect(find.text('Groceries'), findsWidgets);
+    expect(find.text('Fine dining'), findsWidgets);
+    expect(find.textContaining(RegExp(r'^yours [0-9]+%$')), findsOneWidget);
+    expect(find.textContaining("A year, at today's prices"), findsWidgets);
+    // No household counts any more.
+    expect(find.textContaining(RegExp('[0-9] households')), findsNothing);
+  });
+
   testWidgets('the world tab says where to open next, trade by trade', (
     tester,
   ) async {

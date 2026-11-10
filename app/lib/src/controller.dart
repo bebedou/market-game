@@ -931,15 +931,19 @@ class SimulationController extends ChangeNotifier {
       }
     }
 
+    // The market grows or shrinks with the households who shop there.
     for (final census in result.events.whereType<CensusTaken>()) {
-      final change = census.households - census.previous;
+      if (census.previous == 0) continue;
+      final change = Fx.raw(
+        ((census.households - census.previous) * Fx.scale / census.previous)
+            .round(),
+      );
       add(
         AlertKind.economy,
         tr('alerts.census', {
           'year': day.date.year,
           'market': content.markets[census.market.index].name,
-          'households': census.households,
-          'change': '${change >= 0 ? '+' : ''}$change',
+          'change': '${change.isNegative ? '' : '+'}${percent(change)}',
         }),
       );
     }

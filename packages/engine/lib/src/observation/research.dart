@@ -47,9 +47,16 @@ ResearchReport commissionStudy(
         households: estimate(
           Fx.fromInt(households[segment.id.index]),
         ).roundToInt(),
+        // What households here buy, their market's scale included.
         dailyUnits: List.unmodifiable([
-          for (final units in segment.dailyUnits)
-            estimate(units * regime.demand),
+          for (final (c, units) in segment.dailyUnits.indexed)
+            estimate(
+              units *
+                  regime.demand *
+                  content.markets[market.index].scaleOf(
+                    content.categoryChannels[c],
+                  ),
+            ),
         ]),
         premiumShare: List.unmodifiable([
           for (final share in segment.premiumShare)

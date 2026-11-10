@@ -1,4 +1,5 @@
 import '../content/content_db.dart';
+import '../content/household_demand.dart';
 import '../core/calendar.dart';
 import '../core/exp_neg.dart';
 import '../core/fx.dart';
@@ -98,7 +99,8 @@ const _cheapest = Fx.raw(-1500);
 /// normal prices; at what the goods cost; at that cost at the place's prices,
 /// which a strategy's markup goes on; and how many units that is. They buy dearer
 /// the more they have to spend, as [power] says against normal, and a downturn
-/// has them trade down by [premiumShift].
+/// has them trade down by [premiumShift]. [scale] is the place's for the
+/// format's channel ([MarketDef.scale]).
 ({Money spending, Money goods, Money atLevel, Fx units}) tradeDemand(
   ContentDb content, {
   required List<int> households,
@@ -109,37 +111,21 @@ const _cheapest = Fx.raw(-1500);
   required FormatDef format,
   Fx power = Fx.one,
   Fx premiumShift = Fx.zero,
-}) {
-  final level = priceIndex * priceLevel;
-  var spending = Money.zero;
-  var goods = Money.zero;
-  var atLevel = Money.zero;
-  var units = Fx.zero;
-  for (final segment in content.segments) {
-    final count = households[segment.id.index];
-    if (count == 0) continue;
-    for (final product in content.products) {
-      final c = product.category.index;
-      if (!format.sells[c]) continue;
-      var yearly = segment.dailyUnits[c].timesInt(365);
-      final adoption = content.categories[c].diffusion?.adoption(today);
-      if (adoption != null) yearly *= adoption;
-      var premium =
-          segment.premiumShare[c] * incomeLevel * power + premiumShift;
-      if (premium.isNegative) premium = Fx.zero;
-      if (premium > Fx.one) premium = Fx.one;
-      final tier = product.tier == ProductTier.premium
-          ? premium
-          : Fx.one - premium;
-      final bought = (yearly * tier).timesInt(count);
-      spending += product.referencePrice.times(level).times(bought);
-      goods += product.baseCost.times(priceIndex).times(bought);
-      atLevel += product.baseCost.times(level).times(bought);
-      units += bought;
-    }
-  }
-  return (spending: spending, goods: goods, atLevel: atLevel, units: units);
-}
+  Fx scale = Fx.one,
+}) => householdDemand(
+  content.segments,
+  content.products,
+  content.categories,
+  households: households,
+  incomeLevel: incomeLevel,
+  priceLevel: priceLevel,
+  priceIndex: priceIndex,
+  today: today,
+  sells: format.sells,
+  power: power,
+  premiumShift: premiumShift,
+  scale: scale,
+);
 
 /// What households in [market] buy in a year of what [format] sells. Households
 /// by type are the scenario's mix at the latest census.
@@ -148,25 +134,73 @@ const _cheapest = Fx.raw(-1500);
   ContentDb content,
   MarketDef market,
   FormatDef format,
-) {
+) => tradeDemand(
+  content,
+  households: _counted(view, market),
+  incomeLevel: market.incomeLevel,
+  priceLevel: market.priceLevel,
+  priceIndex: view.macro.priceIndex,
+  today: view.today,
+  format: format,
+  scale: market.scaleOf(content.formatChannels[format.id.index]),
+);
+
+/// [market]'s households by segment, its scenario's mix at the latest census.
+List<int> _counted(Observation view, MarketDef market) {
   final mix = market.households.fold(0, (sum, count) => sum + count);
   // A neighbourhood still asleep has had no census: it's as its plan says.
   final census = market.id.index < view.households.length
       ? view.households[market.id.index]
       : mix;
-  return tradeDemand(
-    content,
-    households: [
-      for (final count in market.households)
-        mix == 0 ? 0 : mulDivRound(count, census, mix),
-    ],
-    incomeLevel: market.incomeLevel,
-    priceLevel: market.priceLevel,
-    priceIndex: view.macro.priceIndex,
-    today: view.today,
-    format: format,
-  );
+  return [
+    for (final count in market.households)
+      mix == 0 ? 0 : mulDivRound(count, census, mix),
+  ];
 }
+
+/// What [households], [market]'s own by default, spend a year on [channel]'s
+/// goods at normal prices, at [priceIndex], on [today] (the scenario's start
+/// by default): at the start, the market the scenario gave the place.
+Money marketSpending(
+  ContentDb content,
+  MarketDef market,
+  int channel, {
+  List<int>? households,
+  Fx priceIndex = Fx.one,
+  Day? today,
+}) => householdDemand(
+  content.segments,
+  content.products,
+  content.categories,
+  households: households ?? market.households,
+  incomeLevel: market.incomeLevel,
+  priceLevel: market.priceLevel,
+  priceIndex: priceIndex,
+  today: today ?? content.startDay,
+  sells: channelSells(
+    content.formats,
+    content.formatChannels,
+    channel,
+    content.categories.length,
+  ),
+  scale: market.scaleOf(channel),
+).spending;
+
+/// What households in [market] spend a year on [channel]'s goods at today's
+/// normal prices, as many as the latest census counts: the trade's market.
+Money channelSpending(
+  Observation view,
+  ContentDb content,
+  MarketDef market,
+  int channel,
+) => marketSpending(
+  content,
+  market,
+  channel,
+  households: _counted(view, market),
+  priceIndex: view.macro.priceIndex,
+  today: view.today,
+);
 
 /// How a shop's [location] and [area] draw shoppers, as they weigh size.
 Fx shopPull(ContentDb content, Fx location, int area) =>

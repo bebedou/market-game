@@ -175,6 +175,19 @@ final _hurdle = Fx.parse('0.08');
 /// How far the generator moves a site's area either way, in Fx raw units.
 const _areaJitter = 500;
 
+/// [scale] as a place's JSON writes it, by the first format of each channel,
+/// leaving out channels at one.
+Map<String, String> _scaleJson(ContentDb content, List<Fx> scale) => {
+  for (final (channel, value) in scale.indexed)
+    if (value != Fx.one)
+      content.formats
+          .firstWhere(
+            (format) => content.formatChannels[format.id.index] == channel,
+          )
+          .key: value
+          .toDecimalString(),
+};
+
 /// Reads a hand-made scenario's cities as rows: what the generator is allowed
 /// to know of them. No site, shop or owner gets through, only totals.
 List<NeighbourhoodRow> rowsFromScenario(ContentDb content) {
@@ -207,6 +220,7 @@ List<NeighbourhoodRow> rowsFromScenario(ContentDb content) {
           name: market.name,
           households: market.households,
           growth: market.growth,
+          scale: market.scale,
           priceLevel: market.priceLevel,
           wageLevel: market.wageLevel,
           incomeLevel: market.incomeLevel,
@@ -316,6 +330,8 @@ String generateScenario(
         for (final segment in content.segments)
           segment.key: row.growth[segment.id.index].toDecimalString(),
       },
+      if (_scaleJson(content, row.scale) case final scale when scale.isNotEmpty)
+        'scale': scale,
       'priceLevel': row.priceLevel.toDecimalString(),
       'wageLevel': row.wageLevel.toDecimalString(),
       'incomeLevel': row.incomeLevel.toDecimalString(),
@@ -595,13 +611,19 @@ final class _World {
     Map<String, Object?> layout,
     List<int> people,
   ) {
+    // The households it has now, rather than the market it started with.
     markets.add({
-      ...layout['market']! as Map<String, Object?>,
+      for (final MapEntry(:key, :value)
+          in (layout['market']! as Map<String, Object?>).entries)
+        if (!const {'market', 'mix', 'households', 'scale'}.contains(key))
+          key: value,
       'households': {
         for (final segment in content.segments)
           if (people[segment.id.index] > 0)
             segment.key: people[segment.id.index],
       },
+      if (_scaleJson(content, row.scale) case final scale when scale.isNotEmpty)
+        'scale': scale,
     });
     final own = [
       for (final site in layout['sites']! as List) site as Map<String, Object?>,
@@ -676,6 +698,8 @@ final class _World {
           segment.key: row.growth[segment.id.index].toDecimalString(),
       },
       'agents': _agents(people.fold(0, (sum, count) => sum + count)),
+      if (_scaleJson(content, row.scale) case final scale when scale.isNotEmpty)
+        'scale': scale,
       'priceLevel': row.priceLevel.toDecimalString(),
       'wageLevel': row.wageLevel.toDecimalString(),
       'incomeLevel': row.incomeLevel.toDecimalString(),
@@ -1110,6 +1134,7 @@ final class _World {
       content.startDay,
     );
     if (adoption != null) units *= adoption;
+    units *= row.scaleOf(content.categoryChannels[category]);
     var share = segment.premiumShare[category] * row.incomeLevel;
     if (share > Fx.one) share = Fx.one;
     return units *

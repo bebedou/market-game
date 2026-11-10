@@ -187,6 +187,7 @@ final class SleeperSystem implements TickSystem {
           macro.priceIndex,
         ),
         premiumShift: regime.premiumShift,
+        scale: row.scaleOf(channel),
       );
       // What it would sell at the strategy's prices, against normal ones.
       Fx pricing(SleepingShop shop) {
@@ -505,7 +506,10 @@ final class SleeperSystem implements TickSystem {
         final daily = strategy.marginPerHousehold
             .times(macro.priceIndex * row.priceLevel * row.incomeLevel)
             .timesInt(total)
-            .times(mine.div(pull));
+            .times(
+              mine.div(pull) *
+                  row.scaleOf(content.formatChannels[format.id.index]),
+            );
         final wages = content.operations.slotWage
             .times(macro.wageIndex * row.wageLevel * format.wageFactor)
             .timesInt(strategy.hours.where((open) => open).length);

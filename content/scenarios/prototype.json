@@ -4,43 +4,50 @@
   "markets": [
     {
       "id": "neighborhood", "name": "Lyon, Croix-Rousse",
-      "households": { "families": 350, "professionals": 250, "students": 200, "retirees": 200, "singles": 450, "comfortable": 150 },
+      "market": { "grocery": "1255227.90", "fastfood": "282387.00", "steakhouse": "195979.66", "finedining": "185973.23", "electronics": "149666.87" },
+      "mix": { "families": "0.2188", "professionals": "0.1563", "students": "0.1250", "retirees": "0.1250", "singles": "0.2813", "comfortable": "0.0938" },
       "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
       "agents": 450
     },
     {
       "id": "montpellier", "name": "Montpellier, Boutonnet",
-      "households": { "families": 120, "professionals": 200, "students": 550, "retirees": 80, "singles": 300, "comfortable": 40 },
+      "market": { "grocery": "801854.87", "fastfood": "261147.97", "steakhouse": "116323.51", "finedining": "105017.42", "electronics": "109180.74" },
+      "mix": { "families": "0.0930", "professionals": "0.1550", "students": "0.4264", "retirees": "0.0620", "singles": "0.2326", "comfortable": "0.0310" },
       "growth": {"families": "0.013", "professionals": "0.030", "students": "0.035", "retirees": "0.015", "singles": "0.035", "comfortable": "0.010"},
       "agents": 400, "priceLevel": "0.95", "wageLevel": "0.90", "incomeLevel": "0.85"
     },
     {
       "id": "bordeaux", "name": "Bordeaux, Chartrons",
-      "households": { "families": 150, "professionals": 420, "students": 80, "retirees": 200, "singles": 300, "comfortable": 200 },
+      "market": { "grocery": "1318324.81", "fastfood": "238347.99", "steakhouse": "229649.98", "finedining": "261528.16", "electronics": "177279.90" },
+      "mix": { "families": "0.1111", "professionals": "0.3111", "students": "0.0593", "retirees": "0.1481", "singles": "0.2222", "comfortable": "0.1481" },
       "growth": {"families": "0.010", "professionals": "0.035", "students": "0.007", "retirees": "0.020", "singles": "0.030", "comfortable": "0.025"},
       "agents": 400, "priceLevel": "1.08", "wageLevel": "1.10", "incomeLevel": "1.18"
     },
     {
       "id": "reze", "name": "Nantes, Rezé",
-      "households": { "families": 650, "professionals": 180, "students": 70, "retirees": 300, "singles": 250, "comfortable": 300 },
+      "market": { "grocery": "1513815.03", "fastfood": "256431.93", "steakhouse": "210090.41", "finedining": "185883.96", "electronics": "136556.85" },
+      "mix": { "families": "0.3714", "professionals": "0.1029", "students": "0.0400", "retirees": "0.1714", "singles": "0.1429", "comfortable": "0.1714" },
       "growth": {"families": "0.025", "professionals": "0.020", "students": "0.005", "retirees": "0.020", "singles": "0.020", "comfortable": "0.030"},
       "agents": 450, "priceLevel": "0.97", "wageLevel": "0.95", "incomeLevel": "0.92"
     },
     {
       "id": "lille", "name": "Lille, Wazemmes",
-      "households": { "families": 500, "professionals": 150, "students": 350, "retirees": 200, "singles": 450, "comfortable": 80 },
+      "market": { "grocery": "1161621.64", "fastfood": "299666.75", "steakhouse": "161631.23", "finedining": "129702.09", "electronics": "123312.47" },
+      "mix": { "families": "0.2890", "professionals": "0.0867", "students": "0.2023", "retirees": "0.1156", "singles": "0.2601", "comfortable": "0.0462" },
       "growth": {"families": "0.010", "professionals": "0.025", "students": "0.030", "retirees": "0.010", "singles": "0.025", "comfortable": "0.010"},
       "agents": 450, "priceLevel": "0.94", "wageLevel": "0.92", "incomeLevel": "0.82"
     },
     {
       "id": "marseille", "name": "Marseille, Cours Julien",
-      "households": { "families": 350, "professionals": 250, "students": 300, "retirees": 250, "singles": 600, "comfortable": 100 },
+      "market": { "grocery": "1287656.09", "fastfood": "327298.79", "steakhouse": "204807.90", "finedining": "187940.88", "electronics": "153743.61" },
+      "mix": { "families": "0.1892", "professionals": "0.1351", "students": "0.1622", "retirees": "0.1351", "singles": "0.3243", "comfortable": "0.0541" },
       "growth": {"families": "0.005", "professionals": "0.030", "students": "0.015", "retirees": "0.010", "singles": "0.030", "comfortable": "0.010"},
       "agents": 450, "priceLevel": "0.98", "wageLevel": "0.95", "incomeLevel": "0.88"
     },
     {
       "id": "paris", "name": "Paris, Batignolles",
-      "households": { "families": 100, "professionals": 700, "students": 100, "retirees": 300, "singles": 700, "comfortable": 400 },
+      "market": { "grocery": "2277417.80", "fastfood": "430898.03", "steakhouse": "419888.97", "finedining": "476585.64", "electronics": "323265.00" },
+      "mix": { "families": "0.0435", "professionals": "0.3043", "students": "0.0435", "retirees": "0.1304", "singles": "0.3043", "comfortable": "0.1739" },
       "growth": {"families": "-0.010", "professionals": "0.025", "students": "0", "retirees": "0.010", "singles": "0.015", "comfortable": "0.015"},
       "agents": 500, "priceLevel": "1.12", "wageLevel": "1.25", "incomeLevel": "1.15"
     }
@@ -833,126 +840,144 @@
   "neighbourhoods": [
     {
       "id": "presquile", "name": "Lyon, Presqu'île",
-      "households": {"families": 95, "professionals": 570, "students": 95, "retirees": 190, "singles": 570, "comfortable": 380},
+      "market": {"grocery": "1947037.49", "fastfood": "362202.09", "steakhouse": "348904.54", "finedining": "395076.50", "electronics": "283428.14"},
+      "mix": {"families": "0.0500", "professionals": "0.3000", "students": "0.0500", "retirees": "0.1000", "singles": "0.3000", "comfortable": "0.2000"},
       "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
       "priceLevel": "1.10", "wageLevel": "1.10", "incomeLevel": "1.25",
       "rent": "14.00", "typicalArea": 110, "largestArea": 140, "room": 60
     },
     {
       "id": "partdieu", "name": "Lyon, Part-Dieu",
-      "households": {"families": 312, "professionals": 780, "students": 260, "retirees": 208, "singles": 910, "comfortable": 130},
+      "market": {"grocery": "1996906.99", "fastfood": "489083.26", "steakhouse": "369889.32", "finedining": "400293.58", "electronics": "296262.61"},
+      "mix": {"families": "0.1200", "professionals": "0.3000", "students": "0.1000", "retirees": "0.0800", "singles": "0.3500", "comfortable": "0.0500"},
       "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
       "priceLevel": "1.02", "wageLevel": "1.02", "incomeLevel": "1.05",
       "rent": "8.00", "typicalArea": 125, "largestArea": 180, "room": 90
     },
     {
       "id": "villeurbanne", "name": "Lyon, Villeurbanne",
-      "households": {"families": 1020, "professionals": 272, "students": 850, "retirees": 306, "singles": 850, "comfortable": 102},
+      "market": {"grocery": "2297134.79", "fastfood": "630451.41", "steakhouse": "304410.83", "finedining": "232089.37", "electronics": "250794.71"},
+      "mix": {"families": "0.3000", "professionals": "0.0800", "students": "0.2500", "retirees": "0.0900", "singles": "0.2500", "comfortable": "0.0300"},
       "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
       "priceLevel": "0.96", "wageLevel": "0.95", "incomeLevel": "0.85",
       "rent": "4.00", "typicalArea": 135, "largestArea": 190, "room": 120
     },
     {
       "id": "confluence", "name": "Lyon, Confluence",
-      "households": {"families": 240, "professionals": 420, "students": 60, "retirees": 60, "singles": 180, "comfortable": 240},
+      "market": {"grocery": "1252566.35", "fastfood": "216671.17", "steakhouse": "208029.24", "finedining": "232182.67", "electronics": "166186.97"},
+      "mix": {"families": "0.2000", "professionals": "0.3500", "students": "0.0500", "retirees": "0.0500", "singles": "0.1500", "comfortable": "0.2000"},
       "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
       "priceLevel": "1.06", "wageLevel": "1.05", "incomeLevel": "1.20",
       "rent": "9.00", "typicalArea": 130, "largestArea": 170, "room": 100
     },
     {
       "id": "vaise", "name": "Lyon, Vaise",
-      "households": {"families": 525, "professionals": 180, "students": 75, "retirees": 300, "singles": 300, "comfortable": 120},
+      "market": {"grocery": "1177305.14", "fastfood": "223838.38", "steakhouse": "169711.51", "finedining": "152908.58", "electronics": "110851.23"},
+      "mix": {"families": "0.3500", "professionals": "0.1200", "students": "0.0500", "retirees": "0.2000", "singles": "0.2000", "comfortable": "0.0800"},
       "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
       "priceLevel": "0.97", "wageLevel": "0.96", "incomeLevel": "0.90",
       "rent": "3.80", "typicalArea": 150, "largestArea": 230, "room": 130
     },
     {
       "id": "gerland", "name": "Lyon, Gerland",
-      "households": {"families": 360, "professionals": 360, "students": 540, "retirees": 90, "singles": 360, "comfortable": 90},
+      "market": {"grocery": "1288352.67", "fastfood": "352801.71", "steakhouse": "189489.11", "finedining": "177192.94", "electronics": "164881.90"},
+      "mix": {"families": "0.2000", "professionals": "0.2000", "students": "0.3000", "retirees": "0.0500", "singles": "0.2000", "comfortable": "0.0500"},
       "growth": {"families": "0.015", "professionals": "0.030", "students": "0.010", "retirees": "0.025", "singles": "0.025", "comfortable": "0.015"},
       "priceLevel": "0.98", "wageLevel": "0.97", "incomeLevel": "0.92",
       "rent": "4.60", "typicalArea": 120, "largestArea": 165, "room": 110
     },
     {
       "id": "antigone", "name": "Montpellier, Antigone",
-      "households": {"families": 150, "professionals": 450, "students": 375, "retirees": 75, "singles": 375, "comfortable": 75},
+      "market": {"grocery": "1059423.82", "fastfood": "285999.90", "steakhouse": "183071.96", "finedining": "194984.60", "electronics": "154155.00"},
+      "mix": {"families": "0.1000", "professionals": "0.3000", "students": "0.2500", "retirees": "0.0500", "singles": "0.2500", "comfortable": "0.0500"},
       "growth": {"families": "0.013", "professionals": "0.030", "students": "0.035", "retirees": "0.015", "singles": "0.035", "comfortable": "0.010"},
       "priceLevel": "0.97", "wageLevel": "0.92", "incomeLevel": "0.95",
       "rent": "4.40", "typicalArea": 115, "largestArea": 150, "room": 100
     },
     {
       "id": "comedie", "name": "Montpellier, Comédie",
-      "households": {"families": 55, "professionals": 275, "students": 275, "retirees": 110, "singles": 275, "comfortable": 110},
+      "market": {"grocery": "866467.33", "fastfood": "214136.75", "steakhouse": "146138.76", "finedining": "156766.45", "electronics": "123939.03"},
+      "mix": {"families": "0.0500", "professionals": "0.2500", "students": "0.2500", "retirees": "0.1000", "singles": "0.2500", "comfortable": "0.1000"},
       "growth": {"families": "0.013", "professionals": "0.030", "students": "0.035", "retirees": "0.015", "singles": "0.035", "comfortable": "0.010"},
       "priceLevel": "1.02", "wageLevel": "0.94", "incomeLevel": "1.05",
       "rent": "7.00", "typicalArea": 100, "largestArea": 130, "room": 70
     },
     {
       "id": "saintmichel", "name": "Bordeaux, Saint-Michel",
-      "households": {"families": 240, "professionals": 240, "students": 400, "retirees": 160, "singles": 480, "comfortable": 80},
+      "market": {"grocery": "1150854.65", "fastfood": "317276.83", "steakhouse": "178817.23", "finedining": "166137.44", "electronics": "150158.08"},
+      "mix": {"families": "0.1500", "professionals": "0.1500", "students": "0.2500", "retirees": "0.1000", "singles": "0.3000", "comfortable": "0.0500"},
       "growth": {"families": "0.010", "professionals": "0.035", "students": "0.007", "retirees": "0.020", "singles": "0.030", "comfortable": "0.025"},
       "priceLevel": "1.02", "wageLevel": "1.05", "incomeLevel": "0.95",
       "rent": "7.50", "typicalArea": 110, "largestArea": 150, "room": 90
     },
     {
       "id": "meriadeck", "name": "Bordeaux, Mériadeck",
-      "households": {"families": 120, "professionals": 480, "students": 60, "retirees": 120, "singles": 300, "comfortable": 120},
+      "market": {"grocery": "1137541.26", "fastfood": "222715.56", "steakhouse": "211593.52", "finedining": "250524.78", "electronics": "170332.37"},
+      "mix": {"families": "0.1000", "professionals": "0.4000", "students": "0.0500", "retirees": "0.1000", "singles": "0.2500", "comfortable": "0.1000"},
       "growth": {"families": "0.010", "professionals": "0.035", "students": "0.007", "retirees": "0.020", "singles": "0.030", "comfortable": "0.025"},
       "priceLevel": "1.08", "wageLevel": "1.10", "incomeLevel": "1.20",
       "rent": "10.00", "typicalArea": 125, "largestArea": 160, "room": 90
     },
     {
       "id": "bouffay", "name": "Nantes, Bouffay",
-      "households": {"families": 140, "professionals": 420, "students": 210, "retirees": 140, "singles": 420, "comfortable": 70},
+      "market": {"grocery": "1078991.22", "fastfood": "263158.47", "steakhouse": "194638.70", "finedining": "213515.57", "electronics": "157866.76"},
+      "mix": {"families": "0.1000", "professionals": "0.3000", "students": "0.1500", "retirees": "0.1000", "singles": "0.3000", "comfortable": "0.0500"},
       "growth": {"families": "0.025", "professionals": "0.020", "students": "0.005", "retirees": "0.020", "singles": "0.020", "comfortable": "0.030"},
       "priceLevel": "1.02", "wageLevel": "0.98", "incomeLevel": "1.05",
       "rent": "6.50", "typicalArea": 110, "largestArea": 150, "room": 80
     },
     {
       "id": "chantenay", "name": "Nantes, Chantenay",
-      "households": {"families": 595, "professionals": 170, "students": 85, "retirees": 340, "singles": 340, "comfortable": 170},
+      "market": {"grocery": "1323354.76", "fastfood": "247941.31", "steakhouse": "188431.24", "finedining": "166532.80", "electronics": "122472.70"},
+      "mix": {"families": "0.3500", "professionals": "0.1000", "students": "0.0500", "retirees": "0.2000", "singles": "0.2000", "comfortable": "0.1000"},
       "growth": {"families": "0.025", "professionals": "0.020", "students": "0.005", "retirees": "0.020", "singles": "0.020", "comfortable": "0.030"},
       "priceLevel": "0.95", "wageLevel": "0.94", "incomeLevel": "0.90",
       "rent": "3.80", "typicalArea": 150, "largestArea": 220, "room": 130
     },
     {
       "id": "vieuxlille", "name": "Lille, Vieux-Lille",
-      "households": {"families": 130, "professionals": 390, "students": 130, "retirees": 195, "singles": 260, "comfortable": 195},
+      "market": {"grocery": "1207127.87", "fastfood": "224118.76", "steakhouse": "206749.71", "finedining": "234038.23", "electronics": "160395.08"},
+      "mix": {"families": "0.1000", "professionals": "0.3000", "students": "0.1000", "retirees": "0.1500", "singles": "0.2000", "comfortable": "0.1500"},
       "growth": {"families": "0.010", "professionals": "0.025", "students": "0.030", "retirees": "0.010", "singles": "0.025", "comfortable": "0.010"},
       "priceLevel": "1.04", "wageLevel": "0.96", "incomeLevel": "1.15",
       "rent": "8.00", "typicalArea": 105, "largestArea": 135, "room": 70
     },
     {
       "id": "fives", "name": "Lille, Fives",
-      "households": {"families": 800, "professionals": 100, "students": 300, "retirees": 300, "singles": 440, "comfortable": 60},
+      "market": {"grocery": "1339877.30", "fastfood": "317507.76", "steakhouse": "171717.50", "finedining": "124411.91", "electronics": "119542.67"},
+      "mix": {"families": "0.4000", "professionals": "0.0500", "students": "0.1500", "retirees": "0.1500", "singles": "0.2200", "comfortable": "0.0300"},
       "growth": {"families": "0.010", "professionals": "0.025", "students": "0.030", "retirees": "0.010", "singles": "0.025", "comfortable": "0.010"},
       "priceLevel": "0.92", "wageLevel": "0.90", "incomeLevel": "0.75",
       "rent": "3.20", "typicalArea": 130, "largestArea": 180, "room": 120
     },
     {
       "id": "joliette", "name": "Marseille, La Joliette",
-      "households": {"families": 210, "professionals": 490, "students": 70, "retirees": 70, "singles": 420, "comfortable": 140},
+      "market": {"grocery": "1173226.74", "fastfood": "254805.32", "steakhouse": "216987.37", "finedining": "239222.53", "electronics": "168706.50"},
+      "mix": {"families": "0.1500", "professionals": "0.3500", "students": "0.0500", "retirees": "0.0500", "singles": "0.3000", "comfortable": "0.1000"},
       "growth": {"families": "0.005", "professionals": "0.030", "students": "0.015", "retirees": "0.010", "singles": "0.030", "comfortable": "0.010"},
       "priceLevel": "1.02", "wageLevel": "0.98", "incomeLevel": "1.05",
       "rent": "7.00", "typicalArea": 125, "largestArea": 170, "room": 100
     },
     {
       "id": "castellane", "name": "Marseille, Castellane",
-      "households": {"families": 400, "professionals": 300, "students": 200, "retirees": 400, "singles": 600, "comfortable": 100},
+      "market": {"grocery": "1439101.28", "fastfood": "322493.63", "steakhouse": "233374.24", "finedining": "225631.30", "electronics": "162028.30"},
+      "mix": {"families": "0.2000", "professionals": "0.1500", "students": "0.1000", "retirees": "0.2000", "singles": "0.3000", "comfortable": "0.0500"},
       "growth": {"families": "0.005", "professionals": "0.030", "students": "0.015", "retirees": "0.010", "singles": "0.030", "comfortable": "0.010"},
       "priceLevel": "0.98", "wageLevel": "0.95", "incomeLevel": "0.90",
       "rent": "5.00", "typicalArea": 110, "largestArea": 150, "room": 90
     },
     {
       "id": "belleville", "name": "Paris, Belleville",
-      "households": {"families": 390, "professionals": 520, "students": 390, "retirees": 260, "singles": 962, "comfortable": 78},
+      "market": {"grocery": "1920699.83", "fastfood": "516954.56", "steakhouse": "332226.99", "finedining": "326350.55", "electronics": "262825.91"},
+      "mix": {"families": "0.1500", "professionals": "0.2000", "students": "0.1500", "retirees": "0.1000", "singles": "0.3700", "comfortable": "0.0300"},
       "growth": {"families": "-0.010", "professionals": "0.025", "students": "0", "retirees": "0.010", "singles": "0.015", "comfortable": "0.015"},
       "priceLevel": "1.06", "wageLevel": "1.20", "incomeLevel": "0.95",
       "rent": "26.00", "typicalArea": 100, "largestArea": 130, "room": 60
     },
     {
       "id": "passy", "name": "Paris, Passy",
-      "households": {"families": 180, "professionals": 450, "students": 54, "retirees": 396, "singles": 270, "comfortable": 450},
+      "market": {"grocery": "2296054.99", "fastfood": "316634.06", "steakhouse": "366098.28", "finedining": "423878.60", "electronics": "288280.68"},
+      "mix": {"families": "0.1000", "professionals": "0.2500", "students": "0.0300", "retirees": "0.2200", "singles": "0.1500", "comfortable": "0.2500"},
       "growth": {"families": "-0.010", "professionals": "0.025", "students": "0", "retirees": "0.010", "singles": "0.015", "comfortable": "0.015"},
       "priceLevel": "1.18", "wageLevel": "1.28", "incomeLevel": "1.45",
       "rent": "58.00", "typicalArea": 115, "largestArea": 140, "room": 50

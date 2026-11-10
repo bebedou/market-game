@@ -152,10 +152,7 @@ class _PlannedCity extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Line(
-          tr('common.households'),
-          '${market.households.fold(0, (sum, count) => sum + count)}',
-        ),
+        _MarketLines(content: plan, market: market),
         if (sleeper.opened > 0 || sleeper.closed > 0)
           Line(
             tr('market.openedClosed'),
@@ -1531,7 +1528,7 @@ class _CitiesCard extends StatelessWidget {
   );
 }
 
-/// One city: what living and trading there costs, its households, its
+/// One city: what living and trading there costs, its market by trade, its
 /// stores and its vacant sites. Cities where the player trades start open.
 class _City extends StatelessWidget {
   const _City({required this.market, this.open = false});
@@ -1563,7 +1560,6 @@ class _City extends StatelessWidget {
       (most, shelf) => shelf.area > most ? shelf.area : most,
     );
     final here = trading.any((shelf) => mine.contains(shelf.company));
-    final households = view.censuses[market.id.index].last.households;
     String level(Fx value) => value == Fx.one
         ? tr('market.asUsual')
         : '${value < Fx.one ? '−' : '+'}'
@@ -1589,7 +1585,6 @@ class _City extends StatelessWidget {
       ),
       subtitle: Text(
         tr('market.citySummary', {
-          'households': households,
           'stores': tr('common.stores', {'count': trading.length}),
           'vacant': vacant.isEmpty
               ? ''
@@ -1617,8 +1612,9 @@ class _City extends StatelessWidget {
         ),
         Hint(tr('market.levelsHint')),
         const SizedBox(height: 6),
-        _Population(
-          name: tr('common.households'),
+        _MarketLines(
+          content: content,
+          market: market,
           censuses: view.censuses[market.id.index],
         ),
         const SizedBox(height: 6),
@@ -1638,48 +1634,116 @@ class _City extends StatelessWidget {
   }
 }
 
-/// A market's households at the latest census, how that compares with the
-/// one before, and the trend since the first.
-class _Population extends StatelessWidget {
-  const _Population({required this.name, required this.censuses});
+/// What households in [market] spend a year on each trade at today's
+/// prices, the player's share of the trades they're in there, and how the
+/// market moved at the last census: none for a place asleep.
+class _MarketLines extends StatelessWidget {
+  const _MarketLines({
+    required this.content,
+    required this.market,
+    this.censuses,
+  });
 
-  final String name;
-  final List<Census> censuses;
+  final ContentDb content;
+  final MarketDef market;
+  final List<Census>? censuses;
 
   @override
   Widget build(BuildContext context) {
+    final game = context.game;
+    final view = game.view;
     final theme = Theme.of(context);
-    final latest = censuses.last;
-    final previous = censuses.length > 1 ? censuses[censuses.length - 2] : null;
-    final change = previous == null
+    final ledger = Ledger.of(context);
+    // The player's sales here a year, by channel, at their recent pace.
+    final yours = List.filled(content.channelCount, 0);
+    for (final (_, store) in game.myStores) {
+      if (store.market != market.id || store.status == StoreStatus.closed) {
+        continue;
+      }
+      final (:revenue, profit: _, :days) = store.recentMonths;
+      if (days == 0) continue;
+      yours[content.formatChannels[store.format.index]] +=
+          revenue.cents * 365 ~/ days;
+    }
+    final latest = censuses?.last;
+    final previous = switch (censuses) {
+      final list? when list.length > 1 => list[list.length - 2],
+      _ => null,
+    };
+    final change =
+        latest == null || previous == null || previous.households == 0
         ? null
-        : latest.households - previous.households;
+        : Fx.raw(
+            ((latest.households - previous.households) *
+                    Fx.scale /
+                    previous.households)
+                .round(),
+          );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Line(
-          name,
-          tr('market.nHouseholds', {'count': latest.households}),
-          hint: switch (change) {
-            null => tr('market.censusNext', {'year': latest.day.date.year}),
-            _ => tr('market.censusChange', {
-              'change': '${change >= 0 ? '+' : ''}$change',
-              'year': latest.day.date.year,
+        for (var channel = 0; channel < content.channelCount; channel++)
+          () {
+            final amount = channelSpending(view, content, market, channel);
+            if (amount <= Money.zero) return const SizedBox.shrink();
+            final format = content.formats.firstWhere(
+              (format) => content.formatChannels[format.id.index] == channel,
+            );
+            final share = yours[channel] == 0
+                ? null
+                : Fx.raw((yours[channel] * Fx.scale / amount.cents).round());
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  TradeMark(ledger.trade(format), size: 10),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          trMaybe('market.trades.${format.key}') ?? format.name,
+                        ),
+                        // Under its name, so a long one still fits a phone.
+                        if (share != null)
+                          Text(
+                            tr('market.yourShare', {
+                              'share': percent(
+                                share > Fx.one ? Fx.one : share,
+                                decimals: 0,
+                              ),
+                            }),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    _roughly(amount),
+                    style: figures(theme.textTheme.bodyMedium),
+                  ),
+                ],
+              ),
+            );
+          }(),
+        Text(
+          switch ((latest, change)) {
+            (null, _) => tr('market.marketHintAsleep'),
+            (_, null) => tr('market.marketHintFirst'),
+            (_, final rate?) => tr('market.marketHint', {
+              'change': '${rate.isNegative ? '' : '+'}${percent(rate)}',
             }),
           },
-          color: change == null ? null : gainColor(context, change.sign),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: change == null
+                ? theme.colorScheme.onSurfaceVariant
+                : gainColor(context, change.raw.sign) ??
+                      theme.colorScheme.onSurfaceVariant,
+          ),
         ),
-        if (censuses.length >= 3) ...[
-          const SizedBox(height: 4),
-          Sparkline(
-            [for (final census in censuses) census.households],
-            color: theme.colorScheme.secondary,
-            height: 32,
-          ),
-          Hint(
-            tr('market.censusesSince', {'year': censuses.first.day.date.year}),
-          ),
-        ],
       ],
     );
   }
