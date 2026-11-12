@@ -201,7 +201,34 @@ String describeCommand(Command command, ContentDb content, Observation view) {
         'supplier': _factoryName(view, factory),
         'store': store(s),
       }),
+    OpenNational(
+      :final country,
+      :final region,
+      :final format,
+      :final count,
+      :final borrow,
+      :final termMonths,
+    ) =>
+      tr('commands.openNational', {
+        'count': count,
+        'format': count == 1
+            ? aFormat(content.formats[format.index])
+            : content.formats[format.index].name.toLowerCase(),
+        'region': _regionName(content, country, region),
+        'loan': _loan(borrow, termMonths),
+      }),
   };
+}
+
+/// The name of region [region] of [country] in the national table.
+String _regionName(ContentDb content, CountryId country, int region) {
+  final key = content.countries[country.index].national;
+  for (final national in content.national?.countries ?? const []) {
+    if (national.key == key && region < national.regions.length) {
+      return national.regions[region].name;
+    }
+  }
+  return '';
 }
 
 /// The name of the actor's factory [id].

@@ -15,6 +15,19 @@ final prototype = loadScenario(
   File('../content/scenarios/prototype.json').readAsStringSync(),
 );
 
+/// The prototype scenario with the countries' national figures by region,
+/// its player rich enough to open shops across a country.
+final nationalPrototype = loadScenario(
+  File('../content/scenarios/prototype.json').readAsStringSync().replaceFirst(
+    '"name": "You", "cash": "20000.00"',
+    '"name": "You", "cash": "500000.00"',
+  ),
+  national: loadCountryTable(
+    File('../content/countries/euro.json').readAsStringSync(),
+    File('../content/countries/calibration.json').readAsStringSync(),
+  ),
+);
+
 const playerStore = StoreId(0);
 const playerCompany = CompanyId(0);
 

@@ -4,6 +4,7 @@ import '../commands/command.dart';
 import '../content/content_db.dart';
 import '../core/calendar.dart';
 import '../core/fx.dart';
+import '../countries/country_economy.dart';
 import '../neighbourhoods/neighbourhood_generator.dart';
 import '../state/game_start.dart';
 import '../state/growth.dart';
@@ -35,6 +36,10 @@ const int _asleepVersion = 26;
 
 /// The first format that keeps each country's economy.
 const int _countriesVersion = 27;
+
+/// The first format that keeps the countries by formula, which older saves
+/// rebuild from the phases of the cycle they went through.
+const int _nationalVersion = 29;
 
 const String _magic = 'market-game-save';
 
@@ -144,6 +149,7 @@ final class SaveData {
       }
     }
     if (version >= _countriesVersion) world.readEconomies(reader);
+    if (version >= _nationalVersion) readNational(reader, world, content);
     reader.expectEnd();
     if (version < _structureVersion) {
       if (growthProblem(world, content) case final problem?) {
@@ -222,6 +228,7 @@ final class SaveData {
       sleeper.write(writer);
     }
     world.writeEconomies(writer);
+    writeNational(writer, world);
     return SaveFile(writer.toBytes());
   }
 }
@@ -251,4 +258,34 @@ String? _structureProblem(List<ContentList> saved, List<ContentList> current) {
     }
   }
   return null;
+}
+
+/// Writes [world]'s countries by formula, if it keeps them.
+void writeNational(StateWriter writer, WorldState world) {
+  final national = world.national;
+  writer.writeBool(national != null);
+  if (national == null) return;
+  national.write(writer);
+  writer.writeNullableInt(world.nationalPosted?.number);
+}
+
+/// Reads what [writeNational] wrote into [world], made afresh from
+/// [content]'s national table.
+void readNational(StateReader reader, WorldState world, ContentDb content) {
+  if (!reader.readBool()) return;
+  final table = content.national;
+  if (table == null) {
+    throw const FormatException(
+      'The save keeps countries by formula, and no national table was given',
+    );
+  }
+  world.national = CountryEconomy(
+    table,
+    seed: world.seed,
+    start: content.startDay,
+  )..read(reader);
+  world.nationalPosted = switch (reader.readNullableInt()) {
+    final day? => Day(day),
+    null => null,
+  };
 }

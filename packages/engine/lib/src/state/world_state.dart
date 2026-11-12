@@ -5,6 +5,7 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/rng.dart';
+import '../countries/country_economy.dart';
 import '../persistence/state_io.dart';
 import '../reports/period_report.dart';
 import 'cohort.dart';
@@ -63,6 +64,15 @@ final class WorldState {
 
   /// Every factory ever built, by [FactoryId]; closed ones stay.
   final factories = <Factory>[];
+
+  /// The countries by formula, region by region, with companies' shops run
+  /// there; null until first run, and for a world of one country or without
+  /// a national table. Saved beside the world.
+  CountryEconomy? national;
+
+  /// The start of the latest month of shops run by formula across countries
+  /// already in their companies' books.
+  Day? nationalPosted;
 
   /// The economies of the countries after the first, in order: the first's
   /// is [macro]. Saved beside the world, as a world of one country has none.

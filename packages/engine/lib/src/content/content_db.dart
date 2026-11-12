@@ -809,6 +809,7 @@ final class FormatDef {
     this.slotBonus = 0,
     this.storageBonus = 0,
     this.overheads = Money.zero,
+    this.national,
   });
 
   final FormatId id;
@@ -843,6 +844,38 @@ final class FormatDef {
 
   /// The month's overheads for [area] square metres, at a price index of 1.
   Money overheadsFor(int area) => overheads.timesInt(area);
+
+  /// What its shops run by formula across a country are sized on; null if
+  /// it has none.
+  final FormatNational? national;
+}
+
+/// A format's shops run by formula across a country: what fitting one out
+/// costs, and what a settled one sells a year, country by country, both at
+/// a price index of one. They are measured on the districts run by formula,
+/// so that a shop earns about the same run by hand or by formula there (see
+/// `tool/national_shops.dart`).
+final class FormatNational {
+  const FormatNational({
+    required this.fitOut,
+    required this.sales,
+    required this.staff,
+    required this.premises,
+  });
+
+  final Money fitOut;
+
+  /// By [CountryId].
+  final List<Money> sales;
+
+  /// What a settled shop's staff and premises cost as shares of its sales,
+  /// by [CountryId].
+  final List<Fx> staff;
+  final List<Fx> premises;
+
+  Money salesIn(CountryId country) => sales[country.index];
+  Fx staffIn(CountryId country) => staff[country.index];
+  Fx premisesIn(CountryId country) => premises[country.index];
 }
 
 enum ProductTier { budget, premium }

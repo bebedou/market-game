@@ -462,6 +462,37 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
             ? node.nonNegativeInt('storageBonus')
             : 0,
         overheads: node.has('overheads') ? node.money('overheads') : Money.zero,
+        national: switch (node.optionalObject('national')) {
+          final national? => () {
+            final sales = national.object('sales');
+            final first = sales.money(countries.first.key);
+            // Shares by country, those not given as the first country's.
+            List<Fx> shares(String key) {
+              final node = national.object(key);
+              final first = node.fraction(countries.first.key);
+              final list = List<Fx>.unmodifiable([
+                for (final country in countries)
+                  node.has(country.key) ? node.fraction(country.key) : first,
+              ]);
+              node.finish();
+              return list;
+            }
+
+            final format = FormatNational(
+              fitOut: national.money('fitOut'),
+              sales: List.unmodifiable([
+                for (final country in countries)
+                  sales.has(country.key) ? sales.money(country.key) : first,
+              ]),
+              staff: shares('staff'),
+              premises: shares('premises'),
+            );
+            sales.finish();
+            national.finish();
+            return format;
+          }(),
+          null => null,
+        },
       ),
     );
     node.finish();

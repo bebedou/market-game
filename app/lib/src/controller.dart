@@ -475,6 +475,8 @@ class SimulationController extends ChangeNotifier {
               :final growth,
               :final payout,
               :final borrows,
+              :final nationalPace,
+              :final nationalRegions,
             )
             when c == company.id:
           director = Director(
@@ -484,6 +486,8 @@ class SimulationController extends ChangeNotifier {
             growth: growth,
             payout: payout,
             borrows: borrows,
+            nationalPace: nationalPace,
+            nationalRegions: nationalRegions,
             hiredOn: director != null && director.grade == grade
                 ? director.hiredOn
                 : today,

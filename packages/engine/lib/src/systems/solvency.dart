@@ -51,6 +51,8 @@ void liquidate(WorldState world, TickContext context, Company company) {
   for (final factory in world.factories) {
     if (factory.company == company.id) factory.status = FactoryStatus.closed;
   }
+  // Its shops run by formula close with it.
+  world.national?.closeCompany(company.id.index);
   _collectReceivables(world, ledger, company);
   final guarantors = <int, Person>{};
   for (final loan in world.loans) {

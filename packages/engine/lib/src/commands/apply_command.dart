@@ -11,6 +11,8 @@ import '../observation/outlook.dart' show usualStrategy;
 import '../state/director.dart';
 import '../state/entities.dart';
 import '../state/factories.dart';
+import '../systems/national.dart';
+import '../countries/shop_bridge.dart' show formatTrades;
 import '../state/factory.dart';
 import '../state/orders.dart';
 import '../state/store.dart';
@@ -70,6 +72,7 @@ Refusal? applyCommand(
     SetFactoryTerms() => _setFactoryTerms(world, content, command),
     CloseFactory() => _closeFactory(world, command),
     OrderFromFactory() => _orderFromFactory(world, content, command),
+    OpenNational() => _openNational(world, content, ledger, command),
   };
 }
 
@@ -335,6 +338,16 @@ Refusal? _hireDirector(
   if (!_inRange(command.managerGrade.index, content.managers.grades.length)) {
     return const Refusal('unknownManagerGrade');
   }
+  if (command.nationalPace < 0 || command.nationalPace > maxNationalPace) {
+    return Refusal('nationalPaceRange', count: maxNationalPace);
+  }
+  final table = content.national;
+  for (final key in command.nationalRegions) {
+    if (table == null ||
+        !table.countries.any((c) => c.regions.any((r) => r.key == key))) {
+      return const Refusal('unknownRegion');
+    }
+  }
   final current = company.director;
   company.director = Director(
     grade: command.grade,
@@ -343,6 +356,8 @@ Refusal? _hireDirector(
     growth: command.growth,
     payout: command.payout,
     borrows: command.borrows,
+    nationalPace: command.nationalPace,
+    nationalRegions: List.unmodifiable(command.nationalRegions),
     hiredOn: current != null && current.grade == command.grade
         ? current.hiredOn
         : world.today,
@@ -1562,6 +1577,97 @@ Refusal? _orderFromFactory(
       lines: lines,
       factory: factory.id,
     ),
+  );
+  return null;
+}
+
+/// The most shops run by formula a director may open a month.
+const maxNationalPace = 5;
+
+/// The most shops run by formula one command opens.
+const maxNationalOpenings = 20;
+
+Refusal? _openNational(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  OpenNational command,
+) {
+  final economy = currentNational(world, content);
+  if (economy == null) return const Refusal('noNational');
+  if (!_inRange(command.country.index, content.countries.length)) {
+    return const Refusal('unknownCountry');
+  }
+  final index = tableCountry(content, command.country);
+  if (index == null) return const Refusal('noNational');
+  final country = economy.countries[index];
+  if (!_inRange(command.region, country.regionCount) ||
+      country.def.regions.isEmpty) {
+    return const Refusal('unknownRegion');
+  }
+  if (!_inRange(command.format.index, content.formats.length)) {
+    return const Refusal('unknownFormat');
+  }
+  final format = content.formats[command.format.index];
+  final national = format.national;
+  final tradeKey = formatTrades[format.key];
+  final trade = economy.table.trades.indexWhere((t) => t.key == tradeKey);
+  if (national == null || trade < 0) {
+    return Refusal('formatNotNational', format: format.id);
+  }
+  if (!_inRange(command.strategy.index, content.strategies.length)) {
+    return const Refusal('unknownStrategy');
+  }
+  if (command.count < 1 || command.count > maxNationalOpenings) {
+    return Refusal('nationalCountRange', count: maxNationalOpenings);
+  }
+  final (company, error) = _ownedCompany(world, command.actor, command.company);
+  if (company == null) return error;
+  final cost = national.fitOut
+      .times(world.macroOf(command.country).priceIndex)
+      .timesInt(command.count);
+  if (company.accounts[AccountKind.cash] + command.borrow < cost) {
+    return Refusal('cannotPayNational', amount: cost);
+  }
+  if (command.borrow != Money.zero) {
+    final refusal = _loanRefusal(
+      world,
+      content,
+      command.borrow,
+      command.termMonths,
+    );
+    if (refusal != null) return refusal;
+  }
+  final person = world.persons[command.actor.index];
+  final loan = _purchaseLoan(world, content, company, person, command.borrow);
+  if (command.borrow != Money.zero && loan == null) {
+    return const Refusal('bankWillNotLend');
+  }
+  if (loan != null) {
+    _lendFor(world, content, ledger, company, person, loan, command.termMonths);
+  }
+  if (cost > Money.zero) {
+    ledger.pay(
+      payer: company,
+      payerAccount: AccountKind.openingCosts,
+      payee: world.elsewhere,
+      payeeAccount: AccountKind.revenue,
+      amount: cost,
+      reason: EntryReason.openingCosts,
+    );
+  }
+  final strategy = content.strategies[command.strategy.index];
+  economy.open(
+    index,
+    company: company.id.index,
+    trade: trade,
+    format: format.id.index,
+    strategy: strategy.id.index,
+    region: command.region,
+    count: command.count,
+    perStore: national.salesIn(command.country),
+    price: Fx.one + strategy.marketPosition,
+    costs: nationalCosts(format, strategy, command.country),
   );
   return null;
 }

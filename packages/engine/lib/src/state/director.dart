@@ -33,6 +33,8 @@ final class Director {
     required this.payout,
     required this.hiredOn,
     this.borrows = false,
+    this.nationalPace = 0,
+    this.nationalRegions = const [],
   });
 
   Director.read(StateReader reader)
@@ -42,7 +44,12 @@ final class Director {
       growth = Growth.values[reader.readInt()],
       payout = reader.readBool(),
       hiredOn = Day(reader.readInt()),
-      borrows = reader.version >= 22 ? reader.readBool() : false;
+      borrows = reader.version >= 22 ? reader.readBool() : false,
+      nationalPace = reader.version >= 29 ? reader.readInt() : 0,
+      nationalRegions = [
+        if (reader.version >= 29)
+          for (var i = 0, n = reader.readInt(); i < n; i++) reader.readString(),
+      ];
 
   final DirectorGradeId grade;
 
@@ -62,6 +69,14 @@ final class Director {
   /// earnings; never on the owner's guarantee.
   final bool borrows;
 
+  /// How many shops run by formula across the country they may open a
+  /// month, where each pays back soonest; none at 0.
+  final int nationalPace;
+
+  /// The regions they may open those in, by the national table's keys; any
+  /// region of the company's countries if empty.
+  final List<String> nationalRegions;
+
   bool allows(Growth step) => growth.index >= step.index;
 
   void write(StateWriter writer) {
@@ -72,7 +87,10 @@ final class Director {
       ..writeInt(growth.index)
       ..writeBool(payout)
       ..writeInt(hiredOn.number)
-      ..writeBool(borrows);
+      ..writeBool(borrows)
+      ..writeInt(nationalPace)
+      ..writeInt(nationalRegions.length);
+    nationalRegions.forEach(writer.writeString);
   }
 }
 
@@ -129,6 +147,17 @@ sealed class Memo {
         borrowed: reader.version >= 22 ? Money(reader.readInt()) : Money.zero,
       ),
       ProfitPaid.tag => ProfitPaid(day, amount: Money(reader.readInt())),
+      NationalOpened.tag => NationalOpened(
+        day,
+        country: CountryId(reader.readInt()),
+        region: reader.readString(),
+        format: FormatId(reader.readInt()),
+        count: reader.readInt(),
+        cost: Money(reader.readInt()),
+        earns: Money(reader.readInt()),
+        paybackMonths: reader.readInt(),
+        borrowed: Money(reader.readInt()),
+      ),
       ProfitKept.tag => ProfitKept(
         day,
         site: reader.readBool() ? SiteId(reader.readInt()) : null,
@@ -346,5 +375,50 @@ final class ProfitKept extends Memo {
       ..writeNullableInt(site?.index)
       ..writeNullableInt(store?.index)
       ..writeInt(needed.cents);
+  }
+}
+
+/// Opened [count] shops of [format] run by formula in [region] of [country],
+/// for [cost], each to earn about [earns] a year and pay back in
+/// [paybackMonths], having [borrowed] towards them.
+final class NationalOpened extends Memo {
+  const NationalOpened(
+    super.day, {
+    required this.country,
+    required this.region,
+    required this.format,
+    required this.count,
+    required this.cost,
+    required this.earns,
+    required this.paybackMonths,
+    this.borrowed = Money.zero,
+  });
+
+  static const int tag = 9;
+
+  final CountryId country;
+
+  /// The region's key in the national table.
+  final String region;
+  final FormatId format;
+  final int count;
+  final Money cost;
+  final Money earns;
+  final int paybackMonths;
+  final Money borrowed;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(day.number)
+      ..writeInt(country.index)
+      ..writeString(region)
+      ..writeInt(format.index)
+      ..writeInt(count)
+      ..writeInt(cost.cents)
+      ..writeInt(earns.cents)
+      ..writeInt(paybackMonths)
+      ..writeInt(borrowed.cents);
   }
 }

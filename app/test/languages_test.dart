@@ -26,6 +26,25 @@ ContentDb _content() => loadScenario(
   ),
 );
 
+/// Like [_content], with the countries' national figures by region.
+ContentDb _nationalContent() => loadScenario(
+  localizedScenario(
+    File('../content/scenarios/prototype.json').readAsStringSync(),
+    currentStrings!.scenario,
+  ),
+  national: loadCountryTable(
+    File('../content/countries/euro.json').readAsStringSync(),
+    File('../content/countries/calibration.json').readAsStringSync(),
+  ),
+);
+
+/// The name of the first region of [content]'s first country.
+String _firstRegion(ContentDb content) => content.national!.countries
+    .firstWhere((c) => c.key == content.countries.first.national)
+    .regions
+    .first
+    .name;
+
 /// A narrow phone: what is too long for it overflows, and that fails the test.
 void _useNarrowPhone(WidgetTester tester) {
   tester.view
@@ -383,6 +402,27 @@ void main() {
           expect(text, isNot(contains('{')), reason: '$command');
           expect(_rawKey.hasMatch(text), isFalse, reason: '$command');
         }
+        final national = _nationalContent();
+        final nationalView = SimulationController.newGame(
+          national,
+          seed: 7,
+        ).view;
+        for (final count in [1, 3]) {
+          final command = OpenNational(
+            player,
+            company: company,
+            country: national.countries.first.id,
+            region: 0,
+            format: national.formats.first.id,
+            strategy: national.strategies.first.id,
+            count: count,
+            borrow: amount,
+            termMonths: 60,
+          );
+          final text = describeCommand(command, national, nationalView);
+          expect(text, isNot(contains('{')), reason: '$command');
+          expect(text, contains(_firstRegion(national)), reason: '$command');
+        }
       });
 
       test('everything a director writes leaves no blank', () {
@@ -421,6 +461,31 @@ void main() {
           final text = memoSentence(memo, content, game.view);
           expect(text, isNot(contains('{')), reason: text);
           expect(_rawKey.hasMatch(text), isFalse, reason: text);
+        }
+        final national = _nationalContent();
+        final nationalGame = SimulationController.newGame(national, seed: 7);
+        final region = national.national!.countries
+            .firstWhere((c) => c.key == national.countries.first.national)
+            .regions
+            .first;
+        for (final count in [1, 2]) {
+          final text = memoSentence(
+            NationalOpened(
+              day,
+              country: national.countries.first.id,
+              region: region.key,
+              format: format,
+              count: count,
+              cost: amount,
+              earns: amount,
+              paybackMonths: 14,
+              borrowed: amount,
+            ),
+            national,
+            nationalGame.view,
+          );
+          expect(text, isNot(contains('{')), reason: text);
+          expect(text, contains(region.name), reason: text);
         }
       });
 

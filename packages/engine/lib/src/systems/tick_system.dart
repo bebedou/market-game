@@ -11,6 +11,7 @@ import 'events.dart';
 import 'factories.dart';
 import 'logistics.dart';
 import 'macro.dart';
+import 'national.dart';
 import 'operations.dart';
 import 'population.dart';
 import 'report.dart';
@@ -58,6 +59,7 @@ final class TickContext {
 /// run.
 const List<TickSystem> standardSystems = [
   MacroSystem(),
+  NationalSystem(),
   PopulationSystem(),
   TaxSystem(),
   LogisticsSystem(),

@@ -151,6 +151,26 @@ String memoSentence(Memo memo, ContentDb content, Observation view) {
         'months': paybackMonths,
         'loan': _loan(borrowed, content),
       }),
+    NationalOpened(
+      :final region,
+      :final format,
+      :final count,
+      :final cost,
+      :final earns,
+      :final paybackMonths,
+      :final borrowed,
+    ) =>
+      tr('letters.openedNational', {
+        'count': count,
+        'format': count == 1
+            ? aFormat(content.formats[format.index])
+            : content.formats[format.index].name.toLowerCase(),
+        'region': _regionNamed(content, region),
+        'cost': amount(cost),
+        'earns': amount(earns),
+        'months': paybackMonths,
+        'loan': _loan(borrowed, content),
+      }),
     StoreBought(
       store: final s,
       :final price,
@@ -175,6 +195,16 @@ String memoSentence(Memo memo, ContentDb content, Observation view) {
       'amount': amount(needed),
     }),
   };
+}
+
+/// The name of the region the national table keys [key].
+String _regionNamed(ContentDb content, String key) {
+  for (final country in content.national?.countries ?? const []) {
+    for (final region in country.regions) {
+      if (region.key == key) return region.name;
+    }
+  }
+  return key;
 }
 
 /// What a director says of what they [borrowed] for a store, if anything.

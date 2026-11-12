@@ -4,6 +4,7 @@ import '../content/scenario_loader.dart' show ContentException;
 import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../core/money.dart';
+import '../core/safe_int.dart';
 
 /// One phase of the shared business cycle.
 final class CycleRegime {
@@ -121,6 +122,61 @@ final class TradeRow {
   Fx get normalMargin => Fx.one - goods - staff - other;
 }
 
+/// One region of a country: its people, their income, and where it sits on
+/// the country's tile map.
+final class NationalRegion {
+  const NationalRegion({
+    required this.key,
+    required this.name,
+    required this.population,
+    required this.income,
+    required this.col,
+    required this.row,
+  });
+
+  final String key;
+  final String name;
+  final int population;
+
+  /// Households' disposable income per inhabitant a year.
+  final Money income;
+
+  /// Its square on the tile map, from the top left.
+  final int col;
+  final int row;
+}
+
+/// How regions differ within a country: how wages and rents follow income,
+/// how much thicker a chain's shops are in its home regions, and how crowded
+/// a region gets for one chain.
+final class RegionalTuning {
+  const RegionalTuning({
+    required this.wages,
+    required this.rents,
+    required this.home,
+    required this.saturation,
+  });
+
+  /// How far a region's wages and rents move, against the country's, when its
+  /// income per head is higher by one.
+  final Fx wages;
+  final Fx rents;
+
+  /// How many times thicker a chain's shops are in its home regions.
+  final Fx home;
+
+  /// The share of a trade's shops in a region at which one chain's shops
+  /// draw half what each would alone.
+  final Fx saturation;
+
+  static const none = RegionalTuning(
+    wages: Fx.zero,
+    rents: Fx.zero,
+    home: Fx.one,
+    saturation: Fx.one,
+  );
+}
+
 /// A chain as the table starts it, or a trade's independents taken together.
 final class ChainDef {
   const ChainDef({
@@ -130,6 +186,7 @@ final class ChainDef {
     required this.share,
     required this.price,
     required this.independent,
+    this.home = const [],
   });
 
   final String name;
@@ -142,10 +199,14 @@ final class ChainDef {
   /// Its prices against the trade's average.
   final Fx price;
   final bool independent;
+
+  /// The regions where its shops are thicker on the ground, by index into
+  /// [NationalCountry.regions].
+  final List<int> home;
 }
 
 final class NationalCountry {
-  const NationalCountry({
+  NationalCountry({
     required this.key,
     required this.name,
     required this.population,
@@ -156,11 +217,15 @@ final class NationalCountry {
     required this.classes,
     required this.trades,
     required this.chains,
+    this.regions = const [],
   });
 
   final String key;
   final String name;
   final int population;
+
+  /// Its regions; none for a country taken whole.
+  final List<NationalRegion> regions;
 
   /// How far household consumption moves when the euro area's moves by one.
   final Fx cycle;
@@ -176,6 +241,23 @@ final class NationalCountry {
   /// Indexed by [CountryTable.trades].
   final List<TradeRow> trades;
   final List<ChainDef> chains;
+
+  /// Each region's income per head against the country's average, by
+  /// [regions].
+  late final List<Fx> incomeLevels = () {
+    // In whole euros, to stay safe in the products.
+    var people = 0;
+    var income = 0;
+    for (final region in regions) {
+      people += region.population;
+      income += region.income.cents ~/ 100 * region.population;
+    }
+    final mean = people == 0 ? 1 : income ~/ people;
+    return [
+      for (final region in regions)
+        Fx.raw(mulDivRound(region.income.cents ~/ 100, Fx.scale, mean)),
+    ];
+  }();
 }
 
 /// Countries described by their statistics: the input to [CountryEconomy].
@@ -192,6 +274,7 @@ final class CountryTable {
     required this.classes,
     required this.trades,
     required this.countries,
+    this.regional = RegionalTuning.none,
   }) : meanRealWageGrowth = _meanRealWageGrowth(regimes);
 
   final String key;
@@ -215,6 +298,7 @@ final class CountryTable {
   final List<IncomeClass> classes;
   final List<Trade> trades;
   final List<NationalCountry> countries;
+  final RegionalTuning regional;
 
   /// The cycle's real wage growth over its phases' expected lengths, so that
   /// a country's trend is what it grows through a whole cycle.
@@ -300,6 +384,11 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
     }
     if (rows.contains(null)) node.fail('classes', 'one row per class');
     final tradeRows = node.object('trades');
+    final regions = [
+      for (final region in node.objects('regions', optional: true))
+        _region(region),
+    ];
+    final regionIndex = {for (final (i, r) in regions.indexed) r.key: i};
     final chains = <ChainDef>[];
     final shares = List.filled(trades.length, Fx.zero);
     for (final chain in node.objects('chains')) {
@@ -315,6 +404,10 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
           share: share,
           price: chain.fx('price'),
           independent: chain.flag('independent'),
+          home: [
+            for (final key in chain.strings('home', optional: true))
+              regionIndex[key] ?? chain.fail('home', 'no such region $key'),
+          ],
         ),
       );
       chain
@@ -340,6 +433,7 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
           for (final trade in trades) _tradeRow(tradeRows.object(trade.key)),
         ],
         chains: chains,
+        regions: regions,
       ),
     );
     tradeRows.finish();
@@ -357,12 +451,40 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
     classes: classes,
     trades: trades,
     countries: countries,
+    regional: switch (root.optionalObject('regional')) {
+      final node? => () {
+        final tuning = RegionalTuning(
+          wages: node.fx('wages'),
+          rents: node.fx('rents'),
+          home: node.fx('home'),
+          saturation: node.fx('saturation'),
+        );
+        node.finish();
+        return tuning;
+      }(),
+      null => RegionalTuning.none,
+    },
   );
   root
     ..text('startRegime')
     ..strings('sources')
     ..finish();
   return table;
+}
+
+NationalRegion _region(_Reader node) {
+  final tile = node.wholes('tile');
+  if (tile.length != 2) node.fail('tile', 'expected a column and a row');
+  final region = NationalRegion(
+    key: node.text('id'),
+    name: node.text('name'),
+    population: node.whole('population'),
+    income: node.money('income'),
+    col: tile[0],
+    row: tile[1],
+  );
+  node.finish();
+  return region;
 }
 
 TradeRow _tradeRow(_Reader node) {
@@ -444,19 +566,34 @@ final class _Reader {
     }
   }
 
-  List<String> strings(String key) => switch (_value(key)) {
-    final List<Object?> list => list.cast<String>(),
+  List<String> strings(String key, {bool optional = false}) =>
+      switch (_value(key)) {
+        final List<Object?> list => list.cast<String>(),
+        null when optional => const [],
+        _ => fail(key, 'expected a list'),
+      };
+
+  List<int> wholes(String key) => switch (_value(key)) {
+    final List<Object?> list => [
+      for (final item in list)
+        item is int && item >= 0 ? item : fail(key, 'expected whole numbers'),
+    ],
     _ => fail(key, 'expected a list'),
   };
 
   _Reader object(String key) => _Reader('$path.$key', _value(key));
 
-  List<_Reader> objects(String key) => switch (_value(key)) {
-    final List<Object?> list => [
-      for (final (i, item) in list.indexed) _Reader('$path.$key[$i]', item),
-    ],
-    _ => fail(key, 'expected a list'),
-  };
+  _Reader? optionalObject(String key) =>
+      _map.containsKey(key) ? object(key) : null;
+
+  List<_Reader> objects(String key, {bool optional = false}) =>
+      switch (_value(key)) {
+        final List<Object?> list => [
+          for (final (i, item) in list.indexed) _Reader('$path.$key[$i]', item),
+        ],
+        null when optional => const [],
+        _ => fail(key, 'expected a list'),
+      };
 
   /// Fails on any field that wasn't read.
   void finish() {

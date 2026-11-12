@@ -6,6 +6,7 @@ import '../core/ids.dart';
 import '../core/money.dart';
 import '../reports/period_report.dart' show ReportPeriod;
 import '../state/districts.dart';
+import 'national_view.dart';
 import '../state/brands.dart';
 import '../state/credit.dart';
 import '../state/director.dart';
@@ -53,7 +54,19 @@ final class Observation {
     this.brands = const [],
     this.offers = const [],
     List<DistrictView> Function() districts = _noDistricts,
-  }) : _districts = districts;
+    List<NationalCountryView> Function() national = _noNational,
+  }) : _districts = districts,
+       _national = national;
+
+  static List<NationalCountryView> _noNational() => const [];
+
+  final List<NationalCountryView> Function() _national;
+
+  /// Every country by formula, region by region, with the actor's shops run
+  /// there: empty without a national table or with one country. Worked out
+  /// when asked for.
+
+  List<NationalCountryView> get national => _national();
 
   static List<DistrictView> _noDistricts() => const [];
 
@@ -909,6 +922,7 @@ Observation observe(
     companyPrices: shared.companyPrices,
     companyCredits: shared.companyCredits,
     districts: () => shared.districts,
+    national: () => nationalViews(world, content, actor),
     offers: shared.offers,
     guaranteeRoom: guaranteeRoom(world, content, person),
     reports: List.unmodifiable([

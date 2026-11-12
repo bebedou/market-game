@@ -196,7 +196,11 @@
      "trade": "grocery",
      "stores": 8000,
      "share": "0.19",
-     "price": "1.00"
+     "price": "1.00",
+     "home": [
+      "DEA",
+      "DEB"
+     ]
     },
     {
      "name": "Preisfels",
@@ -263,6 +267,168 @@
      "share": "0.6500",
      "price": "1.00",
      "independent": true
+    }
+   ],
+   "regions": [
+    {
+     "id": "DEF",
+     "name": "Schleswig-Holstein",
+     "population": 2922005,
+     "income": "27600.00",
+     "tile": [
+      2,
+      0
+     ]
+    },
+    {
+     "id": "DE5",
+     "name": "Bremen",
+     "population": 676463,
+     "income": "23900.00",
+     "tile": [
+      1,
+      1
+     ]
+    },
+    {
+     "id": "DE6",
+     "name": "Hamburg",
+     "population": 1853935,
+     "income": "28500.00",
+     "tile": [
+      2,
+      1
+     ]
+    },
+    {
+     "id": "DE8",
+     "name": "Mecklenburg-Vorpommern",
+     "population": 1611160,
+     "income": "24500.00",
+     "tile": [
+      3,
+      1
+     ]
+    },
+    {
+     "id": "DEA",
+     "name": "Nordrhein-Westfalen",
+     "population": 17924591,
+     "income": "26000.00",
+     "tile": [
+      0,
+      2
+     ]
+    },
+    {
+     "id": "DE9",
+     "name": "Niedersachsen",
+     "population": 8027031,
+     "income": "26100.00",
+     "tile": [
+      1,
+      2
+     ]
+    },
+    {
+     "id": "DEE",
+     "name": "Sachsen-Anhalt",
+     "population": 2169253,
+     "income": "23700.00",
+     "tile": [
+      2,
+      2
+     ]
+    },
+    {
+     "id": "DE3",
+     "name": "Berlin",
+     "population": 3677472,
+     "income": "24900.00",
+     "tile": [
+      3,
+      2
+     ]
+    },
+    {
+     "id": "DE4",
+     "name": "Brandenburg",
+     "population": 2537868,
+     "income": "24800.00",
+     "tile": [
+      4,
+      2
+     ]
+    },
+    {
+     "id": "DEB",
+     "name": "Rheinland-Pfalz",
+     "population": 4106485,
+     "income": "26200.00",
+     "tile": [
+      0,
+      3
+     ]
+    },
+    {
+     "id": "DE7",
+     "name": "Hessen",
+     "population": 6295017,
+     "income": "27200.00",
+     "tile": [
+      1,
+      3
+     ]
+    },
+    {
+     "id": "DEG",
+     "name": "Thüringen",
+     "population": 2108863,
+     "income": "23900.00",
+     "tile": [
+      2,
+      3
+     ]
+    },
+    {
+     "id": "DED",
+     "name": "Sachsen",
+     "population": 4043002,
+     "income": "24000.00",
+     "tile": [
+      3,
+      3
+     ]
+    },
+    {
+     "id": "DEC",
+     "name": "Saarland",
+     "population": 982348,
+     "income": "23600.00",
+     "tile": [
+      0,
+      4
+     ]
+    },
+    {
+     "id": "DE1",
+     "name": "Baden-Württemberg",
+     "population": 11124642,
+     "income": "28400.00",
+     "tile": [
+      1,
+      4
+     ]
+    },
+    {
+     "id": "DE2",
+     "name": "Bayern",
+     "population": 13176989,
+     "income": "29800.00",
+     "tile": [
+      2,
+      4
+     ]
     }
    ]
   },
@@ -376,7 +542,12 @@
      "trade": "grocery",
      "stores": 1600,
      "share": "0.11",
-     "price": "1.00"
+     "price": "1.00",
+     "home": [
+      "FRH",
+      "FRG",
+      "FRD"
+     ]
     },
     {
      "name": "Grand Panier",
@@ -443,6 +614,138 @@
      "share": "0.6200",
      "price": "1.00",
      "independent": true
+    }
+   ],
+   "regions": [
+    {
+     "id": "FRE",
+     "name": "Hauts-de-France",
+     "population": 5998916,
+     "income": "19900.00",
+     "tile": [
+      2,
+      0
+     ]
+    },
+    {
+     "id": "FRD",
+     "name": "Normandie",
+     "population": 3339074,
+     "income": "21400.00",
+     "tile": [
+      1,
+      1
+     ]
+    },
+    {
+     "id": "FR1",
+     "name": "Île-de-France",
+     "population": 12380964,
+     "income": "27300.00",
+     "tile": [
+      2,
+      1
+     ]
+    },
+    {
+     "id": "FRF",
+     "name": "Grand Est",
+     "population": 5560079,
+     "income": "21100.00",
+     "tile": [
+      3,
+      1
+     ]
+    },
+    {
+     "id": "FRH",
+     "name": "Bretagne",
+     "population": 3422845,
+     "income": "21800.00",
+     "tile": [
+      0,
+      2
+     ]
+    },
+    {
+     "id": "FRG",
+     "name": "Pays de la Loire",
+     "population": 3879216,
+     "income": "21600.00",
+     "tile": [
+      1,
+      2
+     ]
+    },
+    {
+     "id": "FRB",
+     "name": "Centre-Val de Loire",
+     "population": 2581597,
+     "income": "21700.00",
+     "tile": [
+      2,
+      2
+     ]
+    },
+    {
+     "id": "FRC",
+     "name": "Bourgogne-Franche-Comté",
+     "population": 2803977,
+     "income": "21200.00",
+     "tile": [
+      3,
+      2
+     ]
+    },
+    {
+     "id": "FRI",
+     "name": "Nouvelle-Aquitaine",
+     "population": 6113384,
+     "income": "21900.00",
+     "tile": [
+      1,
+      3
+     ]
+    },
+    {
+     "id": "FRK",
+     "name": "Auvergne-Rhône-Alpes",
+     "population": 8163884,
+     "income": "22600.00",
+     "tile": [
+      2,
+      3
+     ]
+    },
+    {
+     "id": "FRJ",
+     "name": "Occitanie",
+     "population": 6080731,
+     "income": "21300.00",
+     "tile": [
+      2,
+      4
+     ]
+    },
+    {
+     "id": "FRL",
+     "name": "Provence-Alpes-Côte d'Azur",
+     "population": 5170312,
+     "income": "23900.00",
+     "tile": [
+      3,
+      4
+     ]
+    },
+    {
+     "id": "FRM",
+     "name": "Corse",
+     "population": 351276,
+     "income": "22400.00",
+     "tile": [
+      4,
+      4
+     ]
     }
    ]
   },
@@ -549,14 +852,21 @@
      "trade": "grocery",
      "stores": 1100,
      "share": "0.123",
-     "price": "1.02"
+     "price": "1.02",
+     "home": [
+      "ITH5",
+      "ITI1"
+     ]
     },
     {
      "name": "Supermercati Lombardi",
      "trade": "grocery",
      "stores": 180,
      "share": "0.083",
-     "price": "1.06"
+     "price": "1.06",
+     "home": [
+      "ITC4"
+     ]
     },
     {
      "name": "Mercato Verde",
@@ -630,6 +940,208 @@
      "share": "0.7300",
      "price": "1.00",
      "independent": true
+    }
+   ],
+   "regions": [
+    {
+     "id": "ITC2",
+     "name": "Valle d'Aosta",
+     "population": 123360,
+     "income": "21400.00",
+     "tile": [
+      0,
+      0
+     ]
+    },
+    {
+     "id": "ITH12",
+     "name": "Trentino-Alto Adige",
+     "population": 1073574,
+     "income": "24679.80",
+     "tile": [
+      2,
+      0
+     ]
+    },
+    {
+     "id": "ITH4",
+     "name": "Friuli-Venezia Giulia",
+     "population": 1194647,
+     "income": "21800.00",
+     "tile": [
+      3,
+      0
+     ]
+    },
+    {
+     "id": "ITC1",
+     "name": "Piemonte",
+     "population": 4256350,
+     "income": "22100.00",
+     "tile": [
+      0,
+      1
+     ]
+    },
+    {
+     "id": "ITC4",
+     "name": "Lombardia",
+     "population": 9943004,
+     "income": "24400.00",
+     "tile": [
+      1,
+      1
+     ]
+    },
+    {
+     "id": "ITH3",
+     "name": "Veneto",
+     "population": 4847745,
+     "income": "21600.00",
+     "tile": [
+      2,
+      1
+     ]
+    },
+    {
+     "id": "ITC3",
+     "name": "Liguria",
+     "population": 1509227,
+     "income": "21900.00",
+     "tile": [
+      0,
+      2
+     ]
+    },
+    {
+     "id": "ITH5",
+     "name": "Emilia-Romagna",
+     "population": 4425366,
+     "income": "23600.00",
+     "tile": [
+      1,
+      2
+     ]
+    },
+    {
+     "id": "ITI1",
+     "name": "Toscana",
+     "population": 3663191,
+     "income": "21200.00",
+     "tile": [
+      1,
+      3
+     ]
+    },
+    {
+     "id": "ITI3",
+     "name": "Marche",
+     "population": 1487150,
+     "income": "20200.00",
+     "tile": [
+      2,
+      3
+     ]
+    },
+    {
+     "id": "ITI4",
+     "name": "Lazio",
+     "population": 5714882,
+     "income": "20900.00",
+     "tile": [
+      1,
+      4
+     ]
+    },
+    {
+     "id": "ITI2",
+     "name": "Umbria",
+     "population": 858812,
+     "income": "20000.00",
+     "tile": [
+      2,
+      4
+     ]
+    },
+    {
+     "id": "ITF1",
+     "name": "Abruzzo",
+     "population": 1275950,
+     "income": "18000.00",
+     "tile": [
+      3,
+      4
+     ]
+    },
+    {
+     "id": "ITG2",
+     "name": "Sardegna",
+     "population": 1587413,
+     "income": "17300.00",
+     "tile": [
+      0,
+      5
+     ]
+    },
+    {
+     "id": "ITF3",
+     "name": "Campania",
+     "population": 5624420,
+     "income": "14700.00",
+     "tile": [
+      2,
+      5
+     ]
+    },
+    {
+     "id": "ITF2",
+     "name": "Molise",
+     "population": 292150,
+     "income": "17000.00",
+     "tile": [
+      3,
+      5
+     ]
+    },
+    {
+     "id": "ITF4",
+     "name": "Puglia",
+     "population": 3922941,
+     "income": "15800.00",
+     "tile": [
+      4,
+      5
+     ]
+    },
+    {
+     "id": "ITF5",
+     "name": "Basilicata",
+     "population": 541168,
+     "income": "15800.00",
+     "tile": [
+      3,
+      6
+     ]
+    },
+    {
+     "id": "ITF6",
+     "name": "Calabria",
+     "population": 1855454,
+     "income": "14900.00",
+     "tile": [
+      3,
+      7
+     ]
+    },
+    {
+     "id": "ITG1",
+     "name": "Sicilia",
+     "population": 4833329,
+     "income": "15400.00",
+     "tile": [
+      2,
+      8
+     ]
     }
    ]
   },
@@ -722,7 +1234,11 @@
      "trade": "grocery",
      "stores": 1620,
      "share": "0.254",
-     "price": "0.98"
+     "price": "0.98",
+     "home": [
+      "ES52",
+      "ES62"
+     ]
     },
     {
      "name": "Hiper Iberia",
@@ -750,7 +1266,12 @@
      "trade": "grocery",
      "stores": 1000,
      "share": "0.042",
-     "price": "1.02"
+     "price": "1.02",
+     "home": [
+      "ES21",
+      "ES22",
+      "ES13"
+     ]
     },
     {
      "name": "Independent groceries",
@@ -804,7 +1325,185 @@
      "price": "1.00",
      "independent": true
     }
+   ],
+   "regions": [
+    {
+     "id": "ES11",
+     "name": "Galicia",
+     "population": 2692829,
+     "income": "16200.00",
+     "tile": [
+      0,
+      0
+     ]
+    },
+    {
+     "id": "ES12",
+     "name": "Asturias",
+     "population": 1004960,
+     "income": "17900.00",
+     "tile": [
+      1,
+      0
+     ]
+    },
+    {
+     "id": "ES13",
+     "name": "Cantabria",
+     "population": 585451,
+     "income": "17100.00",
+     "tile": [
+      2,
+      0
+     ]
+    },
+    {
+     "id": "ES21",
+     "name": "País Vasco",
+     "population": 2205828,
+     "income": "21900.00",
+     "tile": [
+      3,
+      0
+     ]
+    },
+    {
+     "id": "ES22",
+     "name": "Navarra",
+     "population": 664514,
+     "income": "19300.00",
+     "tile": [
+      4,
+      0
+     ]
+    },
+    {
+     "id": "ES41",
+     "name": "Castilla y León",
+     "population": 2375586,
+     "income": "16900.00",
+     "tile": [
+      1,
+      1
+     ]
+    },
+    {
+     "id": "ES23",
+     "name": "La Rioja",
+     "population": 319617,
+     "income": "17400.00",
+     "tile": [
+      3,
+      1
+     ]
+    },
+    {
+     "id": "ES24",
+     "name": "Aragón",
+     "population": 1328217,
+     "income": "18300.00",
+     "tile": [
+      4,
+      1
+     ]
+    },
+    {
+     "id": "ES51",
+     "name": "Cataluña",
+     "population": 7761864,
+     "income": "18300.00",
+     "tile": [
+      5,
+      1
+     ]
+    },
+    {
+     "id": "ES43",
+     "name": "Extremadura",
+     "population": 1056808,
+     "income": "13800.00",
+     "tile": [
+      0,
+      2
+     ]
+    },
+    {
+     "id": "ES30",
+     "name": "Madrid",
+     "population": 6743273,
+     "income": "20600.00",
+     "tile": [
+      2,
+      2
+     ]
+    },
+    {
+     "id": "ES42",
+     "name": "Castilla-La Mancha",
+     "population": 2058284,
+     "income": "14900.00",
+     "tile": [
+      3,
+      2
+     ]
+    },
+    {
+     "id": "ES52",
+     "name": "Comunitat Valenciana",
+     "population": 5108127,
+     "income": "14800.00",
+     "tile": [
+      4,
+      2
+     ]
+    },
+    {
+     "id": "ES53",
+     "name": "Illes Balears",
+     "population": 1187043,
+     "income": "17300.00",
+     "tile": [
+      5,
+      2
+     ]
+    },
+    {
+     "id": "ES61",
+     "name": "Andalucía",
+     "population": 8679171,
+     "income": "13719.25",
+     "tile": [
+      2,
+      3
+     ]
+    },
+    {
+     "id": "ES62",
+     "name": "Región de Murcia",
+     "population": 1529662,
+     "income": "14500.00",
+     "tile": [
+      3,
+      3
+     ]
+    },
+    {
+     "id": "ES70",
+     "name": "Canarias",
+     "population": 2185609,
+     "income": "14000.00",
+     "tile": [
+      0,
+      4
+     ]
+    }
    ]
   }
- ]
+ ],
+ "regional": {
+  "wages": "0.70",
+  "rents": "1.50",
+  "home": "3.00",
+  "saturation": "0.10"
+ }
 }

@@ -640,6 +640,109 @@ void main() {
     );
   });
 
+  testWidgets('a country page maps your shops by region, and a region opens '
+      'its figures', (tester) async {
+    final content = nationalPrototype;
+    final game = SimulationController.newGame(content, seed: 7);
+    final france = content.countries.firstWhere((c) => c.key == 'fr').id;
+    final grocer = content.strategies.firstWhere((s) => s.key == 'balanced');
+    game
+      ..submit(
+        InjectCapital(
+          content.player,
+          company: playerCompany,
+          amount: Money.parse('200000.00'),
+        ),
+      )
+      ..submit(
+        OpenNational(
+          content.player,
+          company: playerCompany,
+          country: france,
+          region: 0,
+          format: grocer.format,
+          strategy: grocer.id,
+          count: 3,
+        ),
+      );
+    for (var i = 0; i < 40; i++) {
+      game.step();
+    }
+    expect(
+      game.view.national
+          .firstWhere((n) => n.country == france)
+          .blocks
+          .single
+          .stores,
+      3,
+    );
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await openIndex(tester, 'France');
+    await scrollTo(tester, find.text('Your shops by region'));
+    expect(find.text('Rank among chains'), findsOneWidget);
+    // Hauts-de-France holds the three.
+    await scrollTo(tester, find.text('HF'));
+    expect(find.text('ÎF'), findsOneWidget);
+    expect(find.text('PACA'), findsOneWidget);
+    await tester.tap(find.text('HF'));
+    await tester.pumpAndSettle();
+    expect(find.text('Yours here'), findsOneWidget);
+    expect(find.text('Wages against the country'), findsOneWidget);
+    await scrollTo(tester, find.text('A new shop would earn'));
+    await scrollTo(tester, find.text('Chains here'));
+    await goBack(tester);
+    await scrollTo(tester, find.text("Where there's room"));
+    // None of yours in restaurants yet.
+    final restaurants = find.widgetWithText(ChoiceChip, 'Restaurants');
+    await tester.ensureVisible(restaurants);
+    await tester.pumpAndSettle();
+    await tester.tap(restaurants);
+    await tester.pumpAndSettle();
+    expect(find.text('Rank among chains'), findsNothing);
+  });
+
+  testWidgets('a director is briefed to open shops across the country', (
+    tester,
+  ) async {
+    final game = SimulationController.newGame(nationalPrototype, seed: 7);
+    await pumpGame(tester, game);
+    await tester.tap(find.text('Finance'));
+    await tester.pumpAndSettle();
+    await openIndex(tester, 'Corner Shop');
+    await scrollTo(tester, find.text('Hire a director'));
+    await tester.tap(find.text('Hire a director'));
+    await tester.pumpAndSettle();
+    final sheet = find.byType(Scrollable).last;
+    expect(find.text('Across the country'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Also open new stores'),
+      100,
+      scrollable: sheet,
+    );
+    await tester.tap(find.text('Also open new stores'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Across the country'));
+    await tester.pumpAndSettle();
+    // Off until the player sets a pace; then the regions to pick from.
+    expect(find.widgetWithText(FilterChip, 'Occitanie'), findsNothing);
+    await tester.tap(find.byTooltip('More').first);
+    await tester.pumpAndSettle();
+    final occitanie = find.widgetWithText(FilterChip, 'Occitanie');
+    await tester.ensureVisible(occitanie);
+    await tester.pumpAndSettle();
+    await tester.tap(occitanie);
+    await tester.pumpAndSettle();
+    expect(find.text('Only in the region picked.'), findsOneWidget);
+    await tester.tap(find.textContaining('Hire for'));
+    await tester.pumpAndSettle();
+    final hire = game.pending.single as HireDirector;
+    expect(hire.growth, Growth.open);
+    expect(hire.nationalPace, 1);
+    expect(hire.nationalRegions, ['FRJ']);
+  });
+
   test('a director says what they borrowed', () {
     final game = newController();
     final sentence = memoSentence(

@@ -191,6 +191,12 @@ sealed class Command {
         growth: Growth.values[reader.readInt()],
         payout: reader.readBool(),
         borrows: reader.version >= 22 ? reader.readBool() : false,
+        nationalPace: reader.version >= 29 ? reader.readInt() : 0,
+        nationalRegions: [
+          if (reader.version >= 29)
+            for (var i = 0, n = reader.readInt(); i < n; i++)
+              reader.readString(),
+        ],
       ),
       FireDirector.tag => FireDirector(
         actor,
@@ -235,6 +241,17 @@ sealed class Command {
       CloseFactory.tag => CloseFactory(
         actor,
         factory: FactoryId(reader.readInt()),
+      ),
+      OpenNational.tag => OpenNational(
+        actor,
+        company: CompanyId(reader.readInt()),
+        country: CountryId(reader.readInt()),
+        region: reader.readInt(),
+        format: FormatId(reader.readInt()),
+        strategy: StrategyId(reader.readInt()),
+        count: reader.readInt(),
+        borrow: Money(reader.readInt()),
+        termMonths: reader.readInt(),
       ),
       OrderFromFactory.tag => OrderFromFactory(
         actor,
@@ -917,6 +934,8 @@ final class HireDirector extends Command {
     required this.growth,
     required this.payout,
     this.borrows = false,
+    this.nationalPace = 0,
+    this.nationalRegions = const [],
   });
 
   static const int tag = 24;
@@ -931,6 +950,11 @@ final class HireDirector extends Command {
   /// Whether they may borrow to grow, on the company's earnings.
   final bool borrows;
 
+  /// Shops run by formula they may open a month, and where (see
+  /// `Director.nationalPace`).
+  final int nationalPace;
+  final List<String> nationalRegions;
+
   @override
   void write(StateWriter writer) {
     writer
@@ -942,7 +966,10 @@ final class HireDirector extends Command {
       ..writeInt(managerGrade.index)
       ..writeInt(growth.index)
       ..writeBool(payout)
-      ..writeBool(borrows);
+      ..writeBool(borrows)
+      ..writeInt(nationalPace)
+      ..writeInt(nationalRegions.length);
+    nationalRegions.forEach(writer.writeString);
   }
 
   @override
@@ -950,7 +977,8 @@ final class HireDirector extends Command {
       'HireDirector(actor: ${actor.index}, company: ${company.index}, '
       'grade: ${grade.index}, strategy: ${strategy.index}, '
       'managerGrade: ${managerGrade.index}, growth: ${growth.name}, '
-      'payout: $payout, borrows: $borrows)';
+      'payout: $payout, borrows: $borrows, nationalPace: $nationalPace, '
+      'nationalRegions: $nationalRegions)';
 }
 
 /// Lets a company's director go; the owner runs it again, and its store
@@ -1348,4 +1376,58 @@ final class OrderFromFactory extends Command {
     return 'OrderFromFactory(actor: ${actor.index}, store: ${store.index}, '
         'factory: ${factory.index}, lines: ${items.join(', ')})';
   }
+}
+
+/// Opens [count] of [company]'s shops of [format] run by formula in
+/// [region] of [country], by the national table's regions, priced and
+/// stocked as [strategy] has it: each costs the format's national fitting out
+/// at the country's prices, borrowing [borrow] over [termMonths] if asked,
+/// and trades from the next month.
+final class OpenNational extends Command {
+  const OpenNational(
+    super.actor, {
+    required this.company,
+    required this.country,
+    required this.region,
+    required this.format,
+    required this.strategy,
+    required this.count,
+    this.borrow = Money.zero,
+    this.termMonths = 0,
+  });
+
+  static const int tag = 35;
+
+  final CompanyId company;
+  final CountryId country;
+
+  /// By index into the national table's regions of [country].
+  final int region;
+  final FormatId format;
+  final StrategyId strategy;
+  final int count;
+  final Money borrow;
+  final int termMonths;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(company.index)
+      ..writeInt(country.index)
+      ..writeInt(region)
+      ..writeInt(format.index)
+      ..writeInt(strategy.index)
+      ..writeInt(count)
+      ..writeInt(borrow.cents)
+      ..writeInt(termMonths);
+  }
+
+  @override
+  String toString() =>
+      'OpenNational(actor: ${actor.index}, company: ${company.index}, '
+      'country: ${country.index}, region: $region, format: ${format.index}, '
+      'strategy: ${strategy.index}, count: $count, '
+      'borrow: ${borrow.toDecimalString()}, termMonths: $termMonths)';
 }

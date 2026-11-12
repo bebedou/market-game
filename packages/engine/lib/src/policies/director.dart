@@ -212,6 +212,39 @@ List<Command> direct(
     }
   }
 
+  if (director.nationalPace > 0 &&
+      director.allows(Growth.open) &&
+      profit > Money.zero) {
+    for (final (:command, :memo) in _nationalGrowth(
+      view,
+      content,
+      company,
+      strategy,
+      judgment,
+    )) {
+      if (!canPay(memo.cost)) {
+        saving ??= ProfitKept(today, needed: memo.cost);
+        break;
+      }
+      final borrowed = pay(memo.cost);
+      give(
+        command,
+        NationalOpened(
+          today,
+          country: memo.country,
+          region: memo.region,
+          format: memo.format,
+          count: memo.count,
+          cost: memo.cost,
+          earns: memo.earns,
+          paybackMonths: memo.paybackMonths,
+          borrowed: borrowed,
+        ),
+      );
+      retained -= memo.cost;
+    }
+  }
+
   if (director.payout) {
     if (saving != null) {
       give(null, saving);
@@ -432,4 +465,91 @@ StrategyId _strategyFor(
     cost: cost,
     borrowed: borrowed,
   );
+}
+
+/// The shops run by formula [company]'s director would open this month: in
+/// the regions their brief allows (or every region of the countries the
+/// company trades in), one in each of those where a new shop of the
+/// strategy's kind would pay back soonest as they judge it, up to the brief's
+/// pace, each within the strategy's payback period.
+List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
+  Observation view,
+  ContentDb content,
+  CompanyView company,
+  StrategyDef strategy,
+  Rng Function(int entity)? judgment,
+) {
+  final director = company.director!;
+  final format = content.formats[strategy.format.index];
+  final national = format.national;
+  if (national == null) return const [];
+  final grade = content.directors!.grades[director.grade.index];
+  final error = content.directors!.judgmentError * (Fx.one - grade.skill);
+  final home = {
+    for (final store in company.stores)
+      if (store.status != StoreStatus.closed)
+        content.countryOf(store.market).index,
+  };
+  final candidates = <({OpenNational command, NationalOpened memo})>[];
+  final paybacks = <int>[];
+  for (final country in view.national) {
+    final game = country.country;
+    if (game == null || country.def.regions.isEmpty) continue;
+    final ours = country.blocks.any((block) => block.company == company.id);
+    final cost = national.fitOut.times(country.priceIndex);
+    for (final (r, region) in country.def.regions.indexed) {
+      final allowed = director.nationalRegions.isEmpty
+          ? home.contains(game.index) || ours
+          : director.nationalRegions.contains(region.key);
+      if (!allowed) continue;
+      var (:sales, :profit) = country.newShop(
+        content,
+        company: company.id,
+        format: format.id,
+        strategy: strategy.id,
+        region: r,
+      );
+      if (judgment != null) {
+        profit = profit.times(
+          judgmentFactor(
+            judgment(company.id.index * 100000 + 90000 + country.index * 100 + r),
+            error,
+          ),
+        );
+      }
+      if (profit <= Money.zero) continue;
+      final payback = (cost.cents * 12 + profit.cents - 1) ~/ profit.cents;
+      if (payback > strategy.expansionPaybackMonths) continue;
+      candidates.add((
+        command: OpenNational(
+          view.actor,
+          company: company.id,
+          country: game,
+          region: r,
+          format: format.id,
+          strategy: strategy.id,
+          count: 1,
+        ),
+        memo: NationalOpened(
+          view.today,
+          country: game,
+          region: region.key,
+          format: format.id,
+          count: 1,
+          cost: cost,
+          earns: profit,
+          paybackMonths: payback,
+        ),
+      ));
+      paybacks.add(payback);
+    }
+  }
+  final order = [for (var i = 0; i < candidates.length; i++) i]
+    ..sort((a, b) {
+      final byPayback = paybacks[a].compareTo(paybacks[b]);
+      return byPayback != 0 ? byPayback : a - b;
+    });
+  return [
+    for (final i in order.take(director.nationalPace)) candidates[i],
+  ];
 }

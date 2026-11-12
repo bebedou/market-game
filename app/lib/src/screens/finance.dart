@@ -617,6 +617,8 @@ class _DirectorSheetState extends State<_DirectorSheet> {
   bool? _borrows;
   ManagerGradeId? _managerGrade;
   StrategyId? _strategy;
+  int? _pace;
+  Set<String>? _regions;
 
   @override
   Widget build(BuildContext context) {
@@ -660,6 +662,54 @@ class _DirectorSheetState extends State<_DirectorSheet> {
     final wageIndex = game.view
         .economy(game.countryOfCompany(widget.company))
         .wageIndex;
+    // Shops run by formula across the countries the company trades in, for
+    // a kind of shop that can be run so.
+    final national = content
+        .formats[content.strategies[strategy.index].format.index]
+        .national;
+    final homes = {
+      for (final store in widget.company.stores)
+        if (store.status != StoreStatus.closed) content.countryOf(store.market),
+    };
+    final countries = [
+      for (final country in game.view.national)
+        if (country.country != null &&
+            country.def.regions.isNotEmpty &&
+            (homes.contains(country.country) ||
+                country.blocks.any((b) => b.company == widget.company.id)))
+          country,
+    ];
+    final nationally =
+        national != null &&
+        countries.isNotEmpty &&
+        (growth == Growth.open || growth == Growth.buy);
+    final pace = _pace ?? current?.nationalPace ?? 0;
+    final picked = _regions ?? {...?current?.nationalRegions};
+    // This year's shops run by formula: opened and closed, their fitting
+    // out and what they earned.
+    final year = game.today.date.year;
+    var opened = 0;
+    var closed = 0;
+    var earned = Money.zero;
+    var hasBlocks = false;
+    for (final country in countries) {
+      for (final block in country.blocks) {
+        if (block.company != widget.company.id) continue;
+        hasBlocks = true;
+        for (final month in block.months) {
+          if (month.start.date.year != year) continue;
+          opened += month.opened;
+          closed += month.closed;
+          earned += month.profit;
+        }
+      }
+    }
+    var fittingOut = Money.zero;
+    for (final memo in widget.company.memos) {
+      if (memo is NationalOpened && memo.day.date.year == year) {
+        fittingOut += memo.cost;
+      }
+    }
     Money monthly(DirectorGradeDef option) =>
         option.salary.times(wageIndex).timesInt(30);
     Widget choice({
@@ -764,6 +814,90 @@ class _DirectorSheetState extends State<_DirectorSheet> {
                     onTap: () => setState(() => _borrows = true),
                   ),
                 ],
+                if (nationally) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    tr('finance.acrossCountry'),
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  Row(
+                    children: [
+                      Expanded(child: Text(tr('finance.nationalPace'))),
+                      CountStepper(
+                        value: pace,
+                        max: maxNationalPace,
+                        label: pace == 0 ? tr('finance.nationalOff') : null,
+                        onChanged: (value) => setState(() => _pace = value),
+                      ),
+                    ],
+                  ),
+                  Hint(
+                    tr('finance.nationalPaceHint', {
+                      'cost': money(
+                        national.fitOut.times(countries.first.priceIndex),
+                        cents: false,
+                      ),
+                    }),
+                  ),
+                  if (pace > 0) ...[
+                    for (final country in countries) ...[
+                      if (countries.length > 1)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6, bottom: 2),
+                          child: Text(
+                            content.countries[country.country!.index].name,
+                            style: theme.textTheme.labelSmall,
+                          ),
+                        ),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          for (final region in country.def.regions)
+                            FilterChip(
+                              label: Text(region.name),
+                              selected: picked.contains(region.key),
+                              onSelected: (on) => setState(
+                                () => _regions = on
+                                    ? ({...picked, region.key})
+                                    : ({...picked}..remove(region.key)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                    Hint(
+                      picked.isEmpty
+                          ? tr('finance.nationalAnywhere')
+                          : tr('finance.nationalOnly', {
+                              'count': picked.length,
+                            }),
+                    ),
+                  ],
+                  if (hasBlocks) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      tr('finance.nationalThisYear'),
+                      style: theme.textTheme.labelSmall,
+                    ),
+                    Line(
+                      tr('market.openedThisYear'),
+                      tr('market.openedClosed', {
+                        'opened': opened,
+                        'closed': closed,
+                      }),
+                    ),
+                    Line(
+                      tr('finance.fittingOut'),
+                      money(Money.zero - fittingOut, cents: false),
+                    ),
+                    Line(
+                      tr('finance.earnedByThem'),
+                      signedMoney(earned, cents: false),
+                      color: gainColor(context, earned.cents.sign),
+                    ),
+                  ],
+                ],
                 const SizedBox(height: 8),
                 Text(
                   tr('finance.theProfit'),
@@ -838,6 +972,13 @@ class _DirectorSheetState extends State<_DirectorSheet> {
                     growth: growth,
                     payout: payout,
                     borrows: borrows,
+                    nationalPace: nationally ? pace : 0,
+                    nationalRegions: [
+                      if (nationally && pace > 0)
+                        for (final country in countries)
+                          for (final region in country.def.regions)
+                            if (picked.contains(region.key)) region.key,
+                    ],
                   ),
                 );
                 Navigator.pop(context);

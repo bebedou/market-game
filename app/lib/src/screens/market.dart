@@ -8,6 +8,7 @@ import '../loans.dart';
 import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
+import 'national.dart';
 
 /// The world outside: the country's economy on top, with its history a page
 /// away, the player's patch, where to open next, then the competitors and the
@@ -622,13 +623,14 @@ CountryState? _nationalOf(SimulationController game, CountryDef country) => game
     .where((national) => national.def.key == country.national)
     .firstOrNull;
 
-/// A country's page: its economy and taxes, its whole market by formula,
-/// and its places.
+/// A country's page: its economy and taxes, its regions with the player's
+/// shops run by formula there, its whole market by formula, and its places.
 void _openCountry(BuildContext context, CountryDef country) => context.openPage(
   country.name,
   (context) => [
     _EconomySummary(country: country.id),
     _CountryTaxes(country: country),
+    NationalMap(country: country.id),
     _NationalMarket(country: country),
     _CountryPlaces(country: country),
   ],

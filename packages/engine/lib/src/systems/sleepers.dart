@@ -60,6 +60,11 @@ Fx _beyondPrices(StrategyDef strategy) => switch (strategy.key) {
   _ => Fx.one,
 };
 
+/// What a shop of [format] run by formula pays for its goods beyond the
+/// list, as a share of it: what shops run by formula across a country pay
+/// too.
+Fx formulaGoodsExtra(FormatDef format) => _settled(format).goodsExtra;
+
 _Settled _settled(FormatDef format) => switch (format.key) {
   'supermarket' => const (
     capture: Fx.raw(9500),

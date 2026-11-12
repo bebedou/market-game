@@ -283,14 +283,14 @@
       "diffusion": { "innovation": "0.03", "imitation": "0.38", "launched": "2022-01-01" } }
   ],
   "formats": [
-    { "id": "grocery", "overheads": "6.00", "name": "Convenience store", "categories": ["milk", "bread", "snacks", "drinks", "produce", "household"] },
-    { "id": "fastfood", "overheads": "12.00", "name": "Fast food", "categories": ["fastfood"], "fitOut": "1.6", "visitsPerStaff": 25, "wageFactor": "5" },
-    { "id": "steakhouse", "overheads": "7.00", "name": "Steakhouse", "categories": ["steak"], "fitOut": "2.0", "visitsPerStaff": 12, "wageFactor": "5" },
-    { "id": "finedining", "overheads": "13.00", "name": "Fine dining", "categories": ["finedining"], "fitOut": "2.8", "visitsPerStaff": 6, "wageFactor": "5" },
+    { "id": "grocery", "overheads": "6.00", "name": "Convenience store", "categories": ["milk", "bread", "snacks", "drinks", "produce", "household"], "national": { "fitOut": "30000.00", "sales": { "fr": "384000.00", "de": "440000.00", "it": "431000.00", "es": "430000.00" }, "staff": { "fr": "0.092", "de": "0.100", "it": "0.114", "es": "0.146" }, "premises": { "fr": "0.074", "de": "0.061", "it": "0.054", "es": "0.052" } } },
+    { "id": "fastfood", "overheads": "12.00", "name": "Fast food", "categories": ["fastfood"], "fitOut": "1.6", "visitsPerStaff": 25, "wageFactor": "5", "national": { "fitOut": "48000.00", "sales": { "fr": "270000.00", "de": "333000.00", "it": "290000.00", "es": "433000.00" }, "staff": { "fr": "0.384", "de": "0.422", "it": "0.413", "es": "0.467" }, "premises": { "fr": "0.089", "de": "0.063", "it": "0.091", "es": "0.056" } } },
+    { "id": "steakhouse", "overheads": "7.00", "name": "Steakhouse", "categories": ["steak"], "fitOut": "2.0", "visitsPerStaff": 12, "wageFactor": "5", "national": { "fitOut": "60000.00", "sales": { "fr": "206000.00", "de": "201000.00", "it": "260000.00", "es": "400000.00" }, "staff": { "fr": "0.316", "de": "0.345", "it": "0.344", "es": "0.392" }, "premises": { "fr": "0.117", "de": "0.108", "it": "0.075", "es": "0.047" } } },
+    { "id": "finedining", "overheads": "13.00", "name": "Fine dining", "categories": ["finedining"], "fitOut": "2.8", "visitsPerStaff": 6, "wageFactor": "5", "national": { "fitOut": "84000.00", "sales": { "fr": "246000.00", "de": "240000.00", "it": "264000.00", "es": "411000.00" }, "staff": { "fr": "0.284", "de": "0.288", "it": "0.326", "es": "0.385" }, "premises": { "fr": "0.140", "de": "0.137", "it": "0.093", "es": "0.063" } } },
     { "id": "supermarket", "overheads": "6.00", "name": "Supermarket", "categories": ["milk", "bread", "snacks", "drinks", "produce", "household"],
-      "fitOut": "1.8", "visitsPerStaff": 45, "minArea": 220, "slotBonus": 6, "storageBonus": 2500 },
+      "fitOut": "1.8", "visitsPerStaff": 45, "minArea": 220, "slotBonus": 6, "storageBonus": 2500, "national": { "fitOut": "70000.00", "sales": { "fr": "644000.00" }, "staff": { "fr": "0.081" }, "premises": { "fr": "0.041" } } },
     { "id": "electronics", "overheads": "3.00", "name": "Electronics shop", "categories": ["gadgets", "phones", "smarthome"],
-      "fitOut": "2.2", "visitsPerStaff": 15, "wageFactor": "1.5" }
+      "fitOut": "2.2", "visitsPerStaff": 15, "wageFactor": "1.5", "national": { "fitOut": "66000.00", "sales": { "fr": "192000.00", "de": "356000.00", "it": "262000.00", "es": "183000.00" }, "staff": { "fr": "0.061", "de": "0.040", "it": "0.065", "es": "0.074" }, "premises": { "fr": "0.096", "de": "0.056", "it": "0.063", "es": "0.116" } } }
   ],
   "products": [
     { "id": "milk_budget", "name": "Value Milk 1 L", "category": "milk", "tier": "budget", "shelfLifeDays": 10, "baseCost": "0.66", "referencePrice": "0.95" },
