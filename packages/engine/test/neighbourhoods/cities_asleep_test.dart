@@ -26,7 +26,7 @@ void main() {
       final game = Simulation.newGame(_content, seed: 1, citiesAsleep: true);
       expect(game.content.markets.single.name, 'Lyon, Croix-Rousse');
       final rows = game.content.neighbourhoods;
-      expect(rows, hasLength(_content.neighbourhoods.length + 6));
+      expect(rows, hasLength(_content.neighbourhoods.length + 12));
       expect(game.world.sleepers, hasLength(rows.length));
       // The other cities' businesses and owners stay, their shops asleep.
       expect(game.world.companies, hasLength(_content.companies.length));

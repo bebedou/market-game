@@ -4,7 +4,6 @@
 //   dart run tool/countries_report.dart [--years 20] [--seeds 8]
 import 'dart:io';
 
-import 'package:engine/countries.dart';
 import 'package:engine/engine.dart';
 
 String billions(int cents) => (cents / 1e11).toStringAsFixed(1).padLeft(7);

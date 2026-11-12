@@ -100,7 +100,8 @@ const _cheapest = Fx.raw(-1500);
 /// which a strategy's markup goes on; and how many units that is. They buy dearer
 /// the more they have to spend, as [power] says against normal, and a downturn
 /// has them trade down by [premiumShift]. [scale] is the place's for the
-/// format's channel ([MarketDef.scale]).
+/// format's channel ([MarketDef.scale]); [costLevel] its country's
+/// ([ContentDb.costLevel]).
 ({Money spending, Money goods, Money atLevel, Fx units}) tradeDemand(
   ContentDb content, {
   required List<int> households,
@@ -112,6 +113,8 @@ const _cheapest = Fx.raw(-1500);
   Fx power = Fx.one,
   Fx premiumShift = Fx.zero,
   Fx scale = Fx.one,
+  Fx costLevel = Fx.one,
+  List<Money>? references,
 }) => householdDemand(
   content.segments,
   content.products,
@@ -125,6 +128,8 @@ const _cheapest = Fx.raw(-1500);
   power: power,
   premiumShift: premiumShift,
   scale: scale,
+  costLevel: costLevel,
+  references: references,
 );
 
 /// What households in [market] buy in a year of what [format] sells. Households
@@ -139,10 +144,12 @@ const _cheapest = Fx.raw(-1500);
   households: _counted(view, market),
   incomeLevel: market.incomeLevel,
   priceLevel: market.priceLevel,
-  priceIndex: view.macro.priceIndex,
+  priceIndex: view.economyAt(content, market.id).priceIndex,
   today: view.today,
   format: format,
   scale: market.scaleOf(content.formatChannels[format.id.index]),
+  costLevel: content.costLevel(market.country),
+  references: content.references[market.country.index],
 );
 
 /// [market]'s households by segment, its scenario's mix at the latest census.
@@ -184,6 +191,7 @@ Money marketSpending(
     content.categories.length,
   ),
   scale: market.scaleOf(channel),
+  references: content.references[market.country.index],
 ).spending;
 
 /// What households in [market] spend a year on [channel]'s goods at today's
@@ -198,7 +206,7 @@ Money channelSpending(
   market,
   channel,
   households: _counted(view, market),
-  priceIndex: view.macro.priceIndex,
+  priceIndex: view.economyAt(content, market.id).priceIndex,
   today: view.today,
 );
 
@@ -274,7 +282,10 @@ Fx _priceDraw(
   for (final (p, price) in prices.indexed) {
     if (price == null) continue;
     atShelf += price.cents;
-    normal += content.products[p].referencePrice.times(level).cents;
+    normal += content
+        .referenceIn(content.products[p], market.country)
+        .times(level)
+        .cents;
   }
   if (normal == 0) return Fx.one;
   return priceDraw(Fx.raw(mulDivRound(atShelf - normal, Fx.scale, normal)));
@@ -305,7 +316,7 @@ ShopOutlook shopOutlook(
 ) {
   final market = content.markets[site.market.index];
   final habits = habitsOf(format);
-  final macro = view.macro;
+  final macro = view.economyAt(content, market.id);
   final (:spending, :goods, :units, atLevel: _) = _demand(
     view,
     content,

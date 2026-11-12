@@ -13,15 +13,20 @@ import 'world_state.dart';
 /// categories, people, suppliers, sites and markets appended to their lists
 /// join the world on its current day, as they would have at the start;
 /// markets gain households of segments they lacked; the opening stores on
-/// new sites open, with their companies; and a labour market added since
-/// starts at its natural rate. Content that hasn't grown changes nothing.
+/// new sites open, with their companies; a labour market added since starts
+/// at its natural rate; and new countries' economies start as the first's
+/// stands. Content that hasn't grown changes nothing.
 void growWorld(WorldState world, ContentDb content) {
   final day = world.today;
+  world.growEconomies(content);
   // A save from before the labour market starts at the natural rate; it is
   // never below 1% once modelled.
-  if (content.macro.labour case final labour?
-      when world.macro.unemployment == Fx.zero) {
-    world.macro.unemployment = labour.naturalUnemployment;
+  if (content.macro.labour case final labour?) {
+    for (final macro in world.economies) {
+      if (macro.unemployment == Fx.zero) {
+        macro.unemployment = labour.naturalUnemployment;
+      }
+    }
   }
   final oldSites = world.cohorts.isEmpty
       ? world.stores.fold(
@@ -180,8 +185,11 @@ void _join(WorldState world, ContentDb content, List<HouseholdCohort> cohorts) {
               content.products,
               store.prices,
               priceLevel:
-                  world.macro.priceIndex *
+                  world.macroAt(content, store.market).priceIndex *
                   content.markets[store.market.index].priceLevel,
+              references: content.references[content
+                  .countryOf(store.market)
+                  .index],
             ) ??
             Fx.one,
       );

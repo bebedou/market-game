@@ -11,11 +11,13 @@ import '../state/credit.dart';
 import '../state/director.dart';
 import '../state/entities.dart';
 import '../state/history.dart';
+import '../state/macro.dart';
 import '../state/market.dart';
 import '../state/public_record.dart';
 import '../state/orders.dart';
 import '../state/research.dart';
 import '../state/store.dart';
+import '../state/taxation.dart';
 import '../state/valuation.dart';
 import '../state/world_state.dart';
 
@@ -31,6 +33,8 @@ final class Observation {
     required this.cash,
     required this.lastBankruptcy,
     required this.macro,
+    this.economies = const [],
+    this.histories = const [],
     required this.households,
     required this.censuses,
     required this.companyNames,
@@ -70,8 +74,29 @@ final class Observation {
   /// When a company of the actor's was last liquidated, if ever.
   final Day? lastBankruptcy;
 
-  /// The state of the economy, which everyone can read in the news.
+  /// The state of the first country's economy, which everyone can read in
+  /// the news.
   final MacroView macro;
+
+  /// Every country's economy, by [CountryId]: empty for one country, whose
+  /// economy is [macro].
+  final List<MacroView> economies;
+
+  /// Every country's economy month by month, oldest first, by [CountryId]:
+  /// empty for one country, whose history is [history].
+  final List<List<EconomicMonth>> histories;
+
+  /// [country]'s economy.
+  MacroView economy(CountryId country) =>
+      country.index < economies.length ? economies[country.index] : macro;
+
+  /// The economy of the country [market] is in.
+  MacroView economyAt(ContentDb content, MarketId market) =>
+      economy(content.countryOf(market));
+
+  /// [country]'s economy month by month, oldest first.
+  List<EconomicMonth> historyOf(CountryId country) =>
+      country.index < histories.length ? histories[country.index] : history;
 
   /// Households per market at the latest census, indexed by [MarketId].
   /// Censuses are public, taken every first of January.
@@ -193,6 +218,7 @@ final class CompanyView {
     this.lossCarried = Money.zero,
     this.cushionDays = defaultCushionDays,
     this.taxAccrued = Money.zero,
+    this.countryTaxes = const [],
     this.director,
     this.memos = const [],
   });
@@ -241,6 +267,10 @@ final class CompanyView {
   /// what January's bill would be if the year ended today. On the first of
   /// January, before that bill, the tax on the year just ended.
   final Money taxAccrued;
+
+  /// [taxAccrued] country by country, where it trades in several: what each
+  /// country takes of the year so far. Empty in a world of one country.
+  final List<CountryTax> countryTaxes;
 
   /// Who runs it for its owner, if anyone.
   final Director? director;
@@ -453,14 +483,18 @@ final class RecentSales {
 /// shared by every observation of the same moment.
 final class PublicView {
   PublicView(WorldState world, ContentDb content)
-    : macro = (
-        regime: world.macro.regime,
-        priceIndex: world.macro.priceIndex,
-        wageIndex: world.macro.wageIndex,
-        inflation: world.macro.inflation,
-        policyRate: world.macro.policyRate,
-        unemployment: world.macro.unemployment,
-      ),
+    : macro = _macroView(world.macro),
+      economies = world.cycle == null
+          ? const []
+          : List.unmodifiable([
+              for (final economy in world.economies) _macroView(economy),
+            ]),
+      histories = world.cycle == null
+          ? const []
+          : List.unmodifiable([
+              for (final country in content.countries)
+                List<EconomicMonth>.unmodifiable(world.historyOf(country.id)),
+            ]),
       filings = List.unmodifiable(world.filings),
       history = List.unmodifiable(world.economicHistory),
       households = List.unmodifiable([
@@ -515,6 +549,8 @@ final class PublicView {
   }
 
   final MacroView macro;
+  final List<MacroView> economies;
+  final List<List<EconomicMonth>> histories;
   final List<int> households;
   final List<List<Census>> censuses;
   final List<String> companyNames;
@@ -531,6 +567,15 @@ final class PublicView {
   late final List<DistrictView> districts = districtViews(_world, _content);
   late final List<Money?> companyPrices;
   late final List<Money?> companyCredits;
+
+  static MacroView _macroView(MacroState macro) => (
+    regime: macro.regime,
+    priceIndex: macro.priceIndex,
+    wageIndex: macro.wageIndex,
+    inflation: macro.inflation,
+    policyRate: macro.policyRate,
+    unemployment: macro.unemployment,
+  );
 
   static List<SiteId> _vacantSites(WorldState world, ContentDb content) {
     final held = {
@@ -605,6 +650,8 @@ Observation observe(
     cash: person.accounts[AccountKind.cash],
     lastBankruptcy: person.lastBankruptcy,
     macro: shared.macro,
+    economies: shared.economies,
+    histories: shared.histories,
     households: shared.households,
     censuses: shared.censuses,
     companyNames: shared.companyNames,
@@ -659,13 +706,24 @@ Observation observe(
             cushionDays: company.cushionDays,
             director: company.director,
             memos: List.unmodifiable(company.memos),
-            taxAccrued: switch (content.taxes) {
-              final taxes? => taxes.corporateTax(
-                (taxBase[company.id.index] ?? Money.zero) - company.lossCarried,
-                world.macro.priceIndex,
-              ),
-              null => Money.zero,
-            },
+            countryTaxes: world.cycle != null
+                ? List.unmodifiable(companyTaxes(world, content, company, year))
+                : const [],
+            taxAccrued: world.cycle != null
+                ? companyTaxes(
+                    world,
+                    content,
+                    company,
+                    year,
+                  ).fold(Money.zero, (sum, due) => sum + due.tax)
+                : switch (content.taxes) {
+                    final taxes? => taxes.corporateTax(
+                      (taxBase[company.id.index] ?? Money.zero) -
+                          company.lossCarried,
+                      world.macro.priceIndex,
+                    ),
+                    null => Money.zero,
+                  },
           ),
     ],
     shelves: shared.shelves,

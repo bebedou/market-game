@@ -9,6 +9,7 @@ import 'core/money.dart';
 import 'core/rng.dart';
 import 'core/hash32.dart';
 import 'core/ids.dart';
+import 'countries/country_economy.dart';
 import 'observation/observation.dart' as observation show observe, PublicView;
 import 'neighbourhoods/neighbourhood_generator.dart';
 import 'observation/observation.dart' show Observation;
@@ -22,6 +23,7 @@ import 'reports/period_report.dart';
 import 'state/game_start.dart';
 import 'state/growth.dart';
 import 'state/invariants.dart';
+import 'state/districts.dart' show monthsSinceStart;
 import 'state/sleepers.dart';
 import 'state/world_state.dart';
 import 'systems/events.dart';
@@ -203,7 +205,9 @@ final class Simulation {
   WokenNeighbourhood _standing(SleepingNeighbourhood sleeper) => (
     row: sleeper.row,
     day: today,
-    priceIndex: world.macro.priceIndex,
+    priceIndex: world
+        .macroOf(content.neighbourhoods[sleeper.row].country)
+        .priceIndex,
     households: sleeper.households,
     shops: sleeper.shops,
   );
@@ -225,6 +229,59 @@ final class Simulation {
       );
     }
     return _plan;
+  }
+
+  CountryEconomy? _national;
+
+  /// Every country of the national table by formula, as its statistics have
+  /// it, from the game's start up to this month, each country in the phase of
+  /// the cycle the game had it in: the national view. Null without a national
+  /// table, or with one country. It's public, and only looked at: nothing in
+  /// the game depends on it. Replayed from [WorldState.regimeLog], so a saved
+  /// game shows the same.
+  CountryEconomy? get national {
+    final table = content.national;
+    if (table == null || world.cycle == null) return null;
+    final regimes = content.macro.regimes;
+    // The table's phase for each of the game's regimes, by key.
+    final phase = [
+      for (final regime in regimes)
+        switch (table.regimes.indexWhere((r) => r.key == regime.key)) {
+          -1 => 0,
+          final i => i,
+        },
+    ];
+    // Each country of the table: its column in the log, or the shared
+    // cycle's.
+    final columns = [
+      for (final country in table.countries)
+        switch (content.countries.indexWhere(
+          (c) => c.national == country.key,
+        )) {
+          -1 => content.countries.length,
+          final i => i,
+        },
+    ];
+    final economy = _national ??= CountryEconomy(
+      table,
+      seed: world.seed,
+      start: content.startDay,
+    );
+    final months = 1 + world.regimeLog.length;
+    var run = monthsSinceStart(content, economy.today);
+    while (run < months) {
+      final logged = run == 0 ? null : world.regimeLog[run - 1];
+      economy.advanceMonth(
+        regimes: [
+          for (final column in columns)
+            phase[logged == null
+                ? content.macro.startRegime.index
+                : logged[column]],
+        ],
+      );
+      run++;
+    }
+    return economy;
   }
 
   /// The full world state, for engine internals and tests. The app will read
@@ -460,6 +517,7 @@ final class Simulation {
     for (final sleeper in world.sleepers) {
       sleeper.write(writer);
     }
+    if (world.cycle != null) world.writeEconomies(writer);
     return (Hash32()..addBytes(writer.toBytes())).finish();
   }
 }

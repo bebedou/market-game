@@ -97,7 +97,13 @@ Refusal? _createBrand(
     return const Refusal('unknownFormat');
   }
   if (brandNameTaken(world, name)) return const Refusal('brandNameTaken');
-  addBrand(world, name, command.format, command.actor);
+  // The actor's shops of that type take its name now, the first one too: a
+  // company's own name is its holding's, not a shop sign.
+  joinBrand(
+    world,
+    content,
+    addBrand(world, name, command.format, command.actor),
+  );
   return null;
 }
 
@@ -143,7 +149,9 @@ Refusal? _openInDistrict(
   if (company == null) return error;
   final cost = site.openingCost
       .times(format.fitOut)
-      .times(world.macro.priceIndex);
+      .times(
+        world.macroOf(content.neighbourhoods[sleeper.row].country).priceIndex,
+      );
   if (company.accounts[AccountKind.cash] + command.capital < cost) {
     return Refusal('cannotPayOpening', amount: cost);
   }
@@ -227,6 +235,7 @@ Refusal? _buyInDistrict(
     sites[shop.site],
     shop,
     month,
+    country: content.neighbourhoods[sleeper.row].country,
   )!;
   if (company.accounts[AccountKind.cash] < value.price) {
     return Refusal('cannotPayPrice', amount: value.price);
@@ -412,7 +421,7 @@ Refusal? _payDividend(
     amount: command.amount,
     reason: EntryReason.dividend,
   );
-  if (content.taxes case final taxes?) {
+  if (content.taxesOf(world.residence(content, owner.id)) case final taxes?) {
     final tax = command.amount.times(taxes.dividendRate);
     if (tax > Money.zero) {
       ledger.pay(
@@ -661,7 +670,7 @@ Refusal? _openStore(
       command.borrow;
   final openingCost = site.openingCost
       .times(format.fitOut)
-      .times(world.macro.priceIndex);
+      .times(world.macroAt(content, site.market).priceIndex);
   if (cash < openingCost) {
     return Refusal('cannotPayOpening', amount: openingCost);
   }
@@ -754,7 +763,9 @@ Refusal? _buyResearch(
     return const Refusal('unknownResearch');
   }
   final tier = content.researchTiers[command.tier.index];
-  final cost = tier.cost.times(world.macro.priceIndex);
+  final cost = tier.cost.times(
+    world.macroAt(content, command.market).priceIndex,
+  );
   if (company.accounts[AccountKind.cash] < cost) {
     return const Refusal('notEnoughCompanyCash');
   }
@@ -834,7 +845,7 @@ Refusal? _expandStore(
     return const Refusal('noRoomToGrow');
   }
   final company = world.companies[store.company.index];
-  final cost = expansion.cost(world.macro.priceIndex);
+  final cost = expansion.cost(world.macroAt(content, store.market).priceIndex);
   if (company.accounts[AccountKind.cash] < cost) {
     return Refusal('cannotPayWorks', amount: cost);
   }
@@ -885,6 +896,9 @@ Refusal? _placeOrder(WorldState world, ContentDb content, PlaceOrder command) {
     return const Refusal('unknownSupplier');
   }
   final supplier = content.suppliers[command.supplier.index];
+  if (supplier.country != content.countryOf(store.market)) {
+    return Refusal('supplierElsewhere', supplier: supplier.id);
+  }
   if (command.lines.isEmpty) return const Refusal('orderEmpty');
   final seen = <int>{};
   for (final (:product, :quantity) in command.lines) {
@@ -930,7 +944,7 @@ Refusal? _placeOrder(WorldState world, ContentDb content, PlaceOrder command) {
             unitPrice: supplier.unitPrice(
               content.products[product.index],
               quantity,
-              world.macro.priceIndex,
+              world.macroOf(supplier.country).priceIndex,
             ),
           ),
       ],
@@ -1065,7 +1079,7 @@ Refusal? _convertStore(
     store.format,
     store.area,
     to,
-    world.macro.priceIndex,
+    world.macroAt(content, store.market).priceIndex,
   );
   final company = world.companies[store.company.index];
   if (company.accounts[AccountKind.cash] < cost) {

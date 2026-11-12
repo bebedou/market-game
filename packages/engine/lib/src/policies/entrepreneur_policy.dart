@@ -2,6 +2,7 @@ import '../accounting/ledger.dart';
 import '../commands/command.dart';
 import '../content/content_db.dart';
 import '../core/fx.dart';
+import '../core/ids.dart';
 import '../core/safe_int.dart';
 import '../core/money.dart';
 import '../observation/observation.dart';
@@ -130,7 +131,7 @@ final class EntrepreneurPolicy implements Policy {
   /// [startingStockDays] of stock at the base cost of the average product
   /// its format sells.
   Money startingCapital(Observation view, ContentDb content, SiteDef site) {
-    final level = view.macro.priceIndex;
+    final level = view.economyAt(content, site.market).priceIndex;
     // The average cost of what the strategy's format sells.
     final format = content.formats[strategy.format.index];
     final sold = [
@@ -148,7 +149,10 @@ final class EntrepreneurPolicy implements Policy {
         _dailyWages(view, content, site).timesInt(30);
     return _fitOut(content, site).times(level) +
         monthly.timesInt(startingMonths) +
-        averageCost.times(level).timesInt(stockUnits);
+        averageCost
+            .times(level)
+            .times(content.costLevel(content.countryOf(site.market)))
+            .timesInt(stockUnits);
   }
 
   /// What a chain puts in to open on [site] of [district]: its fitting out
@@ -159,10 +163,15 @@ final class EntrepreneurPolicy implements Policy {
     DistrictView district,
     DistrictSite site,
   ) {
-    final level = view.macro.priceIndex;
+    final level = view.economy(district.country).priceIndex;
     final monthly =
         _monthlyCostsAt(content, site.rent, site.area).times(level) +
-        _dailyWagesAt(view, content, district.wageLevel).timesInt(30);
+        _dailyWagesAt(
+          view,
+          content,
+          district.country,
+          district.wageLevel,
+        ).timesInt(30);
     return site.openingCost
             .times(content.formats[strategy.format.index].fitOut)
             .times(level) +
@@ -187,14 +196,19 @@ final class EntrepreneurPolicy implements Policy {
       _dailyWagesAt(
         view,
         content,
+        content.countryOf(site.market),
         content.markets[site.market.index].wageLevel,
       );
 
-  Money _dailyWagesAt(Observation view, ContentDb content, Fx wageLevel) =>
-      content.operations.slotWage
-          .times(view.macro.wageIndex * wageLevel)
-          .times(content.formats[strategy.format.index].wageFactor)
-          .timesInt(strategy.hours.where((open) => open).length);
+  Money _dailyWagesAt(
+    Observation view,
+    ContentDb content,
+    CountryId country,
+    Fx wageLevel,
+  ) => content.operations.slotWage
+      .times(view.economy(country).wageIndex * wageLevel)
+      .times(content.formats[strategy.format.index].wageFactor)
+      .timesInt(strategy.hours.where((open) => open).length);
 
   /// Commands buying the struggling store [EntrepreneurPolicy] looks for,
   /// the owner first putting in personal cash; none if there is no such
@@ -373,13 +387,14 @@ final class EntrepreneurPolicy implements Policy {
     }
     if (total <= Fx.zero) return null;
     final share = mine.div(total);
-    final level = view.macro.priceIndex;
+    final level = view.economyAt(content, site.market).priceIndex;
     final market = content.markets[site.market.index];
-    // Margins follow what households here think normal, and how well off
-    // they are.
+    // Margins follow what households here think normal, how well off they
+    // are, and the country's wages, which a shop's margin is paid at.
     final channel = content.formatChannels[strategy.format.index];
+    final service = content.countries[market.country.index].service;
     final daily = strategy.marginPerHousehold
-        .times(level * market.priceLevel * market.incomeLevel)
+        .times(level * market.priceLevel * market.incomeLevel * service)
         .timesInt(households)
         .times(share * judged * market.scaleOf(channel));
     final monthly =
@@ -413,10 +428,11 @@ final class EntrepreneurPolicy implements Policy {
     }
     if (total <= Fx.zero) return null;
     final share = mine.div(total);
-    final level = view.macro.priceIndex;
+    final level = view.economy(district.country).priceIndex;
     final channel = content.formatChannels[strategy.format.index];
+    final service = content.countries[district.country.index].service;
     final daily = strategy.marginPerHousehold
-        .times(level * district.priceLevel * district.incomeLevel)
+        .times(level * district.priceLevel * district.incomeLevel * service)
         .timesInt(district.households)
         .times(
           share *
@@ -425,9 +441,14 @@ final class EntrepreneurPolicy implements Policy {
                   : Fx.one),
         );
     final monthly =
-        (daily - _dailyWagesAt(view, content, district.wageLevel)).timesInt(
-          30,
-        ) -
+        (daily -
+                _dailyWagesAt(
+                  view,
+                  content,
+                  district.country,
+                  district.wageLevel,
+                ))
+            .timesInt(30) -
         _monthlyCostsAt(content, site.rent, site.area).times(level);
     if (monthly <= Money.zero) return null;
     final opening =

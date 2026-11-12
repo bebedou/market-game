@@ -183,6 +183,9 @@ final class StorePlan {
   /// Shelf prices as this plan leaves them, indexed by [ProductId].
   final List<Money?> _prices;
 
+  /// The economy of the store's country, whose suppliers it buys from.
+  late final MacroView _macro = view.economyAt(content, store.market);
+
   /// Indexed by [ProductId].
   late final List<Fx> _demand = [
     for (final product in content.products) _forecast(product.id),
@@ -226,9 +229,11 @@ final class StorePlan {
       return null;
     }
     final demand = _demand[product.id.index];
+    final country = content.countryOf(store.market);
     final carriers = [
       for (final supplier in content.suppliers)
-        if (supplier.carries[product.id.index]) supplier,
+        if (supplier.carries[product.id.index] && supplier.country == country)
+          supplier,
     ];
     if (carriers.isEmpty) return null;
     final life = product.shelfLifeDays;
@@ -249,7 +254,7 @@ final class StorePlan {
       final price = supplier.unitPrice(
         product,
         _typicalOrder(supplier, demand),
-        view.macro.priceIndex,
+        _macro.priceIndex,
       );
       if (best == null || price < bestPrice) {
         best = supplier;
@@ -270,7 +275,7 @@ final class StorePlan {
     return supplier.unitPrice(
       product,
       _typicalOrder(supplier, _demand[product.id.index]),
-      view.macro.priceIndex,
+      _macro.priceIndex,
     );
   }
 
@@ -286,10 +291,24 @@ final class StorePlan {
   }
 
   Money _exactTargetPrice(ProductDef product, Money cost) {
-    // Wholesale prices are the same everywhere; what shoppers accept isn't.
-    final base = cost
+    // Wholesale prices follow the country; what shoppers accept follows the
+    // place, against what goods cost in its country, and the country's
+    // normal price for the product, whose margin is paid at its wages.
+    final market = content.markets[store.market.index];
+    final costLevel = content.costLevel(market.country);
+    var base = cost
         .times(Fx.one + strategy.markup)
-        .times(content.markets[store.market.index].priceLevel);
+        .times(
+          costLevel == Fx.one
+              ? market.priceLevel
+              : market.priceLevel.div(costLevel),
+        );
+    final normal = content.referenceIn(product, market.country);
+    if (normal != product.referencePrice) {
+      base = Money(
+        mulDivRound(base.cents, normal.cents, product.referencePrice.cents),
+      );
+    }
     var sum = 0;
     var count = 0;
     for (final shelf in view.shelves) {
@@ -303,10 +322,10 @@ final class StorePlan {
       count++;
     }
     if (count == 0) return base;
-    final market = Money(
+    final rivals = Money(
       mulDivRound(sum, 1, count),
     ).times(Fx.one + strategy.marketPosition);
-    return base + (market - base).times(strategy.marketWeight);
+    return base + (rivals - base).times(strategy.marketWeight);
   }
 
   /// Expected daily gross margin, weighted by the taste for premium.
@@ -482,7 +501,7 @@ final class StorePlan {
         target.slotBonus +
         (area - store.area) ~/ expansion.stepArea * expansion.shelfSlots;
     if (slots > unlisted) slots = unlisted;
-    final level = view.macro.priceIndex;
+    final level = _macro.priceIndex;
     final extraRent =
         (site.rentFor(area) -
                 site.rentFor(store.area) +
@@ -546,7 +565,7 @@ final class StorePlan {
     final slots = unlisted < expansion.shelfSlots
         ? unlisted
         : expansion.shelfSlots;
-    final level = view.macro.priceIndex;
+    final level = _macro.priceIndex;
     final extraRent =
         (site.rentFor(area) -
                 site.rentFor(store.area) +
@@ -574,9 +593,7 @@ final class StorePlan {
         continue;
       }
       final cost = _cost(product);
-      margins.add(
-        (_targetPrice(product, cost) - cost).times(_demand[i]).cents,
-      );
+      margins.add((_targetPrice(product, cost) - cost).times(_demand[i]).cents);
     }
     margins.sort((a, b) => b - a);
     var total = 0;
@@ -603,9 +620,9 @@ final class StorePlan {
     for (final product in content.products) {
       final price = store.prices[product.id.index];
       if (price == null || days == 0) continue;
-      revenue += price.timesInt(
-        store.sales.total(SalesCount.sold, product.id, days),
-      ).cents;
+      revenue += price
+          .timesInt(store.sales.total(SalesCount.sold, product.id, days))
+          .cents;
     }
     if (revenue == 0) return strategy.marketingShare;
     final daily = revenue ~/ days;
@@ -622,7 +639,7 @@ final class StorePlan {
     );
     if (gross <= staff) return strategy.marketingShare;
     final margin = Fx.raw(gross - staff);
-    final half = demand.halfGoodwill.times(view.macro.priceIndex).cents;
+    final half = demand.halfGoodwill.times(_macro.priceIndex).cents;
     final scaled = mulDivRound(
       half,
       (margin * demand.marketingWeight).raw,
@@ -792,7 +809,7 @@ final class StorePlan {
       final unitPrice = supplier.unitPrice(
         product,
         quantity,
-        view.macro.priceIndex,
+        _macro.priceIndex,
       );
       wanted.add((
         product: product,
@@ -806,13 +823,12 @@ final class StorePlan {
       return byMargin != 0 ? byMargin : a.product.id.index - b.product.id.index;
     });
 
-
     var spent = Money.zero;
     final bySupplier = [for (final _ in content.suppliers) <OrderQuantity>[]];
     for (final line in wanted) {
       final supplier = _suppliers[line.product.id.index]!;
       Money costOf(int quantity) => supplier
-          .unitPrice(line.product, quantity, view.macro.priceIndex)
+          .unitPrice(line.product, quantity, _macro.priceIndex)
           .timesInt(quantity);
       var quantity = line.quantity;
       var cost = costOf(quantity);

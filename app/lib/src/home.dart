@@ -380,7 +380,10 @@ class _ClockBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final game = context.game;
     final theme = Theme.of(context);
-    final regime = game.content.macro.regimes[game.view.macro.regime.index];
+    final regime = game
+        .content
+        .macro
+        .regimes[game.view.economy(game.homeCountry).regime.index];
     final running = game.speed != Speed.paused;
     return Material(
       color: theme.colorScheme.surface,

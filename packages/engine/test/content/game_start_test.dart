@@ -24,7 +24,8 @@ void main() {
     expect(sites, contains(site('corner')));
     expect(sites, contains(site('backstreet')));
     expect(sites, isNot(contains(site('prime'))));
-    expect(sites.length, 28);
+    // France's 28, and the 26 of the six cities abroad.
+    expect(sites.length, 54);
   });
 
   test("the classic start's terms are the scenario's", () {

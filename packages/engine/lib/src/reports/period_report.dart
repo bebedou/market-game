@@ -436,7 +436,7 @@ void recordPeriodReports(WorldState world, TickContext context) {
                 context.content.formats[store.format.index].overheadsFor(
                   store.area,
                 ))
-            .times(world.macro.priceIndex);
+            .times(world.macroAt(context.content, store.market).priceIndex);
     final share = Money(mulDivRound(monthly.cents, 1, days));
     add(store.company, (report) {
       report._storeFor(store.id, products)._occupancy += share;

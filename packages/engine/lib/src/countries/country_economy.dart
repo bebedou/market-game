@@ -114,7 +114,7 @@ final class Chain {
 final class CountryState {
   CountryState._(this.def, this.households, this.spendIndex, this.chains);
 
-  final CountryDef def;
+  final NationalCountry def;
 
   /// Households per class.
   final List<int> households;
@@ -139,10 +139,12 @@ final class CountryState {
 /// Countries run by formula, one month at a time: no shoppers, shops or dice in
 /// the demand, only the statistics' households, what they spend and how that
 /// divides between chains. Chance only decides when an opening or closing that
-/// a rate makes due actually falls. The game doesn't call this yet.
+/// a rate makes due actually falls. The game runs it from its own start,
+/// [start], with each country's phase of the cycle given month by month (see
+/// [advanceMonth]).
 final class CountryEconomy {
-  CountryEconomy(this.table, {required this.seed})
-    : today = table.startDay,
+  CountryEconomy(this.table, {required this.seed, Day? start})
+    : today = start ?? table.startDay,
       regime = table.startRegime {
     countries = [for (final def in table.countries) _start(def)];
   }
@@ -155,10 +157,20 @@ final class CountryEconomy {
 
   /// Index of the phase of the shared cycle.
   int regime;
+
+  /// Each country's own phase of the cycle, by [countries], when the game
+  /// gives them; null for all in [regime].
+  List<int>? countryRegimes;
   late final List<CountryState> countries;
 
+  /// The phase [country] is in.
+  int regimeOf(NationalCountry country) => switch (countryRegimes) {
+    final regimes? => regimes[table.countries.indexOf(country)],
+    null => regime,
+  };
+
   /// A country as its table has it, each chain with the sales its share gives.
-  CountryState _start(CountryDef def) {
+  CountryState _start(NationalCountry def) {
     final trades = table.trades;
     final households = [for (final row in def.classes) row.households];
     final spendIndex = [
@@ -194,7 +206,7 @@ final class CountryEconomy {
 
   /// The pull per store that gives each of [chains] its share of the trade,
   /// given how its prices sit with each class.
-  List<Fx> _fitPulls(CountryDef def, int trade, List<ChainDef> chains) {
+  List<Fx> _fitPulls(NationalCountry def, int trade, List<ChainDef> chains) {
     final allStores = chains.fold(0, (sum, c) => sum + c.stores);
     final pulls = [
       for (final chain in chains)
@@ -243,10 +255,16 @@ final class CountryEconomy {
     return stores * (pull * term).raw;
   }
 
-  /// Runs the month starting [today] and moves on to the next.
-  void advanceMonth() {
+  /// Runs the month starting [today] and moves on to the next: in each
+  /// country's phase of [regimes], by [countries], if given, or else in the
+  /// shared cycle's, which may turn first.
+  void advanceMonth({List<int>? regimes}) {
     final start = today;
-    _turnCycle(start);
+    if (regimes != null) {
+      countryRegimes = regimes;
+    } else {
+      _turnCycle(start);
+    }
     for (final (i, country) in countries.indexed) {
       _macro(country);
       for (final (t, _) in table.trades.indexed) {
@@ -275,7 +293,7 @@ final class CountryEconomy {
   /// each country's real income moves with its trend and how it takes the
   /// cycle.
   void _macro(CountryState country) {
-    final phase = table.regimes[regime];
+    final phase = table.regimes[regimeOf(country.def)];
     final twelfth = Fx.raw(mulDivRound(phase.inflation.raw, 1, 12));
     final realGap = phase.realWageGrowth - table.meanRealWageGrowth;
     final real = country.def.realGrowth + country.def.cycle * realGap;
@@ -304,8 +322,8 @@ final class CountryEconomy {
   /// What the phase of the cycle does to spending in a trade: the shop-level
   /// game's swing, cut to the size of real ones, as far as the country and the
   /// trade feel it.
-  Fx demandIn(CountryDef country, int trade) {
-    final swing = table.regimes[regime].demand - Fx.one;
+  Fx demandIn(NationalCountry country, int trade) {
+    final swing = table.regimes[regimeOf(country)].demand - Fx.one;
     return Fx.one +
         swing * table.amplitude * country.cycle * table.trades[trade].cycle;
   }

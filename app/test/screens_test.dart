@@ -60,10 +60,23 @@ void main() {
     await pumpGame(tester, game);
     await tester.tap(find.text('World'));
     await tester.pumpAndSettle();
-    // The country's economy on top.
-    expect(find.text('France'), findsOneWidget);
+    // The countries on top, one central bank's rate for all.
+    expect(find.text('Countries'), findsOneWidget);
     expect(find.text('Central bank rate'), findsOneWidget);
+    for (final country in ['France', 'Germany', 'Italy', 'Spain']) {
+      expect(find.widgetWithText(IndexRow, country), findsOneWidget);
+    }
+    // Each country's page has its economy, its taxes and its cities.
+    await openIndex(tester, 'Spain');
     expect(find.text('Unemployment'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Madrid'), 300);
+    expect(find.text('Malasaña'), findsOneWidget);
+    await goBack(tester);
+    await openIndex(tester, 'France');
+    await openIndex(tester, 'More on the economy');
+    await tester.scrollUntilVisible(find.text('Economic history'), 300);
+    await goBack(tester);
+    await goBack(tester);
     await tester.scrollUntilVisible(find.text('Competitors'), 300);
     await openIndex(tester, 'Competitors');
     // The player's own company first, then rivals in Lyon.
@@ -76,14 +89,9 @@ void main() {
     await tester.scrollUntilVisible(find.text('Nantes, Rezé'), 300);
     expect(find.text('Montpellier, Boutonnet'), findsOneWidget);
     expect(find.text('Bordeaux, Chartrons'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Berlin, Kreuzberg'), 300);
+    expect(find.text('Germany'), findsOneWidget);
     await goBack(tester);
-    // Back up to the economy, above the player's patch.
-    await tester.scrollUntilVisible(
-      find.widgetWithText(IndexRow, 'More on the economy'),
-      -300,
-    );
-    await openIndex(tester, 'More on the economy');
-    await tester.scrollUntilVisible(find.text('Economic history'), 300);
   });
 
   testWidgets('a city shows what its shoppers spend on each trade, and yours', (
@@ -266,7 +274,14 @@ void main() {
     // There at once, for a shop to open under it today.
     expect(game.myBrands.single.name, 'Coin Malin');
     await scrollTo(tester, find.widgetWithText(IndexRow, 'Coin Malin'));
-    expect(find.text('Convenience store · 0 stores'), findsOneWidget);
+    // The player's first shop, a convenience store, joins it at once, and
+    // the company keeps its own name.
+    expect(find.text('Convenience store · 1 store'), findsOneWidget);
+    expect(
+      game.view.shelves[playerStore.index].name,
+      'Coin Malin Croix-Rousse',
+    );
+    expect(game.view.companyNames[playerCompany.index], 'Corner Shop');
     // A second of the same name isn't allowed.
     await openIndex(tester, 'Create a brand');
     await tester.enterText(find.byType(TextField), 'coin malin');
@@ -300,7 +315,8 @@ void main() {
     await tester.pump();
     final store = game.myStores.last.$2;
     expect(game.view.shelves[store.id.index].name, 'Coin Malin Part-Dieu');
-    expect(game.myBrands.single.shops, 1);
+    // The first shop and this one.
+    expect(game.myBrands.single.shops, 2);
   });
 
   testWidgets('a chain\'s shops in districts are among its stores', (

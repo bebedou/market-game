@@ -6,7 +6,11 @@ import 'content_db.dart';
 
 /// What [households], by segment, buy in a year of the categories [sells]
 /// says, as `tradeDemand` works it out, from the lists it reads, so a
-/// scenario being loaded can use it.
+/// scenario being loaded can use it. Normal prices are [references], the
+/// country's (`ContentDb.references`), or else the products' own. Goods cost
+/// the base cost at [priceIndex] and the country's [costLevel]; [atLevel] is
+/// the same goods at the place's price level and the country's normal
+/// prices against the products' own, what cost-plus prices start from.
 ({Money spending, Money goods, Money atLevel, Fx units}) householdDemand(
   List<SegmentDef> segments,
   List<ProductDef> products,
@@ -20,8 +24,11 @@ import 'content_db.dart';
   Fx power = Fx.one,
   Fx premiumShift = Fx.zero,
   Fx scale = Fx.one,
+  Fx costLevel = Fx.one,
+  List<Money>? references,
 }) {
   final level = priceIndex * priceLevel;
+  final cost = costLevel == Fx.one ? priceIndex : priceIndex * costLevel;
   var spending = Money.zero;
   var goods = Money.zero;
   var atLevel = Money.zero;
@@ -44,9 +51,17 @@ import 'content_db.dart';
           ? premium
           : Fx.one - premium;
       final bought = (yearly * tier).timesInt(count);
-      spending += product.referencePrice.times(level).times(bought);
-      goods += product.baseCost.times(priceIndex).times(bought);
-      atLevel += product.baseCost.times(level).times(bought);
+      final normal = references?[product.id.index] ?? product.referencePrice;
+      spending += normal.times(level).times(bought);
+      goods += product.baseCost.times(cost).times(bought);
+      // Cost plus markup comes to the country's normal prices.
+      var marked = product.baseCost.times(level);
+      if (normal != product.referencePrice) {
+        marked = Money(
+          mulDivRound(marked.cents, normal.cents, product.referencePrice.cents),
+        );
+      }
+      atLevel += marked.times(bought);
       units += bought;
     }
   }
@@ -85,6 +100,7 @@ List<bool> channelSells(
   required Fx incomeLevel,
   required Fx priceLevel,
   required Day today,
+  List<Money>? references,
 }) {
   final channels = formatChannelsOf(formats, categories.length);
   final channelCount = channels.fold(0, (most, c) => c >= most ? c + 1 : most);
@@ -99,6 +115,7 @@ List<bool> channelSells(
     priceIndex: Fx.one,
     today: today,
     sells: channelSells(formats, channels, channel, categories.length),
+    references: references,
   ).spending;
   // Ten thousand households, by the mix, and what they'd spend: few enough
   // for the sums to stay exact on the web.

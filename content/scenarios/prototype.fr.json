@@ -1,6 +1,6 @@
 {
   "country": "France",
-  "tagline": "Gérez boutiques, restaurants et chaînes dans sept villes de France, et bâtissez un holding.",
+  "tagline": "Gérez boutiques, restaurants et chaînes dans treize villes de quatre pays, et bâtissez un holding.",
   "categories": {
     "milk": "Lait",
     "bread": "Pain",
@@ -184,5 +184,18 @@
   },
   "stores": {
     "player_store": "Épicerie du Coin"
+  },
+  "countries": {
+    "fr": "France",
+    "de": "Allemagne",
+    "it": "Italie",
+    "es": "Espagne"
+  },
+  "markets": {
+    "barcelona": "Barcelone, Gràcia"
+  },
+  "neighbourhoods": {
+    "eixample": "Barcelone, Eixample",
+    "poblenou": "Barcelone, Poblenou"
   }
 }

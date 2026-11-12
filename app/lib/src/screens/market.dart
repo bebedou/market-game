@@ -35,7 +35,10 @@ class MarketScreen extends StatelessWidget {
       key: const PageStorageKey('market'),
       padding: const EdgeInsets.only(bottom: 12),
       children: [
-        const _EconomySummary(),
+        if (game.content.countries.length > 1)
+          const _Countries()
+        else
+          const _EconomySummary(country: CountryId(0)),
         const _YourPatch(),
         const _WhereToOpen(),
         Section(
@@ -317,15 +320,19 @@ class _WhereToOpenState extends State<_WhereToOpen> {
         for (final (market, site, outlook) in shown)
           IndexRow(
             title: market.name,
-            subtitle: tr('market.outlookLine', {
-              'rent': money(
-                site.rent.times(view.macro.priceIndex),
-                cents: false,
-              ),
-              'rivals': outlook.rivals == 0
-                  ? tr('market.noRivals')
-                  : tr('market.nRivals', {'count': outlook.rivals}),
-            }),
+            subtitle: [
+              if (content.countries.length > 1)
+                content.countries[market.country.index].name,
+              tr('market.outlookLine', {
+                'rent': money(
+                  site.rent.times(view.economy(market.country).priceIndex),
+                  cents: false,
+                ),
+                'rivals': outlook.rivals == 0
+                    ? tr('market.noRivals')
+                    : tr('market.nRivals', {'count': outlook.rivals}),
+              }),
+            ].join(' · '),
             value: _roughly(outlook.profit),
             valueColor: outlook.profit.isNegative ? ledger.loss : null,
             onTap: () => _openNeighbourhood(context, market, chosen),
@@ -452,10 +459,12 @@ class _Prospect extends StatelessWidget {
   }
 }
 
-/// The country's economy at a glance: the turn of the cycle and its key
+/// A country's economy at a glance: the turn of the cycle and its key
 /// figures, and the way to its history.
 class _EconomySummary extends StatelessWidget {
-  const _EconomySummary();
+  const _EconomySummary({required this.country});
+
+  final CountryId country;
 
   /// A multiple of the start as a change: ×1.0412 is +4.1%.
   static String _change(Fx multiple) =>
@@ -464,8 +473,9 @@ class _EconomySummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = context.game;
-    final macro = game.view.macro;
+    final macro = game.view.economy(country);
     final regime = game.content.macro.regimes[macro.regime.index];
+    final many = game.content.countries.length > 1;
     final theme = Theme.of(context);
     Widget figure(String label, String value) => Expanded(
       child: Padding(
@@ -485,7 +495,7 @@ class _EconomySummary extends StatelessWidget {
       ),
     );
     return Section(
-      title: tr('scenario.country'),
+      title: many ? tr('market.economy') : tr('scenario.country'),
       children: [
         Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -536,10 +546,12 @@ class _EconomySummary extends StatelessWidget {
           title: tr('market.moreOnEconomy'),
           subtitle: tr('market.moreOnEconomyPitch'),
           onTap: () => context.openPage(
-            tr('market.theEconomy'),
+            many
+                ? game.content.countries[country.index].name
+                : tr('market.theEconomy'),
             (context) => [
-              _EconomyCard(game: context.game),
-              const _EconomicHistory(),
+              _EconomyCard(game: context.game, country: country),
+              _EconomicHistory(country: country),
             ],
           ),
         ),
@@ -548,16 +560,337 @@ class _EconomySummary extends StatelessWidget {
   }
 }
 
-/// The economy month by month: inflation, the central bank's rate and
-/// unemployment as lines, prices and wages against the start, and the
-/// phases of the cycle.
-class _EconomicHistory extends StatelessWidget {
-  const _EconomicHistory();
+/// The countries of the game, for one that spans several: the central bank's
+/// rate, then each country's turn of the cycle, its households and the
+/// player's shops there, each the way to its page.
+class _Countries extends StatelessWidget {
+  const _Countries();
 
   @override
   Widget build(BuildContext context) {
     final game = context.game;
-    final history = game.view.history;
+    final content = game.content;
+    final mine = <int, int>{};
+    for (final (_, store) in game.myStores) {
+      if (store.status == StoreStatus.closed) continue;
+      final country = content.countryOf(store.market).index;
+      mine[country] = (mine[country] ?? 0) + 1;
+    }
+    final deepest = content.macro.regimes.reduce(
+      (a, b) => b.demand < a.demand ? b : a,
+    );
+    return Section(
+      title: tr('market.countries'),
+      children: [
+        Line(tr('market.centralBankRate'), percent(game.view.macro.policyRate)),
+        for (final country in content.countries)
+          () {
+            final macro = game.view.economy(country.id);
+            final regime = content.macro.regimes[macro.regime.index];
+            final households = _nationalOf(game, country)?.totalHouseholds;
+            return IndexRow(
+              title: country.name,
+              subtitle: [
+                regime.name,
+                if (households != null)
+                  tr('market.nationalHouseholds', {
+                    'count': decimalText(
+                      (households / 1000000).toStringAsFixed(1),
+                    ),
+                  }),
+                if (mine[country.id.index] case final shops?)
+                  tr('market.yourShops', {'count': shops}),
+              ].join(' · '),
+              mark: regimeColor(regime),
+              // Only the deepest phase, a recession, earns a stamp.
+              stamp: regime == deepest ? regime.name : null,
+              value: percent(macro.inflation),
+              onTap: () => _openCountry(context, country),
+            );
+          }(),
+        Hint(tr('market.countriesHint')),
+      ],
+    );
+  }
+}
+
+/// [country] as its national statistics have it, run by formula; null
+/// without them.
+CountryState? _nationalOf(SimulationController game, CountryDef country) => game
+    .national
+    ?.countries
+    .where((national) => national.def.key == country.national)
+    .firstOrNull;
+
+/// A country's page: its economy and taxes, its whole market by formula,
+/// and its places.
+void _openCountry(BuildContext context, CountryDef country) => context.openPage(
+  country.name,
+  (context) => [
+    _EconomySummary(country: country.id),
+    _CountryTaxes(country: country),
+    _NationalMarket(country: country),
+    _CountryPlaces(country: country),
+  ],
+);
+
+/// What a country takes: corporate tax on what shops make there, and
+/// dividend tax from those who live there.
+class _CountryTaxes extends StatelessWidget {
+  const _CountryTaxes({required this.country});
+
+  final CountryDef country;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final taxes = game.content.taxesOf(country.id);
+    if (taxes == null) return const SizedBox.shrink();
+    final level = game.view.economy(country.id).priceIndex;
+    final flat =
+        taxes.reducedRate == taxes.corporateRate ||
+        taxes.reducedLimit == Money.zero;
+    return Section(
+      title: tr('finance.taxes'),
+      children: [
+        Line(
+          tr('finance.corporateTax'),
+          flat
+              ? percent(taxes.corporateRate)
+              : tr('finance.taxRates', {
+                  'reduced': percent(taxes.reducedRate, decimals: 0),
+                  'full': percent(taxes.corporateRate, decimals: 0),
+                }),
+          hint: flat
+              ? null
+              : tr('finance.taxRatesHint', {
+                  'reduced': percent(taxes.reducedRate, decimals: 0),
+                  'limit': money(taxes.reducedLimit.times(level), cents: false),
+                }),
+        ),
+        Line(tr('finance.dividends'), percent(taxes.dividendRate)),
+        Hint(tr('market.countryTaxesHint')),
+      ],
+    );
+  }
+}
+
+/// A country's whole market by formula, trade by trade: what households
+/// spend a year, how it moved, and the chains that share it, the player's
+/// shops among them.
+class _NationalMarket extends StatelessWidget {
+  const _NationalMarket({required this.country});
+
+  final CountryDef country;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final national = _nationalOf(game, country);
+    final economy = game.national;
+    if (national == null || economy == null) return const SizedBox.shrink();
+    final content = game.content;
+    // What the player's shops here sell a year, by the table's trade.
+    final mine = <String, double>{};
+    for (final (_, store) in game.myStores) {
+      if (store.status == StoreStatus.closed ||
+          content.countryOf(store.market) != country.id) {
+        continue;
+      }
+      final trade = formatTrades[content.formats[store.format.index].key];
+      final (:revenue, profit: _, :days) = store.recentMonths;
+      if (trade == null || days == 0) continue;
+      mine[trade] = (mine[trade] ?? 0) + revenue.cents * 365 / days;
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (t, trade) in economy.table.trades.indexed)
+          _NationalTrade(
+            name: trMaybe('market.nationalTrades.${trade.key}') ?? trade.name,
+            months: national.tradeMonths[t],
+            chains: [
+              for (final chain in national.chains)
+                if (chain.def.trade == t && chain.isTrading) chain,
+            ],
+            mine: mine[trade.key],
+          ),
+        Hint(tr('market.nationalHint')),
+      ],
+    );
+  }
+}
+
+/// One trade of a country's whole market.
+class _NationalTrade extends StatelessWidget {
+  const _NationalTrade({
+    required this.name,
+    required this.months,
+    required this.chains,
+    required this.mine,
+  });
+
+  final String name;
+  final List<TradeMonth> months;
+  final List<Chain> chains;
+
+  /// What the player's shops sell a year in it, in cents; null for none.
+  final double? mine;
+
+  static int _sum(Iterable<TradeMonth> months) =>
+      months.fold(0, (sum, month) => sum + month.market.cents);
+
+  @override
+  Widget build(BuildContext context) {
+    if (months.isEmpty) return const SizedBox.shrink();
+    final count = months.length < 12 ? months.length : 12;
+    final cents = _sum(months.skip(months.length - count));
+    final yearly = cents * 12 / count;
+    String? change;
+    if (months.length >= 24) {
+      final before = _sum(months.skip(months.length - 24).take(12));
+      if (before > 0) {
+        final moved = Fx.raw(((cents - before) * Fx.scale / before).round());
+        change = tr('market.onTheYear', {
+          'change': '${moved.isNegative ? '−' : '+'}${percent(moved.abs())}',
+        });
+      }
+    }
+    final last = months.last.market.cents;
+    int sold(Chain chain) => chain.months.lastOrNull?.sales.cents ?? 0;
+    final ranked = [...chains]
+      ..sort((a, b) {
+        final bySales = sold(b).compareTo(sold(a));
+        return bySales != 0 ? bySales : a.def.name.compareTo(b.def.name);
+      });
+    // Whole points for chains; a shop's sliver of a country to its first
+    // figure that isn't nought.
+    String shareOf(double part) => percentOf(
+      decimalText(
+        part <= 0
+            ? '0'
+            : part >= 0.01
+            ? (part * 100).toStringAsFixed(0)
+            : (part * 100).toStringAsPrecision(1),
+      ),
+    );
+    return Section(
+      title: tr('market.nationalTitle', {
+        'trade': name,
+        'amount': _billions(yearly),
+      }),
+      children: [
+        if (change != null) Hint(change),
+        for (final chain in ranked)
+          Line(
+            chain.def.independent ? tr('market.independents') : chain.def.name,
+            last == 0 ? '—' : shareOf(sold(chain) / last),
+            hint: tr('common.stores', {'count': chain.stores}),
+          ),
+        if (mine case final sales? when yearly > 0)
+          Line(tr('market.you'), shareOf(sales / yearly), strong: true),
+      ],
+    );
+  }
+}
+
+/// [cents] a year, in billions or millions of euros, as the statistics
+/// count.
+String _billions(double cents) {
+  final euros = cents / 100;
+  return euros >= 1e9
+      ? tr('market.billions', {
+          'count': decimalText((euros / 1e9).toStringAsFixed(0)),
+        })
+      : tr('market.millions', {
+          'count': decimalText((euros / 1e6).toStringAsFixed(0)),
+        });
+}
+
+/// A country's cities and their districts: those played in full and those
+/// run by formula until someone opens there, each the way to its page.
+class _CountryPlaces extends StatelessWidget {
+  const _CountryPlaces({required this.country});
+
+  final CountryDef country;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final content = game.content;
+    final theme = Theme.of(context);
+    final here = {
+      for (final (_, store) in game.myStores)
+        if (store.status != StoreStatus.closed)
+          content.markets[store.market.index].key,
+    };
+    final places = <({String key, String name, bool awake})>[
+      for (final market in content.markets)
+        if (market.country == country.id)
+          (key: market.key, name: market.name, awake: true),
+      for (final (i, row) in content.neighbourhoods.indexed)
+        if (row.country == country.id && game.sleeper(i) != null)
+          (key: row.key, name: row.name, awake: false),
+    ];
+    final format =
+        content.formats[(game.myStores.firstOrNull?.$2.format ??
+                content.formats.first.id)
+            .index];
+    final cities = <String, List<({String key, String name, bool awake})>>{};
+    for (final place in places) {
+      (cities[_cityPart(place.name)] ??= []).add(place);
+    }
+    return Section(
+      title: tr('market.cities'),
+      children: [
+        for (final MapEntry(key: city, value: districts) in cities.entries) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(city, style: theme.textTheme.titleSmall),
+          ),
+          for (final place in districts)
+            IndexRow(
+              title: _districtPart(place.name),
+              subtitle: [
+                place.awake
+                    ? tr('market.playedInFull')
+                    : tr('market.runByFormula'),
+                if (here.contains(place.key)) tr('market.youTradeHere'),
+              ].join(' · '),
+              onTap: () => context.openPage(
+                place.name,
+                (context) => [
+                  _Neighbourhood(marketKey: place.key, format: format),
+                ],
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+/// "Lyon" of "Lyon, Part-Dieu".
+String _cityPart(String name) => name.split(',').first.trim();
+
+/// "Part-Dieu" of "Lyon, Part-Dieu", or the whole name without a district.
+String _districtPart(String name) {
+  final comma = name.indexOf(',');
+  return comma < 0 ? name : name.substring(comma + 1).trim();
+}
+
+/// The economy month by month: inflation, the central bank's rate and
+/// unemployment as lines, prices and wages against the start, and the
+/// phases of the cycle.
+class _EconomicHistory extends StatelessWidget {
+  const _EconomicHistory({required this.country});
+
+  final CountryId country;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final history = game.view.historyOf(country);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final labour = game.content.macro.labour != null;
@@ -1336,14 +1669,16 @@ class _RivalStore extends StatelessWidget {
     final content = game.content;
     final theme = Theme.of(context);
     final level =
-        game.view.macro.priceIndex *
+        game.economyAt(shelf.market).priceIndex *
         content.markets[shelf.market.index].priceLevel;
     var sum = 0;
     var listed = 0;
     for (final product in content.products) {
       final price = shelf.prices[product.id.index];
       if (price == null) continue;
-      final reference = product.referencePrice.times(level);
+      final reference = content
+          .referenceIn(product, content.countryOf(shelf.market))
+          .times(level);
       sum += price.cents * 10000 ~/ reference.cents;
       listed++;
     }
@@ -1420,13 +1755,14 @@ class _RivalStore extends StatelessWidget {
 }
 
 class _EconomyCard extends StatelessWidget {
-  const _EconomyCard({required this.game});
+  const _EconomyCard({required this.game, required this.country});
 
   final SimulationController game;
+  final CountryId country;
 
   @override
   Widget build(BuildContext context) {
-    final macro = game.view.macro;
+    final macro = game.view.economy(country);
     final regime = game.content.macro.regimes[macro.regime.index];
     final color = regimeColor(regime);
     final theme = Theme.of(context);
@@ -1523,7 +1859,19 @@ class _CitiesCard extends StatelessWidget {
         : tr('market.cities'),
     icon: Icons.location_city,
     children: [
-      for (final market in game.content.markets) _City(market: market),
+      for (final country in game.content.countries)
+        if (game.content.markets.any((m) => m.country == country.id)) ...[
+          if (game.content.countries.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 10, bottom: 2),
+              child: Text(
+                country.name,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+          for (final market in game.content.markets)
+            if (market.country == country.id) _City(market: market),
+        ],
     ],
   );
 }
@@ -1956,7 +2304,7 @@ class _VacantSite extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = context.game;
-    final level = game.view.macro.priceIndex;
+    final level = game.economyAt(site.market).priceIndex;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       dense: true,
@@ -2046,7 +2394,7 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
     ];
     final cost = widget.site.openingCost
         .times(game.content.formats[_format.index].fitOut)
-        .times(game.view.macro.priceIndex);
+        .times(game.economyAt(widget.site.market).priceIndex);
     final capital = _capital.text.isEmpty
         ? Money.zero
         : parseMoney(_capital.text);

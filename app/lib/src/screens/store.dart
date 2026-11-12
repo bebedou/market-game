@@ -15,13 +15,20 @@ const recentDays = 7;
 /// The cheapest unit price any supplier asks for [product] at its minimum
 /// order, at today's prices; null if nobody sells it.
 Money? supplierCost(SimulationController game, ProductDef product) {
+  // The suppliers of the store's country, or the player's.
+  final country = switch (game.store) {
+    final store? => game.content.countryOf(store.market),
+    null => game.homeCountry,
+  };
   Money? best;
   for (final supplier in game.content.suppliers) {
-    if (!supplier.carries[product.id.index]) continue;
+    if (!supplier.carries[product.id.index] || supplier.country != country) {
+      continue;
+    }
     final price = supplier.unitPrice(
       product,
       supplier.minOrderUnits,
-      game.view.macro.priceIndex,
+      game.view.economy(country).priceIndex,
     );
     if (best == null || price < best) best = price;
   }
@@ -1232,7 +1239,7 @@ class _Size extends StatelessWidget {
     final content = game.content;
     final expansion = content.expansion;
     final site = content.sites[store.site.index];
-    final level = game.view.macro.priceIndex;
+    final level = game.economyAt(store.market).priceIndex;
     final area = store.area + expansion.stepArea;
     final format = content.formats[store.format.index];
     final rent = (site.rentFor(store.area) + format.overheadsFor(store.area))
@@ -1405,7 +1412,9 @@ class _Marketing extends StatelessWidget {
     final steps = maxMarketingShare.raw ~/ 50;
     final sales = game.recentDailySales(store);
     final cost = sales.times(share);
-    final half = demand.halfGoodwill.times(game.view.macro.priceIndex);
+    final half = demand.halfGoodwill.times(
+      game.economyAt(store.market).priceIndex,
+    );
     final goodwill = store.goodwill.cents;
     final pull = goodwill <= 0 ? 0.0 : goodwill / (goodwill + half.cents);
     final managed = game.delegates(store, ManagerDuty.pricing);
@@ -1544,7 +1553,7 @@ class _Conversion extends StatelessWidget {
         .firstOrNull;
     if (target == null) return const SizedBox.shrink();
     final site = content.sites[store.site.index];
-    final level = game.view.macro.priceIndex;
+    final level = game.economyAt(store.market).priceIndex;
     final cost = conversionCost(
       content,
       site,

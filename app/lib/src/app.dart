@@ -13,14 +13,24 @@ import 'theme.dart';
 
 const scenarioAsset = 'packages/market_content/scenarios/prototype.json';
 
+/// The countries' national statistics, run beside the scenario for the
+/// national view, and the numbers fitted to the full simulation.
+const nationalAsset = 'packages/market_content/countries/euro.json';
+const calibrationAsset = 'packages/market_content/countries/calibration.json';
+
 /// A seed for a new world.
 int newSeed() => DateTime.now().microsecondsSinceEpoch & 0x7fffffff;
 
-/// The bundled scenario, in the words of the language in use.
+/// The bundled scenario, in the words of the language in use, with the
+/// national statistics beside it.
 Future<ContentDb> loadContent() async => loadScenario(
   localizedScenario(
     await rootBundle.loadString(scenarioAsset),
     currentStrings?.scenario ?? const {},
+  ),
+  national: loadCountryTable(
+    await rootBundle.loadString(nationalAsset),
+    await rootBundle.loadString(calibrationAsset),
   ),
 );
 

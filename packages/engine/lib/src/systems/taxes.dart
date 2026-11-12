@@ -2,7 +2,9 @@ import '../accounting/ledger.dart';
 import '../core/money.dart';
 import '../reports/period_report.dart';
 import '../state/orders.dart';
+import '../state/entities.dart';
 import '../state/public_record.dart';
+import '../state/taxation.dart';
 import '../state/world_state.dart';
 import 'settlement.dart';
 import 'tick_system.dart';
@@ -10,7 +12,9 @@ import 'tick_system.dart';
 /// The year's end, on the first of January: every company's accounts for
 /// the year just ended become public, and each active company is billed its
 /// corporate tax on the year's profit, less losses carried from earlier
-/// years, due within the month.
+/// years, due within the month. With several countries, each taxes its part
+/// of the year at its own rates, with losses carried there (see
+/// [companyTaxes]).
 final class TaxSystem implements TickSystem {
   const TaxSystem();
 
@@ -47,7 +51,12 @@ final class TaxSystem implements TickSystem {
             .where((store) => store.company == company.id && store.isTrading)
             .length,
       ));
-      if (taxes == null || !company.isActive) continue;
+      if (!company.isActive) continue;
+      if (world.cycle != null) {
+        _taxByCountry(world, context, company, year);
+        continue;
+      }
+      if (taxes == null) continue;
       // The year's profit before the tax it paid on the year before.
       var base = profit + taxed;
       if (base <= Money.zero) {
@@ -74,6 +83,38 @@ final class TaxSystem implements TickSystem {
     }
     world.filings.removeWhere(
       (filing) => filing.year <= year - filingYearsKept,
+    );
+    world.districtYears.removeWhere((entry) => entry.year < year);
+  }
+
+  void _taxByCountry(
+    WorldState world,
+    TickContext context,
+    Company company,
+    int year,
+  ) {
+    var tax = Money.zero;
+    for (final due in companyTaxes(world, context.content, company, year)) {
+      final carried = due.base <= Money.zero
+          ? due.carried - due.base
+          : due.carried < due.base
+          ? Money.zero
+          : due.carried - due.base;
+      setLossCarried(world, company, due.country, carried);
+      tax += due.tax;
+    }
+    if (tax == Money.zero) return;
+    bill(
+      context.ledger,
+      company,
+      AccountKind.taxes,
+      Payable(
+        creditor: world.government.partyRef,
+        creditorAccount: AccountKind.revenue,
+        reason: EntryReason.corporateTax,
+        amount: tax,
+        due: context.day + 30,
+      ),
     );
   }
 }

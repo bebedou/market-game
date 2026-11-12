@@ -28,12 +28,11 @@ ResearchReport commissionStudy(
     return truth + truth * error;
   }
 
-  final regime = content.macro.regimes[world.macro.regime.index];
+  final macro = world.macroAt(content, market);
+  final regime = content.macro.regimes[macro.regime.index];
+  final country = content.countries[content.countryOf(market).index];
   final power =
-      content.demand.purchasingPower(
-        world.macro.wageIndex,
-        world.macro.priceIndex,
-      ) *
+      content.demand.purchasingPower(macro.wageIndex, macro.priceIndex) *
       content.markets[market.index].incomeLevel;
   final households = List.filled(content.segments.length, 0);
   for (final cohort in world.cohorts) {
@@ -52,7 +51,7 @@ ResearchReport commissionStudy(
           for (final (c, units) in segment.dailyUnits.indexed)
             estimate(
               units *
-                  regime.demand *
+                  country.demandIn(regime) *
                   content.markets[market.index].scaleOf(
                     content.categoryChannels[c],
                   ),
@@ -60,7 +59,7 @@ ResearchReport commissionStudy(
         ]),
         premiumShare: List.unmodifiable([
           for (final share in segment.premiumShare)
-            estimate(_clamp(share * power + regime.premiumShift)),
+            estimate(_clamp(share * power + country.premiumShiftIn(regime))),
         ]),
         // Segment averages: households spread around them by income.
         priceSensitivity: estimate(segment.priceSensitivity.div(power)),

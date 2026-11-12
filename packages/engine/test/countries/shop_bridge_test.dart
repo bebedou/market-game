@@ -81,7 +81,10 @@ void main() {
       }
       if (date.month != 1) continue;
       if (year >= 1) {
+        // France's cities, which the fit was made on and whose prices and
+        // cycle these are.
         for (final market in content.markets) {
+          if (market.country != const CountryId(0)) continue;
           var actual = 0;
           var predicted = 0;
           for (final trade in capture.keys) {
@@ -116,7 +119,10 @@ void main() {
       demandSum = Fx.zero;
     }
     gaps.sort();
-    expect(gaps, hasLength(content.markets.length * 2));
+    final french = content.markets.where(
+      (market) => market.country == const CountryId(0),
+    );
+    expect(gaps, hasLength(french.length * 2));
     expect(gaps[gaps.length ~/ 2], lessThan(0.05));
     expect(gaps.last, lessThan(0.1));
   });

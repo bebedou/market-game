@@ -4,6 +4,7 @@ import '../state/entities.dart';
 import '../content/content_db.dart';
 import '../core/calendar.dart';
 import '../core/fx.dart';
+import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/rng.dart';
 import '../core/safe_int.dart';
@@ -11,6 +12,7 @@ import '../neighbourhoods/neighbourhood_generator.dart';
 import '../observation/outlook.dart';
 import '../policies/retail_policy.dart' show closingLoss;
 import '../state/sleepers.dart';
+import '../state/taxation.dart';
 import '../state/world_state.dart';
 import 'tick_system.dart';
 
@@ -137,7 +139,10 @@ final class SleeperSystem implements TickSystem {
     SleepingNeighbourhood sleeper,
   ) {
     final row = content.neighbourhoods[sleeper.row];
-    final migration = content.macro.regimes[world.macro.regime.index].migration;
+    final migration = content
+        .macro
+        .regimes[world.macroOf(row.country).regime.index]
+        .migration;
     for (var s = 0; s < sleeper.households.length; s++) {
       final rate = row.growth[s] + migration;
       final owed =
@@ -159,9 +164,10 @@ final class SleeperSystem implements TickSystem {
     int month,
   ) {
     final row = content.neighbourhoods[sleeper.row];
-    final macro = world.macro;
+    final macro = world.macroOf(row.country);
+    final country = content.countries[row.country.index];
     final regime = content.macro.regimes[macro.regime.index];
-    var cycle = regime.demand;
+    var cycle = country.demandIn(regime);
     if (content.macro.labour case final labour?) {
       cycle *= labour.confidenceFactor(macro.unemployment);
     }
@@ -186,8 +192,10 @@ final class SleeperSystem implements TickSystem {
           macro.wageIndex,
           macro.priceIndex,
         ),
-        premiumShift: regime.premiumShift,
+        premiumShift: country.premiumShiftIn(regime),
         scale: row.scaleOf(channel),
+        costLevel: content.costLevel(row.country),
+        references: content.references[row.country.index],
       );
       // What it would sell at the strategy's prices, against normal ones.
       Fx pricing(SleepingShop shop) {
@@ -254,9 +262,7 @@ final class SleeperSystem implements TickSystem {
             premises;
         final sold = Money(mulDivRound(sales.cents, 1, 12));
         if (shop.company case final id?) {
-          shop.remember(
-            sold,
-            _book(
+          final profit = _book(
               world,
               ledger,
               world.companies[id.index],
@@ -266,8 +272,18 @@ final class SleeperSystem implements TickSystem {
               wages: wages,
               rent: site.rentFor(shop.area).times(macro.priceIndex),
               overheads: format.overheadsFor(shop.area).times(macro.priceIndex),
-            ),
-          );
+            );
+          shop.remember(sold, profit);
+          if (world.cycle != null) {
+            recordDistrictMonth(
+              world,
+              id,
+              row.country,
+              day.date.year,
+              sales: sold,
+              profit: profit,
+            );
+          }
           continue;
         }
         final earned = Money(mulDivRound(yearly.cents, 1, 12));
@@ -275,7 +291,7 @@ final class SleeperSystem implements TickSystem {
         // After tax it stays in the company until that's well stocked, then
         // goes to its owner; a loss falls on the company, then the owner.
         final taxed = earned > Money.zero
-            ? earned - earned.times(_taxRate(content))
+            ? earned - earned.times(_taxRate(content, row.country))
             : earned;
         shop.cash += taxed;
         final reserve = Money(
@@ -296,7 +312,8 @@ final class SleeperSystem implements TickSystem {
     }
   }
 
-  Fx _taxRate(ContentDb content) => content.taxes?.corporateRate ?? Fx.zero;
+  Fx _taxRate(ContentDb content, CountryId country) =>
+      content.taxesOf(country)?.corporateRate ?? Fx.zero;
 
   /// Books a month of a chain's shop in [company]'s accounts, against those
   /// it trades with elsewhere: its [sold], and its year's [goods],
@@ -383,6 +400,9 @@ final class SleeperSystem implements TickSystem {
   ) {
     final sites = sleeper.sites!;
     final expansion = content.expansion;
+    final priceIndex = world
+        .macroOf(content.neighbourhoods[sleeper.row].country)
+        .priceIndex;
     final closing = <SleepingShop>[];
     for (final shop in sleeper.shops) {
       final format = content.formats[shop.format.index];
@@ -412,13 +432,13 @@ final class SleeperSystem implements TickSystem {
       final steps = (shop.area - site.area) ~/ expansion.stepArea;
       final slots =
           site.shelfSlots + format.slotBonus + steps * expansion.shelfSlots;
-      final cost = expansion.cost(world.macro.priceIndex);
+      final cost = expansion.cost(priceIndex);
       // What it must have earned leaves out what the extra room would cost.
       final extra =
           (site.rentFor(shop.area + expansion.stepArea) -
                   site.rentFor(shop.area) +
                   format.overheadsFor(expansion.stepArea))
-              .times(world.macro.priceIndex)
+              .times(priceIndex)
               .timesInt(12);
       if (slots < sold &&
           shop.area + expansion.stepArea <= site.maxArea &&
@@ -483,7 +503,7 @@ final class SleeperSystem implements TickSystem {
     if (!rng.chance(chance)) return;
     final row = content.neighbourhoods[sleeper.row];
     final sites = sleeper.sites!;
-    final macro = world.macro;
+    final macro = world.macroOf(row.country);
     final taken = {for (final shop in sleeper.shops) shop.site};
     FormatDef? bestFormat;
     StrategyDef? bestStrategy;
@@ -504,7 +524,12 @@ final class SleeperSystem implements TickSystem {
           }
         }
         final daily = strategy.marginPerHousehold
-            .times(macro.priceIndex * row.priceLevel * row.incomeLevel)
+            .times(
+              macro.priceIndex *
+                  row.priceLevel *
+                  row.incomeLevel *
+                  content.countries[row.country.index].service,
+            )
             .timesInt(total)
             .times(
               mine.div(pull) *
@@ -538,8 +563,8 @@ final class SleeperSystem implements TickSystem {
         site: bestSite.number,
         format: bestFormat!.id,
         strategy: bestStrategy!.id,
-        name: newShopName(bestFormat, rng),
-        owner: newOwnerName(rng),
+        name: newShopName(content, row.country, bestFormat, rng),
+        owner: newOwnerName(content, row.country, rng),
         area: bestSite.area,
         cash: fitting,
         ownerCash: fitting,

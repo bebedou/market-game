@@ -19,6 +19,7 @@ import 'research.dart';
 import 'brands.dart';
 import 'sleepers.dart';
 import 'store.dart';
+import 'taxation.dart';
 
 /// All mutable truth about the world. Only commands and tick systems change
 /// it, and nothing outside the engine reads it.
@@ -58,6 +59,108 @@ final class WorldState {
 
   /// The brands shops trade under, by [BrandId].
   final brands = <Brand>[];
+
+  /// The economies of the countries after the first, in order: the first's
+  /// is [macro]. Saved beside the world, as a world of one country has none.
+  final otherEconomies = <Economy>[];
+
+  /// The cycle its countries share; null with one country.
+  SharedCycle? cycle;
+
+  /// Chains' shops in districts by company, country and year, this year's
+  /// and last, for each country's tax; kept only with several countries.
+  final districtYears = <DistrictYear>[];
+
+  /// Losses companies carry in countries after the first.
+  final countryLosses = <CountryLoss>[];
+
+  /// Each month since the start, the regime each country was in, by
+  /// [CountryId], then the shared cycle's: what the national view replays.
+  final regimeLog = <List<int>>[];
+
+  /// [country]'s economy.
+  MacroState macroOf(CountryId country) =>
+      country.index == 0 ? macro : otherEconomies[country.index - 1].macro;
+
+  /// The economy of the country [market] is in.
+  MacroState macroAt(ContentDb content, MarketId market) =>
+      macroOf(content.countryOf(market));
+
+  /// [country]'s economy month by month, oldest first.
+  List<EconomicMonth> historyOf(CountryId country) => country.index == 0
+      ? economicHistory
+      : otherEconomies[country.index - 1].history;
+
+  /// Every country's economy, by [CountryId].
+  List<MacroState> get economies => [
+    macro,
+    for (final economy in otherEconomies) economy.macro,
+  ];
+
+  /// Where [person] lives: as the scenario has it, but the player lives
+  /// where the game's start put their first store.
+  CountryId residence(ContentDb content, PersonId person) => switch (start) {
+    final start? when person == player => content.countryOf(
+      content.sites[start.site.index].market,
+    ),
+    _ => content.residenceOf(person),
+  };
+
+  /// Adds an economy for each of [content]'s countries the world lacks, as
+  /// the first country's stands, and the shared cycle once there are two.
+  void growEconomies(ContentDb content) {
+    while (otherEconomies.length < content.countries.length - 1) {
+      otherEconomies.add(Economy(macro: MacroState.copyOf(macro), history: []));
+    }
+    if (content.countries.length > 1) {
+      cycle ??= SharedCycle(
+        regime: macro.regime,
+        monthsInRegime: macro.monthsInRegime,
+      );
+    }
+  }
+
+  /// What the world keeps beside itself of its countries' economies: in saves
+  /// and in the state hash, but nothing at all for a world of one country.
+  void writeEconomies(StateWriter writer) {
+    writer.writeInt(otherEconomies.length);
+    for (final economy in otherEconomies) {
+      economy.write(writer);
+    }
+    writer.writeBool(cycle != null);
+    cycle?.write(writer);
+    writer.writeInt(districtYears.length);
+    for (final entry in districtYears) {
+      entry.write(writer);
+    }
+    writer.writeInt(countryLosses.length);
+    for (final loss in countryLosses) {
+      loss.write(writer);
+    }
+    writer.writeInt(regimeLog.length);
+    for (final month in regimeLog) {
+      writer.writeInt(month.length);
+      month.forEach(writer.writeInt);
+    }
+  }
+
+  void readEconomies(StateReader reader) {
+    for (var i = 0, n = reader.readInt(); i < n; i++) {
+      otherEconomies.add(Economy.read(reader));
+    }
+    if (reader.readBool()) cycle = SharedCycle.read(reader);
+    for (var i = 0, n = reader.readInt(); i < n; i++) {
+      districtYears.add(DistrictYear.read(reader));
+    }
+    for (var i = 0, n = reader.readInt(); i < n; i++) {
+      countryLosses.add(CountryLoss.read(reader));
+    }
+    for (var i = 0, n = reader.readInt(); i < n; i++) {
+      regimeLog.add([
+        for (var c = 0, m = reader.readInt(); c < m; c++) reader.readInt(),
+      ]);
+    }
+  }
 
   /// Everyone beyond the districts played in full.
   Elsewhere elsewhere = Elsewhere(accounts: Accounts());
@@ -164,7 +267,7 @@ final class WorldState {
           ),
       ],
       start: start,
-    );
+    )..growEconomies(content);
     for (final (i, store) in content.stores.indexed) {
       if (start != null && i == setup!.store) {
         final site = content.sites[start.site.index];
@@ -444,8 +547,11 @@ final class WorldState {
               content.products,
               prices,
               priceLevel:
-                  macro.priceIndex *
+                  macroAt(content, site.market).priceIndex *
                   content.markets[site.market.index].priceLevel,
+              references: content.references[content
+                  .countryOf(site.market)
+                  .index],
             ) ??
             Fx.one,
     ];

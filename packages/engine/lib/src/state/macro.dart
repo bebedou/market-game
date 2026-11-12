@@ -2,9 +2,10 @@ import '../content/content_db.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
 import '../persistence/state_io.dart';
+import 'public_record.dart';
 
-/// The economy around the markets: the phase of the business cycle, the
-/// price and wage levels, and the policy rate.
+/// A country's economy around its markets: the phase of the business cycle,
+/// the price and wage levels, unemployment, and the policy rate.
 final class MacroState {
   MacroState({
     required this.regime,
@@ -17,6 +18,17 @@ final class MacroState {
     this.unemployment = Fx.zero,
   });
 
+  /// A copy of [other], as a country added to a saved game starts.
+  MacroState.copyOf(MacroState other)
+    : regime = other.regime,
+      monthsInRegime = other.monthsInRegime,
+      priceIndex = other.priceIndex,
+      wageIndex = other.wageIndex,
+      inflation = other.inflation,
+      policyRate = other.policyRate,
+      retailLevel = other.retailLevel,
+      unemployment = other.unemployment;
+
   /// The economy at the scenario's start: price and wage indices at 1, and
   /// the start regime's inflation.
   factory MacroState.initial(MacroDef macro) {
@@ -27,7 +39,7 @@ final class MacroState {
       priceIndex: Fx.one,
       wageIndex: Fx.one,
       inflation: regime.inflation,
-      policyRate: macro.policyRate(regime.inflation, regime),
+      policyRate: macro.policyRate(regime.inflation, regime.outputGap),
       retailLevel: Fx.zero,
       unemployment: macro.labour?.naturalUnemployment ?? Fx.zero,
     );
@@ -56,11 +68,12 @@ final class MacroState {
   /// The latest annual inflation rate.
   Fx inflation;
 
-  /// The central bank's annual rate, which new loans are priced from.
+  /// The central bank's annual rate, which new loans are priced from: the
+  /// same in every country on its currency.
   Fx policyRate;
 
-  /// Shelf prices over base reference prices, averaged over open stores, as
-  /// measured last month; zero before the first measurement.
+  /// Shelf prices over base reference prices, averaged over the country's
+  /// open stores, as measured last month; zero before the first measurement.
   Fx retailLevel;
 
   /// The share of the labour force out of work; zero if not modelled.
@@ -76,5 +89,52 @@ final class MacroState {
       ..writeInt(policyRate.raw)
       ..writeInt(retailLevel.raw)
       ..writeInt(unemployment.raw);
+  }
+}
+
+/// The economy of a country after the first, whose own is
+/// `WorldState.macro`, and its history month by month. Kept beside the
+/// world, as a world of one country has none.
+final class Economy {
+  Economy({required this.macro, required this.history});
+
+  Economy.read(StateReader reader)
+    : macro = MacroState.read(reader),
+      history = [
+        for (var i = 0, n = reader.readInt(); i < n; i++)
+          readEconomicMonth(reader),
+      ];
+
+  final MacroState macro;
+
+  /// Oldest first, as `WorldState.economicHistory` is the first country's.
+  final List<EconomicMonth> history;
+
+  void write(StateWriter writer) {
+    macro.write(writer);
+    writer.writeInt(history.length);
+    for (final month in history) {
+      writeEconomicMonth(writer, month);
+    }
+  }
+}
+
+/// The cycle that the countries on one currency share, which each follows
+/// more or less closely (see `CountryDef.follows`). A world of one country
+/// has none: its own cycle is the one.
+final class SharedCycle {
+  SharedCycle({required this.regime, required this.monthsInRegime});
+
+  SharedCycle.read(StateReader reader)
+    : regime = RegimeId(reader.readInt()),
+      monthsInRegime = reader.readInt();
+
+  RegimeId regime;
+  int monthsInRegime;
+
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(regime.index)
+      ..writeInt(monthsInRegime);
   }
 }

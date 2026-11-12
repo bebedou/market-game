@@ -144,8 +144,8 @@ final class ChainDef {
   final bool independent;
 }
 
-final class CountryDef {
-  const CountryDef({
+final class NationalCountry {
+  const NationalCountry({
     required this.key,
     required this.name,
     required this.population,
@@ -214,7 +214,7 @@ final class CountryTable {
   final List<CycleRegime> regimes;
   final List<IncomeClass> classes;
   final List<Trade> trades;
-  final List<CountryDef> countries;
+  final List<NationalCountry> countries;
 
   /// The cycle's real wage growth over its phases' expected lengths, so that
   /// a country's trend is what it grows through a whole cycle.
@@ -281,7 +281,7 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
   );
   if (startRegime < 0) root.fail('startRegime', 'no such regime');
 
-  final countries = <CountryDef>[];
+  final countries = <NationalCountry>[];
   for (final node in root.objects('countries')) {
     final rows = List<ClassRow?>.filled(classes.length, null);
     for (final row in node.objects('classes')) {
@@ -327,7 +327,7 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
       }
     }
     countries.add(
-      CountryDef(
+      NationalCountry(
         key: node.text('id'),
         name: node.text('name'),
         population: node.whole('population'),

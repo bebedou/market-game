@@ -47,7 +47,8 @@ void main() {
       expect(brand.name, 'Coin Malin');
       expect(brand.format, _format('grocery'));
       expect(brand.owner, player);
-      expect(brand.shops, 0);
+      // The player's own grocer joins it at once.
+      expect(brand.shops, 1);
       game
         ..submit(
           CreateBrand(player, name: 'coin malin', format: _format('fastfood')),
@@ -56,6 +57,28 @@ void main() {
       expect(game.world.brands, hasLength(1));
       // Only what was made is in the log, for a replay to make again.
       expect(game.commandLog, hasLength(1));
+    });
+
+    test("takes in the player's shops of its type, the first one too, and "
+        'leaves the company its own name', () {
+      final game = _game();
+      final company = game.world.companies[playerCompany.index].name;
+      _apply(
+        game,
+        CreateBrand(player, name: 'Coin Malin', format: _format('grocery')),
+      );
+      final first = game.world.stores.first;
+      expect(first.brand, game.world.brands.single.id);
+      expect(first.name, 'Coin Malin Croix-Rousse');
+      expect(game.world.companies[playerCompany.index].name, company);
+      // A brand for another type of business leaves the grocer alone.
+      _apply(
+        game,
+        CreateBrand(player, name: 'Frites et Cie', format: _format('fastfood')),
+      );
+      expect(first.brand, game.world.brands.first.id);
+      expect(game.observe(player).brands.last.shops, 0);
+      expect(invariantViolations(game.world), isEmpty);
     });
 
     test('names a shop opened under it after itself and its district', () {
@@ -79,20 +102,13 @@ void main() {
         ),
         isEmpty,
       );
+      // The first shop took the brand's name for the district, so this
+      // one, in the same district, has its street too.
       final store = game.world.stores.last;
-      expect(store.name, 'Coin Malin Croix-Rousse');
+      final street = _content.sites[_site('backstreet').index].name;
+      expect(store.name, 'Coin Malin Croix-Rousse, $street');
       expect(store.brand, brand);
-      expect(game.observe(player).brands.single.shops, 1);
-      // A second in the same district has its street too.
-      expect(
-        brandedName(
-          game.world,
-          _content,
-          game.world.brands.single,
-          _content.sites[_site('station').index],
-        ),
-        'Coin Malin Croix-Rousse, Hénon metro',
-      );
+      expect(game.observe(player).brands.single.shops, 2);
       expect(invariantViolations(game.world), isEmpty);
     });
 

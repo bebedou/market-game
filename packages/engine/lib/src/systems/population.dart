@@ -29,8 +29,11 @@ final class PopulationSystem implements TickSystem {
     for (final cohort in world.cohorts) {
       members[cohort.market.index][cohort.segment.index].add(cohort);
     }
-    final migration = content.macro.regimes[world.macro.regime.index].migration;
     for (final market in content.markets) {
+      final migration = content
+          .macro
+          .regimes[world.macroOf(market.country).regime.index]
+          .migration;
       final state = world.markets[market.id.index];
       while (state.pending.length < segments) {
         state.pending.add(Fx.zero);

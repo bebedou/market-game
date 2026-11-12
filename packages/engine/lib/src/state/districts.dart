@@ -50,6 +50,9 @@ typedef DistrictView = ({
   /// Its place in the scenario's neighbourhoods.
   int row,
   String name,
+
+  /// The country it is in.
+  CountryId country,
   int households,
   Fx priceLevel,
   Fx incomeLevel,
@@ -97,6 +100,7 @@ List<DistrictView> districtViews(WorldState world, ContentDb content) {
         return (
           row: sleeper.row,
           name: row.name,
+          country: row.country,
           households: sleeper.households.fold(0, (sum, n) => sum + n),
           priceLevel: row.priceLevel,
           incomeLevel: row.incomeLevel,
@@ -135,6 +139,7 @@ List<DistrictView> districtViews(WorldState world, ContentDb content) {
                   sites[shop.site],
                   shop,
                   month,
+                  country: row.country,
                 ),
               ),
           ]),
@@ -152,8 +157,9 @@ Valuation? valueSleepingShop(
   ContentDb content,
   PlannedSite site,
   SleepingShop shop,
-  int month,
-) {
+  int month, {
+  required CountryId country,
+}) {
   final terms = content.acquisitions;
   if (terms == null) return null;
   final format = content.formats[shop.format.index];
@@ -166,7 +172,7 @@ Valuation? valueSleepingShop(
   final wear = (Fx.one - terms.fittingsResidual) * used;
   final fittings = site.openingCost
       .times(format.fitOut)
-      .times(world.macro.priceIndex)
+      .times(world.macroOf(country).priceIndex)
       .times(Fx.one - wear);
   if (shop.sales.length < sleepingMonthsKept) {
     return (

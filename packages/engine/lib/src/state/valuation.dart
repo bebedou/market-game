@@ -34,7 +34,7 @@ const Money symbolicPrice = Money(100);
 Valuation? valueStore(WorldState world, ContentDb content, Store store) {
   final terms = content.acquisitions;
   if (terms == null || !store.isTrading) return null;
-  final level = world.macro.priceIndex;
+  final level = world.macroAt(content, store.market).priceIndex;
   final site = content.sites[store.site.index];
   final format = content.formats[store.format.index];
   var stock = Money.zero;
@@ -85,7 +85,8 @@ Money? storeEarnings(WorldState world, ContentDb content, Store store) {
   if (world.today.number - store.opensOn.number < salesHistoryDays) {
     return null;
   }
-  final level = world.macro.priceIndex;
+  final macro = world.macroAt(content, store.market);
+  final level = macro.priceIndex;
   final site = content.sites[store.site.index];
   final format = content.formats[store.format.index];
   var gross = Money.zero;
@@ -104,11 +105,13 @@ Money? storeEarnings(WorldState world, ContentDb content, Store store) {
     final onHand = store.stock[product];
     final unitCost = onHand.units > 0
         ? Money(onHand.value.cents ~/ onHand.units)
-        : content.products[product].baseCost.times(level);
+        : content.products[product].baseCost
+              .times(level)
+              .times(content.costLevel(content.countryOf(store.market)));
     gross += (price - unitCost).timesInt(units);
   }
   final wageLevel =
-      world.macro.wageIndex * content.markets[store.market.index].wageLevel;
+      macro.wageIndex * content.markets[store.market.index].wageLevel;
   var daily = content.operations.slotWage
       .times(wageLevel)
       .times(format.wageFactor)

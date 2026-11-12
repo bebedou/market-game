@@ -115,7 +115,9 @@ class FinanceScreen extends StatelessWidget {
         Section(
           title: tr('finance.taxesDeals'),
           children: [
-            if (game.content.taxes != null && game.company != null)
+            if (game.content.taxesOf(game.countryOfCompany(game.company)) !=
+                    null &&
+                game.company != null)
               IndexRow(
                 title: tr('finance.taxes'),
                 subtitle: tr('finance.dueNextJanuary'),
@@ -221,8 +223,9 @@ List<(ShelfView, Valuation)> _struggling(SimulationController game) {
 /// The company's profit so far this year, before the tax billed on last
 /// year, and the tax due on it if the year ended today.
 ({Money profit, Money due}) _yearSoFar(SimulationController game) {
-  final taxes = game.content.taxes!;
   final company = game.company;
+  final country = game.countryOfCompany(company);
+  final taxes = game.content.taxesOf(country)!;
   final year = game.today.date.year;
   var profit = Money.zero;
   if (company != null) {
@@ -234,7 +237,13 @@ List<(ShelfView, Valuation)> _struggling(SimulationController game) {
   final carried = company?.lossCarried ?? Money.zero;
   return (
     profit: profit,
-    due: taxes.corporateTax(profit - carried, game.view.macro.priceIndex),
+    // Each country takes its part where the company trades in several.
+    due: company != null && company.countryTaxes.isNotEmpty
+        ? company.taxAccrued
+        : taxes.corporateTax(
+            profit - carried,
+            game.view.economy(country).priceIndex,
+          ),
   );
 }
 
@@ -475,7 +484,7 @@ class _CompanyCard extends StatelessWidget {
       title: tr('finance.payADividend'),
       message: tr('finance.dividendBody', {
         'kept': money(company.retainedEarnings),
-        'tax': switch (game.content.taxes) {
+        'tax': switch (game.content.taxesOf(game.residence)) {
           final taxes? => tr('finance.dividendTax', {
             'rate': percent(taxes.dividendRate, decimals: 0),
           }),
@@ -538,7 +547,12 @@ class _DirectorSection extends StatelessWidget {
       );
     }
     final grade = content.directors!.grades[director.grade.index];
-    final monthly = directorSalary(game.view, content, director).timesInt(30);
+    final monthly = directorSalary(
+      game.view,
+      content,
+      company,
+      director,
+    ).timesInt(30);
     return Section(
       title: tr('finance.director'),
       icon: Icons.badge_outlined,
@@ -643,7 +657,9 @@ class _DirectorSheetState extends State<_DirectorSheet> {
               orElse: () => strategies.first,
             )
             .id;
-    final wageIndex = game.view.macro.wageIndex;
+    final wageIndex = game.view
+        .economy(game.countryOfCompany(widget.company))
+        .wageIndex;
     Money monthly(DirectorGradeDef option) =>
         option.salary.times(wageIndex).timesInt(30);
     Widget choice({
@@ -1200,31 +1216,66 @@ class _Taxes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = context.game;
-    final taxes = game.content.taxes!;
-    final level = game.view.macro.priceIndex;
+    final content = game.content;
     final company = game.company;
+    final country = game.countryOfCompany(company);
+    final taxes = content.taxesOf(country)!;
+    final level = game.view.economy(country).priceIndex;
     final carried = company?.lossCarried ?? Money.zero;
     final (:profit, :due) = _yearSoFar(game);
+    final dividends = content.taxesOf(game.residence) ?? taxes;
+    final abroad = [
+      for (final due in company?.countryTaxes ?? const <CountryTax>[])
+        if (due.sales > Money.zero || due.tax > Money.zero) due,
+    ];
+    String rates(TaxDef taxes) =>
+        taxes.reducedRate == taxes.corporateRate ||
+            taxes.reducedLimit == Money.zero
+        ? percent(taxes.corporateRate, decimals: 1)
+        : tr('finance.taxRates', {
+            'reduced': percent(taxes.reducedRate, decimals: 0),
+            'full': percent(taxes.corporateRate, decimals: 0),
+          });
     return Section(
       title: tr('finance.taxes'),
       icon: Icons.account_balance,
       children: [
         Line(
-          tr('finance.corporateTax'),
-          tr('finance.taxRates', {
-            'reduced': percent(taxes.reducedRate, decimals: 0),
-            'full': percent(taxes.corporateRate, decimals: 0),
-          }),
-          hint: tr('finance.taxRatesHint', {
-            'reduced': percent(taxes.reducedRate, decimals: 0),
-            'limit': money(taxes.reducedLimit.times(level), cents: false),
-          }),
+          content.countries.length > 1
+              ? tr('finance.corporateTaxIn', {
+                  'country': content.countries[country.index].name,
+                })
+              : tr('finance.corporateTax'),
+          rates(taxes),
+          hint: taxes.reducedLimit == Money.zero
+              ? null
+              : tr('finance.taxRatesHint', {
+                  'reduced': percent(taxes.reducedRate, decimals: 0),
+                  'limit': money(taxes.reducedLimit.times(level), cents: false),
+                }),
         ),
         Line(
           tr('finance.dividends'),
-          percent(taxes.dividendRate, decimals: 0),
-          hint: tr('finance.dividendsHint'),
+          percent(dividends.dividendRate, decimals: 1),
+          hint: content.countries.length > 1
+              ? tr('finance.dividendsWhere', {
+                  'country': content.countries[game.residence.index].name,
+                })
+              : tr('finance.dividendsHint'),
         ),
+        if (abroad.length > 1) ...[
+          const Divider(),
+          for (final due in abroad)
+            Line(
+              tr('finance.taxInCountry', {
+                'country': content.countries[due.country.index].name,
+                'rate': rates(content.taxesOf(due.country) ?? taxes),
+              }),
+              money(due.tax),
+              hint: tr('finance.taxBase', {'base': signedMoney(due.base)}),
+            ),
+          Hint(tr('finance.taxByCountryHint')),
+        ],
         if (company != null) ...[
           const Divider(),
           Line(

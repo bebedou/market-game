@@ -57,6 +57,14 @@ class _NewGameScreenState extends State<NewGameScreen> {
   GameStart get _start =>
       GameStart(site: _site, format: _format, name: _name.text.trim());
 
+  /// Opens in [country]'s first city with a site to start on.
+  void _pickCountry(CountryId country) {
+    final first = _content.markets.firstWhere(
+      (market) => market.country == country && _sitesIn(market.id).isNotEmpty,
+    );
+    _pickMarket(first.id);
+  }
+
   void _pickMarket(MarketId market) {
     final sites = _sitesIn(market);
     setState(() {
@@ -93,6 +101,23 @@ class _NewGameScreenState extends State<NewGameScreen> {
         .length;
   }
 
+  /// What sets [country] apart: its taxes and how it takes the cycle.
+  String _countryHint(CountryId country) {
+    final def = _content.countries[country.index];
+    final taxes = _content.taxesOf(country);
+    return tr('newGame.countryHint', {
+      'tax': taxes == null ? '—' : percent(taxes.corporateRate, decimals: 0),
+      'dividends': taxes == null
+          ? '—'
+          : percent(taxes.dividendRate, decimals: 0),
+      'cycle': def.depth > Fx.parse('1.1')
+          ? tr('newGame.cycleDeep')
+          : def.depth < Fx.parse('0.95')
+          ? tr('newGame.cycleMild')
+          : tr('newGame.cycleUsual'),
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -124,6 +149,32 @@ class _NewGameScreenState extends State<NewGameScreen> {
               ),
             ],
           ),
+          if (_content.countries.length > 1)
+            Section(
+              title: tr('newGame.country'),
+              icon: Icons.public,
+              children: [
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final country in _content.countries)
+                      if (_content.markets.any(
+                        (city) =>
+                            city.country == country.id &&
+                            _sitesIn(city.id).isNotEmpty,
+                      ))
+                        ChoiceChip(
+                          label: Text(country.name),
+                          selected: country.id == market.country,
+                          onSelected: (_) => _pickCountry(country.id),
+                        ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Hint(_countryHint(market.country)),
+              ],
+            ),
           Section(
             title: tr('newGame.city'),
             icon: Icons.location_city_outlined,
@@ -133,7 +184,8 @@ class _NewGameScreenState extends State<NewGameScreen> {
                 runSpacing: 6,
                 children: [
                   for (final city in _content.markets)
-                    if (_sitesIn(city.id).isNotEmpty)
+                    if (city.country == market.country &&
+                        _sitesIn(city.id).isNotEmpty)
                       ChoiceChip(
                         label: Text(city.name),
                         selected: city.id == _market,

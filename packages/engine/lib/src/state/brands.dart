@@ -178,6 +178,16 @@ Brand aiBrand(
     name = '$companyName $n';
   }
   final brand = addBrand(world, name, format, owner);
+  joinBrand(world, content, brand);
+  return brand;
+}
+
+/// Puts every shop of [brand]'s owner and type of business that trades under
+/// no brand yet under it, in the districts run by formula too: what starting
+/// a brand does, for the player as for an AI owner.
+void joinBrand(WorldState world, ContentDb content, Brand brand) {
+  final owner = brand.owner;
+  final format = brand.format;
   for (final store in world.stores) {
     if (store.isTrading &&
         store.format == format &&
@@ -205,7 +215,6 @@ Brand aiBrand(
       }
     }
   }
-  return brand;
 }
 
 /// [store], just come to [owner], under their brand if they're an AI owner;

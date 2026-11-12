@@ -1,4 +1,5 @@
 import '../core/calendar.dart';
+import '../countries/country_table.dart';
 import '../core/exp_neg.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
@@ -35,10 +36,65 @@ final class ContentDb {
     required this.companies,
     required this.stores,
     this.neighbourhoods = const [],
+    this.countries = const [CountryDef.only],
+    this.national,
     this.source = '',
   });
 
+  /// The countries' national statistics, run by formula beside the game for
+  /// the national view (see `Simulation.national`); null for none.
+  final CountryTable? national;
+
   final String scenarioId;
+
+  /// The countries places are in, at least one: a scenario that names none
+  /// has one, with the scenario's taxes.
+  final List<CountryDef> countries;
+
+  /// [country]'s taxes: its own, or else the scenario's.
+  TaxDef? taxesOf(CountryId country) => countries[country.index].taxes ?? taxes;
+
+  /// The country [market] is in.
+  CountryId countryOf(MarketId market) => markets[market.index].country;
+
+  /// What goods cost wholesale in each country against the first, by
+  /// [CountryId]: see [countryCostLevels].
+  late final List<Fx> costLevels = countryCostLevels(
+    products,
+    suppliers,
+    countries,
+  );
+
+  /// [costLevels] for [country].
+  Fx costLevel(CountryId country) => costLevels[country.index];
+
+  /// What households in each country think each product should cost, at a
+  /// price index and a place's level of one, by [CountryId] then
+  /// [ProductId]: see [countryReferences].
+  late final List<List<Money>> references = countryReferences(
+    products,
+    countries,
+    costLevels,
+  );
+
+  /// What households in [country] think [product] should cost, at a price
+  /// index and a place's level of one.
+  Money referenceIn(ProductDef product, CountryId country) =>
+      references[country.index][product.id.index];
+
+  /// Where [person] lives and pays tax on dividends, as the scenario has it:
+  /// where it says, or else where the first of the scenario's stores that is
+  /// theirs trades, or else the first country. A game's start may move the
+  /// player (see `WorldState.residence`).
+  CountryId residenceOf(PersonId person) {
+    if (persons[person.index].country case final country?) return country;
+    for (final store in stores) {
+      if (companies[store.company.index].owner == person) {
+        return countryOf(sites[store.site.index].market);
+      }
+    }
+    return const CountryId(0);
+  }
 
   /// Neighbourhoods not simulated until the player trades there: only their
   /// figures, from which they are generated (see `Simulation.submit`).
@@ -115,7 +171,8 @@ final class ContentDb {
   final ExpansionDef expansion;
   final FinanceDef finance;
 
-  /// Corporate and dividend taxes; null for none.
+  /// Corporate and dividend taxes where a country has none of its own; null
+  /// for none.
   final TaxDef? taxes;
 
   /// How stores and companies are priced for sale; null if none are ever
@@ -155,10 +212,14 @@ final class NeighbourhoodRow {
     this.playerStartsHere = false,
     this.layout,
     this.scale = const [],
+    this.country = const CountryId(0),
   });
 
   final String key;
   final String name;
+
+  /// The country it is in.
+  final CountryId country;
 
   /// The place's own market, sites and stores, as a scenario writes them,
   /// for a city of the game's run by formula: see `withCitiesAsleep`. Null
@@ -227,6 +288,72 @@ List<int> formatChannelsOf(List<FormatDef> formats, int categoryCount) {
   return List.unmodifiable(channel);
 }
 
+/// What goods cost wholesale in each country against the first, by
+/// [CountryId]: over the products sold in both, the average of the lowest
+/// price factor of its suppliers over the lowest of the first country's. One
+/// for the first country, and for one with no suppliers of its own.
+List<Fx> countryCostLevels(
+  List<ProductDef> products,
+  List<SupplierDef> suppliers,
+  List<CountryDef> countries,
+) {
+  Fx? cheapest(CountryId where, ProductId product) {
+    Fx? best;
+    for (final supplier in suppliers) {
+      if (supplier.country != where || !supplier.carries[product.index]) {
+        continue;
+      }
+      if (best == null || supplier.priceFactor < best) {
+        best = supplier.priceFactor;
+      }
+    }
+    return best;
+  }
+
+  return [
+    for (final country in countries)
+      () {
+        if (country.id.index == 0) return Fx.one;
+        var sum = Fx.zero;
+        var counted = 0;
+        for (final product in products) {
+          final here = cheapest(country.id, product.id);
+          final first = cheapest(const CountryId(0), product.id);
+          if (here == null || first == null) continue;
+          sum += here.div(first);
+          counted++;
+        }
+        return counted == 0
+            ? Fx.one
+            : Fx.raw(mulDivRound(sum.raw, 1, counted));
+      }(),
+  ];
+}
+
+/// What households in each country think each product should cost, at a
+/// price index and a place's level of one, by [CountryId] then [ProductId]:
+/// its goods at the country's wholesale prices ([costLevels]), and what a
+/// shop adds over them, its reference price beyond its base cost, at the
+/// country's [CountryDef.service]. A shop's work is paid at local wages, so
+/// where they are low a restaurant's meal, mostly work, is cheaper still
+/// than a grocer's milk. The first country's are the products' own.
+List<List<Money>> countryReferences(
+  List<ProductDef> products,
+  List<CountryDef> countries,
+  List<Fx> costLevels,
+) => [
+  for (final country in countries)
+    List.unmodifiable([
+      for (final product in products)
+        country.service == Fx.one && costLevels[country.id.index] == Fx.one
+            ? product.referencePrice
+            : product.baseCost.times(costLevels[country.id.index]) +
+                  (product.referencePrice - product.baseCost).times(
+                    country.service,
+                  ),
+    ]),
+];
+
 final class MarketDef {
   const MarketDef({
     required this.id,
@@ -239,11 +366,15 @@ final class MarketDef {
     this.wageLevel = Fx.one,
     this.incomeLevel = Fx.one,
     this.scale = const [],
+    this.country = const CountryId(0),
   });
 
   final MarketId id;
   final String key;
   final String name;
+
+  /// The country it is in, whose economy, suppliers and taxes it has.
+  final CountryId country;
 
   /// How many households of each segment live here at the start, indexed by
   /// [SegmentId]. A scenario gives a place its market in euros and the mix of
@@ -268,7 +399,7 @@ final class MarketDef {
 
   /// How dear the market is: reference prices, what households here think
   /// normal, are this times the products' and the price index. Wholesale
-  /// prices are the same everywhere.
+  /// prices are its country's suppliers'.
   final Fx priceLevel;
 
   /// Staff and managers here are paid this times the usual, at the wage
@@ -427,6 +558,107 @@ final class TaxDef {
     if (profit <= limit) return profit.times(reducedRate);
     return limit.times(reducedRate) + (profit - limit).times(corporateRate);
   }
+}
+
+/// A country: its taxes, how its economy takes the business cycle it shares
+/// with the others on its currency, its weight in its central bank's
+/// averages, and what it calls the people, streets and shops generated in it.
+final class CountryDef {
+  const CountryDef({
+    required this.id,
+    required this.key,
+    required this.name,
+    this.taxes,
+    this.follows = Fx.one,
+    this.depth = Fx.one,
+    this.weight = Fx.one,
+    this.service = Fx.one,
+    this.names,
+    this.national,
+  });
+
+  /// The one country of a scenario that names none.
+  static const only = CountryDef(id: CountryId(0), key: '', name: '');
+
+  final CountryId id;
+  final String key;
+  final String name;
+
+  /// Its own taxes; null for the scenario's.
+  final TaxDef? taxes;
+
+  /// The chance that it follows each turn of the shared cycle into the next
+  /// regime, from 0 to 1. Below one it may also turn on its own, as often as
+  /// it doesn't follow, so a country that never follows has a cycle of its
+  /// own with the same mean durations.
+  final Fx follows;
+
+  /// How far its economy swings with the cycle against the usual: each
+  /// regime's demand, trading down and output gap are this far from neutral.
+  final Fx depth;
+
+  /// How much it counts in its central bank's average inflation and output
+  /// gap: the size of its economy, in any unit shared by its currency's
+  /// countries.
+  final Fx weight;
+
+  /// What generated people, streets and shops are called here; null for the
+  /// engine's own lists.
+  final PlaceNames? names;
+
+  /// Its country in the national table, for the national view; null for
+  /// none.
+  final String? national;
+
+  /// What a shop's work costs here against the first country: its staff's
+  /// wages, which the part of a shelf price beyond the goods follows (see
+  /// [countryReferences]).
+  final Fx service;
+
+  /// [regime]'s multiplier on what households here consume.
+  Fx demandIn(RegimeDef regime) => depth == Fx.one
+      ? regime.demand
+      : Fx.one + (regime.demand - Fx.one) * depth;
+
+  /// [regime]'s shift of every segment's premium share here.
+  Fx premiumShiftIn(RegimeDef regime) =>
+      depth == Fx.one ? regime.premiumShift : regime.premiumShift * depth;
+
+  /// [regime]'s output gap here.
+  Fx outputGapIn(RegimeDef regime) =>
+      depth == Fx.one ? regime.outputGap : regime.outputGap * depth;
+}
+
+/// What a country calls what is generated in it. A street is one of
+/// [streetKinds] around one of [streets]; a shop, one of its format's words
+/// in [shops] and a street's name. A kind or word holding `{}` puts the name
+/// there ("{}straße", "{}-Markt"); otherwise the name follows it after a
+/// space ("Rue Hugo", "Marché Hugo"). A format without words takes the
+/// first format's.
+final class PlaceNames {
+  const PlaceNames({
+    required this.first,
+    required this.last,
+    required this.streets,
+    required this.streetKinds,
+    required this.shops,
+  });
+
+  final List<String> first;
+  final List<String> last;
+  final List<String> streets;
+  final List<String> streetKinds;
+
+  /// Words for shops, by format key.
+  final Map<String, List<String>> shops;
+
+  /// [pattern] around [name].
+  static String fill(String pattern, String name) => pattern.contains('{}')
+      ? pattern.replaceAll('{}', name)
+      : '$pattern $name';
+
+  /// The words for a shop of [format], or the first format's.
+  List<String> shopWords(String format) => shops[format] ?? shops.values.first;
 }
 
 /// How businesses are priced when they change hands, by the excess earnings
@@ -725,11 +957,13 @@ final class SegmentDef {
   /// How expensive a shelf with [prices] (indexed by [ProductId]) is for
   /// this segment: its usual basket at those prices over the same basket at
   /// reference prices times [priceLevel], counting listed products only.
+  /// The reference prices are [references], a country's, if given.
   /// Null if nothing is listed.
   Fx? priceIndex(
     List<ProductDef> products,
     List<Money?> prices, {
     Fx priceLevel = Fx.one,
+    List<Money>? references,
   }) {
     var listed = false;
     var atShelf = 0;
@@ -745,7 +979,11 @@ final class SegmentDef {
       final weight = (dailyUnits[product.category.index] * tierShare).raw;
       atShelf = checkedSafe(atShelf + checkedSafe(price.cents * weight));
       atReference = checkedSafe(
-        atReference + checkedSafe(product.referencePrice.cents * weight),
+        atReference +
+            checkedSafe(
+              (references?[product.id.index] ?? product.referencePrice).cents *
+                  weight,
+            ),
       );
     }
     if (!listed) return null;
@@ -878,6 +1116,8 @@ final class DemandTuning {
 /// Each month the cycle may move on to the next regime in [regimes], with a
 /// chance of one in its mean duration. Inflation is the regime's, nudged by
 /// how shelf prices actually moved; the policy rate follows a Taylor rule.
+/// The countries of a scenario share the cycle and the central bank, which
+/// sets one rate for all (see [CountryDef]).
 final class MacroDef {
   const MacroDef({
     required this.startRegime,
@@ -914,13 +1154,13 @@ final class MacroDef {
   /// The labour market, if unemployment is modelled.
   final LabourDef? labour;
 
-  /// The policy rate for annual [inflation] in [regime].
-  Fx policyRate(Fx inflation, RegimeDef regime) {
+  /// The policy rate for annual [inflation] and an [outputGap].
+  Fx policyRate(Fx inflation, Fx outputGap) {
     final rate =
         neutralRate +
         inflationTarget +
         inflationResponse * (inflation - inflationTarget) +
-        gapResponse * regime.outputGap;
+        gapResponse * outputGap;
     return rate < minRate ? minRate : rate;
   }
 }
@@ -1091,7 +1331,8 @@ final class DirectorGradeDef {
 }
 
 /// A wholesale supplier. Suppliers are outside the simulation in the
-/// prototype: they sell from fixed terms and never run out.
+/// prototype: they sell from fixed terms and never run out, each in one
+/// country.
 final class SupplierDef {
   const SupplierDef({
     required this.id,
@@ -1103,11 +1344,15 @@ final class SupplierDef {
     required this.minOrderUnits,
     required this.volumeDiscounts,
     required this.carries,
+    this.country = const CountryId(0),
   });
 
   final SupplierId id;
   final String key;
   final String name;
+
+  /// The country it delivers in: stores buy only from their own country's.
+  final CountryId country;
 
   /// Days between the order and the delivery.
   final int leadTimeDays;
@@ -1271,12 +1516,17 @@ final class PersonSetup {
     required this.isPlayer,
     required this.strategy,
     this.local = false,
+    this.country,
   });
 
   final String key;
   final String name;
   final Money cash;
   final bool isPlayer;
+
+  /// Where they live and pay tax on their dividends, if the scenario says;
+  /// otherwise where their first business is (see `residenceOf`).
+  final CountryId? country;
 
   /// The strategy an AI policy runs this person's stores by; null for the
   /// player and for owners who never act.

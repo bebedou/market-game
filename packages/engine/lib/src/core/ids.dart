@@ -35,3 +35,5 @@ extension type const ManagerGradeId(int index) {}
 extension type const DirectorGradeId(int index) {}
 
 extension type const FormatId(int index) {}
+
+extension type const CountryId(int index) {}

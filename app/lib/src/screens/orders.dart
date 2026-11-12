@@ -50,13 +50,14 @@ class OrdersScreen extends StatelessWidget {
               Hint(tr('orders.managerOrders')),
             // Only suppliers of what the store's format sells.
             for (final supplier in game.content.suppliers)
-              if (game.content.products.any(
-                (product) =>
-                    supplier.carries[product.id.index] &&
-                    game.content.formats[store.format.index].sells[product
-                        .category
-                        .index],
-              ))
+              if (supplier.country == game.content.countryOf(store.market) &&
+                  game.content.products.any(
+                    (product) =>
+                        supplier.carries[product.id.index] &&
+                        game.content.formats[store.format.index].sells[product
+                            .category
+                            .index],
+                  ))
                 _SupplierTile(
                   supplier: supplier,
                   onOrder: canOrder
@@ -328,7 +329,7 @@ class _OrderSheetState extends State<OrderSheet> {
     final game = context.game;
     final theme = Theme.of(context);
     final products = _products(game);
-    final level = game.view.macro.priceIndex;
+    final level = game.view.economy(_supplier.country).priceIndex;
     final minimum = _supplier.minOrderUnits;
     var units = 0;
     var total = Money.zero;

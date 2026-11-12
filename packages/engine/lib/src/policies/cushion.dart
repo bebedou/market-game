@@ -21,7 +21,8 @@ Money storeCushion(
 /// What [store]'s staff and manager are paid a day, at today's wages.
 Money dailyStaffCost(Observation view, ContentDb content, StoreView store) {
   final level =
-      view.macro.wageIndex * content.markets[store.market.index].wageLevel;
+      view.economyAt(content, store.market).wageIndex *
+      content.markets[store.market.index].wageLevel;
   var daily = content.operations.slotWage
       .times(level)
       .times(content.formats[store.format.index].wageFactor)
@@ -36,13 +37,24 @@ Money dailyStaffCost(Observation view, ContentDb content, StoreView store) {
 Money monthlyOccupancy(Observation view, ContentDb content, StoreView store) =>
     (content.sites[store.site.index].rentFor(store.area) +
             content.formats[store.format.index].overheadsFor(store.area))
-        .times(view.macro.priceIndex);
+        .times(view.economyAt(content, store.market).priceIndex);
 
-/// What [director] is paid a day, at today's wages.
-Money directorSalary(Observation view, ContentDb content, Director director) =>
-    content.directors!.grades[director.grade.index].salary.times(
-      view.macro.wageIndex,
-    );
+/// What [director] is paid a day to run [company], at the wages of the
+/// country of its first store still trading.
+Money directorSalary(
+  Observation view,
+  ContentDb content,
+  CompanyView company,
+  Director director,
+) {
+  final home = company.stores
+      .where((store) => store.status != StoreStatus.closed)
+      .firstOrNull;
+  final wages = home == null
+      ? view.macro.wageIndex
+      : view.economyAt(content, home.market).wageIndex;
+  return content.directors!.grades[director.grade.index].salary.times(wages);
+}
 
 /// [loan]'s next monthly payment: its share of the principal and about a
 /// month's interest.
@@ -62,9 +74,12 @@ Money nextInstallment(LoanView loan) {
 Money cashCushion(Observation view, ContentDb content, CompanyView company) {
   var cushion = company.taxAccrued;
   if (company.director case final director?) {
-    cushion += directorSalary(view, content, director).timesInt(
-      company.cushionDays,
-    );
+    cushion += directorSalary(
+      view,
+      content,
+      company,
+      director,
+    ).timesInt(company.cushionDays);
   }
   for (final store in company.stores) {
     cushion += storeCushion(view, content, store, company.cushionDays);

@@ -12,3 +12,5 @@ flutter:
   assets:
     - scenarios/
     - locales/
+    - countries/euro.json
+    - countries/calibration.json

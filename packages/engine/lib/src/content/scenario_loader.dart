@@ -6,6 +6,7 @@ import '../core/hash32.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../state/history.dart' show salesHistoryDays;
+import '../countries/country_table.dart';
 import 'content_db.dart';
 import 'household_demand.dart';
 
@@ -28,7 +29,10 @@ final class ContentException implements Exception {
 /// Decimal values must be JSON strings such as `"0.15"`: JSON numbers with a
 /// fraction would become doubles. String IDs become dense integer IDs in file
 /// order. Unknown fields are errors, to catch typos.
-ContentDb loadScenario(String jsonText) {
+///
+/// [national] is the countries' national statistics, if the game runs them
+/// beside the scenario; a country's `national` must name one of them.
+ContentDb loadScenario(String jsonText, {CountryTable? national}) {
   final Object? decoded;
   try {
     decoded = jsonDecode(jsonText);
@@ -50,9 +54,70 @@ ContentDb loadScenario(String jsonText) {
   final personKeys = _Keys();
   final companyKeys = _Keys();
   final storeKeys = _Keys();
+  final countryKeys = _Keys();
 
   final scenarioId = root.string('id');
   final startDay = root.date('startDate');
+
+  // Countries come first, as places and suppliers name theirs.
+  final countries = <CountryDef>[];
+  for (final node in root.objects('countries', optional: true)) {
+    final key = node.string('id');
+    final id = CountryId(countryKeys.add(key, node.pathOf('id')));
+    var follows = Fx.one;
+    var depth = Fx.one;
+    if (node.optionalObject('cycle') case final cycle?) {
+      if (cycle.has('follows')) follows = cycle.fraction('follows');
+      if (cycle.has('depth')) depth = cycle.nonNegativeFx('depth');
+      cycle.finish();
+    }
+    final service = node.level('service');
+    var weight = Fx.one;
+    if (node.has('weight')) {
+      weight = node.fx('weight');
+      if (weight <= Fx.zero) node._fail('weight', 'must be positive');
+    }
+    countries.add(
+      CountryDef(
+        id: id,
+        key: key,
+        name: node.string('name'),
+        taxes: switch (node.optionalObject('taxes')) {
+          final taxes? => _taxes(taxes),
+          null => null,
+        },
+        follows: follows,
+        depth: depth,
+        weight: weight,
+        service: service,
+        names: switch (node.optionalObject('names')) {
+          final names? => _placeNames(names),
+          null => null,
+        },
+        national: node.optionalString('national'),
+      ),
+    );
+    node.finish();
+  }
+  if (countries.isEmpty) countries.add(CountryDef.only);
+  if (national != null) {
+    for (final (i, country) in countries.indexed) {
+      final key = country.national;
+      if (key != null && !national.countries.any((c) => c.key == key)) {
+        throw ContentException(
+          'countries[$i].national',
+          'the national table has no country "$key"',
+        );
+      }
+    }
+  }
+
+  /// The country [node] names, or the first.
+  CountryId countryIn(_Node node) => node.has('country')
+      ? CountryId(
+          countryKeys.resolve(node.string('country'), node.pathOf('country')),
+        )
+      : const CountryId(0);
 
   final categories = <CategoryDef>[];
   for (final node in root.objects('categories')) {
@@ -184,6 +249,7 @@ ContentDb loadScenario(String jsonText) {
           Fx priceLevel,
           Fx wageLevel,
           Fx incomeLevel,
+          CountryId country,
         })
       >[];
   for (final node in root.objects('markets')) {
@@ -212,6 +278,7 @@ ContentDb loadScenario(String jsonText) {
       priceLevel: node.level('priceLevel'),
       wageLevel: node.level('wageLevel'),
       incomeLevel: node.level('incomeLevel'),
+      country: countryIn(node),
     ));
     node.finish();
   }
@@ -405,10 +472,13 @@ ContentDb loadScenario(String jsonText) {
     }
   }
 
+  // Filled in once the suppliers are read: each country's normal prices.
+  late final List<List<Money>> references;
   ({List<int> households, List<Fx> scale}) sized(
     _Sizing sizing, {
     required Fx incomeLevel,
     required Fx priceLevel,
+    required CountryId country,
   }) => _resolveSizing(
     sizing,
     segments: segments,
@@ -419,34 +489,8 @@ ContentDb loadScenario(String jsonText) {
     today: startDay,
     incomeLevel: incomeLevel,
     priceLevel: priceLevel,
+    references: references[country.index],
   );
-  final markets = <MarketDef>[];
-  for (final pending in pendingMarkets) {
-    final (:households, :scale) = sized(
-      pending.sizing,
-      incomeLevel: pending.incomeLevel,
-      priceLevel: pending.priceLevel,
-    );
-    final total = households.fold(0, (sum, count) => sum + count);
-    if (pending.agents case final agents? when agents > total) {
-      pending.node._fail('agents', 'at most one cohort per household ($total)');
-    }
-    markets.add(
-      MarketDef(
-        id: pending.id,
-        key: pending.key,
-        name: pending.name,
-        households: households,
-        growth: pending.growth,
-        agents: pending.agents,
-        priceLevel: pending.priceLevel,
-        wageLevel: pending.wageLevel,
-        incomeLevel: pending.incomeLevel,
-        scale: scale,
-      ),
-    );
-  }
-
   final researchTiers = <ResearchTierDef>[];
   for (final node in root.objects('research')) {
     final key = node.string('id');
@@ -554,20 +598,56 @@ ContentDb loadScenario(String jsonText) {
         minOrderUnits: node.positiveInt('minOrderUnits'),
         volumeDiscounts: List.unmodifiable(discounts),
         carries: List.unmodifiable(carries),
+        country: countryIn(node),
       ),
     );
     node.finish();
   }
 
-  TaxDef? taxes;
-  if (root.optionalObject('taxes') case final node?) {
-    taxes = TaxDef(
-      reducedRate: node.fraction('reducedRate'),
-      reducedLimit: node.money('reducedLimit'),
-      corporateRate: node.fraction('corporateRate'),
-      dividendRate: node.fraction('dividendRate'),
+  // Places are sized at their country's normal prices, which follow its
+  // suppliers' prices.
+  references = countryReferences(
+    products,
+    countries,
+    countryCostLevels(products, suppliers, countries),
+  );
+  final markets = <MarketDef>[];
+  for (final pending in pendingMarkets) {
+    final (:households, :scale) = sized(
+      pending.sizing,
+      incomeLevel: pending.incomeLevel,
+      priceLevel: pending.priceLevel,
+      country: pending.country,
     );
-    node.finish();
+    final total = households.fold(0, (sum, count) => sum + count);
+    if (pending.agents case final agents? when agents > total) {
+      pending.node._fail('agents', 'at most one cohort per household ($total)');
+    }
+    markets.add(
+      MarketDef(
+        id: pending.id,
+        key: pending.key,
+        name: pending.name,
+        households: households,
+        growth: pending.growth,
+        agents: pending.agents,
+        priceLevel: pending.priceLevel,
+        wageLevel: pending.wageLevel,
+        incomeLevel: pending.incomeLevel,
+        scale: scale,
+        country: pending.country,
+      ),
+    );
+  }
+
+  final taxes = switch (root.optionalObject('taxes')) {
+    final node? => _taxes(node),
+    null => null,
+  };
+  for (final (i, country) in countries.indexed) {
+    for (final format in country.names?.shops.keys ?? const <String>[]) {
+      formatKeys.resolve(format, 'countries[$i].names.shops.$format');
+    }
   }
 
   AcquisitionDef? acquisitions;
@@ -676,6 +756,7 @@ ContentDb loadScenario(String jsonText) {
                 strategyKeys.resolve(strategyKey, node.pathOf('strategy')),
               ),
         local: node.flag('local'),
+        country: node.has('country') ? countryIn(node) : null,
       ),
     );
     node.finish();
@@ -794,6 +875,7 @@ ContentDb loadScenario(String jsonText) {
       _readSizing(node, segmentKeys, segments.length),
       incomeLevel: incomeLevel,
       priceLevel: priceLevel,
+      country: countryIn(node),
     );
     neighbourhoods.add(
       NeighbourhoodRow(
@@ -814,6 +896,7 @@ ContentDb loadScenario(String jsonText) {
           final Map<String, Object?> layout => layout,
           _ => node._fail('layout', 'expected an object'),
         },
+        country: countryIn(node),
       ),
     );
     node.finish();
@@ -837,6 +920,7 @@ ContentDb loadScenario(String jsonText) {
       ('persons', persons.map((p) => p.key)),
       ('companies', companies.map((c) => c.key)),
       ('stores', stores.map((s) => s.key)),
+      ('countries', countryKeys._indexes.keys),
     ])
       (name: name, keys: List.unmodifiable(keys)),
   ];
@@ -868,8 +952,46 @@ ContentDb loadScenario(String jsonText) {
     companies: List.unmodifiable(companies),
     stores: List.unmodifiable(stores),
     neighbourhoods: List.unmodifiable(neighbourhoods),
+    countries: List.unmodifiable(countries),
+    national: national,
     source: jsonText,
   );
+}
+
+TaxDef _taxes(_Node node) {
+  final taxes = TaxDef(
+    reducedRate: node.fraction('reducedRate'),
+    reducedLimit: node.money('reducedLimit'),
+    corporateRate: node.fraction('corporateRate'),
+    dividendRate: node.fraction('dividendRate'),
+  );
+  node.finish();
+  return taxes;
+}
+
+PlaceNames _placeNames(_Node node) {
+  List<String> words(_Node node, String key) {
+    final list = node.strings(key);
+    if (list.isEmpty) node._fail(key, 'needs at least one');
+    return List.unmodifiable(list);
+  }
+
+  final shopsNode = node.object('shops');
+  final shops = <String, List<String>>{
+    for (final format in shopsNode.keys.toList())
+      format: words(shopsNode, format),
+  };
+  if (shops.isEmpty) node._fail('shops', 'needs at least one format');
+  shopsNode.finish();
+  final names = PlaceNames(
+    first: words(node, 'first'),
+    last: words(node, 'last'),
+    streets: words(node, 'streets'),
+    streetKinds: words(node, 'streetKinds'),
+    shops: Map.unmodifiable(shops),
+  );
+  node.finish();
+  return names;
 }
 
 /// JSON text with object keys sorted, so the fingerprint ignores formatting
@@ -1177,6 +1299,7 @@ _Sizing _readSizing(_Node node, _Keys segmentKeys, int segmentCount) {
   required Day today,
   required Fx incomeLevel,
   required Fx priceLevel,
+  required List<Money> references,
 }) {
   final channels = formatChannelsOf(formats, categories.length);
   final channelCount = channels.fold(0, (most, c) => c >= most ? c + 1 : most);
@@ -1218,6 +1341,7 @@ _Sizing _readSizing(_Node node, _Keys segmentKeys, int segmentCount) {
     incomeLevel: incomeLevel,
     priceLevel: priceLevel,
     today: today,
+    references: references,
   );
   if (unbought.isNotEmpty) {
     final trade = sizing.market!.keys.firstWhere(

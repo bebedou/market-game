@@ -46,12 +46,26 @@ final class DemandSystem implements TickSystem {
 final class _ShoppingDay {
   _ShoppingDay(this.world, this.context)
     : content = context.content,
-      regime = context.content.macro.regimes[world.macro.regime.index],
-      priceLevel = world.macro.priceIndex,
-      purchasingPower = context.content.demand.purchasingPower(
-        world.macro.wageIndex,
-        world.macro.priceIndex,
-      ),
+      premiumShifts = [
+        for (final country in context.content.countries)
+          country.premiumShiftIn(
+            context.content.macro.regimes[world
+                .macroOf(country.id)
+                .regime
+                .index],
+          ),
+      ],
+      priceLevels = [
+        for (final country in context.content.countries)
+          world.macroOf(country.id).priceIndex,
+      ],
+      purchasingPowers = [
+        for (final country in context.content.countries)
+          context.content.demand.purchasingPower(
+            world.macroOf(country.id).wageIndex,
+            world.macroOf(country.id).priceIndex,
+          ),
+      ],
       allStoresIn = [
         for (final market in context.content.markets)
           [
@@ -77,8 +91,11 @@ final class _ShoppingDay {
                 context.content.products,
                 store.prices,
                 priceLevel:
-                    world.macro.priceIndex *
+                    world.macroAt(context.content, store.market).priceIndex *
                     context.content.markets[store.market.index].priceLevel,
+                references: context.content.references[context.content
+                    .countryOf(store.market)
+                    .index],
               ),
           ],
       ],
@@ -94,32 +111,41 @@ final class _ShoppingDay {
       ],
       _wanted = List.filled(world.stores.length, 0),
       _credit = List.filled(world.stores.length, 0) {
-    final regime = content.macro.regimes[world.macro.regime.index];
     final maxNeedDays = content.demand.maxNeedDays;
     // A category still spreading is bought by the share that has adopted it.
     final adoption = [
       for (final category in content.categories)
         category.diffusion?.adoption(context.day),
     ];
-    // Unemployment above its natural rate weighs on spending.
-    final confidence = content.macro.labour?.confidenceFactor(
-      world.macro.unemployment,
-    );
-    final habits = [
-      for (final segment in content.segments)
-        [
-          for (final (c, units) in segment.dailyUnits.indexed)
-            _withConfidence(switch (adoption[c]) {
-              final share? => units * regime.demand * share,
-              null => units * regime.demand,
-            }, confidence),
-        ],
+    // Each country's households buy as its cycle has them, and unemployment
+    // above its natural rate weighs on what they spend.
+    final habitsIn = [
+      for (final country in content.countries)
+        () {
+          final macro = world.macroOf(country.id);
+          final demand = country.demandIn(
+            content.macro.regimes[macro.regime.index],
+          );
+          final confidence = content.macro.labour?.confidenceFactor(
+            macro.unemployment,
+          );
+          return [
+            for (final segment in content.segments)
+              [
+                for (final (c, units) in segment.dailyUnits.indexed)
+                  _withConfidence(switch (adoption[c]) {
+                    final share? => units * demand * share,
+                    null => units * demand,
+                  }, confidence),
+              ],
+          ];
+        }(),
     ];
     // Each market buys of each channel as much as its scale says.
     for (final market in content.markets) {
       final needs = <List<Fx>>[];
       final caps = <List<Fx>>[];
-      for (final daily in habits) {
+      for (final daily in habitsIn[market.country.index]) {
         final scaled = [
           for (final (c, units) in daily.indexed)
             units * market.scaleOf(content.categoryChannels[c]),
@@ -186,9 +212,12 @@ final class _ShoppingDay {
       ]);
     }
     final tuning = content.demand;
-    final halfPull = tuning.halfGoodwill.times(priceLevel).cents;
+    final halfPulls = [
+      for (final level in priceLevels) tuning.halfGoodwill.times(level).cents,
+    ];
     for (final store in world.stores) {
       final goodwill = store.goodwill.cents;
+      final halfPull = halfPulls[content.countryOf(store.market).index];
       marketingTerms.add(
         goodwill <= 0 || tuning.marketingWeight == Fx.zero
             ? Fx.zero
@@ -197,10 +226,10 @@ final class _ShoppingDay {
       );
     }
     for (final market in content.markets) {
-      final level = priceLevel * market.priceLevel;
+      final level = priceLevels[market.country.index] * market.priceLevel;
       references.add([
         for (final product in content.products)
-          product.referencePrice.times(level),
+          content.referenceIn(product, market.country).times(level),
       ]);
     }
   }
@@ -260,13 +289,18 @@ final class _ShoppingDay {
   final WorldState world;
   final TickContext context;
   final ContentDb content;
-  final RegimeDef regime;
 
-  /// Reference prices scale with it.
-  final Fx priceLevel;
+  /// How far each country's households trade up or down today, by
+  /// [CountryId].
+  final List<Fx> premiumShifts;
 
-  /// Households' purchasing power against the start.
-  final Fx purchasingPower;
+  /// Each country's price index, which reference prices scale with, by
+  /// [CountryId].
+  final List<Fx> priceLevels;
+
+  /// Each country's households' purchasing power against the start, by
+  /// [CountryId].
+  final List<Fx> purchasingPowers;
 
   /// Every store ever opened per market, closed ones included, indexed by
   /// [MarketId].
@@ -345,7 +379,9 @@ final class _Trip {
       _references = day.references[cohort.market.index] {
     final income = segment.relativeIncome(cohort.incomeRank);
     final market = day.content.markets[cohort.market.index];
-    final power = day.purchasingPower * market.incomeLevel;
+    final power =
+        day.purchasingPowers[market.country.index] * market.incomeLevel;
+    premiumShift = day.premiumShifts[market.country.index];
     affluence = income * power;
     // Poorer households than the segment's average care more about price,
     // richer ones less; the segment's average stays its sensitivity, which
@@ -369,6 +405,9 @@ final class _Trip {
   /// The households' income against their segment's average at the start,
   /// purchasing power included.
   late final Fx affluence;
+
+  /// How far households in the cohort's country trade up or down today.
+  late final Fx premiumShift;
 
   late final Fx priceSensitivity;
 
@@ -544,9 +583,7 @@ final class _Trip {
     final units = cohort.needs[category.index].raw ~/ Fx.scale * cohort.weight;
     if (units == 0) return;
     // Richer households buy more premium.
-    var share =
-        segment.premiumShare[category.index] * affluence +
-        day.regime.premiumShift;
+    var share = segment.premiumShare[category.index] * affluence + premiumShift;
     if (share.isNegative) share = Fx.zero;
     if (share > Fx.one) share = Fx.one;
     final premium = rng.chance(share);

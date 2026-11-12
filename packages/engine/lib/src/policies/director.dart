@@ -423,7 +423,9 @@ StrategyId _strategyFor(
       view.today,
       site: best.id,
       format: strategy.format,
-      cost: best.openingCost.times(format.fitOut).times(view.macro.priceIndex),
+      cost: best.openingCost
+          .times(format.fitOut)
+          .times(view.economyAt(content, best.market).priceIndex),
       paybackMonths: bestPayback,
       borrowed: borrowed,
     ),

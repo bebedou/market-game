@@ -1,5 +1,5 @@
-/// Countries run by formula from their statistics. Separate from `engine.dart`,
-/// as the game doesn't use it yet.
+/// Countries run by formula from their statistics, whole, for tools and tests.
+/// The game shows them through `Simulation.national`, from `engine.dart`.
 library;
 
 export 'src/countries/country_economy.dart';

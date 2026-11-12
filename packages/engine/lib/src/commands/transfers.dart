@@ -168,7 +168,8 @@ void transferCompany(
     );
   }
   final gain = price - company.injected;
-  if (content.taxes case final taxes? when gain > Money.zero) {
+  if (content.taxesOf(world.residence(content, seller.id)) case final taxes?
+      when gain > Money.zero) {
     final tax = gain.times(taxes.dividendRate);
     if (tax > Money.zero) {
       ledger.pay(

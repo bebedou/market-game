@@ -42,6 +42,11 @@ export 'src/commands/command.dart'
 export 'src/commands/refusal.dart' show Refusal;
 export 'src/content/content_db.dart';
 export 'src/content/scenario_loader.dart' show ContentException, loadScenario;
+export 'src/countries/country_economy.dart'
+    show Chain, ChainMonth, CountryEconomy, CountryState, TradeMonth;
+export 'src/countries/country_table.dart'
+    show ChainDef, CountryTable, NationalCountry, loadCountryTable;
+export 'src/countries/shop_bridge.dart' show formatTrades;
 export 'src/core/calendar.dart' show CivilDate, Day;
 export 'src/core/fx.dart' show Fx;
 export 'src/core/ids.dart';
@@ -100,5 +105,6 @@ export 'src/state/districts.dart' show DistrictShop, DistrictSite, DistrictView;
 export 'src/state/research.dart' show ResearchReport, SegmentEstimate;
 export 'src/state/sleepers.dart' show SleepingNeighbourhood, SleepingShop;
 export 'src/state/store.dart' show ManagerDuty, StoreStatus, Works;
+export 'src/state/taxation.dart' show CountryTax;
 export 'src/state/valuation.dart' show Valuation, symbolicPrice;
 export 'src/systems/events.dart';

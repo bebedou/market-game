@@ -122,6 +122,46 @@ class SimulationController extends ChangeNotifier {
   /// scenario's content; null if none sleep. To look at, not to play.
   ContentDb? get plan => _simulation.plan;
 
+  /// Every country by formula, as its national statistics have it: null
+  /// without them, or with one country. To look at, not to play.
+  CountryEconomy? get national => _simulation.national;
+
+  /// The country the player is mostly about: where their first store still
+  /// trading is, or else the first.
+  CountryId get homeCountry {
+    for (final (_, store) in myStores) {
+      if (store.status != StoreStatus.closed) {
+        return content.countryOf(store.market);
+      }
+    }
+    return const CountryId(0);
+  }
+
+  /// Where the player lives, and pays tax on their dividends: where their
+  /// game started.
+  CountryId get residence =>
+      _simulation.world.residence(content, _simulation.world.player);
+
+  /// The country [company] is from: where its first store still trading is,
+  /// or else the player's home.
+  CountryId countryOfCompany(CompanyView? company) {
+    for (final store in company?.stores ?? const <StoreView>[]) {
+      if (store.status != StoreStatus.closed) {
+        return content.countryOf(store.market);
+      }
+    }
+    return homeCountry;
+  }
+
+  /// The economy where [market] is: one played in full, or one of [plan]'s
+  /// still asleep.
+  MacroView economyAt(MarketId market) {
+    final markets = market.index < content.markets.length
+        ? content.markets
+        : plan?.markets ?? content.markets;
+    return _view.economy(markets[market.index].country);
+  }
+
   /// The neighbourhood of [row] as the formula runs it, while it sleeps.
   SleepingNeighbourhood? sleeper(int row) => _simulation.world.sleepers
       .where((sleeper) => sleeper.row == row)
@@ -295,9 +335,9 @@ class SimulationController extends ChangeNotifier {
   }
 
   /// What staff and managers are paid in [market], against the scenario's
-  /// figures: the wage index times the city's wage level.
+  /// figures: its country's wage index times the city's wage level.
   Fx wageLevel(MarketId market) =>
-      _view.macro.wageIndex * content.markets[market.index].wageLevel;
+      economyAt(market).wageIndex * content.markets[market.index].wageLevel;
 
   /// [product]'s shelf price at [store] once pending changes apply; null if
   /// it won't be listed.
@@ -481,7 +521,7 @@ class SimulationController extends ChangeNotifier {
     final days = cushionDays(company);
     var total = company.taxAccrued;
     if (directorOf(company) case final director?) {
-      total += directorSalary(_view, content, director).timesInt(days);
+      total += directorSalary(_view, content, company, director).timesInt(days);
     }
     for (final store in company.stores) {
       total += storeCushion(_view, content, store, days);
@@ -948,9 +988,26 @@ class SimulationController extends ChangeNotifier {
       );
     }
 
-    if (before.macro.regime != after.macro.regime) {
-      final regime = content.macro.regimes[after.macro.regime.index];
-      add(AlertKind.economy, tr('alerts.regime', {'regime': aRegime(regime)}));
+    if (content.countries.length == 1) {
+      if (before.macro.regime != after.macro.regime) {
+        final regime = content.macro.regimes[after.macro.regime.index];
+        add(
+          AlertKind.economy,
+          tr('alerts.regime', {'regime': aRegime(regime)}),
+        );
+      }
+    } else {
+      for (final country in content.countries) {
+        final now = after.economy(country.id).regime;
+        if (before.economy(country.id).regime == now) continue;
+        add(
+          AlertKind.economy,
+          tr('alerts.countryRegime', {
+            'country': country.name,
+            'regime': aRegime(content.macro.regimes[now.index]),
+          }),
+        );
+      }
     }
 
     if (after.today.isFirstOfMonth) {

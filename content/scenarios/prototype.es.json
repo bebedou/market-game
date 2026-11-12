@@ -1,6 +1,6 @@
 {
   "country": "Francia",
-  "tagline": "Dirige tiendas, restaurantes y cadenas en siete ciudades de Francia, y levanta un holding.",
+  "tagline": "Dirige tiendas, restaurantes y cadenas en trece ciudades de cuatro países, y levanta un holding.",
   "categories": {
     "milk": "Leche",
     "bread": "Pan",
@@ -184,5 +184,27 @@
   },
   "stores": {
     "player_store": "Tienda de la Esquina"
+  },
+  "countries": {
+    "fr": "Francia",
+    "de": "Alemania",
+    "it": "Italia",
+    "es": "España"
+  },
+  "markets": {
+    "berlin": "Berlín, Kreuzberg",
+    "munich": "Múnich, Schwabing",
+    "milan": "Milán, Navigli",
+    "rome": "Roma, Trastevere"
+  },
+  "neighbourhoods": {
+    "prenzlauerberg": "Berlín, Prenzlauer Berg",
+    "neukolln": "Berlín, Neukölln",
+    "maxvorstadt": "Múnich, Maxvorstadt",
+    "haidhausen": "Múnich, Haidhausen",
+    "brera": "Milán, Brera",
+    "isola": "Milán, Isola",
+    "prati": "Roma, Prati",
+    "pigneto": "Roma, Pigneto"
   }
 }

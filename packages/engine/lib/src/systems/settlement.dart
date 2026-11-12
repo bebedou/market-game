@@ -67,10 +67,10 @@ final class SettlementSystem implements TickSystem {
   /// Each trading store's rent, to the landlords, and its format's
   /// overheads for its floor area, to the services.
   void _billRent(WorldState world, TickContext context) {
-    final level = world.macro.priceIndex;
     for (final store in world.stores) {
       final company = world.companies[store.company.index];
       if (!store.isTrading || !company.isActive) continue;
+      final level = world.macroAt(context.content, store.market).priceIndex;
       final rent = context.content.sites[store.site.index]
           .rentFor(store.area)
           .times(level);
@@ -110,20 +110,24 @@ final class SettlementSystem implements TickSystem {
     }
   }
 
-  /// Staff and managers are paid daily, at the wage index, to the market's
-  /// households; a director at the national wage index, to the households
-  /// of the market of the company's first store still trading.
+  /// Staff and managers are paid daily, at their country's wage index, to
+  /// the market's households; a director at the wage index of the country
+  /// of the company's first store still trading, to its market's households.
   void _billWages(WorldState world, TickContext context) {
     for (final company in world.companies) {
       final director = company.director;
       if (director == null || !company.isActive) continue;
-      final salary = context.content.directors!.grades[director.grade.index]
-          .salary
-          .times(world.macro.wageIndex);
       final home = world.stores
           .where((store) => store.company == company.id && store.isTrading)
           .firstOrNull;
-      if (home == null || salary == Money.zero) continue;
+      if (home == null) continue;
+      final salary = context
+          .content
+          .directors!
+          .grades[director.grade.index]
+          .salary
+          .times(world.macroAt(context.content, home.market).wageIndex);
+      if (salary == Money.zero) continue;
       bill(
         context.ledger,
         company,
@@ -139,7 +143,7 @@ final class SettlementSystem implements TickSystem {
     }
     for (final store in world.stores) {
       final level =
-          world.macro.wageIndex *
+          world.macroAt(context.content, store.market).wageIndex *
           context.content.markets[store.market.index].wageLevel;
       final slotWage = context.content.operations.slotWage
           .times(level)

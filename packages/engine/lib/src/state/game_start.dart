@@ -3,6 +3,7 @@ import '../commands/refusal.dart';
 import '../content/content_db.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
+import '../core/safe_int.dart';
 import '../persistence/state_io.dart';
 
 /// Where and how the player chose to start: the site and format of their
@@ -151,11 +152,26 @@ List<SiteId> startingSites(ContentDb content) {
   final level = content.markets[market.index].priceLevel;
   for (final store in candidates) {
     if (store.format != format) continue;
-    final ratio = level.div(
-      content.markets[content.sites[store.site.index].market.index].priceLevel,
-    );
+    final from = content.markets[content.sites[store.site.index].market.index];
+    final ratio = level.div(from.priceLevel);
+    final country = content.countryOf(market);
     return (
-      prices: [for (final price in store.prices) price?.times(ratio)],
+      // As dear here as there, and at this country's normal prices.
+      prices: [
+        for (final (p, price) in store.prices.indexed)
+          if (price == null)
+            null
+          else if (country == from.country)
+            price.times(ratio)
+          else
+            Money(
+              mulDivRound(
+                price.times(ratio).cents,
+                content.referenceIn(content.products[p], country).cents,
+                content.referenceIn(content.products[p], from.country).cents,
+              ),
+            ),
+      ],
       staff: List.of(store.staff),
     );
   }
@@ -165,7 +181,9 @@ List<SiteId> startingSites(ContentDb content) {
     prices: [
       for (final product in content.products)
         if (sells[product.category.index] && listed++ < shelfSlots)
-          product.referencePrice.times(level)
+          content
+              .referenceIn(product, content.countryOf(market))
+              .times(level)
         else
           null,
     ],

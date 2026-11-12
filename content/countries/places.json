@@ -1,0 +1,1452 @@
+{
+ "sources": [
+  "Price levels (for comparison only): Eurostat prc_ppp_ind, PLI_EU27_2020, 2022: food (A0101), restaurants and hotels (A0111) and recreation (A0109), weighted 0.62, 0.30 and 0.08.",
+  "Wages: hourly labour costs, lc_lci_lev, 2022, retail (G) 0.70 and restaurants (I) 0.30.",
+  "Shelf prices: each product's normal price beyond its base cost at the country's wages (service); wholesale as France's. A place's price level is how dear it is within its country.",
+  "Cycle: household consumption volumes, nama_10_gdp, 2000 to 2019. Follows: the correlation of yearly changes with the euro area (at most 0.95). Depth: the square root of the spread of yearly changes against France's.",
+  "Taxes: OECD Tax Database 2022 for corporate rates; dividends at the flat or typical rate for a resident.",
+  "Districts: rough estimates, scaled from French places like them by what each country's households spend per trade (euro.json)."
+ ],
+ "prices": {
+  "FR": "1.0000",
+  "DE": "0.9936",
+  "IT": "0.9676",
+  "ES": "0.8753"
+ },
+ "wages": {
+  "FR": "1.0000",
+  "DE": "0.9217",
+  "IT": "0.7413",
+  "ES": "0.5732"
+ },
+ "costs": {
+  "FR": "1.0000",
+  "DE": "1.0000",
+  "IT": "1.0000",
+  "ES": "1.0000"
+ },
+ "countries": [
+  {
+   "id": "fr",
+   "name": "France",
+   "cycle": {
+    "follows": "0.87"
+   },
+   "weight": "31.4",
+   "names": {
+    "first": [
+     "Nadia",
+     "Marc",
+     "Sophie",
+     "Karim",
+     "Julie",
+     "Antoine",
+     "Inès",
+     "Paul",
+     "Claire",
+     "Yanis",
+     "Léa",
+     "Hugo",
+     "Camille",
+     "Omar",
+     "Anne",
+     "Louis"
+    ],
+    "last": [
+     "Moreau",
+     "Benali",
+     "Girard",
+     "Fontaine",
+     "Roche",
+     "Lemoine",
+     "Perrin",
+     "Chevalier",
+     "Mercier",
+     "Blanc",
+     "Garnier",
+     "Faure",
+     "Rousset",
+     "Colin"
+    ],
+    "streets": [
+     "Vivier",
+     "Servient",
+     "Brotteaux",
+     "Garibaldi",
+     "Dauphiné",
+     "Moncey",
+     "Lafayette",
+     "Bellecour",
+     "Massena",
+     "Tolozan",
+     "Gambetta",
+     "Carnot",
+     "Jaurès",
+     "Voltaire",
+     "Pasteur",
+     "Hugo",
+     "Foch",
+     "Thiers",
+     "Mermoz",
+     "Sévigné",
+     "Colbert",
+     "Diderot",
+     "Rameau",
+     "Lamartine",
+     "Montaigne"
+    ],
+    "streetKinds": [
+     "Rue",
+     "Place",
+     "Cours",
+     "Avenue",
+     "Passage"
+    ],
+    "shops": {
+     "grocery": [
+      "Épicerie",
+      "Marché",
+      "Halles",
+      "Comptoir",
+      "Panier",
+      "Prix"
+     ],
+     "supermarket": [
+      "Super",
+      "Grand Marché"
+     ],
+     "fastfood": [
+      "Burger",
+      "Snack",
+      "Frites"
+     ],
+     "steakhouse": [
+      "Le Grill",
+      "La Braise",
+      "Bœuf"
+     ],
+     "finedining": [
+      "Table",
+      "Maison",
+      "Le Comptoir"
+     ],
+     "electronics": [
+      "Tech",
+      "Hi-Fi",
+      "Mobile"
+     ]
+    }
+   },
+   "national": "fr"
+  },
+  {
+   "id": "de",
+   "name": "Germany",
+   "taxes": {
+    "reducedRate": "0.2990",
+    "reducedLimit": "0.00",
+    "corporateRate": "0.2990",
+    "dividendRate": "0.2638"
+   },
+   "cycle": {
+    "follows": "0.46",
+    "depth": "0.91"
+   },
+   "weight": "41.0",
+   "service": "0.92",
+   "names": {
+    "first": [
+     "Anna",
+     "Lukas",
+     "Mia",
+     "Jonas",
+     "Lena",
+     "Felix",
+     "Emre",
+     "Sophie",
+     "Paul",
+     "Leonie",
+     "Mehmet",
+     "Laura",
+     "Tim",
+     "Hannah",
+     "Jan",
+     "Elif"
+    ],
+    "last": [
+     "Müller",
+     "Schmidt",
+     "Schneider",
+     "Fischer",
+     "Weber",
+     "Wagner",
+     "Becker",
+     "Hoffmann",
+     "Schulz",
+     "Koch",
+     "Yılmaz",
+     "Richter",
+     "Klein",
+     "Wolf",
+     "Neumann",
+     "Braun"
+    ],
+    "streets": [
+     "Goethe",
+     "Schiller",
+     "Linden",
+     "Kastanien",
+     "Ahorn",
+     "Berg",
+     "Garten",
+     "Markt",
+     "Kirch",
+     "Mühlen",
+     "Hafen",
+     "Bahnhof",
+     "Wiesen",
+     "Rosen",
+     "Eichen",
+     "Brunnen",
+     "Sonnen",
+     "Kloster",
+     "Heine",
+     "Lessing",
+     "Kant",
+     "Humboldt",
+     "Bergmann",
+     "Wilhelm",
+     "Luisen"
+    ],
+    "streetKinds": [
+     "{}straße",
+     "{}platz",
+     "{}weg",
+     "{}allee",
+     "{}gasse"
+    ],
+    "shops": {
+     "grocery": [
+      "{}-Markt",
+      "Feinkost {}",
+      "{}-Laden",
+      "Frischmarkt {}",
+      "{}-Kauf"
+     ],
+     "supermarket": [
+      "{}-Center",
+      "Großmarkt {}"
+     ],
+     "fastfood": [
+      "Imbiss {}",
+      "Döner {}",
+      "{} Burger"
+     ],
+     "steakhouse": [
+      "Steakhaus {}",
+      "{}-Grill"
+     ],
+     "finedining": [
+      "Restaurant {}",
+      "Gasthaus {}",
+      "{}stube"
+     ],
+     "electronics": [
+      "Elektro {}",
+      "{}-Technik",
+      "Funkhaus {}"
+     ]
+    }
+   },
+   "national": "de"
+  },
+  {
+   "id": "it",
+   "name": "Italy",
+   "taxes": {
+    "reducedRate": "0.2790",
+    "reducedLimit": "0.00",
+    "corporateRate": "0.2790",
+    "dividendRate": "0.26"
+   },
+   "cycle": {
+    "follows": "0.92",
+    "depth": "1.19"
+   },
+   "weight": "26.2",
+   "service": "0.74",
+   "names": {
+    "first": [
+     "Giulia",
+     "Marco",
+     "Sofia",
+     "Luca",
+     "Chiara",
+     "Matteo",
+     "Francesca",
+     "Alessandro",
+     "Sara",
+     "Davide",
+     "Elena",
+     "Andrea",
+     "Martina",
+     "Giorgio",
+     "Anna",
+     "Paolo"
+    ],
+    "last": [
+     "Rossi",
+     "Russo",
+     "Ferrari",
+     "Esposito",
+     "Bianchi",
+     "Romano",
+     "Colombo",
+     "Ricci",
+     "Marino",
+     "Greco",
+     "Bruno",
+     "Gallo",
+     "Conti",
+     "De Luca",
+     "Costa",
+     "Fontana"
+    ],
+    "streets": [
+     "Garibaldi",
+     "Mazzini",
+     "Cavour",
+     "Verdi",
+     "Dante",
+     "Manzoni",
+     "Marconi",
+     "Venezia",
+     "Matteotti",
+     "Gramsci",
+     "Volta",
+     "Leopardi",
+     "Galilei",
+     "Carducci",
+     "Puccini",
+     "Foscolo",
+     "Pascoli",
+     "Petrarca",
+     "Tasso",
+     "Ariosto",
+     "Bellini",
+     "Rossini",
+     "Vespucci",
+     "Tiepolo",
+     "Canova"
+    ],
+    "streetKinds": [
+     "Via",
+     "Piazza",
+     "Corso",
+     "Viale",
+     "Largo"
+    ],
+    "shops": {
+     "grocery": [
+      "Alimentari",
+      "Bottega",
+      "Mercato",
+      "Dispensa",
+      "Market"
+     ],
+     "supermarket": [
+      "Super",
+      "Ipermercato"
+     ],
+     "fastfood": [
+      "Panini",
+      "Piadineria",
+      "Burger"
+     ],
+     "steakhouse": [
+      "Braceria",
+      "Griglia"
+     ],
+     "finedining": [
+      "Ristorante",
+      "Osteria",
+      "Locanda"
+     ],
+     "electronics": [
+      "Elettronica",
+      "Tecno",
+      "Digitale"
+     ]
+    }
+   },
+   "national": "it"
+  },
+  {
+   "id": "es",
+   "name": "Spain",
+   "taxes": {
+    "reducedRate": "0.25",
+    "reducedLimit": "0.00",
+    "corporateRate": "0.25",
+    "dividendRate": "0.23"
+   },
+   "cycle": {
+    "follows": "0.94",
+    "depth": "1.62"
+   },
+   "weight": "19.1",
+   "service": "0.57",
+   "names": {
+    "first": [
+     "Lucía",
+     "Hugo",
+     "Martina",
+     "Pablo",
+     "Sofía",
+     "Daniel",
+     "María",
+     "Alejandro",
+     "Paula",
+     "Javier",
+     "Carmen",
+     "Marc",
+     "Laia",
+     "Adrián",
+     "Elena",
+     "Youssef"
+    ],
+    "last": [
+     "García",
+     "Fernández",
+     "González",
+     "Rodríguez",
+     "López",
+     "Martínez",
+     "Sánchez",
+     "Pérez",
+     "Gómez",
+     "Martín",
+     "Jiménez",
+     "Ruiz",
+     "Hernández",
+     "Díaz",
+     "Moreno",
+     "Puig"
+    ],
+    "streets": [
+     "Mayor",
+     "Alcalá",
+     "Colón",
+     "Cervantes",
+     "Goya",
+     "Velázquez",
+     "Prado",
+     "Sol",
+     "Princesa",
+     "Luna",
+     "Rosales",
+     "Olivo",
+     "Laurel",
+     "Murillo",
+     "Quevedo",
+     "Machado",
+     "Zurbarán",
+     "Sorolla",
+     "Lorca",
+     "Gaudí",
+     "Ribera",
+     "Balmes",
+     "Verdi",
+     "Fuencarral",
+     "Atocha"
+    ],
+    "streetKinds": [
+     "Calle",
+     "Plaza",
+     "Paseo",
+     "Avenida",
+     "Travesía"
+    ],
+    "shops": {
+     "grocery": [
+      "Ultramarinos",
+      "Colmado",
+      "Mercado",
+      "Despensa",
+      "Súper"
+     ],
+     "supermarket": [
+      "Hiper",
+      "Gran Mercado"
+     ],
+     "fastfood": [
+      "Bocatas",
+      "Burger",
+      "Tapas"
+     ],
+     "steakhouse": [
+      "Asador",
+      "Parrilla"
+     ],
+     "finedining": [
+      "Restaurante",
+      "Casa",
+      "Mesón"
+     ],
+     "electronics": [
+      "Electro",
+      "Tecno",
+      "Digital"
+     ]
+    }
+   },
+   "national": "es"
+  }
+ ],
+ "suppliers": [
+  {
+   "id": "de_bulk",
+   "name": "Vorrat Großmarkt",
+   "leadTimeDays": 3,
+   "paymentTermsDays": 0,
+   "priceFactor": "1.00",
+   "minOrderUnits": 48,
+   "volumeDiscounts": [
+    {
+     "minUnits": 120,
+     "discount": "0.04"
+    },
+    {
+     "minUnits": 240,
+     "discount": "0.08"
+    }
+   ],
+   "products": [
+    "milk_budget",
+    "milk_premium",
+    "bread_budget",
+    "bread_premium",
+    "snacks_budget",
+    "snacks_premium",
+    "drinks_budget",
+    "drinks_premium",
+    "produce_budget",
+    "produce_premium",
+    "household_budget",
+    "household_premium"
+   ],
+   "country": "de"
+  },
+  {
+   "id": "de_fresh",
+   "name": "Frischdienst Weber",
+   "leadTimeDays": 1,
+   "paymentTermsDays": 30,
+   "priceFactor": "1.12",
+   "minOrderUnits": 12,
+   "products": [
+    "milk_budget",
+    "milk_premium",
+    "bread_budget",
+    "bread_premium",
+    "snacks_premium",
+    "drinks_premium",
+    "produce_budget",
+    "produce_premium"
+   ],
+   "country": "de"
+  },
+  {
+   "id": "de_chef",
+   "name": "Gastro Kontor",
+   "leadTimeDays": 1,
+   "paymentTermsDays": 30,
+   "priceFactor": "1.00",
+   "minOrderUnits": 4,
+   "volumeDiscounts": [
+    {
+     "minUnits": 60,
+     "discount": "0.05"
+    }
+   ],
+   "products": [
+    "fastfood_budget",
+    "fastfood_premium",
+    "steak_budget",
+    "steak_premium",
+    "finedining_budget",
+    "finedining_premium"
+   ],
+   "country": "de"
+  },
+  {
+   "id": "de_tech",
+   "name": "TechVertrieb",
+   "leadTimeDays": 3,
+   "paymentTermsDays": 30,
+   "priceFactor": "1.00",
+   "minOrderUnits": 4,
+   "volumeDiscounts": [
+    {
+     "minUnits": 20,
+     "discount": "0.04"
+    }
+   ],
+   "products": [
+    "gadgets_budget",
+    "gadgets_premium",
+    "phones_budget",
+    "phones_premium",
+    "smarthome_budget",
+    "smarthome_premium"
+   ],
+   "country": "de"
+  },
+  {
+   "id": "it_bulk",
+   "name": "Ingrosso Lombardo",
+   "leadTimeDays": 3,
+   "paymentTermsDays": 0,
+   "priceFactor": "1.00",
+   "minOrderUnits": 48,
+   "volumeDiscounts": [
+    {
+     "minUnits": 120,
+     "discount": "0.04"
+    },
+    {
+     "minUnits": 240,
+     "discount": "0.08"
+    }
+   ],
+   "products": [
+    "milk_budget",
+    "milk_premium",
+    "bread_budget",
+    "bread_premium",
+    "snacks_budget",
+    "snacks_premium",
+    "drinks_budget",
+    "drinks_premium",
+    "produce_budget",
+    "produce_premium",
+    "household_budget",
+    "household_premium"
+   ],
+   "country": "it"
+  },
+  {
+   "id": "it_fresh",
+   "name": "Fresco Distribuzione",
+   "leadTimeDays": 1,
+   "paymentTermsDays": 60,
+   "priceFactor": "1.12",
+   "minOrderUnits": 12,
+   "products": [
+    "milk_budget",
+    "milk_premium",
+    "bread_budget",
+    "bread_premium",
+    "snacks_premium",
+    "drinks_premium",
+    "produce_budget",
+    "produce_premium"
+   ],
+   "country": "it"
+  },
+  {
+   "id": "it_chef",
+   "name": "CucinaPro Ingrosso",
+   "leadTimeDays": 2,
+   "paymentTermsDays": 60,
+   "priceFactor": "1.00",
+   "minOrderUnits": 4,
+   "volumeDiscounts": [
+    {
+     "minUnits": 60,
+     "discount": "0.05"
+    }
+   ],
+   "products": [
+    "fastfood_budget",
+    "fastfood_premium",
+    "steak_budget",
+    "steak_premium",
+    "finedining_budget",
+    "finedining_premium"
+   ],
+   "country": "it"
+  },
+  {
+   "id": "it_tech",
+   "name": "TecnoDistribuzione",
+   "leadTimeDays": 4,
+   "paymentTermsDays": 60,
+   "priceFactor": "1.00",
+   "minOrderUnits": 4,
+   "volumeDiscounts": [
+    {
+     "minUnits": 20,
+     "discount": "0.04"
+    }
+   ],
+   "products": [
+    "gadgets_budget",
+    "gadgets_premium",
+    "phones_budget",
+    "phones_premium",
+    "smarthome_budget",
+    "smarthome_premium"
+   ],
+   "country": "it"
+  },
+  {
+   "id": "es_bulk",
+   "name": "Mayorista Central",
+   "leadTimeDays": 3,
+   "paymentTermsDays": 0,
+   "priceFactor": "1.00",
+   "minOrderUnits": 48,
+   "volumeDiscounts": [
+    {
+     "minUnits": 120,
+     "discount": "0.04"
+    },
+    {
+     "minUnits": 240,
+     "discount": "0.08"
+    }
+   ],
+   "products": [
+    "milk_budget",
+    "milk_premium",
+    "bread_budget",
+    "bread_premium",
+    "snacks_budget",
+    "snacks_premium",
+    "drinks_budget",
+    "drinks_premium",
+    "produce_budget",
+    "produce_premium",
+    "household_budget",
+    "household_premium"
+   ],
+   "country": "es"
+  },
+  {
+   "id": "es_fresh",
+   "name": "Distribuciones Frescas",
+   "leadTimeDays": 1,
+   "paymentTermsDays": 30,
+   "priceFactor": "1.12",
+   "minOrderUnits": 12,
+   "products": [
+    "milk_budget",
+    "milk_premium",
+    "bread_budget",
+    "bread_premium",
+    "snacks_premium",
+    "drinks_premium",
+    "produce_budget",
+    "produce_premium"
+   ],
+   "country": "es"
+  },
+  {
+   "id": "es_chef",
+   "name": "HostelSur Suministros",
+   "leadTimeDays": 1,
+   "paymentTermsDays": 60,
+   "priceFactor": "1.00",
+   "minOrderUnits": 4,
+   "volumeDiscounts": [
+    {
+     "minUnits": 60,
+     "discount": "0.05"
+    }
+   ],
+   "products": [
+    "fastfood_budget",
+    "fastfood_premium",
+    "steak_budget",
+    "steak_premium",
+    "finedining_budget",
+    "finedining_premium"
+   ],
+   "country": "es"
+  },
+  {
+   "id": "es_tech",
+   "name": "TecnoDistribución Ibérica",
+   "leadTimeDays": 4,
+   "paymentTermsDays": 60,
+   "priceFactor": "1.00",
+   "minOrderUnits": 4,
+   "volumeDiscounts": [
+    {
+     "minUnits": 20,
+     "discount": "0.04"
+    }
+   ],
+   "products": [
+    "gadgets_budget",
+    "gadgets_premium",
+    "phones_budget",
+    "phones_premium",
+    "smarthome_budget",
+    "smarthome_premium"
+   ],
+   "country": "es"
+  }
+ ],
+ "places": [
+  {
+   "id": "berlin",
+   "name": "Berlin, Kreuzberg",
+   "country": "de",
+   "market": {
+    "grocery": "1271623.14",
+    "fastfood": "217686.98",
+    "steakhouse": "151077.14",
+    "finedining": "143363.37",
+    "electronics": "272820.47"
+   },
+   "mix": {
+    "families": "0.1600",
+    "professionals": "0.2000",
+    "students": "0.1600",
+    "retirees": "0.0800",
+    "singles": "0.3400",
+    "comfortable": "0.0600"
+   },
+   "growth": {
+    "families": "0.007",
+    "professionals": "0.022",
+    "students": "0.002",
+    "retirees": "0.017",
+    "singles": "0.017",
+    "comfortable": "0.007"
+   },
+   "priceLevel": "1.00",
+   "wageLevel": "0.92",
+   "incomeLevel": "1.02",
+   "rent": "9.00",
+   "typicalArea": 115,
+   "largestArea": 150,
+   "room": 40,
+   "start": true
+  },
+  {
+   "id": "prenzlauerberg",
+   "name": "Berlin, Prenzlauer Berg",
+   "country": "de",
+   "market": {
+    "grocery": "1211248.33",
+    "fastfood": "159435.67",
+    "steakhouse": "153076.58",
+    "finedining": "170849.68",
+    "electronics": "289164.42"
+   },
+   "mix": {
+    "families": "0.3000",
+    "professionals": "0.2800",
+    "students": "0.0600",
+    "retirees": "0.0600",
+    "singles": "0.1800",
+    "comfortable": "0.1200"
+   },
+   "growth": {
+    "families": "0.007",
+    "professionals": "0.022",
+    "students": "0.002",
+    "retirees": "0.017",
+    "singles": "0.017",
+    "comfortable": "0.007"
+   },
+   "priceLevel": "1.03",
+   "wageLevel": "0.94",
+   "incomeLevel": "1.18",
+   "rent": "11.00",
+   "typicalArea": 115,
+   "largestArea": 150,
+   "room": 40,
+   "start": false
+  },
+  {
+   "id": "neukolln",
+   "name": "Berlin, Neukölln",
+   "country": "de",
+   "market": {
+    "grocery": "2009801.83",
+    "fastfood": "419730.28",
+    "steakhouse": "202665.01",
+    "finedining": "154516.17",
+    "electronics": "394821.29"
+   },
+   "mix": {
+    "families": "0.2600",
+    "professionals": "0.1000",
+    "students": "0.2000",
+    "retirees": "0.1000",
+    "singles": "0.3200",
+    "comfortable": "0.0200"
+   },
+   "growth": {
+    "families": "0.007",
+    "professionals": "0.022",
+    "students": "0.002",
+    "retirees": "0.017",
+    "singles": "0.017",
+    "comfortable": "0.007"
+   },
+   "priceLevel": "0.96",
+   "wageLevel": "0.90",
+   "incomeLevel": "0.84",
+   "rent": "5.50",
+   "typicalArea": 110,
+   "largestArea": 140,
+   "room": 40,
+   "start": false
+  },
+  {
+   "id": "munich",
+   "name": "Munich, Schwabing",
+   "country": "de",
+   "market": {
+    "grocery": "1214131.08",
+    "fastfood": "167034.65",
+    "steakhouse": "160939.07",
+    "finedining": "183279.35",
+    "electronics": "293777.20"
+   },
+   "mix": {
+    "families": "0.1600",
+    "professionals": "0.2800",
+    "students": "0.1000",
+    "retirees": "0.1200",
+    "singles": "0.2000",
+    "comfortable": "0.1400"
+   },
+   "growth": {
+    "families": "0.002",
+    "professionals": "0.027",
+    "students": "-0.001",
+    "retirees": "0.012",
+    "singles": "0.022",
+    "comfortable": "0.017"
+   },
+   "priceLevel": "1.08",
+   "wageLevel": "1.01",
+   "incomeLevel": "1.32",
+   "rent": "16.00",
+   "typicalArea": 110,
+   "largestArea": 140,
+   "room": 40,
+   "start": true
+  },
+  {
+   "id": "maxvorstadt",
+   "name": "Munich, Maxvorstadt",
+   "country": "de",
+   "market": {
+    "grocery": "1613838.14",
+    "fastfood": "228448.62",
+    "steakhouse": "220061.57",
+    "finedining": "249183.21",
+    "electronics": "422711.50"
+   },
+   "mix": {
+    "families": "0.0600",
+    "professionals": "0.2600",
+    "students": "0.3200",
+    "retirees": "0.0600",
+    "singles": "0.2400",
+    "comfortable": "0.0600"
+   },
+   "growth": {
+    "families": "0.007",
+    "professionals": "0.022",
+    "students": "0.002",
+    "retirees": "0.017",
+    "singles": "0.017",
+    "comfortable": "0.007"
+   },
+   "priceLevel": "1.06",
+   "wageLevel": "1.00",
+   "incomeLevel": "1.12",
+   "rent": "14.00",
+   "typicalArea": 105,
+   "largestArea": 130,
+   "room": 40,
+   "start": false
+  },
+  {
+   "id": "haidhausen",
+   "name": "Munich, Haidhausen",
+   "country": "de",
+   "market": {
+    "grocery": "1153569.84",
+    "fastfood": "151843.50",
+    "steakhouse": "145787.22",
+    "finedining": "162713.98",
+    "electronics": "275394.69"
+   },
+   "mix": {
+    "families": "0.2800",
+    "professionals": "0.2600",
+    "students": "0.0600",
+    "retirees": "0.1400",
+    "singles": "0.1600",
+    "comfortable": "0.1000"
+   },
+   "growth": {
+    "families": "0.007",
+    "professionals": "0.022",
+    "students": "0.002",
+    "retirees": "0.017",
+    "singles": "0.017",
+    "comfortable": "0.007"
+   },
+   "priceLevel": "1.06",
+   "wageLevel": "1.00",
+   "incomeLevel": "1.24",
+   "rent": "12.00",
+   "typicalArea": 110,
+   "largestArea": 140,
+   "room": 40,
+   "start": false
+  },
+  {
+   "id": "milan",
+   "name": "Milan, Navigli",
+   "country": "it",
+   "market": {
+    "grocery": "1518641.70",
+    "fastfood": "336100.99",
+    "steakhouse": "233257.76",
+    "finedining": "221347.96",
+    "electronics": "218440.99"
+   },
+   "mix": {
+    "families": "0.1600",
+    "professionals": "0.2400",
+    "students": "0.1400",
+    "retirees": "0.1200",
+    "singles": "0.2800",
+    "comfortable": "0.0600"
+   },
+   "growth": {
+    "families": "0.006",
+    "professionals": "0.021",
+    "students": "0.001",
+    "retirees": "0.016",
+    "singles": "0.016",
+    "comfortable": "0.006"
+   },
+   "priceLevel": "1.05",
+   "wageLevel": "0.80",
+   "incomeLevel": "1.08",
+   "rent": "12.00",
+   "typicalArea": 100,
+   "largestArea": 130,
+   "room": 30,
+   "start": true
+  },
+  {
+   "id": "brera",
+   "name": "Milan, Brera",
+   "country": "it",
+   "market": {
+    "grocery": "1906938.45",
+    "fastfood": "348984.13",
+    "steakhouse": "336171.85",
+    "finedining": "380658.84",
+    "electronics": "334873.71"
+   },
+   "mix": {
+    "families": "0.0800",
+    "professionals": "0.3000",
+    "students": "0.0800",
+    "retirees": "0.1400",
+    "singles": "0.2200",
+    "comfortable": "0.1800"
+   },
+   "growth": {
+    "families": "0.006",
+    "professionals": "0.021",
+    "students": "0.001",
+    "retirees": "0.016",
+    "singles": "0.016",
+    "comfortable": "0.006"
+   },
+   "priceLevel": "1.12",
+   "wageLevel": "0.82",
+   "incomeLevel": "1.42",
+   "rent": "20.00",
+   "typicalArea": 90,
+   "largestArea": 110,
+   "room": 30,
+   "start": false
+  },
+  {
+   "id": "isola",
+   "name": "Milan, Isola",
+   "country": "it",
+   "market": {
+    "grocery": "2070826.83",
+    "fastfood": "498954.68",
+    "steakhouse": "377354.99",
+    "finedining": "408372.91",
+    "electronics": "370628.25"
+   },
+   "mix": {
+    "families": "0.1800",
+    "professionals": "0.3000",
+    "students": "0.1000",
+    "retirees": "0.1000",
+    "singles": "0.2600",
+    "comfortable": "0.0600"
+   },
+   "growth": {
+    "families": "0.006",
+    "professionals": "0.021",
+    "students": "0.001",
+    "retirees": "0.016",
+    "singles": "0.016",
+    "comfortable": "0.006"
+   },
+   "priceLevel": "1.06",
+   "wageLevel": "0.80",
+   "incomeLevel": "1.12",
+   "rent": "11.00",
+   "typicalArea": 100,
+   "largestArea": 130,
+   "room": 30,
+   "start": false
+  },
+  {
+   "id": "rome",
+   "name": "Rome, Trastevere",
+   "country": "it",
+   "market": {
+    "grocery": "1016323.33",
+    "fastfood": "325623.05",
+    "steakhouse": "145042.73",
+    "finedining": "130945.27",
+    "electronics": "166939.03"
+   },
+   "mix": {
+    "families": "0.1200",
+    "professionals": "0.1600",
+    "students": "0.2400",
+    "retirees": "0.1600",
+    "singles": "0.2800",
+    "comfortable": "0.0400"
+   },
+   "growth": {
+    "families": "0.004",
+    "professionals": "0.021",
+    "students": "0.026",
+    "retirees": "0.006",
+    "singles": "0.026",
+    "comfortable": "0.001"
+   },
+   "priceLevel": "1.02",
+   "wageLevel": "0.76",
+   "incomeLevel": "0.96",
+   "rent": "11.00",
+   "typicalArea": 95,
+   "largestArea": 120,
+   "room": 30,
+   "start": true
+  },
+  {
+   "id": "prati",
+   "name": "Rome, Prati",
+   "country": "it",
+   "market": {
+    "grocery": "1310722.02",
+    "fastfood": "252456.38",
+    "steakhouse": "239849.14",
+    "finedining": "283979.17",
+    "electronics": "236764.37"
+   },
+   "mix": {
+    "families": "0.2400",
+    "professionals": "0.2200",
+    "students": "0.0600",
+    "retirees": "0.2200",
+    "singles": "0.1600",
+    "comfortable": "0.1000"
+   },
+   "growth": {
+    "families": "0.001",
+    "professionals": "0.026",
+    "students": "-0.002",
+    "retirees": "0.011",
+    "singles": "0.021",
+    "comfortable": "0.016"
+   },
+   "priceLevel": "1.06",
+   "wageLevel": "0.77",
+   "incomeLevel": "1.18",
+   "rent": "10.00",
+   "typicalArea": 100,
+   "largestArea": 130,
+   "room": 30,
+   "start": false
+  },
+  {
+   "id": "pigneto",
+   "name": "Rome, Pigneto",
+   "country": "it",
+   "market": {
+    "grocery": "2249825.54",
+    "fastfood": "607444.13",
+    "steakhouse": "293301.86",
+    "finedining": "223619.65",
+    "electronics": "296316.92"
+   },
+   "mix": {
+    "families": "0.2600",
+    "professionals": "0.1000",
+    "students": "0.2200",
+    "retirees": "0.1200",
+    "singles": "0.2800",
+    "comfortable": "0.0200"
+   },
+   "growth": {
+    "families": "0.006",
+    "professionals": "0.021",
+    "students": "0.001",
+    "retirees": "0.016",
+    "singles": "0.016",
+    "comfortable": "0.006"
+   },
+   "priceLevel": "0.96",
+   "wageLevel": "0.73",
+   "incomeLevel": "0.80",
+   "rent": "5.00",
+   "typicalArea": 95,
+   "largestArea": 120,
+   "room": 30,
+   "start": false
+  },
+  {
+   "id": "madrid",
+   "name": "Madrid, Malasaña",
+   "country": "es",
+   "market": {
+    "grocery": "1283690.39",
+    "fastfood": "567971.82",
+    "steakhouse": "394178.64",
+    "finedining": "374052.47",
+    "electronics": "115157.05"
+   },
+   "mix": {
+    "families": "0.1400",
+    "professionals": "0.2200",
+    "students": "0.1800",
+    "retirees": "0.1000",
+    "singles": "0.3200",
+    "comfortable": "0.0400"
+   },
+   "growth": {
+    "families": "0.011",
+    "professionals": "0.026",
+    "students": "0.006",
+    "retirees": "0.021",
+    "singles": "0.021",
+    "comfortable": "0.011"
+   },
+   "priceLevel": "1.03",
+   "wageLevel": "0.63",
+   "incomeLevel": "1.00",
+   "rent": "9.00",
+   "typicalArea": 100,
+   "largestArea": 130,
+   "room": 30,
+   "start": true
+  },
+  {
+   "id": "salamanca",
+   "name": "Madrid, Salamanca",
+   "country": "es",
+   "market": {
+    "grocery": "1789042.59",
+    "fastfood": "485221.91",
+    "steakhouse": "561022.74",
+    "finedining": "649567.47",
+    "electronics": "168997.81"
+   },
+   "mix": {
+    "families": "0.2000",
+    "professionals": "0.2000",
+    "students": "0.0400",
+    "retirees": "0.2400",
+    "singles": "0.1200",
+    "comfortable": "0.2000"
+   },
+   "growth": {
+    "families": "-0.014",
+    "professionals": "0.021",
+    "students": "-0.004",
+    "retirees": "0.006",
+    "singles": "0.011",
+    "comfortable": "0.011"
+   },
+   "priceLevel": "1.12",
+   "wageLevel": "0.64",
+   "incomeLevel": "1.45",
+   "rent": "16.00",
+   "typicalArea": 100,
+   "largestArea": 130,
+   "room": 30,
+   "start": false
+  },
+  {
+   "id": "lavapies",
+   "name": "Madrid, Lavapiés",
+   "country": "es",
+   "market": {
+    "grocery": "1496572.96",
+    "fastfood": "792200.56",
+    "steakhouse": "509117.10",
+    "finedining": "500111.83",
+    "electronics": "154075.54"
+   },
+   "mix": {
+    "families": "0.2200",
+    "professionals": "0.1000",
+    "students": "0.2200",
+    "retirees": "0.1200",
+    "singles": "0.3200",
+    "comfortable": "0.0200"
+   },
+   "growth": {
+    "families": "-0.014",
+    "professionals": "0.021",
+    "students": "-0.004",
+    "retirees": "0.006",
+    "singles": "0.011",
+    "comfortable": "0.011"
+   },
+   "priceLevel": "0.96",
+   "wageLevel": "0.60",
+   "incomeLevel": "0.78",
+   "rent": "5.50",
+   "typicalArea": 90,
+   "largestArea": 120,
+   "room": 30,
+   "start": false
+  },
+  {
+   "id": "barcelona",
+   "name": "Barcelona, Gràcia",
+   "country": "es",
+   "market": {
+    "grocery": "1222562.28",
+    "fastfood": "540925.54",
+    "steakhouse": "375408.23",
+    "finedining": "356240.44",
+    "electronics": "109673.38"
+   },
+   "mix": {
+    "families": "0.2200",
+    "professionals": "0.2200",
+    "students": "0.1400",
+    "retirees": "0.1200",
+    "singles": "0.2600",
+    "comfortable": "0.0400"
+   },
+   "growth": {
+    "families": "0.011",
+    "professionals": "0.026",
+    "students": "0.006",
+    "retirees": "0.021",
+    "singles": "0.021",
+    "comfortable": "0.011"
+   },
+   "priceLevel": "1.03",
+   "wageLevel": "0.62",
+   "incomeLevel": "1.02",
+   "rent": "8.50",
+   "typicalArea": 100,
+   "largestArea": 130,
+   "room": 30,
+   "start": true
+  },
+  {
+   "id": "eixample",
+   "name": "Barcelona, Eixample",
+   "country": "es",
+   "market": {
+    "grocery": "1706731.61",
+    "fastfood": "624433.58",
+    "steakhouse": "601508.71",
+    "finedining": "681108.81",
+    "electronics": "186922.26"
+   },
+   "mix": {
+    "families": "0.2000",
+    "professionals": "0.2800",
+    "students": "0.0800",
+    "retirees": "0.1600",
+    "singles": "0.2000",
+    "comfortable": "0.0800"
+   },
+   "growth": {
+    "families": "0.011",
+    "professionals": "0.026",
+    "students": "0.006",
+    "retirees": "0.021",
+    "singles": "0.021",
+    "comfortable": "0.011"
+   },
+   "priceLevel": "1.08",
+   "wageLevel": "0.63",
+   "incomeLevel": "1.20",
+   "rent": "12.00",
+   "typicalArea": 110,
+   "largestArea": 140,
+   "room": 30,
+   "start": false
+  },
+  {
+   "id": "poblenou",
+   "name": "Barcelona, Poblenou",
+   "country": "es",
+   "market": {
+    "grocery": "1192083.77",
+    "fastfood": "642017.81",
+    "steakhouse": "344826.51",
+    "finedining": "322450.32",
+    "electronics": "114781.56"
+   },
+   "mix": {
+    "families": "0.2600",
+    "professionals": "0.2600",
+    "students": "0.1200",
+    "retirees": "0.0800",
+    "singles": "0.2400",
+    "comfortable": "0.0400"
+   },
+   "growth": {
+    "families": "0.011",
+    "professionals": "0.026",
+    "students": "0.006",
+    "retirees": "0.021",
+    "singles": "0.021",
+    "comfortable": "0.011"
+   },
+   "priceLevel": "1.01",
+   "wageLevel": "0.61",
+   "incomeLevel": "1.02",
+   "rent": "7.50",
+   "typicalArea": 115,
+   "largestArea": 150,
+   "room": 40,
+   "start": false
+  }
+ ]
+}

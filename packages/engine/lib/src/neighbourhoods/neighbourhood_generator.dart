@@ -110,31 +110,46 @@ const _openingStaff = {
   'electronics': {'morning': 1, 'midday': 1, 'evening': 1},
 };
 
-/// What generated places and people are called: the same in every language,
-/// like the scenario's own.
-const _streets = [
-  'Vivier', 'Servient', 'Brotteaux', 'Garibaldi', 'Dauphiné', 'Moncey', //
-  'Lafayette', 'Bellecour', 'Massena', 'Tolozan', 'Gambetta', 'Carnot',
-  'Jaurès', 'Voltaire', 'Pasteur', 'Hugo', 'Foch', 'Thiers', 'Mermoz',
-  'Sévigné', 'Colbert', 'Diderot', 'Rameau', 'Lamartine', 'Montaigne',
-];
-const _streetKinds = ['Rue', 'Place', 'Cours', 'Avenue', 'Passage'];
-const _shopNames = {
-  'grocery': ['Épicerie', 'Marché', 'Halles', 'Comptoir', 'Panier', 'Prix'],
-  'supermarket': ['Super', 'Grand Marché'],
-  'fastfood': ['Burger', 'Snack', 'Frites'],
-  'steakhouse': ['Le Grill', 'La Braise', 'Bœuf'],
-  'finedining': ['Table', 'Maison', 'Le Comptoir'],
-  'electronics': ['Tech', 'Hi-Fi', 'Mobile'],
-};
-const _firstNames = [
-  'Nadia', 'Marc', 'Sophie', 'Karim', 'Julie', 'Antoine', 'Inès', 'Paul', //
-  'Claire', 'Yanis', 'Léa', 'Hugo', 'Camille', 'Omar', 'Anne', 'Louis',
-];
-const _lastNames = [
-  'Moreau', 'Benali', 'Girard', 'Fontaine', 'Roche', 'Lemoine', 'Perrin', //
-  'Chevalier', 'Mercier', 'Blanc', 'Garnier', 'Faure', 'Rousset', 'Colin',
-];
+/// What generated places and people are called in a country whose scenario
+/// gives no names of its own: the same in every language, like the
+/// scenario's own.
+const _engineNames = PlaceNames(
+  streets: [
+    'Vivier', 'Servient', 'Brotteaux', 'Garibaldi', 'Dauphiné', 'Moncey', //
+    'Lafayette', 'Bellecour', 'Massena', 'Tolozan', 'Gambetta', 'Carnot',
+    'Jaurès', 'Voltaire', 'Pasteur', 'Hugo', 'Foch', 'Thiers', 'Mermoz',
+    'Sévigné', 'Colbert', 'Diderot', 'Rameau', 'Lamartine', 'Montaigne',
+  ],
+  streetKinds: ['Rue', 'Place', 'Cours', 'Avenue', 'Passage'],
+  shops: {
+    'grocery': ['Épicerie', 'Marché', 'Halles', 'Comptoir', 'Panier', 'Prix'],
+    'supermarket': ['Super', 'Grand Marché'],
+    'fastfood': ['Burger', 'Snack', 'Frites'],
+    'steakhouse': ['Le Grill', 'La Braise', 'Bœuf'],
+    'finedining': ['Table', 'Maison', 'Le Comptoir'],
+    'electronics': ['Tech', 'Hi-Fi', 'Mobile'],
+  },
+  first: [
+    'Nadia', 'Marc', 'Sophie', 'Karim', 'Julie', 'Antoine', 'Inès', 'Paul', //
+    'Claire', 'Yanis', 'Léa', 'Hugo', 'Camille', 'Omar', 'Anne', 'Louis',
+  ],
+  last: [
+    'Moreau', 'Benali', 'Girard', 'Fontaine', 'Roche', 'Lemoine', 'Perrin', //
+    'Chevalier', 'Mercier', 'Blanc', 'Garnier', 'Faure', 'Rousset', 'Colin',
+  ],
+);
+
+/// What [country] calls what is generated in it.
+PlaceNames _namesIn(ContentDb content, CountryId country) =>
+    content.countries[country.index].names ?? _engineNames;
+
+/// The key a generated place writes for [country]: none for a scenario that
+/// names no countries.
+String? _countryKey(ContentDb content, CountryId country) =>
+    switch (content.countries[country.index].key) {
+      '' => null,
+      final key => key,
+    };
 
 /// The strategies a neighbourhood's grocers follow in turn.
 const _grocerStrategies = ['premium', 'balanced', 'discount'];
@@ -229,6 +244,7 @@ List<NeighbourhoodRow> rowsFromScenario(ContentDb content) {
           largestArea: largest,
           room: mulDivRound(room, 1, sites.length),
           playerStartsHere: market.id == home,
+          country: market.country,
         );
       }(),
   ];
@@ -321,6 +337,7 @@ String generateScenario(
     rows.add({
       'id': market.key,
       'name': market.name,
+      'country': ?_countryKey(content, market.country),
       'households': {
         for (final segment in content.segments)
           if (row.households[segment.id.index] > 0)
@@ -363,7 +380,10 @@ String generateScenario(
         if (!asleep.contains(siteMarket[json['site']])) json,
     ]
     ..['neighbourhoods'] = rows;
-  final asleepContent = loadScenario(jsonEncode(root));
+  final asleepContent = loadScenario(
+    jsonEncode(root),
+    national: content.national,
+  );
   return (
     asleepContent,
     start == null
@@ -421,7 +441,10 @@ ContentDb withNeighbourhoods(
       shops: shops,
     );
   }
-  return loadScenario(jsonEncode(world.scenario()));
+  return loadScenario(
+    jsonEncode(world.scenario()),
+    national: content.national,
+  );
 }
 
 /// What a chain's shop of a woken district takes up as a store: its site's
@@ -460,17 +483,27 @@ List<PlannedSite> plannedSites(
   seed,
 )..add(row, content.neighbourhoods[row])).plannedSites;
 
-/// A name for a shop of [format] opening later on.
-String newShopName(FormatDef format, Rng rng) {
-  final kinds = _shopNames[format.key] ?? _shopNames['grocery']!;
-  return '${kinds[rng.nextInt(kinds.length)]} '
-      '${_streets[rng.nextInt(_streets.length)]}';
+/// A name for a shop of [format] opening later on in [country].
+String newShopName(
+  ContentDb content,
+  CountryId country,
+  FormatDef format,
+  Rng rng,
+) {
+  final names = _namesIn(content, country);
+  final kinds = names.shopWords(format.key);
+  return PlaceNames.fill(
+    kinds[rng.nextInt(kinds.length)],
+    names.streets[rng.nextInt(names.streets.length)],
+  );
 }
 
-/// A name for the owner of a shop opening later on.
-String newOwnerName(Rng rng) =>
-    '${_firstNames[rng.nextInt(_firstNames.length)]} '
-    '${_lastNames[rng.nextInt(_lastNames.length)]}';
+/// A name for the owner of a shop opening later on in [country].
+String newOwnerName(ContentDb content, CountryId country, Rng rng) {
+  final names = _namesIn(content, country);
+  return '${names.first[rng.nextInt(names.first.length)]} '
+      '${names.last[rng.nextInt(names.last.length)]}';
+}
 
 /// A generated site, before it holds a shop.
 final class _Site {
@@ -525,6 +558,9 @@ final class _World {
   late Rng _names;
   late List<String> _unusedStreets;
 
+  /// What the latest neighbourhood's country calls things.
+  PlaceNames _words = _engineNames;
+
   /// A street of this neighbourhood not used yet; after that, one used again.
   String _street() {
     final street = _unusedStreets.removeLast();
@@ -578,7 +614,8 @@ final class _World {
     _sitesHere.clear();
     final people = households ?? row.households;
     _names = Rng.keyed(seed, RngStream.neighbourhoods, index, 1);
-    _unusedStreets = List.of(_streets);
+    _words = _namesIn(content, row.country);
+    _unusedStreets = List.of(_words.streets);
     _shuffle(_unusedStreets, _names);
     if (row.layout case final layout?) {
       _addOwn(row, layout, people);
@@ -688,6 +725,7 @@ final class _World {
     markets.add({
       'id': row.key,
       'name': row.name,
+      'country': ?_countryKey(content, row.country),
       'households': {
         for (final segment in content.segments)
           if (people[segment.id.index] > 0)
@@ -921,8 +959,11 @@ final class _World {
         .times(Fx.one + location - _centre)
         .times(rent);
     final cost = _opening(row, area, location, opening);
-    final street =
-        '${_streetKinds[_names.nextInt(_streetKinds.length)]} ${_street()}';
+    final kinds = _words.streetKinds;
+    final street = PlaceNames.fill(
+      kinds[_names.nextInt(kinds.length)],
+      _street(),
+    );
     sites.add({
       'id': key,
       'name': street,
@@ -967,8 +1008,11 @@ final class _World {
                 ? opening.times(_grocerCash)
                 : opening.times(format.fitOut).times(_shopCash))
             .times(_prices);
-    final kinds = _shopNames[format.key]!;
-    final name = '${kinds[_names.nextInt(kinds.length)]} ${_street()}';
+    final kinds = _words.shopWords(format.key);
+    final name = PlaceNames.fill(
+      kinds[_names.nextInt(kinds.length)],
+      _street(),
+    );
     planned.add(
       SleepingShop(
         site: site.number,
@@ -976,8 +1020,8 @@ final class _World {
         strategy: strategy.id,
         name: name,
         owner:
-            '${_firstNames[_names.nextInt(_firstNames.length)]} '
-            '${_lastNames[_names.nextInt(_lastNames.length)]}',
+            '${_words.first[_names.nextInt(_words.first.length)]} '
+            '${_words.last[_names.nextInt(_words.last.length)]}',
         area: site.area,
         cash: Money(_rounded(cash.cents, 100000)),
         ownerCash: Money(_rounded(cash.times(_ownerCash).cents, 100000)),
@@ -997,18 +1041,28 @@ final class _World {
     final format = content.formats[shop.format.index];
     final strategy = content.strategies[shop.strategy.index];
     final key = '${row.key}_${site.number}';
+    // A markup on what goods cost here goes as far as the place is dear
+    // against its country's wholesale prices, as an AI owner prices.
+    final costLevel = content.costLevel(row.country);
+    final markupLevel = costLevel == Fx.one
+        ? row.priceLevel
+        : row.priceLevel.div(costLevel);
     Money price(ProductDef product) =>
         (sharing != null
-                ? _usualCost(
+                ? _local(
                     row,
                     product,
-                    strategy,
-                    sharing,
-                  ).times(Fx.one + strategy.markup)
-                : product.referencePrice.times(
-                    Fx.one + strategy.marketPosition,
-                  ))
-            .times(row.priceLevel)
+                    _usualCost(
+                      row,
+                      product,
+                      strategy,
+                      sharing,
+                    ).times(Fx.one + strategy.markup).times(markupLevel),
+                  )
+                : content
+                      .referenceIn(product, row.country)
+                      .times(Fx.one + strategy.marketPosition)
+                      .times(row.priceLevel))
             .times(_prices);
     final listed = _listing(format, strategy, site.slots);
     if (shop.company != null && !withChains) {
@@ -1111,7 +1165,10 @@ final class _World {
     );
     Money? best;
     for (final supplier in content.suppliers) {
-      if (!supplier.carries[product.id.index]) continue;
+      if (!supplier.carries[product.id.index] ||
+          supplier.country != row.country) {
+        continue;
+      }
       final price = supplier.unitPrice(
         product,
         order > supplier.minOrderUnits ? order : supplier.minOrderUnits,
@@ -1141,15 +1198,33 @@ final class _World {
         (product.tier == ProductTier.premium ? share : Fx.one - share);
   }
 
+  /// [price] of [product], at the first country's normal prices, as the
+  /// normal price in [row]'s country has it.
+  Money _local(NeighbourhoodRow row, ProductDef product, Money price) {
+    final normal = content.referenceIn(product, row.country);
+    return normal == product.referencePrice
+        ? price
+        : Money(
+            mulDivRound(price.cents, normal.cents, product.referencePrice.cents),
+          );
+  }
+
   /// What a shop would earn on [product] in a year here, before its costs.
   Money _yearlyMargin(
     NeighbourhoodRow row,
     ProductDef product,
     StrategyDef strategy,
   ) {
+    final cost = product.baseCost.times(content.costLevel(row.country));
     final unit =
-        product.baseCost.times(Fx.one + strategy.markup).times(row.priceLevel) -
-        product.baseCost;
+        _local(
+          row,
+          product,
+          product.baseCost
+              .times(Fx.one + strategy.markup)
+              .times(row.priceLevel),
+        ) -
+        cost;
     var total = Money.zero;
     for (final segment in content.segments) {
       final households = row.households[segment.id.index];
@@ -1173,7 +1248,7 @@ final class _World {
       if (!format.sells[product.category.index]) continue;
       margin += _yearlyMargin(row, product, strategy);
       for (final segment in content.segments) {
-        goods += product.baseCost.times(
+        goods += product.baseCost.times(content.costLevel(row.country)).times(
           _yearlyUnits(
             row,
             segment,

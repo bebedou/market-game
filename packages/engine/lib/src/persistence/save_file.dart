@@ -33,6 +33,9 @@ const int _wokenVersion = 24;
 /// The first format that tells which cities slept from the start.
 const int _asleepVersion = 26;
 
+/// The first format that keeps each country's economy.
+const int _countriesVersion = 27;
+
 const String _magic = 'market-game-save';
 
 /// What a save holds: a snapshot of the world, the full command log since the
@@ -140,6 +143,7 @@ final class SaveData {
         world.sleepers.add(SleepingNeighbourhood.read(reader));
       }
     }
+    if (version >= _countriesVersion) world.readEconomies(reader);
     reader.expectEnd();
     if (version < _structureVersion) {
       if (growthProblem(world, content) case final problem?) {
@@ -217,6 +221,7 @@ final class SaveData {
     for (final sleeper in world.sleepers) {
       sleeper.write(writer);
     }
+    world.writeEconomies(writer);
     return SaveFile(writer.toBytes());
   }
 }

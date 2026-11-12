@@ -87,11 +87,19 @@ void main() {
       'Lille, Wazemmes',
       'Marseille, Cours Julien',
       'Paris, Batignolles',
+      'Berlin, Kreuzberg',
+      'Munich, Schwabing',
+      'Milan, Navigli',
+      'Rome, Trastevere',
+      'Madrid, Malasaña',
+      'Barcelona, Gràcia',
     ]);
-    expect(content.stores, hasLength(41));
+    expect(content.countries.map((c) => c.key), ['fr', 'de', 'it', 'es']);
+    expect(content.stores, hasLength(73));
     expect(content.products, hasLength(24));
     expect(content.categories, hasLength(12));
-    expect(content.suppliers, hasLength(4));
+    // Four wholesalers in each country.
+    expect(content.suppliers, hasLength(16));
     expect(content.formats.map((f) => f.key), [
       'grocery',
       'fastfood',
@@ -102,15 +110,15 @@ void main() {
     ]);
     // Convenience stores and supermarkets compete for the same trips.
     expect(content.formatChannels, [0, 1, 2, 3, 0, 4]);
-    // 21 convenience stores, a supermarket, 15 restaurants and 4
-    // electronics shops.
+    // 39 convenience stores, a supermarket, 25 restaurants and 8
+    // electronics shops, 21, 1, 15 and 4 of them in France.
     expect(
       content.stores.where((s) => s.format == const FormatId(0)),
-      hasLength(21),
+      hasLength(39),
     );
     expect(
       content.stores.where((s) => s.format == const FormatId(5)),
-      hasLength(4),
+      hasLength(8),
     );
     // Smart home devices are still spreading.
     expect(
@@ -138,15 +146,22 @@ void main() {
     final occupied = {for (final store in content.stores) store.site};
     for (final market in content.markets) {
       final sites = content.sites.where((s) => s.market == market.id);
-      // Montpellier is the tightest city; every city has one vacant
+      final vacant = sites.where((s) => !occupied.contains(s.id));
+      if (market.country != const CountryId(0)) {
+        // The generated cities abroad leave a few sites to start on.
+        expect(vacant.length, greaterThanOrEqualTo(3), reason: market.key);
+        continue;
+      }
+      // Montpellier is the tightest French city; every one has one vacant
       // restaurant site among them.
       expect(
-        sites.where((s) => !occupied.contains(s.id)),
+        vacant,
         hasLength(market.key == 'montpellier' ? 3 : 4),
         reason: 'vacant sites in ${market.key}',
       );
     }
-    expect(content.persons.where((p) => p.strategy != null), hasLength(44));
+    // France's 44, and an owner for each shop abroad.
+    expect(content.persons.where((p) => p.strategy != null), hasLength(76));
     expect(content.macro.regimes.map((r) => r.key), [
       'expansion',
       'slowdown',

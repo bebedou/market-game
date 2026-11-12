@@ -639,9 +639,9 @@ class _ResearchState extends State<_Research> {
     final game = context.game;
     final company = game.company;
     final content = game.content;
-    final level = game.view.macro.priceIndex;
     final canBuy = company != null && company.status == CompanyStatus.active;
     final market = _market ?? game.store?.market ?? content.markets.first.id;
+    final level = game.economyAt(market).priceIndex;
     return Section(
       title: tr('reports.marketResearch'),
       icon: Icons.science_outlined,
