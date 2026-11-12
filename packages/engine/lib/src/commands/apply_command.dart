@@ -1533,7 +1533,7 @@ Refusal? _orderFromFactory(
     left -= made;
     if (made > 0) {
       var unitMargin = price - materialsCost(kind, def, making);
-      if (abroad) unitMargin -= price.times(factories.freight);
+      if (abroad) unitMargin -= price.times(kind.freight);
       factory.recordMade(
         world.today,
         made,

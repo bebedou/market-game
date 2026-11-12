@@ -265,7 +265,7 @@ final class LogisticsSystem implements TickSystem {
       owe(
         AccountKind.overheads,
         EntryReason.freight,
-        value.times(factories.freight),
+        value.times(kind.freight),
       );
     }
   }

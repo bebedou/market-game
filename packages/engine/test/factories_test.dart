@@ -133,6 +133,8 @@ void main() {
       expect(kind.key, 'dairy');
       expect(kind.shiftUnits, 10);
       expect(kind.exports, isTrue);
+      // A kind that names no freight of its own pays the scenario's.
+      expect(kind.freight, Fx.parse('0.04'));
       expect(
         content.structure.firstWhere((list) => list.name == 'factories').keys,
         ['dairy'],

@@ -498,9 +498,9 @@
     "maxShifts": 3,
     "kinds": [
       { "id": "bakery", "name": "Bakery", "category": "bread", "buildCost": "150000.00", "buildDays": 90, "shiftUnits": 350, "shiftWage": "81.00", "site": "1850.00", "materials": "0.40", "leadTimeDays": 1, "minOrderUnits": 12, "local": true },
-      { "id": "drinks", "name": "Drinks plant", "category": "drinks", "buildCost": "120000.00", "buildDays": 90, "shiftUnits": 400, "shiftWage": "66.00", "site": "1500.00", "materials": "0.40", "leadTimeDays": 3, "minOrderUnits": 48 },
-      { "id": "snacks", "name": "Snack factory", "category": "snacks", "buildCost": "115000.00", "buildDays": 90, "shiftUnits": 350, "shiftWage": "65.00", "site": "1480.00", "materials": "0.40", "leadTimeDays": 3, "minOrderUnits": 48 },
-      { "id": "household", "name": "Household goods plant", "category": "household", "buildCost": "150000.00", "buildDays": 90, "shiftUnits": 90, "shiftWage": "81.00", "site": "1850.00", "materials": "0.40", "leadTimeDays": 3, "minOrderUnits": 48 }
+      { "id": "drinks", "name": "Drinks plant", "category": "drinks", "buildCost": "120000.00", "buildDays": 90, "shiftUnits": 400, "shiftWage": "66.00", "site": "1500.00", "materials": "0.40", "leadTimeDays": 3, "minOrderUnits": 48, "freight": "0.12" },
+      { "id": "snacks", "name": "Snack factory", "category": "snacks", "buildCost": "115000.00", "buildDays": 90, "shiftUnits": 350, "shiftWage": "65.00", "site": "1480.00", "materials": "0.40", "leadTimeDays": 3, "minOrderUnits": 48, "freight": "0.06" },
+      { "id": "household", "name": "Household goods plant", "category": "household", "buildCost": "150000.00", "buildDays": 90, "shiftUnits": 90, "shiftWage": "81.00", "site": "1850.00", "materials": "0.40", "leadTimeDays": 3, "minOrderUnits": 48, "freight": "0.03" }
     ]
   },
   "suppliers": [

@@ -607,6 +607,7 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
   FactoriesDef? factories;
   final factoryKeys = _Keys();
   if (root.optionalObject('factories') case final node?) {
+    final freight = node.fraction('freight');
     final kinds = <FactoryKindDef>[];
     for (final kind in node.objects('kinds')) {
       final key = kind.string('id');
@@ -629,6 +630,7 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
           materials: kind.fraction('materials'),
           leadTimeDays: kind.positiveInt('leadTimeDays'),
           minOrderUnits: kind.positiveInt('minOrderUnits'),
+          freight: kind.has('freight') ? kind.fraction('freight') : freight,
           exports: !kind.flag('local'),
         ),
       );
@@ -637,7 +639,7 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
     factories = FactoriesDef(
       kinds: List.unmodifiable(kinds),
       abroadDays: node.nonNegativeInt('abroadDays'),
-      freight: node.fraction('freight'),
+      freight: freight,
       paymentTermsDays: node.nonNegativeInt('paymentTermsDays'),
       maxShifts: node.positiveInt('maxShifts'),
     );

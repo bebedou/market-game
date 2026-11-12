@@ -327,9 +327,7 @@ List<Fx> countryCostLevels(
           sum += here.div(first);
           counted++;
         }
-        return counted == 0
-            ? Fx.one
-            : Fx.raw(mulDivRound(sum.raw, 1, counted));
+        return counted == 0 ? Fx.one : Fx.raw(mulDivRound(sum.raw, 1, counted));
       }(),
   ];
 }
@@ -1406,7 +1404,7 @@ final class FactoriesDef {
   final int abroadDays;
 
   /// What carrying goods to another country costs, as a share of what they
-  /// sell for.
+  /// sell for, for a kind that names no freight of its own.
   final Fx freight;
 
   /// Days after delivery before a shop pays a factory.
@@ -1432,6 +1430,7 @@ final class FactoryKindDef {
     required this.materials,
     required this.leadTimeDays,
     required this.minOrderUnits,
+    required this.freight,
     this.exports = true,
   });
 
@@ -1465,6 +1464,11 @@ final class FactoryKindDef {
 
   /// The smallest quantity per order line.
   final int minOrderUnits;
+
+  /// What carrying its goods to another country costs, as a share of what
+  /// they sell for: heavy, cheap goods such as drinks pay more of their
+  /// price than light or dear ones.
+  final Fx freight;
 
   /// Whether its goods travel to other countries: bread doesn't.
   final bool exports;

@@ -40,6 +40,11 @@ void main() {
     ]);
     expect(kinds.first.exports, isFalse);
     expect(kinds.skip(1).every((kind) => kind.exports), isTrue);
+    // Heavy, cheap goods pay more of their price to travel.
+    expect(
+      [for (final kind in kinds.skip(1)) kind.freight],
+      [Fx.parse('0.12'), Fx.parse('0.06'), Fx.parse('0.03')],
+    );
   });
 
   test('a plant in Spain serves French shops, and pays tax in Spain', () {
@@ -94,15 +99,21 @@ void main() {
     final reports = game.reports(company, ReportPeriod.month);
     var made = 0;
     var freight = Money.zero;
+    var sold = Money.zero;
     for (final report in reports) {
       final part = report.factory(const FactoryId(0));
       if (part == null) continue;
       made += part.made;
       freight += part.freight;
+      sold += part.totalOwnGoods;
     }
-    // The French shop's drinks came from Spain, carried at a cost.
+    // The French shop's drinks came from Spain, carried at 12% of their
+    // price, to the cent on each line.
     expect(made, greaterThan(0));
-    expect(freight.cents, greaterThan(0));
+    expect(
+      (freight - sold.times(Fx.parse('0.12'))).cents.abs(),
+      lessThan(sold.cents ~/ 1000),
+    );
     final year = game.today.date.year;
     final taxes = companyTaxes(
       game.world,

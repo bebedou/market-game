@@ -538,7 +538,7 @@ class _SellsTo extends StatelessWidget {
             kind.exports
                 ? tr('factory.abroadHint', {
                     'days': factories.abroadDays,
-                    'freight': percent(factories.freight, decimals: 0),
+                    'freight': percent(kind.freight, decimals: 0),
                   })
                 : tr('factory.localHint'),
           ),

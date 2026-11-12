@@ -153,7 +153,7 @@ FactoryOutlook factoryOutlook(
         if (quote == null) continue;
         final price = quote.price;
         var unit = price - materialsCost(kind, product, home.priceIndex);
-        if (where != country) unit -= price.times(factories.freight);
+        if (where != country) unit -= price.times(kind.freight);
         units += sold;
         value += price.timesInt(sold);
         margin += unit.timesInt(sold);
