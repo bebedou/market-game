@@ -64,6 +64,13 @@ enum AccountKind {
   /// Energy, insurance, upkeep and card fees: an expense for companies,
   /// income for services.
   overheads,
+
+  /// What buyers owe a company's factories for goods delivered.
+  receivables,
+
+  /// What a company's factories made for its owner's shops, at what the
+  /// wholesalers would have charged them: income, kept apart from sales.
+  ownGoods,
 }
 
 /// Accounts there were before saves recorded how many.
@@ -113,6 +120,7 @@ final class Accounts {
   Money get netAssets =>
       this[AccountKind.cash] +
       this[AccountKind.inventory] +
+      this[AccountKind.receivables] +
       this[AccountKind.businessAssets] +
       this[AccountKind.investments] +
       this[AccountKind.payables] +
@@ -199,6 +207,15 @@ enum EntryReason {
 
   /// A store's energy, insurance, upkeep and card fees for the month.
   overheads,
+
+  /// A factory's goods delivered to a shop.
+  factorySale,
+
+  /// What a factory's goods took to make.
+  materials,
+
+  /// Carrying a factory's goods to another country.
+  freight,
 }
 
 /// One double-entry posting in one party's books. [store], [product] and
@@ -214,6 +231,7 @@ final class JournalEntry {
     this.store,
     this.product,
     this.units = 0,
+    this.factory,
   });
 
   final Day day;
@@ -225,6 +243,9 @@ final class JournalEntry {
   final StoreId? store;
   final ProductId? product;
   final int units;
+
+  /// The factory it was for, if any.
+  final FactoryId? factory;
 
   @override
   String toString() =>
@@ -254,12 +275,23 @@ final class Ledger {
     StoreId? store,
     ProductId? product,
     int units = 0,
+    FactoryId? factory,
   }) {
     assert(
       debit != AccountKind.cash && credit != AccountKind.cash,
       'Cash only moves through pay()',
     );
-    _record(party, debit, credit, amount, reason, store, product, units);
+    _record(
+      party,
+      debit,
+      credit,
+      amount,
+      reason,
+      store,
+      product,
+      units,
+      factory,
+    );
   }
 
   /// Cash moving from [payer] to [payee]. The payer debits [payerAccount]
@@ -275,6 +307,7 @@ final class Ledger {
     StoreId? store,
     ProductId? product,
     int units = 0,
+    FactoryId? factory,
   }) {
     _record(
       payer,
@@ -285,6 +318,7 @@ final class Ledger {
       store,
       product,
       units,
+      factory,
     );
     _record(
       payee,
@@ -295,6 +329,7 @@ final class Ledger {
       store,
       product,
       units,
+      factory,
     );
   }
 
@@ -307,6 +342,7 @@ final class Ledger {
     StoreId? store,
     ProductId? product,
     int units,
+    FactoryId? factory,
   ) {
     assert(!amount.isNegative, 'Entries are never negative: $amount');
     final balances = party.accounts._balances;
@@ -323,6 +359,7 @@ final class Ledger {
         store: store,
         product: product,
         units: units,
+        factory: factory,
       ),
     );
   }

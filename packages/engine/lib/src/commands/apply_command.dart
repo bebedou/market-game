@@ -10,6 +10,8 @@ import '../state/sleepers.dart';
 import '../observation/outlook.dart' show usualStrategy;
 import '../state/director.dart';
 import '../state/entities.dart';
+import '../state/factories.dart';
+import '../state/factory.dart';
 import '../state/orders.dart';
 import '../state/store.dart';
 import '../observation/research.dart';
@@ -63,6 +65,11 @@ Refusal? applyCommand(
     BuyStore() => _buyStore(world, content, ledger, command),
     SellStore() => _sellStore(world, content, ledger, command),
     BuyCompany() => _buyCompany(world, content, ledger, command),
+    BuildFactory() => _buildFactory(world, content, ledger, command),
+    SetFactoryShifts() => _setFactoryShifts(world, content, command),
+    SetFactoryTerms() => _setFactoryTerms(world, content, command),
+    CloseFactory() => _closeFactory(world, command),
+    OrderFromFactory() => _orderFromFactory(world, content, command),
   };
 }
 
@@ -915,6 +922,12 @@ Refusal? _placeOrder(WorldState world, ContentDb content, PlaceOrder command) {
         product: product,
       );
     }
+    // Made or bought, never both: what the owner's factory makes for this
+    // shop it buys only from it.
+    if (factoryFor(world, content, store, content.products[product.index]) !=
+        null) {
+      return Refusal('madeInHouse', product: product);
+    }
     if (store.prices[product.index] == null) {
       return Refusal('storeDoesNotList', product: product);
     }
@@ -1252,5 +1265,303 @@ Refusal? _buyCompany(
       takeOverName(world, content, store, buyer.id);
     }
   }
+  return null;
+}
+
+/// The actor's factory [id], if it is theirs and not closed.
+(Factory?, Refusal?) _ownedFactory(
+  WorldState world,
+  PersonId actor,
+  FactoryId id,
+) {
+  if (!_inRange(id.index, world.factories.length)) {
+    return (null, const Refusal('unknownFactory'));
+  }
+  final factory = world.factories[id.index];
+  final company = world.companies[factory.company.index];
+  if (company.owner != actor) return (null, const Refusal('notYourFactory'));
+  if (factory.status == FactoryStatus.closed || !company.isActive) {
+    return (null, const Refusal('factoryClosed'));
+  }
+  return (factory, null);
+}
+
+Refusal? _buildFactory(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  BuildFactory command,
+) {
+  final factories = content.factories;
+  if (factories == null) return const Refusal('noFactories');
+  if (!_inRange(command.kind.index, factories.kinds.length)) {
+    return const Refusal('unknownFactoryKind');
+  }
+  if (!_inRange(command.country.index, content.countries.length)) {
+    return const Refusal('unknownCountry');
+  }
+  final problem = _nameProblem(command.name);
+  if (problem != null) return problem;
+  if (command.shifts < 0 || command.shifts > factories.maxShifts) {
+    return Refusal('shiftsRange', count: factories.maxShifts);
+  }
+  if (command.capital.isNegative) return const Refusal('capitalNegative');
+  final kind = factories.kinds[command.kind.index];
+  final serves = [
+    for (var c = 0; c < content.countries.length; c++)
+      c == command.country.index,
+  ];
+  if (command.serves case final wanted?) {
+    final refusal = _servesRefusal(content, kind, command.country, wanted);
+    if (refusal != null) return refusal;
+    serves.setAll(0, wanted);
+  }
+  final person = world.persons[command.actor.index];
+  if (person.accounts[AccountKind.cash] < command.capital) {
+    return const Refusal('notEnoughPersonalCash');
+  }
+  Company? company;
+  if (command.company case final id?) {
+    final (owned, error) = _ownedCompany(world, command.actor, id);
+    if (owned == null) return error;
+    company = owned;
+  }
+  final cost = kind.buildCost.times(world.macroOf(command.country).priceIndex);
+  final cash =
+      (company?.accounts[AccountKind.cash] ?? Money.zero) +
+      command.capital +
+      command.borrow;
+  if (cash < cost) return Refusal('cannotPayFactory', amount: cost);
+  if (command.borrow != Money.zero) {
+    final refusal = _loanRefusal(
+      world,
+      content,
+      command.borrow,
+      command.termMonths,
+    );
+    if (refusal != null) return refusal;
+  }
+  final loan = _purchaseLoan(
+    world,
+    content,
+    company,
+    person,
+    command.borrow,
+    spent: command.capital,
+  );
+  if (command.borrow != Money.zero && loan == null) {
+    return const Refusal('bankWillNotLend');
+  }
+  company ??= world.addCompany(command.name, person.id);
+  if (command.capital > Money.zero) {
+    injectCapital(ledger, person, company, command.capital);
+  }
+  if (loan != null) {
+    _lendFor(world, content, ledger, company, person, loan, command.termMonths);
+  }
+  final id = FactoryId(world.factories.length);
+  world.factories.add(
+    Factory(
+      id: id,
+      kind: kind.id,
+      company: company.id,
+      country: command.country,
+      name: command.name,
+      opensOn: world.today + kind.buildDays,
+      builtFor: cost,
+      shifts: command.shifts,
+      serves: serves,
+    ),
+  );
+  if (cost > Money.zero) {
+    ledger.pay(
+      payer: company,
+      payerAccount: AccountKind.openingCosts,
+      payee: world.landlords,
+      payeeAccount: AccountKind.revenue,
+      amount: cost,
+      reason: EntryReason.openingCosts,
+      factory: id,
+    );
+  }
+  return null;
+}
+
+Refusal? _setFactoryShifts(
+  WorldState world,
+  ContentDb content,
+  SetFactoryShifts command,
+) {
+  final (factory, error) = _ownedFactory(world, command.actor, command.factory);
+  if (factory == null) return error;
+  final most = content.factories!.maxShifts;
+  if (command.shifts < 0 || command.shifts > most) {
+    return Refusal('shiftsRange', count: most);
+  }
+  factory.shifts = command.shifts;
+  return null;
+}
+
+/// The most a factory may take off its rivals' wholesale prices.
+final maxRivalDiscount = Fx.parse('0.50');
+
+Refusal? _setFactoryTerms(
+  WorldState world,
+  ContentDb content,
+  SetFactoryTerms command,
+) {
+  final (factory, error) = _ownedFactory(world, command.actor, command.factory);
+  if (factory == null) return error;
+  final refusal = _servesRefusal(
+    content,
+    content.factories!.kinds[factory.kind.index],
+    factory.country,
+    command.serves,
+  );
+  if (refusal != null) return refusal;
+  if (command.rivalDiscount case final discount?
+      when discount.isNegative || discount > maxRivalDiscount) {
+    return const Refusal('rivalDiscountRange');
+  }
+  factory.serves.setAll(0, command.serves);
+  factory.rivalDiscount = command.rivalDiscount;
+  return null;
+}
+
+/// Why a factory of [kind] in [country] can't deliver to the countries
+/// [serves] lists, or null if it can: one flag per country, its own set,
+/// and no other if its goods don't travel.
+Refusal? _servesRefusal(
+  ContentDb content,
+  FactoryKindDef kind,
+  CountryId country,
+  List<bool> serves,
+) {
+  if (serves.length != content.countries.length) {
+    return Refusal('servesEachCountry', count: content.countries.length);
+  }
+  if (!serves[country.index]) return const Refusal('servesItsCountry');
+  if (!kind.exports) {
+    for (var c = 0; c < serves.length; c++) {
+      if (serves[c] && c != country.index) return const Refusal('factoryLocal');
+    }
+  }
+  return null;
+}
+
+Refusal? _closeFactory(WorldState world, CloseFactory command) {
+  final (factory, error) = _ownedFactory(world, command.actor, command.factory);
+  if (factory == null) return error;
+  factory.status = FactoryStatus.closed;
+  return null;
+}
+
+Refusal? _orderFromFactory(
+  WorldState world,
+  ContentDb content,
+  OrderFromFactory command,
+) {
+  final (store, error) = _ownedStore(world, command.actor, command.store);
+  if (store == null) return error;
+  final factories = content.factories;
+  if (factories == null ||
+      !_inRange(command.factory.index, world.factories.length)) {
+    return const Refusal('unknownFactory');
+  }
+  final factory = world.factories[command.factory.index];
+  final maker = world.companies[factory.company.index];
+  if (!factory.runsOn(world.today) || !maker.isActive) {
+    return const Refusal('factoryNotMaking');
+  }
+  final country = content.countryOf(store.market);
+  if (!factory.servesCountry(country)) {
+    return const Refusal('factoryDoesNotServe');
+  }
+  final own = maker.owner == command.actor;
+  final discount = factory.rivalDiscount;
+  if (!own && discount == null) return const Refusal('factoryExclusive');
+  if (command.lines.isEmpty) return const Refusal('orderEmpty');
+  final kind = factories.kinds[factory.kind.index];
+  final level = world.macroOf(country).priceIndex;
+  final seen = <int>{};
+  final quotes = <({SupplierDef supplier, Money price})>[];
+  var total = 0;
+  for (final (:product, :quantity) in command.lines) {
+    if (!_inRange(product.index, content.products.length)) {
+      return const Refusal('unknownProduct');
+    }
+    if (!seen.add(product.index)) {
+      return Refusal('productTwice', product: product);
+    }
+    final def = content.products[product.index];
+    if (!kindMakes(kind, def)) {
+      return Refusal('factoryDoesNotMake', product: product);
+    }
+    if (store.prices[product.index] == null) {
+      return Refusal('storeDoesNotList', product: product);
+    }
+    if (quantity < kind.minOrderUnits) {
+      return Refusal(
+        'factoryMinimum',
+        product: product,
+        count: kind.minOrderUnits,
+      );
+    }
+    if (quantity > store.storageUnits) {
+      return Refusal('overCapacity', product: product);
+    }
+    final quote = marketQuote(content, country, def, quantity, level);
+    if (quote == null) return Refusal('factoryDoesNotMake', product: product);
+    quotes.add(quote);
+    total += quantity;
+  }
+  if (!own && total > factory.spareFor(kind, world.today)) {
+    return const Refusal('factoryFull');
+  }
+  final abroad = country != factory.country;
+  final making = world.macroOf(factory.country).priceIndex;
+  var left = factory.capacityLeft(kind, world.today);
+  final lines = <OrderLine>[];
+  for (final (i, (:product, :quantity)) in command.lines.indexed) {
+    final def = content.products[product.index];
+    final quote = quotes[i];
+    final price = factoryPrice(
+      quote.price,
+      rivalDiscount: own ? null : discount,
+    );
+    final made = own ? (quantity < left ? quantity : left) : quantity;
+    left -= made;
+    if (made > 0) {
+      var unitMargin = price - materialsCost(kind, def, making);
+      if (abroad) unitMargin -= price.times(factories.freight);
+      factory.recordMade(
+        world.today,
+        made,
+        own: own,
+        margin: unitMargin.timesInt(made),
+      );
+    }
+    lines.add(
+      OrderLine(
+        product: product,
+        quantity: quantity,
+        unitPrice: price,
+        made: made,
+        from: quote.supplier.id,
+      ),
+    );
+  }
+  world.orders.add(
+    PurchaseOrder(
+      number: world.nextOrderNumber++,
+      store: store.id,
+      supplier: quotes.first.supplier.id,
+      arrival:
+          world.today +
+          factoryLeadTime(factories, kind, factory.country, country),
+      lines: lines,
+      factory: factory.id,
+    ),
+  );
   return null;
 }

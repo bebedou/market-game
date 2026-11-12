@@ -20,6 +20,7 @@ final class Results {
     required this.tax,
     required this.oneOffs,
     required this.capital,
+    this.ownGoods = Money.zero,
   });
 
   /// The least time over which a return means anything.
@@ -29,6 +30,11 @@ final class Results {
   final int months;
   final int days;
   final Money sales;
+
+  /// What the companies' own factories made for their owner's shops, at
+  /// what the wholesalers would have charged: what those shops' goods cost
+  /// them, which the factories' materials, staff and site then cost less.
+  final Money ownGoods;
   final Money goods;
 
   /// Stock thrown away or abandoned.
@@ -56,7 +62,7 @@ final class Results {
   /// month-ends; zero for a company gone.
   final Money capital;
 
-  Money get gross => sales - goods - spoiled;
+  Money get gross => sales + ownGoods - goods - spoiled;
 
   /// What trading earned, before interest, works, tax and one-offs.
   Money get operating => gross - staff - premises - marketing - research;
@@ -66,10 +72,14 @@ final class Results {
   Fx? get operatingMargin => shareOfSales(operating);
   Fx? get netMargin => shareOfSales(net);
 
-  /// [part] as a share of sales; null without sales.
-  Fx? shareOfSales(Money part) => sales.cents == 0
-      ? null
-      : Fx.raw((part.cents * Fx.scale / sales.cents).round());
+  /// [part] as a share of sales, or for a company that only makes goods
+  /// for its owner's shops, of those; null without either.
+  Fx? shareOfSales(Money part) {
+    final base = sales.cents != 0 ? sales : ownGoods;
+    return base.cents == 0
+        ? null
+        : Fx.raw((part.cents * Fx.scale / base.cents).round());
+  }
 
   /// Operating profit after tax over the money tied up, at a year's rate;
   /// null if too soon to tell or nothing is tied up.
@@ -146,6 +156,7 @@ final class Financials {
   Money get netAssets =>
       balance(AccountKind.cash) +
       balance(AccountKind.inventory) +
+      balance(AccountKind.receivables) +
       balance(AccountKind.businessAssets) +
       balance(AccountKind.investments) +
       balance(AccountKind.payables) +
@@ -159,6 +170,7 @@ Money _tiedUp(Money fitOut, List<Money> balances) =>
     fitOut +
     balances[AccountKind.businessAssets.index] +
     balances[AccountKind.inventory.index] +
+    balances[AccountKind.receivables.index] +
     balances[AccountKind.payables.index];
 
 /// A month's report, and the money tied up at its end.
@@ -232,6 +244,7 @@ List<_Month> _history(SimulationController game, CompanyView company) {
         report.flow(AccountKind.openingCosts) +
         report.flow(AccountKind.businessAssets) +
         report.flow(AccountKind.inventory) +
+        report.flow(AccountKind.receivables) +
         report.flow(AccountKind.payables);
   }
   return months.reversed.toList();
@@ -269,6 +282,7 @@ Results _over(
 }) {
   final days = <int, int>{};
   var sales = Money.zero;
+  var ownGoods = Money.zero;
   var goods = Money.zero;
   var spoiled = Money.zero;
   var staff = Money.zero;
@@ -286,6 +300,7 @@ Results _over(
       final start = report.start.number;
       if (report.days > (days[start] ?? 0)) days[start] = report.days;
       sales -= report.flow(AccountKind.revenue);
+      ownGoods -= report.flow(AccountKind.ownGoods);
       goods += report.flow(AccountKind.costOfGoods);
       spoiled += report.flow(AccountKind.writeOffs);
       staff +=
@@ -307,6 +322,7 @@ Results _over(
     months: days.length,
     days: days.values.fold(0, (sum, count) => sum + count),
     sales: sales,
+    ownGoods: ownGoods,
     goods: goods,
     spoiled: spoiled,
     staff: staff,

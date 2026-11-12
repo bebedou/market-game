@@ -8,6 +8,7 @@ import '../l10n.dart';
 import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
+import 'factory.dart';
 import 'finance.dart';
 import 'market.dart';
 import 'reports.dart';
@@ -35,6 +36,7 @@ class DashboardScreen extends StatelessWidget {
         const _Companies(),
         const _Brands(),
         _Stores(onOpen: onOpen),
+        const FactoriesSection(),
         const _Reading(),
       ],
     );

@@ -85,6 +85,9 @@ class Ledger extends ThemeExtension<Ledger> {
     return night ? dark : light;
   }
 
+  /// Factories' colour, a slate, marking them wherever they show.
+  Color get works => night ? const Color(0xFF9AA4B0) : const Color(0xFF5B6470);
+
   @override
   Ledger copyWith() => this;
 

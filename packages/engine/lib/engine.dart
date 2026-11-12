@@ -4,11 +4,13 @@ library;
 export 'src/accounting/ledger.dart'
     show AccountKind, EntryReason, JournalEntry, PartyRef, PartyType;
 export 'src/commands/apply_command.dart'
-    show conversionCost, maxMarketingShare, maxNameLength;
+    show conversionCost, maxMarketingShare, maxNameLength, maxRivalDiscount;
 export 'src/commands/command.dart'
     show
+        BuildFactory,
         BuyCompany,
         BuyStore,
+        CloseFactory,
         CloseStore,
         Command,
         ConvertStore,
@@ -25,6 +27,7 @@ export 'src/commands/command.dart'
         LoggedCommand,
         OpenInDistrict,
         OpenStore,
+        OrderFromFactory,
         OrderQuantity,
         PayDividend,
         PlaceOrder,
@@ -34,6 +37,8 @@ export 'src/commands/command.dart'
         RepayLoan,
         SellStore,
         SetCushion,
+        SetFactoryShifts,
+        SetFactoryTerms,
         SetMarketing,
         SetPrice,
         SetStaffing,
@@ -55,6 +60,8 @@ export 'src/observation/observation.dart'
     show
         CompanyView,
         BillView,
+        FactoryOffer,
+        FactoryView,
         LoanView,
         MacroView,
         ManagerView,
@@ -64,6 +71,8 @@ export 'src/observation/observation.dart'
         StoreMonths,
         ShelfView,
         StoreView;
+export 'src/observation/factory_outlook.dart'
+    show FactoryOutlook, FactoryShiftPlan, factoryOutlook, outlookServes;
 export 'src/observation/outlook.dart'
     show
         ShopOutlook,
@@ -88,12 +97,15 @@ export 'src/policies/retail_policy.dart' show RetailPolicy;
 export 'src/reports/attribution.dart'
     show Attribution, ItemMiss, MissReason, StoreSwitch, SwitchCause;
 export 'src/reports/period_report.dart'
-    show PeriodReport, ReportPeriod, StoreReport, SwitchKey;
+    show FactoryReport, PeriodReport, ReportPeriod, StoreReport, SwitchKey;
 export 'src/simulation.dart' show CommandRejection, Simulation, TickResult;
 export 'src/state/credit.dart' show lendingRate, splitLoan;
 export 'src/state/director.dart';
 export 'src/state/entities.dart'
     show CompanyStatus, defaultCushionDays, maxCushionDays;
+export 'src/state/factories.dart'
+    show factoryLeadTime, factoryPrice, marketQuote, materialsCost;
+export 'src/state/factory.dart' show FactoryStatus, factoryHistoryDays;
 export 'src/state/game_start.dart'
     show GameStart, StartTerms, minStartingCash, startTerms, startingSites;
 export 'src/state/history.dart' show SalesCount, salesHistoryDays;

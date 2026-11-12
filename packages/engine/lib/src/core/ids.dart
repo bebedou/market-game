@@ -37,3 +37,7 @@ extension type const DirectorGradeId(int index) {}
 extension type const FormatId(int index) {}
 
 extension type const CountryId(int index) {}
+
+extension type const FactoryKindId(int index) {}
+
+extension type const FactoryId(int index) {}

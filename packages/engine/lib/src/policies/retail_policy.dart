@@ -8,6 +8,7 @@ import '../core/money.dart';
 import '../core/safe_int.dart';
 import '../observation/observation.dart';
 import '../state/entities.dart';
+import '../state/factories.dart';
 import '../state/history.dart';
 import '../state/store.dart';
 import 'cushion.dart';
@@ -192,9 +193,80 @@ final class StorePlan {
   ];
 
   /// Indexed by [ProductId]; null if no supplier sells the product.
-  late final List<SupplierDef?> _suppliers = [
+  late final List<Source?> _suppliers = [
+    for (final product in content.products) _sourceFor(product),
+  ];
+
+  /// The wholesaler each product would come from, indexed by [ProductId]:
+  /// what a rival's factory can't spare comes from it.
+  late final List<SupplierDef?> _wholesalers = [
     for (final product in content.products) _supplierFor(product),
   ];
+
+  /// Where [product] comes from: the owner's factory that makes it for this
+  /// store, as the store then buys it only there; else the cheapest at a
+  /// typical order of its wholesaler and the rivals' factories selling to
+  /// it that can spare that much.
+  Source? _sourceFor(ProductDef product) {
+    if (!content.formats[store.format.index].sells[product.category.index]) {
+      return null;
+    }
+    final factories = content.factories;
+    final country = content.countryOf(store.market);
+    if (factories != null) {
+      if (view.factoryFor(content, store, product) case final factory?) {
+        final kind = factories.kinds[factory.kind.index];
+        return FactorySource(
+          content: content,
+          factory: factory.id,
+          country: country,
+          leadTimeDays: factoryLeadTime(
+            factories,
+            kind,
+            factory.country,
+            country,
+          ),
+          minOrderUnits: kind.minOrderUnits,
+        );
+      }
+    }
+    final wholesaler = _wholesalers[product.id.index];
+    if (wholesaler == null) return null;
+    Source best = WholesaleSource(wholesaler);
+    if (factories == null || view.offers.isEmpty) return best;
+    final demand = _demand[product.id.index];
+    var bestPrice = best.unitPrice(
+      product,
+      _typicalOrder(best, demand),
+      _macro.priceIndex,
+    );
+    final life = product.shelfLifeDays;
+    for (final offer in view.offersFor(content, store)) {
+      final kind = factories.kinds[offer.kind.index];
+      if (kind.category != product.category) continue;
+      final source = FactorySource(
+        content: content,
+        factory: offer.id,
+        country: country,
+        leadTimeDays: factoryLeadTime(factories, kind, offer.country, country),
+        minOrderUnits: kind.minOrderUnits,
+        discount: offer.discount,
+        spare: offer.spare,
+      );
+      final quantity = _typicalOrder(source, demand);
+      if (quantity > offer.spare) continue;
+      if (life != null &&
+          Fx.fromInt(source.minOrderUnits) > demand.timesInt(life)) {
+        continue;
+      }
+      final price = source.unitPrice(product, quantity, _macro.priceIndex);
+      if (price < bestPrice) {
+        best = source;
+        bestPrice = price;
+      }
+    }
+    return best;
+  }
 
   bool _reviewDay(int period) =>
       (view.today.number + store.id.index) % period == 0;
@@ -253,7 +325,7 @@ final class StorePlan {
     for (final supplier in sellable) {
       final price = supplier.unitPrice(
         product,
-        _typicalOrder(supplier, demand),
+        _typicalOrder(WholesaleSource(supplier), demand),
         _macro.priceIndex,
       );
       if (best == null || price < bestPrice) {
@@ -264,7 +336,7 @@ final class StorePlan {
     return best;
   }
 
-  int _typicalOrder(SupplierDef supplier, Fx demand) {
+  int _typicalOrder(Source supplier, Fx demand) {
     final cycle = _roundUp(demand.timesInt(strategy.orderCycleDays));
     return cycle > supplier.minOrderUnits ? cycle : supplier.minOrderUnits;
   }
@@ -825,23 +897,45 @@ final class StorePlan {
 
     var spent = Money.zero;
     final bySupplier = [for (final _ in content.suppliers) <OrderQuantity>[]];
+    final byFactory = <FactoryId, List<OrderQuantity>>{};
+    final taken = <FactoryId, int>{};
     for (final line in wanted) {
-      final supplier = _suppliers[line.product.id.index]!;
-      Money costOf(int quantity) => supplier
+      var supplier = _suppliers[line.product.id.index]!;
+      // A rival's factory sells only what it can spare: the rest comes from
+      // the wholesaler.
+      if (supplier case FactorySource(
+        :final factory,
+        :final spare?,
+      ) when (taken[factory] ?? 0) + line.quantity > spare) {
+        final wholesaler = _wholesalers[line.product.id.index];
+        if (wholesaler == null) continue;
+        supplier = WholesaleSource(wholesaler);
+      }
+      final source = supplier;
+      Money costOf(int quantity) => source
           .unitPrice(line.product, quantity, _macro.priceIndex)
           .timesInt(quantity);
       var quantity = line.quantity;
+      if (quantity < source.minOrderUnits) quantity = source.minOrderUnits;
+      var lean = line.lean < source.minOrderUnits
+          ? source.minOrderUnits
+          : line.lean;
+      if (lean > quantity) lean = quantity;
       var cost = costOf(quantity);
       if (spent + cost > budget) {
-        quantity = line.lean;
+        quantity = lean;
         cost = costOf(quantity);
         if (spent + cost > essentials) continue;
       }
       spent += cost;
-      bySupplier[supplier.id.index].add((
-        product: line.product.id,
-        quantity: quantity,
-      ));
+      final ordered = (product: line.product.id, quantity: quantity);
+      switch (source) {
+        case WholesaleSource(:final supplier):
+          bySupplier[supplier.id.index].add(ordered);
+        case FactorySource(:final factory):
+          (byFactory[factory] ??= []).add(ordered);
+          taken[factory] = (taken[factory] ?? 0) + quantity;
+      }
     }
     final commands = <Command>[
       for (final supplier in content.suppliers)
@@ -853,6 +947,13 @@ final class StorePlan {
             lines: bySupplier[supplier.id.index]
               ..sort((a, b) => a.product.index - b.product.index),
           ),
+      for (final MapEntry(key: factory, value: lines) in byFactory.entries)
+        OrderFromFactory(
+          view.actor,
+          store: store.id,
+          factory: factory,
+          lines: lines..sort((a, b) => a.product.index - b.product.index),
+        ),
     ];
     return (commands, spent);
   }
@@ -895,4 +996,70 @@ Money? operatingReserve(
       company.balance(AccountKind.overheads) +
       company.balance(AccountKind.interest);
   return Money(mulDivRound(spent.cents, reserveDays, days));
+}
+
+/// Where a store buys a product from: a wholesaler, or a factory.
+sealed class Source {
+  const Source();
+
+  int get leadTimeDays;
+  int get minOrderUnits;
+
+  /// The unit price for [quantity] units of [product] at [priceLevel], the
+  /// store's country's.
+  Money unitPrice(ProductDef product, int quantity, Fx priceLevel);
+}
+
+/// A wholesaler of the store's country.
+final class WholesaleSource extends Source {
+  const WholesaleSource(this.supplier);
+
+  final SupplierDef supplier;
+
+  @override
+  int get leadTimeDays => supplier.leadTimeDays;
+
+  @override
+  int get minOrderUnits => supplier.minOrderUnits;
+
+  @override
+  Money unitPrice(ProductDef product, int quantity, Fx priceLevel) =>
+      supplier.unitPrice(product, quantity, priceLevel);
+}
+
+/// A factory delivering to a store in [country]: the owner's, at what the
+/// store's wholesalers would charge, or a rival's, at [discount] under that
+/// and only as far as it can [spare].
+final class FactorySource extends Source {
+  const FactorySource({
+    required this.content,
+    required this.factory,
+    required this.country,
+    required this.leadTimeDays,
+    required this.minOrderUnits,
+    this.discount,
+    this.spare,
+  });
+
+  final ContentDb content;
+  final FactoryId factory;
+  final CountryId country;
+
+  @override
+  final int leadTimeDays;
+
+  @override
+  final int minOrderUnits;
+  final Fx? discount;
+
+  /// What a rival's factory can still sell this month; null for the
+  /// owner's own.
+  final int? spare;
+
+  @override
+  Money unitPrice(ProductDef product, int quantity, Fx priceLevel) {
+    final quote = marketQuote(content, country, product, quantity, priceLevel);
+    if (quote == null) return product.baseCost.times(priceLevel);
+    return factoryPrice(quote.price, rivalDiscount: discount);
+  }
 }

@@ -392,6 +392,7 @@ class _ProfitAndLoss extends StatelessWidget {
     }
 
     add(tr('common.sales'), (r) => r.sales, strong: true);
+    add(tr('financials.lines.ownGoods'), (r) => r.ownGoods);
     add(tr('financials.lines.goodsSold'), (r) => r.goods, cost: true);
     add(tr('financials.lines.spoiled'), (r) => r.spoiled, cost: true);
     add(tr('financials.lines.grossProfit'), (r) => r.gross, strong: true);

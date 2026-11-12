@@ -149,7 +149,8 @@ void recordDistrictMonth(
 /// shops in districts made there, and a share of everything else (interest,
 /// a director, fitting out, gains and losses on sales) by its share of the
 /// sales, after the losses carried there. Only countries where the company
-/// sold or made anything are listed. In a world of one country, that one
+/// sold or made anything are listed. A factory's profit is its own
+/// country's. In a world of one country, that one
 /// takes the whole year.
 List<CountryTax> companyTaxes(
   WorldState world,
@@ -175,6 +176,12 @@ List<CountryTax> companyTaxes(
       final country = content.countryOf(world.stores[store.store.index].market);
       sales[country.index] += store.totalRevenue;
       made[country.index] += store.profit;
+    }
+    // A factory pays where it stands, on what it made against buying.
+    for (final factory in report.factories) {
+      final country = world.factories[factory.factory.index].country;
+      sales[country.index] += factory.totalOwnGoods + factory.totalRivalSales;
+      made[country.index] += factory.profit;
     }
   }
   for (final entry in world.districtYears) {
@@ -232,11 +239,14 @@ List<CountryTax> companyTaxes(
   ];
 }
 
-/// Where [company] is from: the country of its first store, or else where
-/// its owner lives.
+/// Where [company] is from: the country of its first store, or else of its
+/// first factory, or else where its owner lives.
 CountryId homeOf(WorldState world, ContentDb content, Company company) {
   for (final store in world.stores) {
     if (store.company == company.id) return content.countryOf(store.market);
+  }
+  for (final factory in world.factories) {
+    if (factory.company == company.id) return factory.country;
   }
   return world.residence(content, company.owner);
 }

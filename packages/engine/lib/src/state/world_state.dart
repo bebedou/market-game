@@ -9,6 +9,7 @@ import '../persistence/state_io.dart';
 import '../reports/period_report.dart';
 import 'cohort.dart';
 import 'entities.dart';
+import 'factory.dart';
 import 'game_start.dart';
 import 'history.dart';
 import 'macro.dart';
@@ -59,6 +60,9 @@ final class WorldState {
 
   /// The brands shops trade under, by [BrandId].
   final brands = <Brand>[];
+
+  /// Every factory ever built, by [FactoryId]; closed ones stay.
+  final factories = <Factory>[];
 
   /// The economies of the countries after the first, in order: the first's
   /// is [macro]. Saved beside the world, as a world of one country has none.
@@ -380,6 +384,11 @@ final class WorldState {
       );
     }
     if (reader.version >= 26) world.elsewhere = Elsewhere.read(reader);
+    if (reader.version >= factoriesVersion) {
+      world.factories.addAll(
+        _readList(reader, (i) => Factory.read(FactoryId(i), reader)),
+      );
+    }
     return world;
   }
 
@@ -597,6 +606,7 @@ final class WorldState {
     start?.write(writer);
     _writeList(writer, brands, (brand) => brand.write(writer));
     elsewhere.write(writer);
+    _writeList(writer, factories, (factory) => factory.write(writer));
   }
 }
 

@@ -19,6 +19,9 @@ import 'world_state.dart';
 void growWorld(WorldState world, ContentDb content) {
   final day = world.today;
   world.growEconomies(content);
+  for (final factory in world.factories) {
+    factory.growCountries(content.countries.length);
+  }
   // A save from before the labour market starts at the natural rate; it is
   // never below 1% once modelled.
   if (content.macro.labour case final labour?) {

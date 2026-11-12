@@ -117,7 +117,7 @@ Companies can participate in multiple sectors and own different kinds of assets.
 
 ## Roadmap
 
-Next, in this order: owning the chain, the new trades, then the stock market. Household sizes came first and became markets in euros, then the euro countries (see Setting and world). The rest, not part of the first release, in no fixed order:
+Next, in this order: owning the chain, the new trades, then the stock market. Household sizes came first and became markets in euros, then the euro countries (see Setting and world), then the first rung of owning the chain, a factory making the grocers' goods. The rest, not part of the first release, in no fixed order:
 
 - **Goals and milestones.** Net-worth tiers, first acquisition, leading a city's market, a first factory: marked on a timeline of the player's empire.
 - **Achievements.** For feats and odd paths: surviving a recession without a loan, a fine-dining empire, buying out the chain that beat you.
@@ -150,7 +150,17 @@ Growing should not only mean more of the same store. Each trade can own more of 
 4. **Legible.** Reports show what a rung saves or earns against buying from the market, and at what transfer price.
 5. **Made or bought, never both.** Goods the chain makes replace the ones it bought, outright: a shop never sells its own version beside the bought one, so there is no second line to price, stock or compare.
 
-**First step.** Own goods: a factory of the player's takes over a product the chain used to buy, and its goods replace the bought ones on the chain's shelves. It is the smallest ladder to build and the best test of whether integration is fun. Prove it before building the others.
+**First step.** Own goods: a factory of the player's takes over a product the chain used to buy, and its goods replace the bought ones on the chain's shelves. It is the smallest ladder to build and the best test of whether integration is fun. Prove it before building the others. Built as approved on 2026-11-12:
+- *What it makes.* One category, both its lines: a bakery, a drinks plant, a snack factory or a household-goods plant, kinds of factory in the data. Milk and fruit wait for the dairy and the market garden.
+- *Building it.* From the holding, by any of the player's companies or a new one, in any of the countries: its staff are paid at that country's wages and its profit is taxed there. A drinks plant costs about 120,000 and 90 days of works, and the bank lends towards it as towards a shop. The build page shows what the player's shops sell of its goods and what one, two or three shifts would make and earn a month, in a recession too, and how soon it pays back.
+- *Shifts.* One to three, or none. Each shift makes about what three corner shops sell, and its staff are paid whether it has work or not; the site's rent and running are paid whatever it makes. In a recession the player can drop a shift but not the site: that is the idle capacity a supplier would not be.
+- *Made to order.* It makes what the shops order, up to the month's capacity; what they order beyond that comes from their wholesalers at their price, which earns it nothing. It keeps no stock, so it never leaves a shop short. It delivers on the terms of the wholesaler it replaces (three days, a day for bread), no better: faster deliveries are the distribution centre's.
+- *Made or bought, never both.* Once it runs, every shop of the player's that sells its category, in every company and every country it serves, buys those goods only from it.
+- *Where it delivers.* Its own country always, and any other the player ticks, two days slower and paying freight of 4% of the price, so a plant in Spain's lower wages can serve French shops at a cost. Bread doesn't travel.
+- *Transfer price* (open question 6): what each shop's wholesalers would charge it. The shops' books are the same as when they bought, and what the factory makes is exactly what it saves against buying, taxed where it stands, as tax authorities require of prices between related companies.
+- *Rivals.* A switch, with a price under the wholesalers' (up to a fifth off). Rival shops in the places played in full buy from it, under the same rules as from any supplier, when it is their cheapest, and only from what the player's shops leave it: more use of it and more income, and cheaper goods for the rivals too. Places run by formula don't buy from it yet.
+- *Not yet.* Quality is as bought for now; picking one comes next, with its own balance pass, as it changes what shoppers will pay. AI chains don't build factories yet: they buy from the player's, and climb their own ladders in a later step, with their shops run by formula. A factory can be closed, not sold.
+- *Legible.* Its page leads with the month against buying: what the shops would have paid their wholesalers, less materials, staff, site and freight, down to what it earned; then its capacity used against the point where it pays, its shifts, what each line sells for and costs to make, and whom it sells to. The holding lists it with its use and earnings, the shelves mark what it makes, and a company's accounts show what it made for the shops as a line of its own. News tells when it opens and of a month it lost money. The bank lends on its earnings and a company's price counts it.
 
 ## Selling to businesses (roadmap)
 
@@ -327,6 +337,6 @@ Validate consumer demand, inventory, pricing, competition, cash flow, and the da
 3. **Manager hiring.** Where do managers come from (a pool per market?), and is their skill visible or revealed over time? *(Provisional at launch: the scenario offers grades of manager with visible skill and salary; see Engine Architecture.md. Later, executives come from a candidate pool per city, their strengths shown and their character revealed over time; see Executives.)*
 4. **Discovery details.** How are breakthrough odds shown, how fast does knowledge spill over, and how do patents protect against spillover?
 5. **Store model (decide near launch).** Paid upfront, or a free demo with a one-time $4.99 unlock?
-6. **Transfer prices.** When the player's farm or factory supplies their own stores, at what price: cost, market, or a price the player sets? It moves profit between companies, and so tax.
+6. **Transfer prices.** When the player's farm or factory supplies their own stores, at what price: cost, market, or a price the player sets? It moves profit between companies, and so tax. *(Decided 2026-11-12: market, what each shop's wholesalers would charge it, so a rung's profit is what it saves against buying; see Owning the chain.)*
 7. **Executives' character.** How many traits, how strongly they bend policies, and how much is visible before hiring?
 8. **Era.** A start in today's world, where innovation is invented by companies' R&D as play goes on, or a start in the 1950s with a technology tree by sector that follows history? *(Decided: today's world. A tree of future technologies would need foresight nobody has, and history is known to players.)*

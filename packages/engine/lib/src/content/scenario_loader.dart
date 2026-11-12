@@ -604,6 +604,46 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
     node.finish();
   }
 
+  FactoriesDef? factories;
+  final factoryKeys = _Keys();
+  if (root.optionalObject('factories') case final node?) {
+    final kinds = <FactoryKindDef>[];
+    for (final kind in node.objects('kinds')) {
+      final key = kind.string('id');
+      kinds.add(
+        FactoryKindDef(
+          id: FactoryKindId(factoryKeys.add(key, kind.pathOf('id'))),
+          key: key,
+          name: kind.string('name'),
+          category: CategoryId(
+            categoryKeys.resolve(
+              kind.string('category'),
+              kind.pathOf('category'),
+            ),
+          ),
+          buildCost: kind.money('buildCost'),
+          buildDays: kind.positiveInt('buildDays'),
+          shiftUnits: kind.positiveInt('shiftUnits'),
+          shiftWage: kind.money('shiftWage'),
+          site: kind.money('site'),
+          materials: kind.fraction('materials'),
+          leadTimeDays: kind.positiveInt('leadTimeDays'),
+          minOrderUnits: kind.positiveInt('minOrderUnits'),
+          exports: !kind.flag('local'),
+        ),
+      );
+      kind.finish();
+    }
+    factories = FactoriesDef(
+      kinds: List.unmodifiable(kinds),
+      abroadDays: node.nonNegativeInt('abroadDays'),
+      freight: node.fraction('freight'),
+      paymentTermsDays: node.nonNegativeInt('paymentTermsDays'),
+      maxShifts: node.positiveInt('maxShifts'),
+    );
+    node.finish();
+  }
+
   // Places are sized at their country's normal prices, which follow its
   // suppliers' prices.
   references = countryReferences(
@@ -921,6 +961,7 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
       ('companies', companies.map((c) => c.key)),
       ('stores', stores.map((s) => s.key)),
       ('countries', countryKeys._indexes.keys),
+      ('factories', factoryKeys._indexes.keys),
     ])
       (name: name, keys: List.unmodifiable(keys)),
   ];
@@ -946,6 +987,7 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
     taxes: taxes,
     acquisitions: acquisitions,
     directors: directors,
+    factories: factories,
     strategies: List.unmodifiable(strategies),
     startDay: startDay,
     persons: List.unmodifiable(persons),

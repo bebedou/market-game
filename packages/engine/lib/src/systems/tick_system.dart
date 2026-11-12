@@ -1,12 +1,14 @@
 import '../accounting/ledger.dart';
 import '../content/content_db.dart';
 import '../core/calendar.dart';
+import '../core/ids.dart';
 import '../core/rng.dart';
 import '../reports/attribution.dart';
 import '../state/world_state.dart';
 import 'close.dart';
 import 'demand.dart';
 import 'events.dart';
+import 'factories.dart';
 import 'logistics.dart';
 import 'macro.dart';
 import 'operations.dart';
@@ -43,6 +45,10 @@ final class TickContext {
   final List<TickEvent> events;
   final Attribution attribution;
 
+  /// Units the owner's shops had from their wholesalers on a factory's
+  /// order today, as it was making all it could.
+  final boughtIn = <({FactoryId factory, ProductId product, int units})>[];
+
   /// The random generator for [entity] on this day, in subsystem [stream].
   Rng rng(int stream, int entity) =>
       Rng.keyed(_seed, stream, day.number, entity);
@@ -58,6 +64,7 @@ const List<TickSystem> standardSystems = [
   SpoilageSystem(),
   OperationsSystem(),
   DemandSystem(),
+  FactorySystem(),
   SettlementSystem(),
   // Before solvency and reports: chains' shops in districts book there.
   SleeperSystem(),

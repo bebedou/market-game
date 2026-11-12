@@ -166,7 +166,52 @@ String describeCommand(Command command, ContentDb content, Observation view) {
       'study': aStudy(content.researchTiers[tier.index]),
       'market': content.markets[market.index].name,
     }),
+    BuildFactory(
+      :final kind,
+      :final country,
+      :final name,
+      :final borrow,
+      :final termMonths,
+    ) =>
+      tr('commands.buildFactory', {
+        'name': name,
+        'kind': content.factories!.kinds[kind.index].name.toLowerCase(),
+        'country': content.countries[country.index].name,
+        'loan': _loan(borrow, termMonths),
+      }),
+    SetFactoryShifts(:final factory, :final shifts) => tr(
+      shifts == 0 ? 'commands.stopFactory' : 'commands.factoryShifts',
+      {'factory': _factoryName(view, factory), 'count': shifts},
+    ),
+    SetFactoryTerms(:final factory, :final rivalDiscount) => tr(
+      rivalDiscount == null
+          ? 'commands.factoryExclusive'
+          : 'commands.factoryRivals',
+      {
+        'factory': _factoryName(view, factory),
+        'discount': rivalDiscount == null ? '' : percent(rivalDiscount),
+      },
+    ),
+    CloseFactory(:final factory) => tr('commands.closeFactory', {
+      'factory': _factoryName(view, factory),
+    }),
+    OrderFromFactory(store: final s, :final factory, :final lines) =>
+      tr('commands.order', {
+        'units': lines.fold<int>(0, (sum, line) => sum + line.quantity),
+        'supplier': _factoryName(view, factory),
+        'store': store(s),
+      }),
   };
+}
+
+/// The name of the actor's factory [id].
+String _factoryName(Observation view, FactoryId id) {
+  for (final company in view.companies) {
+    for (final factory in company.factories) {
+      if (factory.id == id) return factory.name;
+    }
+  }
+  return '';
 }
 
 /// ", borrowing … over …", if anything is borrowed.

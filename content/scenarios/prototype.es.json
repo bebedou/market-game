@@ -179,6 +179,14 @@
     "mrs_metro": "Metro Notre-Dame-du-Mont",
     "reze_halles": "Plaza del mercado de Rezé"
   },
+  "factories": {
+    "kinds": {
+      "bakery": "Panificadora",
+      "drinks": "Planta de bebidas",
+      "snacks": "Fábrica de aperitivos",
+      "household": "Planta de productos de limpieza"
+    }
+  },
   "companies": {
     "player_co": "Tienda de la Esquina"
   },

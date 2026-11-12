@@ -30,6 +30,7 @@ final class ContentDb {
     this.taxes,
     this.acquisitions,
     this.directors,
+    this.factories,
     required this.strategies,
     required this.startDay,
     required this.persons,
@@ -181,6 +182,9 @@ final class ContentDb {
 
   /// Directors for hire; null if companies can't have one.
   final DirectorsDef? directors;
+
+  /// Factories companies may build; null if they can't.
+  final FactoriesDef? factories;
   final List<StrategyDef> strategies;
 
   // Initial world.
@@ -1383,6 +1387,87 @@ final class SupplierDef {
       priceFactor * (Fx.one - discount) * priceLevel,
     );
   }
+}
+
+/// Factories a company can build to make goods its shops used to buy: the
+/// first rung of owning the chain.
+final class FactoriesDef {
+  const FactoriesDef({
+    required this.kinds,
+    required this.abroadDays,
+    required this.freight,
+    required this.paymentTermsDays,
+    required this.maxShifts,
+  });
+
+  final List<FactoryKindDef> kinds;
+
+  /// The days a delivery to another country takes beyond one at home.
+  final int abroadDays;
+
+  /// What carrying goods to another country costs, as a share of what they
+  /// sell for.
+  final Fx freight;
+
+  /// Days after delivery before a shop pays a factory.
+  final int paymentTermsDays;
+
+  /// The most shifts a factory runs.
+  final int maxShifts;
+}
+
+/// A kind of factory: the category it makes, both lines of it, and what it
+/// costs to build and to run.
+final class FactoryKindDef {
+  const FactoryKindDef({
+    required this.id,
+    required this.key,
+    required this.name,
+    required this.category,
+    required this.buildCost,
+    required this.buildDays,
+    required this.shiftUnits,
+    required this.shiftWage,
+    required this.site,
+    required this.materials,
+    required this.leadTimeDays,
+    required this.minOrderUnits,
+    this.exports = true,
+  });
+
+  final FactoryKindId id;
+  final String key;
+  final String name;
+
+  /// What it makes: every product of the category.
+  final CategoryId category;
+
+  /// Building and fitting it, at a price index of one.
+  final Money buildCost;
+  final int buildDays;
+
+  /// What one shift makes in a day.
+  final int shiftUnits;
+
+  /// What one shift's staff are paid a day, at a wage index of one in the
+  /// first country, whether or not it has anything to make.
+  final Money shiftWage;
+
+  /// The site's rent and running costs a month, at a price index of one,
+  /// whatever it makes.
+  final Money site;
+
+  /// What making a unit costs in materials, as a share of its base cost.
+  final Fx materials;
+
+  /// Days to deliver in its own country.
+  final int leadTimeDays;
+
+  /// The smallest quantity per order line.
+  final int minOrderUnits;
+
+  /// Whether its goods travel to other countries: bread doesn't.
+  final bool exports;
 }
 
 final class VolumeDiscount {

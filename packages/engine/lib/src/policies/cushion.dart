@@ -67,7 +67,7 @@ Money nextInstallment(LoanView loan) {
 
 /// The cash [company] keeps for what it must pay soon: each store's share of
 /// [CompanyView.cushionDays] (see [storeCushion]), as many days of its
-/// director's salary, each loan's next payment and the tax on this year's
+/// director's salary and its factories' shifts, a month of their sites, each loan's next payment and the tax on this year's
 /// profit so far. Managers and AI owners order
 /// in full only from free cash beyond it; within it, only enough to keep
 /// selling, from [cashForEssentials].
@@ -83,6 +83,11 @@ Money cashCushion(Observation view, ContentDb content, CompanyView company) {
   }
   for (final store in company.stores) {
     cushion += storeCushion(view, content, store, company.cushionDays);
+  }
+  for (final factory in company.factories) {
+    if (!factory.making) continue;
+    cushion +=
+        factory.dailyWages.timesInt(company.cushionDays) + factory.monthlySite;
   }
   for (final loan in company.loans) {
     cushion += nextInstallment(loan);

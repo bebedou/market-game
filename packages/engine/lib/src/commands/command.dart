@@ -196,6 +196,55 @@ sealed class Command {
         actor,
         company: CompanyId(reader.readInt()),
       ),
+      BuildFactory.tag => BuildFactory(
+        actor,
+        kind: FactoryKindId(reader.readInt()),
+        country: CountryId(reader.readInt()),
+        name: reader.readString(),
+        company: switch (reader.readNullableInt()) {
+          final index? => CompanyId(index),
+          null => null,
+        },
+        capital: Money(reader.readInt()),
+        borrow: Money(reader.readInt()),
+        termMonths: reader.readInt(),
+        shifts: reader.readInt(),
+        serves: reader.readBool()
+            ? [
+                for (var c = 0, n = reader.readInt(); c < n; c++)
+                  reader.readBool(),
+              ]
+            : null,
+      ),
+      SetFactoryShifts.tag => SetFactoryShifts(
+        actor,
+        factory: FactoryId(reader.readInt()),
+        shifts: reader.readInt(),
+      ),
+      SetFactoryTerms.tag => SetFactoryTerms(
+        actor,
+        factory: FactoryId(reader.readInt()),
+        serves: [
+          for (var i = 0, n = reader.readInt(); i < n; i++) reader.readBool(),
+        ],
+        rivalDiscount: switch (reader.readNullableInt()) {
+          final raw? => Fx.raw(raw),
+          null => null,
+        },
+      ),
+      CloseFactory.tag => CloseFactory(
+        actor,
+        factory: FactoryId(reader.readInt()),
+      ),
+      OrderFromFactory.tag => OrderFromFactory(
+        actor,
+        store: StoreId(reader.readInt()),
+        factory: FactoryId(reader.readInt()),
+        lines: [
+          for (var i = 0, n = reader.readInt(); i < n; i++)
+            (product: ProductId(reader.readInt()), quantity: reader.readInt()),
+        ],
+      ),
       _ => throw FormatException('Unknown command tag $tag'),
     };
   }
@@ -1106,4 +1155,197 @@ final class WakeNeighbourhood extends Command {
 
   @override
   String toString() => 'WakeNeighbourhood(actor: ${actor.index}, row: $row)';
+}
+
+/// Builds a factory of [kind] in [country] for [company], or for a new one
+/// named [name] founded with [capital] of the actor's cash: it pays the
+/// kind's build cost at the country's prices, borrowing [borrow] of it over
+/// [termMonths] if asked, and makes goods after the kind's build days, at
+/// [shifts]. It serves its own country's shops.
+final class BuildFactory extends Command {
+  const BuildFactory(
+    super.actor, {
+    required this.kind,
+    required this.country,
+    required this.name,
+    this.company,
+    this.capital = Money.zero,
+    this.borrow = Money.zero,
+    this.termMonths = 0,
+    this.shifts = 1,
+    this.serves,
+  });
+
+  static const int tag = 30;
+
+  final FactoryKindId kind;
+  final CountryId country;
+
+  /// The factory's name, and a new company's if [company] is null.
+  final String name;
+  final CompanyId? company;
+  final Money capital;
+  final Money borrow;
+  final int termMonths;
+  final int shifts;
+
+  /// The countries whose shops it delivers to, by [CountryId], its own
+  /// among them; null for its own alone.
+  final List<bool>? serves;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(kind.index)
+      ..writeInt(country.index)
+      ..writeString(name)
+      ..writeNullableInt(company?.index)
+      ..writeInt(capital.cents)
+      ..writeInt(borrow.cents)
+      ..writeInt(termMonths)
+      ..writeInt(shifts)
+      ..writeBool(serves != null);
+    if (serves case final serves?) {
+      writer.writeInt(serves.length);
+      serves.forEach(writer.writeBool);
+    }
+  }
+
+  @override
+  String toString() =>
+      'BuildFactory(actor: ${actor.index}, kind: ${kind.index}, '
+      'country: ${country.index}, name: $name, company: ${company?.index}, '
+      'capital: ${capital.toDecimalString()}, '
+      'borrow: ${borrow.toDecimalString()}, termMonths: $termMonths, '
+      'shifts: $shifts, serves: $serves)';
+}
+
+/// Sets how many shifts a factory runs, from 0, stopped, to the scenario's
+/// most: each one's staff are paid whether or not it has work.
+final class SetFactoryShifts extends Command {
+  const SetFactoryShifts(
+    super.actor, {
+    required this.factory,
+    required this.shifts,
+  });
+
+  static const int tag = 31;
+
+  final FactoryId factory;
+  final int shifts;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(factory.index)
+      ..writeInt(shifts);
+  }
+
+  @override
+  String toString() =>
+      'SetFactoryShifts(actor: ${actor.index}, factory: ${factory.index}, '
+      'shifts: $shifts)';
+}
+
+/// Sets which countries' shops a factory delivers to, by [CountryId], its
+/// own always among them, and whether it sells to rivals: [rivalDiscount]
+/// under their wholesalers' prices, or null to keep it for the owner's
+/// shops.
+final class SetFactoryTerms extends Command {
+  const SetFactoryTerms(
+    super.actor, {
+    required this.factory,
+    required this.serves,
+    this.rivalDiscount,
+  });
+
+  static const int tag = 32;
+
+  final FactoryId factory;
+  final List<bool> serves;
+  final Fx? rivalDiscount;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(factory.index)
+      ..writeInt(serves.length);
+    serves.forEach(writer.writeBool);
+    writer.writeNullableInt(rivalDiscount?.raw);
+  }
+
+  @override
+  String toString() =>
+      'SetFactoryTerms(actor: ${actor.index}, factory: ${factory.index}, '
+      'serves: $serves, rivalDiscount: ${rivalDiscount?.raw})';
+}
+
+/// Closes a factory for good: the owner's shops buy its goods from their
+/// wholesalers again, and orders on their way arrive from them.
+final class CloseFactory extends Command {
+  const CloseFactory(super.actor, {required this.factory});
+
+  static const int tag = 33;
+
+  final FactoryId factory;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(factory.index);
+  }
+
+  @override
+  String toString() =>
+      'CloseFactory(actor: ${actor.index}, factory: ${factory.index})';
+}
+
+/// Orders goods for [store] from [factory]: the actor's own, which charges
+/// what the store's wholesalers would and makes what it can, or a rival's
+/// that sells to others, from what it can spare.
+final class OrderFromFactory extends Command {
+  const OrderFromFactory(
+    super.actor, {
+    required this.store,
+    required this.factory,
+    required this.lines,
+  });
+
+  static const int tag = 34;
+
+  final StoreId store;
+  final FactoryId factory;
+  final List<OrderQuantity> lines;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(store.index)
+      ..writeInt(factory.index)
+      ..writeInt(lines.length);
+    for (final (:product, :quantity) in lines) {
+      writer
+        ..writeInt(product.index)
+        ..writeInt(quantity);
+    }
+  }
+
+  @override
+  String toString() {
+    final items = [
+      for (final (:product, :quantity) in lines) '${product.index}×$quantity',
+    ];
+    return 'OrderFromFactory(actor: ${actor.index}, store: ${store.index}, '
+        'factory: ${factory.index}, lines: ${items.join(', ')})';
+  }
 }

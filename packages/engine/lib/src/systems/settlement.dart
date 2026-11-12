@@ -249,6 +249,7 @@ void bill(
     amount: payable.amount,
     reason: payable.reason,
     store: payable.store,
+    factory: payable.factory,
   );
   company.payables.add(payable);
 }

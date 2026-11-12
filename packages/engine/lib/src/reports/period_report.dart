@@ -7,6 +7,7 @@ import '../core/money.dart';
 import '../core/safe_int.dart';
 import '../persistence/state_io.dart';
 import '../state/entities.dart';
+import '../state/orders.dart' show factoriesVersion;
 import '../state/world_state.dart';
 import '../systems/tick_system.dart';
 import 'attribution.dart';
@@ -56,16 +57,19 @@ final class PeriodReport {
     required int days,
     required List<Money> flows,
     required List<StoreReport> stores,
+    required List<FactoryReport> factories,
   }) : _days = days,
        _flows = flows,
-       _stores = stores;
+       _stores = stores,
+       _factories = factories;
 
   PeriodReport._open(this.company, this.period, Day day)
     : start = period.startOf(day),
       firstDay = day,
       _days = 0,
       _flows = List.filled(AccountKind.values.length, Money.zero),
-      _stores = [];
+      _stores = [],
+      _factories = [];
 
   PeriodReport.read(StateReader reader)
     : company = CompanyId(reader.readInt()),
@@ -77,6 +81,11 @@ final class PeriodReport {
       _stores = [
         for (var i = 0, n = reader.readInt(); i < n; i++)
           StoreReport._read(reader),
+      ],
+      _factories = [
+        if (reader.version >= factoriesVersion)
+          for (var i = 0, n = reader.readInt(); i < n; i++)
+            FactoryReport._read(reader),
       ];
 
   final CompanyId company;
@@ -91,6 +100,7 @@ final class PeriodReport {
   int _days;
   final List<Money> _flows;
   final List<StoreReport> _stores;
+  final List<FactoryReport> _factories;
 
   /// The first day after the period.
   Day get end => period.endOf(start);
@@ -135,7 +145,11 @@ final class PeriodReport {
   Money get rentPaidAhead =>
       flow(AccountKind.rent) +
       flow(AccountKind.overheads) -
-      _stores.fold(Money.zero, (sum, store) => sum + store._occupancy);
+      _stores.fold(Money.zero, (sum, store) => sum + store._occupancy) -
+      _factories.fold(
+        Money.zero,
+        (sum, factory) => sum + factory._occupancy + factory._freight,
+      );
 
   /// The company's stores that traded or were reported on, in order of
   /// first activity.
@@ -148,11 +162,33 @@ final class PeriodReport {
     return null;
   }
 
+  /// The company's factories that made, bought in or cost anything, in
+  /// order of first activity.
+  List<FactoryReport> get factories => UnmodifiableListView(_factories);
+
+  FactoryReport? factory(FactoryId factory) {
+    for (final report in _factories) {
+      if (report.factory == factory) return report;
+    }
+    return null;
+  }
+
+  FactoryReport _factoryFor(FactoryId factory, int products) {
+    final existing = this.factory(factory);
+    if (existing != null) return existing;
+    final report = FactoryReport._(factory, products);
+    _factories.add(report);
+    return report;
+  }
+
   /// Reports [products] from now on: the scenario gained some since the
   /// game was saved.
   void growProducts(int products) {
     for (final store in _stores) {
       store._grow(products);
+    }
+    for (final factory in _factories) {
+      factory._grow(products);
     }
   }
 
@@ -172,6 +208,7 @@ final class PeriodReport {
     days: _days,
     flows: List.of(_flows),
     stores: [for (final store in _stores) store._copy()],
+    factories: [for (final factory in _factories) factory._copy()],
   );
 
   void write(StateWriter writer) {
@@ -185,6 +222,10 @@ final class PeriodReport {
     writer.writeInt(_stores.length);
     for (final store in _stores) {
       store._write(writer);
+    }
+    writer.writeInt(_factories.length);
+    for (final factory in _factories) {
+      factory._write(writer);
     }
   }
 }
@@ -206,6 +247,7 @@ const _incomeStatement = [
   AccountKind.taxes,
   AccountKind.disposals,
   AccountKind.overheads,
+  AccountKind.ownGoods,
 ];
 
 /// One store's part of a [PeriodReport].
@@ -353,6 +395,159 @@ final class StoreReport {
   }
 }
 
+/// One factory's part of a [PeriodReport]: what it made and for whom, what
+/// its owner's shops bought in beyond its capacity, and what it cost. As it
+/// sells to its owner's shops at what their wholesalers charge, its
+/// [profit] is what it earned against buying.
+final class FactoryReport {
+  FactoryReport._(this.factory, int products)
+    : _madeOwn = List.filled(products, 0),
+      _madeRival = List.filled(products, 0),
+      _boughtIn = List.filled(products, 0),
+      _ownGoods = List.filled(products, Money.zero),
+      _rivalSales = List.filled(products, Money.zero),
+      _materials = List.filled(products, Money.zero),
+      _wages = Money.zero,
+      _site = Money.zero,
+      _freight = Money.zero,
+      _occupancy = Money.zero,
+      _build = Money.zero;
+
+  FactoryReport._copyOf(FactoryReport other)
+    : factory = other.factory,
+      _madeOwn = List.of(other._madeOwn),
+      _madeRival = List.of(other._madeRival),
+      _boughtIn = List.of(other._boughtIn),
+      _ownGoods = List.of(other._ownGoods),
+      _rivalSales = List.of(other._rivalSales),
+      _materials = List.of(other._materials),
+      _wages = other._wages,
+      _site = other._site,
+      _freight = other._freight,
+      _occupancy = other._occupancy,
+      _build = other._build;
+
+  FactoryReport._read(StateReader reader)
+    : factory = FactoryId(reader.readInt()),
+      _madeOwn = _readInts(reader),
+      _madeRival = _readInts(reader),
+      _boughtIn = _readInts(reader),
+      _ownGoods = [for (final cents in _readInts(reader)) Money(cents)],
+      _rivalSales = [for (final cents in _readInts(reader)) Money(cents)],
+      _materials = [for (final cents in _readInts(reader)) Money(cents)],
+      _wages = Money(reader.readInt()),
+      _site = Money(reader.readInt()),
+      _freight = Money(reader.readInt()),
+      _occupancy = Money(reader.readInt()),
+      _build = Money(reader.readInt());
+
+  final FactoryId factory;
+  final List<int> _madeOwn;
+  final List<int> _madeRival;
+  final List<int> _boughtIn;
+  final List<Money> _ownGoods;
+  final List<Money> _rivalSales;
+  final List<Money> _materials;
+  Money _wages;
+  Money _site;
+  Money _freight;
+  Money _occupancy;
+  Money _build;
+
+  void _grow(int products) {
+    while (_madeOwn.length < products) {
+      _madeOwn.add(0);
+      _madeRival.add(0);
+      _boughtIn.add(0);
+      _ownGoods.add(Money.zero);
+      _rivalSales.add(Money.zero);
+      _materials.add(Money.zero);
+    }
+  }
+
+  /// Units of [product] delivered to its owner's shops.
+  int madeForOwn(ProductId product) => _madeOwn[product.index];
+
+  /// Units of [product] delivered to rivals.
+  int madeForRivals(ProductId product) => _madeRival[product.index];
+
+  /// Units of [product] its owner's shops had from their wholesalers
+  /// instead, as it was making all it could.
+  int boughtIn(ProductId product) => _boughtIn[product.index];
+
+  /// What its owner's shops paid for [product]: what their wholesalers would
+  /// have charged.
+  Money ownGoods(ProductId product) => _ownGoods[product.index];
+
+  /// What rivals paid for [product].
+  Money rivalSales(ProductId product) => _rivalSales[product.index];
+
+  /// What making [product] took in materials.
+  Money materials(ProductId product) => _materials[product.index];
+
+  /// Everything made, for anyone.
+  int get made {
+    var total = 0;
+    for (var i = 0; i < _madeOwn.length; i++) {
+      total += _madeOwn[i] + _madeRival[i];
+    }
+    return total;
+  }
+
+  int get totalBoughtIn => _boughtIn.fold(0, (sum, units) => sum + units);
+
+  Money get totalOwnGoods => _ownGoods.fold(Money.zero, (sum, m) => sum + m);
+
+  Money get totalRivalSales =>
+      _rivalSales.fold(Money.zero, (sum, m) => sum + m);
+
+  Money get totalMaterials => _materials.fold(Money.zero, (sum, m) => sum + m);
+
+  /// Its shifts' pay.
+  Money get wages => _wages;
+
+  /// The site's rent and running costs, paid on the first of the month.
+  Money get site => _site;
+
+  /// The site's for the days recorded: each day's share of the month's.
+  Money get occupancy => _occupancy;
+
+  /// Carrying goods to other countries.
+  Money get freight => _freight;
+
+  /// Building and fitting it, if that fell in the period.
+  Money get build => _build;
+
+  /// What it sold for less its materials, staff, site and freight, with the
+  /// site counted day by day: against buying, what it saved its owner's
+  /// shops and earned from rivals. Building it isn't counted.
+  Money get profit =>
+      totalOwnGoods +
+      totalRivalSales -
+      totalMaterials -
+      _wages -
+      _occupancy -
+      _freight;
+
+  FactoryReport _copy() => FactoryReport._copyOf(this);
+
+  void _write(StateWriter writer) {
+    writer.writeInt(factory.index);
+    _writeInts(writer, _madeOwn);
+    _writeInts(writer, _madeRival);
+    _writeInts(writer, _boughtIn);
+    _writeInts(writer, [for (final money in _ownGoods) money.cents]);
+    _writeInts(writer, [for (final money in _rivalSales) money.cents]);
+    _writeInts(writer, [for (final money in _materials) money.cents]);
+    writer
+      ..writeInt(_wages.cents)
+      ..writeInt(_site.cents)
+      ..writeInt(_freight.cents)
+      ..writeInt(_occupancy.cents)
+      ..writeInt(_build.cents);
+  }
+}
+
 /// The accounts that make up a store's running costs.
 const _runningCostAccounts = {
   AccountKind.wages,
@@ -442,12 +637,34 @@ void recordPeriodReports(WorldState world, TickContext context) {
       report._storeFor(store.id, products)._occupancy += share;
     });
   }
+  // Each running factory's day of the month's site costs, as billed.
+  for (final factory in world.factories) {
+    if (!factory.runsOn(day) ||
+        world.companies[factory.company.index].status != CompanyStatus.active) {
+      continue;
+    }
+    final kind = context.content.factories!.kinds[factory.kind.index];
+    final monthly = kind.site.times(world.macroOf(factory.country).priceIndex);
+    final share = Money(mulDivRound(monthly.cents, 1, days));
+    add(factory.company, (report) {
+      report._factoryFor(factory.id, products)._occupancy += share;
+    });
+  }
+  for (final (:factory, :product, :units) in context.boughtIn) {
+    add(world.factories[factory.index].company, (report) {
+      report._factoryFor(factory, products)._boughtIn[product.index] += units;
+    });
+  }
   for (final entry in context.ledger.entries) {
     if (entry.party.type != PartyType.company) continue;
     final company = CompanyId(entry.party.index);
     add(company, (report) {
       report._flows[entry.debit.index] += entry.amount;
       report._flows[entry.credit.index] -= entry.amount;
+      if (entry.factory case final factory?) {
+        _recordFactory(report._factoryFor(factory, products), entry);
+        return;
+      }
       final store = entry.store;
       final product = entry.product;
       if (store != null && _runningCostAccounts.contains(entry.debit)) {
@@ -500,6 +717,32 @@ void recordPeriodReports(WorldState world, TickContext context) {
     for (final report in reports ?? const <PeriodReport>[]) {
       report._days++;
     }
+  }
+}
+
+/// Adds [entry], one of a factory's, to its part of a report.
+void _recordFactory(FactoryReport report, JournalEntry entry) {
+  final product = entry.product;
+  switch (entry.reason) {
+    case EntryReason.factorySale when product != null:
+      if (entry.credit == AccountKind.ownGoods) {
+        report._madeOwn[product.index] += entry.units;
+        report._ownGoods[product.index] += entry.amount;
+      } else {
+        report._madeRival[product.index] += entry.units;
+        report._rivalSales[product.index] += entry.amount;
+      }
+    case EntryReason.materials when product != null:
+      report._materials[product.index] += entry.amount;
+    case EntryReason.freight:
+      report._freight += entry.amount;
+    case EntryReason.wages:
+      report._wages += entry.amount;
+    case EntryReason.rent:
+      report._site += entry.amount;
+    case EntryReason.openingCosts:
+      report._build += entry.amount;
+    default:
   }
 }
 

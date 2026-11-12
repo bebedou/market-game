@@ -526,11 +526,65 @@ class SimulationController extends ChangeNotifier {
     for (final store in company.stores) {
       total += storeCushion(_view, content, store, days);
     }
+    for (final factory in company.factories) {
+      if (!factory.making) continue;
+      total += factory.dailyWages.timesInt(days) + factory.monthlySite;
+    }
     for (final loan in company.loans) {
       total += nextInstallment(loan);
     }
     return total;
   }
+
+  /// Every factory of the player's companies, with its company, in the
+  /// order built.
+  List<(CompanyView, FactoryView)> get myFactories => [
+    for (final company in _view.companies)
+      for (final factory in company.factories) (company, factory),
+  ]..sort((a, b) => a.$2.id.index.compareTo(b.$2.id.index));
+
+  /// The player's factory [id] as of today, if it is theirs.
+  FactoryView? factory(FactoryId id) {
+    for (final (_, factory) in myFactories) {
+      if (factory.id == id) return factory;
+    }
+    return null;
+  }
+
+  /// How many shifts [factory] runs once pending changes apply.
+  int shiftsOf(FactoryView factory) {
+    var shifts = factory.shifts;
+    for (final command in _pending) {
+      if (command case SetFactoryShifts(
+        factory: final f,
+        shifts: final next,
+      ) when f == factory.id) {
+        shifts = next;
+      }
+    }
+    return shifts;
+  }
+
+  /// Where [factory] delivers and what it charges rivals once pending
+  /// changes apply.
+  ({List<bool> serves, Fx? rivalDiscount}) termsOf(FactoryView factory) {
+    var terms = (serves: factory.serves, rivalDiscount: factory.rivalDiscount);
+    for (final command in _pending) {
+      if (command case SetFactoryTerms(
+        factory: final f,
+        :final serves,
+        :final rivalDiscount,
+      ) when f == factory.id) {
+        terms = (serves: serves, rivalDiscount: rivalDiscount);
+      }
+    }
+    return terms;
+  }
+
+  /// Whether [factory] is to close tomorrow.
+  bool closing(FactoryView factory) => _pending.any(
+    (command) => command is CloseFactory && command.factory == factory.id,
+  );
 
   /// Whether a change to [product] at [store] is waiting for the next step.
   bool isPending(StoreId store, ProductId product) => _pending.any(
@@ -641,6 +695,9 @@ class SimulationController extends ChangeNotifier {
     ConvertStore(:final store) => 'enlarge ${store.index}',
     BuyStore(:final store) || SellStore(:final store) => 'deal ${store.index}',
     BuyCompany(:final company) => 'company deal ${company.index}',
+    SetFactoryShifts(:final factory) => 'factory shifts ${factory.index}',
+    SetFactoryTerms(:final factory) => 'factory terms ${factory.index}',
+    CloseFactory(:final factory) => 'factory close ${factory.index}',
     _ => null,
   };
 
@@ -706,6 +763,15 @@ class SimulationController extends ChangeNotifier {
       ),
       SetMarketing(:final store, :final share) =>
         find(store)?.marketingShare == share,
+      SetFactoryShifts(:final factory, :final shifts) =>
+        this.factory(factory)?.shifts == shifts,
+      SetFactoryTerms(:final factory, :final serves, :final rivalDiscount) =>
+        switch (this.factory(factory)) {
+          final now? =>
+            listEquals(now.serves, serves) &&
+                now.rivalDiscount == rivalDiscount,
+          null => false,
+        },
       _ => false,
     };
   }
@@ -938,6 +1004,54 @@ class SimulationController extends ChangeNotifier {
     }
 
     for (final company in after.companies) {
+      for (final factory in company.factories) {
+        final was = before.companies
+            .expand((c) => c.factories)
+            .where((f) => f.id == factory.id)
+            .firstOrNull;
+        if (factory.making && was != null && !was.making) {
+          add(
+            AlertKind.stores,
+            tr('alerts.factoryOpened', {
+              'factory': factory.name,
+              'country': content.countries[factory.country.index].name,
+            }),
+          );
+        }
+      }
+    }
+    if (after.today.isFirstOfMonth) {
+      for (final company in after.companies) {
+        final month = _simulation
+            .reports(company.id, ReportPeriod.month)
+            .lastOrNull;
+        if (month == null) continue;
+        for (final part in month.factories) {
+          final factory = company.factories
+              .where((f) => f.id == part.factory)
+              .firstOrNull;
+          if (factory == null || part.profit >= Money.zero) continue;
+          final kind = content.factories!.kinds[factory.kind.index];
+          final capacity = kind.shiftUnits * factory.shifts * month.days;
+          add(
+            AlertKind.monthEnd,
+            tr('alerts.factoryBelowBreakEven', {
+              'factory': factory.name,
+              'month': monthName(month.start),
+              'loss': money(-part.profit, cents: false),
+              'use': percent(
+                capacity == 0
+                    ? Fx.zero
+                    : Fx.raw(part.made * Fx.scale ~/ capacity),
+                decimals: 0,
+              ),
+            }),
+          );
+        }
+      }
+    }
+
+    for (final company in after.companies) {
       if (company.founded >= day ||
           before.companies.any((c) => c.id == company.id)) {
         continue;
@@ -1082,6 +1196,8 @@ class SimulationController extends ChangeNotifier {
     EntryReason.loanRepayment => tr('terms.bills.loan'),
     EntryReason.marketing => tr('terms.bills.marketing'),
     EntryReason.corporateTax => tr('terms.bills.tax'),
+    EntryReason.materials => tr('terms.bills.materials'),
+    EntryReason.freight => tr('terms.bills.freight'),
     _ => tr('terms.bills.other'),
   };
 }

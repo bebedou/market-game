@@ -3,6 +3,8 @@ import '../commands/transfers.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
 import '../state/entities.dart';
+import '../state/factory.dart';
+import '../state/orders.dart';
 import '../state/world_state.dart';
 import 'closure.dart';
 import 'events.dart';
@@ -46,6 +48,10 @@ void liquidate(WorldState world, TickContext context, Company company) {
       );
     }
   }
+  for (final factory in world.factories) {
+    if (factory.company == company.id) factory.status = FactoryStatus.closed;
+  }
+  _collectReceivables(world, ledger, company);
   final guarantors = <int, Person>{};
   for (final loan in world.loans) {
     if (loan.company != company.id) continue;
@@ -125,11 +131,12 @@ void liquidate(WorldState world, TickContext context, Company company) {
         amount: unpaid,
         reason: EntryReason.liquidation,
       );
-      if (payable.creditorAccount == AccountKind.loans) {
+      if (payable.creditorAccount == AccountKind.loans ||
+          payable.creditorAccount == AccountKind.receivables) {
         ledger.post(
           creditor,
           debit: AccountKind.writeOffs,
-          credit: AccountKind.loans,
+          credit: payable.creditorAccount,
           amount: unpaid,
           reason: EntryReason.liquidation,
         );
@@ -190,4 +197,53 @@ void liquidate(WorldState world, TickContext context, Company company) {
       writtenOff: writtenOff,
     ),
   );
+}
+
+/// Collects what other companies owe [company]'s factories before it is
+/// wound up: each pays now what its cash allows, and the rest is forgiven.
+void _collectReceivables(WorldState world, Ledger ledger, Company company) {
+  final ref = company.partyRef;
+  for (final debtor in world.companies) {
+    if (debtor.id == company.id || !debtor.isActive) continue;
+    final kept = <Payable>[];
+    for (final payable in debtor.payables) {
+      if (payable.creditor != ref) {
+        kept.add(payable);
+        continue;
+      }
+      final cash = debtor.accounts[AccountKind.cash];
+      final paid = payable.amount < cash ? payable.amount : cash;
+      if (paid > Money.zero) {
+        ledger.pay(
+          payer: debtor,
+          payerAccount: AccountKind.payables,
+          payee: company,
+          payeeAccount: payable.creditorAccount,
+          amount: paid,
+          reason: EntryReason.liquidation,
+        );
+      }
+      final forgiven = payable.amount - paid;
+      if (forgiven > Money.zero) {
+        ledger
+          ..post(
+            debtor,
+            debit: AccountKind.payables,
+            credit: AccountKind.debtRelief,
+            amount: forgiven,
+            reason: EntryReason.liquidation,
+          )
+          ..post(
+            company,
+            debit: AccountKind.writeOffs,
+            credit: payable.creditorAccount,
+            amount: forgiven,
+            reason: EntryReason.liquidation,
+          );
+      }
+    }
+    debtor.payables
+      ..clear()
+      ..addAll(kept);
+  }
 }

@@ -73,6 +73,21 @@ List<String> invariantViolations(WorldState world) {
         '${borrowed.toDecimalString()}',
       );
     }
+    var due = Money.zero;
+    for (final debtor in world.companies) {
+      for (final payable in debtor.payables) {
+        if (payable.creditor == company.partyRef &&
+            payable.creditorAccount == AccountKind.receivables) {
+          due += payable.amount;
+        }
+      }
+    }
+    if (company.accounts[AccountKind.receivables] != due) {
+      violations.add(
+        '$where: receivables account differs from what buyers owe '
+        '${due.toDecimalString()}',
+      );
+    }
     if (!company.isActive &&
         (company.accounts[AccountKind.cash] != Money.zero ||
             company.payables.isNotEmpty)) {

@@ -593,7 +593,16 @@ class _ProductTile extends StatelessWidget {
     final id = product.id;
     final price = game.priceOf(store, id);
     final listed = price != null;
-    final cost = supplierCost(game, product);
+    final maker = game.view.factoryFor(game.content, store, product);
+    final cost = maker == null
+        ? supplierCost(game, product)
+        : marketQuote(
+            game.content,
+            game.content.countryOf(store.market),
+            product,
+            game.content.factories!.kinds[maker.kind.index].minOrderUnits,
+            game.economyAt(store.market).priceIndex,
+          )?.price;
     final sales = store.sales;
     int recent(SalesCount count) => sales.total(count, id, recentDays);
     final rivals = [
@@ -673,6 +682,10 @@ class _ProductTile extends StatelessWidget {
                             ? theme.colorScheme.tertiary
                             : theme.colorScheme.primary,
                       ),
+                      if (maker != null) ...[
+                        const SizedBox(width: 6),
+                        Pill(tr('store.made'), color: Ledger.of(context).works),
+                      ],
                       if (game.isPending(store.id, id)) ...[
                         const SizedBox(width: 6),
                         Icon(
@@ -683,6 +696,11 @@ class _ProductTile extends StatelessWidget {
                       ],
                     ],
                   ),
+                  if (maker != null)
+                    Text(
+                      tr('store.madeBy', {'factory': maker.name}),
+                      style: details,
+                    ),
                   if (managedPrice)
                     Text(
                       tr('store.pricedByManager'),

@@ -10,6 +10,7 @@ import '../state/brands.dart';
 import '../state/credit.dart';
 import '../state/director.dart';
 import '../state/entities.dart';
+import '../state/factory.dart';
 import '../state/history.dart';
 import '../state/macro.dart';
 import '../state/market.dart';
@@ -50,6 +51,7 @@ final class Observation {
     this.companyCredits = const [],
     this.guaranteeRoom = Money.zero,
     this.brands = const [],
+    this.offers = const [],
     List<DistrictView> Function() districts = _noDistricts,
   }) : _districts = districts;
 
@@ -145,6 +147,145 @@ final class Observation {
 
   /// How much more the actor can guarantee (see `guaranteeRoom`).
   final Money guaranteeRoom;
+
+  /// The factories that sell to anyone's shops, with what each can spare
+  /// this month: public, as a supplier's terms are.
+  final List<FactoryOffer> offers;
+
+  /// The actor's factory that makes [product] for [store], one of the
+  /// actor's: running, making its category and serving its country, the
+  /// one with the most left to make this month first, then the first
+  /// built. The store then buys the product only from it.
+  FactoryView? factoryFor(
+    ContentDb content,
+    StoreView store,
+    ProductDef product,
+  ) {
+    final factories = content.factories;
+    if (factories == null) return null;
+    final country = content.countryOf(store.market);
+    FactoryView? best;
+    for (final company in companies) {
+      if (company.status != CompanyStatus.active) continue;
+      for (final factory in company.factories) {
+        if (!factory.making ||
+            !factory.servesCountry(country) ||
+            factories.kinds[factory.kind.index].category != product.category) {
+          continue;
+        }
+        if (best == null || factory.capacityLeft > best.capacityLeft) {
+          best = factory;
+        }
+      }
+    }
+    return best;
+  }
+
+  /// Rivals' factories that would sell [store] goods, the actor's own
+  /// left out.
+  List<FactoryOffer> offersFor(ContentDb content, StoreView store) {
+    final country = content.countryOf(store.market);
+    return [
+      for (final offer in offers)
+        if (companyOwners[offer.company.index] != actor &&
+            offer.serves.length > country.index &&
+            offer.serves[country.index])
+          offer,
+    ];
+  }
+}
+
+/// A factory selling to rivals, as anyone can see it: what it makes, where
+/// it delivers, its discount on their wholesalers' prices and what it can
+/// still make for them this month.
+typedef FactoryOffer = ({
+  FactoryId id,
+  FactoryKindId kind,
+  CompanyId company,
+  CountryId country,
+  List<bool> serves,
+  Fx discount,
+  int spare,
+});
+
+/// A factory as its owner sees it.
+final class FactoryView {
+  const FactoryView({
+    required this.id,
+    required this.kind,
+    required this.company,
+    required this.country,
+    required this.name,
+    required this.opensOn,
+    required this.builtFor,
+    required this.shifts,
+    required this.serves,
+    required this.rivalDiscount,
+    required this.status,
+    required this.making,
+    required this.monthCapacity,
+    required this.madeThisMonth,
+    required this.capacityLeft,
+    required this.spare,
+    required this.recentOwnUnits,
+    required this.recentRivalUnits,
+    required this.recentMargin,
+    required this.earnings,
+    required this.dailyWages,
+    required this.monthlySite,
+    required this.value,
+  });
+
+  final FactoryId id;
+  final FactoryKindId kind;
+  final CompanyId company;
+  final CountryId country;
+  final String name;
+  final Day opensOn;
+  final Money builtFor;
+  final int shifts;
+
+  /// The countries whose shops it delivers to, by [CountryId].
+  final List<bool> serves;
+
+  /// Its discount for rivals, or null if it sells only to its owner's
+  /// shops.
+  final Fx? rivalDiscount;
+  final FactoryStatus status;
+
+  /// Whether it makes goods today: built and not closed.
+  final bool making;
+
+  /// What it can make this month at its shifts, what it has made so far,
+  /// and what is left.
+  final int monthCapacity;
+  final int madeThisMonth;
+  final int capacityLeft;
+
+  /// What it can still sell rivals this month.
+  final int spare;
+
+  /// Units made for its owner's shops and for rivals over the last four
+  /// weeks, and what they sold for beyond their materials and freight.
+  final int recentOwnUnits;
+  final int recentRivalUnits;
+  final Money recentMargin;
+
+  /// A year's earnings against buying, at its last four weeks (see
+  /// `factoryEarnings`); null too soon to tell.
+  final Money? earnings;
+
+  /// What its shifts cost a day, and its site a month, at today's levels.
+  final Money dailyWages;
+  final Money monthlySite;
+
+  /// Its asking price and what it rests on; null if it isn't making goods.
+  final Valuation? value;
+
+  bool servesCountry(CountryId country) =>
+      country.index < serves.length && serves[country.index];
+
+  bool get building => status == FactoryStatus.running && !making;
 }
 
 /// The economy as published.
@@ -193,6 +334,9 @@ typedef OrderView = ({
   SupplierId supplier,
   Day arrival,
   List<OrderLine> lines,
+
+  /// The factory it comes from, if any.
+  FactoryId? factory,
 });
 
 /// A bill not yet paid, as the debtor sees it.
@@ -221,11 +365,15 @@ final class CompanyView {
     this.countryTaxes = const [],
     this.director,
     this.memos = const [],
+    this.factories = const [],
   });
 
   final CompanyId id;
   final CompanyStatus status;
   final Day founded;
+
+  /// Its factories, built, being built or closed, in the order built.
+  final List<FactoryView> factories;
 
   /// Account balances, debit-positive, indexed by [AccountKind].
   final List<Money> balances;
@@ -252,6 +400,7 @@ final class CompanyView {
   Money get netAssets =>
       balance(AccountKind.cash) +
       balance(AccountKind.inventory) +
+      balance(AccountKind.receivables) +
       balance(AccountKind.businessAssets) +
       balance(AccountKind.investments) +
       balance(AccountKind.payables) +
@@ -534,6 +683,24 @@ final class PublicView {
       valuations = List.unmodifiable([
         for (final store in world.stores) valueStore(world, content, store),
       ]),
+      offers = List.unmodifiable([
+        for (final factory in world.factories)
+          if (factory.rivalDiscount case final discount?
+              when factory.runsOn(world.today) &&
+                  world.companies[factory.company.index].isActive)
+            (
+              id: factory.id,
+              kind: factory.kind,
+              company: factory.company,
+              country: factory.country,
+              serves: List<bool>.unmodifiable(factory.serves),
+              discount: discount,
+              spare: factory.spareFor(
+                content.factories!.kinds[factory.kind.index],
+                world.today,
+              ),
+            ),
+      ]),
       _world = world,
       _content = content {
     companyPrices = List.unmodifiable([
@@ -560,6 +727,7 @@ final class PublicView {
   final List<EconomicMonth> history;
   final List<PersonId> companyOwners;
   final List<Valuation?> valuations;
+  final List<FactoryOffer> offers;
   final WorldState _world;
   final ContentDb _content;
 
@@ -686,6 +854,7 @@ Observation observe(
                     supplier: order.supplier,
                     arrival: order.arrival,
                     lines: List<OrderLine>.unmodifiable(order.lines),
+                    factory: order.factory,
                   ),
             ]),
             bills: List.unmodifiable([
@@ -701,6 +870,11 @@ Observation observe(
               for (final store in world.stores)
                 if (store.company == company.id)
                   _storeView(world, content, shared, store, months),
+            ],
+            factories: [
+              for (final factory in world.factories)
+                if (factory.company == company.id)
+                  _factoryView(world, content, factory),
             ],
             lossCarried: company.lossCarried,
             cushionDays: company.cushionDays,
@@ -735,6 +909,7 @@ Observation observe(
     companyPrices: shared.companyPrices,
     companyCredits: shared.companyCredits,
     districts: () => shared.districts,
+    offers: shared.offers,
     guaranteeRoom: guaranteeRoom(world, content, person),
     reports: List.unmodifiable([
       for (final report in world.reports)
@@ -755,6 +930,44 @@ Money _committed(WorldState world, CompanyId company) {
     }
   }
   return total;
+}
+
+FactoryView _factoryView(WorldState world, ContentDb content, Factory factory) {
+  final kind = content.factories!.kinds[factory.kind.index];
+  final economy = world.macroOf(factory.country);
+  final today = world.today;
+  final yesterday = Day(today.number - 1);
+  final made = factory.month == monthOf(today) ? factory.madeThisMonth : 0;
+  return FactoryView(
+    id: factory.id,
+    kind: factory.kind,
+    company: factory.company,
+    country: factory.country,
+    name: factory.name,
+    opensOn: factory.opensOn,
+    builtFor: factory.builtFor,
+    shifts: factory.shifts,
+    serves: List.unmodifiable(factory.serves),
+    rivalDiscount: factory.rivalDiscount,
+    status: factory.status,
+    making:
+        factory.runsOn(today) &&
+        world.companies[factory.company.index].isActive,
+    monthCapacity: factory.monthCapacity(kind, today),
+    madeThisMonth: made,
+    capacityLeft: factory.capacityLeft(kind, today),
+    spare: factory.spareFor(kind, today),
+    recentOwnUnits: factory.recentOwnUnits(yesterday),
+    recentRivalUnits: factory.recentRivalUnits(yesterday),
+    recentMargin: factory.recentMargin(yesterday),
+    earnings: factoryEarnings(world, content, factory),
+    dailyWages: kind.shiftWage
+        .times(economy.wageIndex)
+        .times(content.countries[factory.country.index].service)
+        .timesInt(factory.shifts),
+    monthlySite: kind.site.times(economy.priceIndex),
+    value: valueFactory(world, content, factory),
+  );
 }
 
 StoreView _storeView(

@@ -179,6 +179,14 @@
     "mrs_metro": "Métro Notre-Dame-du-Mont",
     "reze_halles": "Place du marché de Rezé"
   },
+  "factories": {
+    "kinds": {
+      "bakery": "Boulangerie industrielle",
+      "drinks": "Usine de boissons",
+      "snacks": "Usine de snacks",
+      "household": "Usine de produits ménagers"
+    }
+  },
   "companies": {
     "player_co": "Épicerie du Coin"
   },

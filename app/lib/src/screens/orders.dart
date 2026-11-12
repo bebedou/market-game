@@ -48,7 +48,23 @@ class OrdersScreen extends StatelessWidget {
             ),
             if (game.delegates(store, ManagerDuty.ordering))
               Hint(tr('orders.managerOrders')),
-            // Only suppliers of what the store's format sells.
+            // The player's factories making what the store sells, whose
+            // goods it buys only from them.
+            for (final factory in _factories(game, store))
+              _FactoryTile(
+                factory: factory,
+                store: store,
+                onOrder: canOrder
+                    ? () => _order(
+                        context,
+                        game,
+                        Seller.factory(game, factory, store),
+                        store,
+                      )
+                    : null,
+              ),
+            // Only suppliers of what the store's format sells, and not
+            // what the player's factories make for it.
             for (final supplier in game.content.suppliers)
               if (supplier.country == game.content.countryOf(store.market) &&
                   game.content.products.any(
@@ -56,12 +72,19 @@ class OrdersScreen extends StatelessWidget {
                         supplier.carries[product.id.index] &&
                         game.content.formats[store.format.index].sells[product
                             .category
-                            .index],
+                            .index] &&
+                        game.view.factoryFor(game.content, store, product) ==
+                            null,
                   ))
                 _SupplierTile(
                   supplier: supplier,
                   onOrder: canOrder
-                      ? () => _order(context, game, supplier, store)
+                      ? () => _order(
+                          context,
+                          game,
+                          Seller.wholesaler(supplier),
+                          store,
+                        )
                       : null,
                 ),
           ],
@@ -125,23 +148,44 @@ class OrdersScreen extends StatelessWidget {
     );
   }
 
+  /// The player's factories that make something [store] sells for it.
+  static List<FactoryView> _factories(
+    SimulationController game,
+    StoreView store,
+  ) {
+    final found = <FactoryView>[];
+    for (final product in game.content.products) {
+      if (!game.content.formats[store.format.index].sells[product
+          .category
+          .index]) {
+        continue;
+      }
+      final factory = game.view.factoryFor(game.content, store, product);
+      if (factory != null && !found.any((f) => f.id == factory.id)) {
+        found.add(factory);
+      }
+    }
+    return found;
+  }
+
   static String _creditorName(SimulationController game, PartyRef creditor) =>
       switch (creditor.type) {
         PartyType.supplier => game.content.suppliers[creditor.index].name,
+        PartyType.company => tr('orders.creditors.factory', {
+          'company': game.companyName(CompanyId(creditor.index)),
+        }),
         PartyType.landlords => tr('orders.creditors.rent'),
         PartyType.bank => tr('orders.creditors.bank'),
         PartyType.households => tr('orders.creditors.wages'),
         PartyType.services => tr('orders.creditors.services'),
         PartyType.government => tr('orders.creditors.taxes'),
-        PartyType.person ||
-        PartyType.company ||
-        PartyType.elsewhere => tr('orders.creditors.other'),
+        PartyType.person || PartyType.elsewhere => tr('orders.creditors.other'),
       };
 
   void _order(
     BuildContext context,
     SimulationController game,
-    SupplierDef supplier,
+    Seller seller,
     StoreView store,
   ) => showModalBottomSheet<void>(
     context: context,
@@ -149,9 +193,121 @@ class OrdersScreen extends StatelessWidget {
     showDragHandle: true,
     builder: (_) => GameScope(
       controller: game,
-      child: OrderSheet(supplier: supplier, store: store),
+      child: OrderSheet(seller: seller, store: store),
     ),
   );
+}
+
+/// What an order sheet buys from: a wholesaler of the store's country, or
+/// one of the player's factories, which charges what the wholesalers would.
+final class Seller {
+  Seller.wholesaler(SupplierDef this.supplier)
+    : factory = null,
+      name = supplier.name,
+      leadTimeDays = supplier.leadTimeDays,
+      paymentTermsDays = supplier.paymentTermsDays,
+      minOrderUnits = supplier.minOrderUnits,
+      country = supplier.country,
+      _content = null;
+
+  Seller.factory(
+    SimulationController game,
+    FactoryView this.factory,
+    StoreView store,
+  ) : supplier = null,
+      name = factory.name,
+      leadTimeDays = factoryLeadTime(
+        game.content.factories!,
+        game.content.factories!.kinds[factory.kind.index],
+        factory.country,
+        game.content.countryOf(store.market),
+      ),
+      paymentTermsDays = game.content.factories!.paymentTermsDays,
+      minOrderUnits =
+          game.content.factories!.kinds[factory.kind.index].minOrderUnits,
+      country = game.content.countryOf(store.market),
+      _content = game.content;
+
+  final SupplierDef? supplier;
+  final FactoryView? factory;
+  final String name;
+  final int leadTimeDays;
+  final int paymentTermsDays;
+  final int minOrderUnits;
+
+  /// Whose prices it charges: its own country's, or the store's.
+  final CountryId country;
+  final ContentDb? _content;
+
+  /// Whether it sells [store] [product].
+  bool sells(SimulationController game, StoreView store, ProductDef product) {
+    if (supplier case final supplier?) {
+      return supplier.carries[product.id.index] &&
+          game.view.factoryFor(game.content, store, product) == null;
+    }
+    return game.view.factoryFor(game.content, store, product)?.id ==
+        factory!.id;
+  }
+
+  Money unitPrice(ProductDef product, int quantity, Fx level) {
+    if (supplier case final supplier?) {
+      return supplier.unitPrice(product, quantity, level);
+    }
+    return marketQuote(_content!, country, product, quantity, level)?.price ??
+        Money.zero;
+  }
+
+  Command order(PersonId actor, StoreId store, List<OrderQuantity> lines) =>
+      switch (supplier) {
+        final supplier? => PlaceOrder(
+          actor,
+          store: store,
+          supplier: supplier.id,
+          lines: lines,
+        ),
+        null => OrderFromFactory(
+          actor,
+          store: store,
+          factory: factory!.id,
+          lines: lines,
+        ),
+      };
+}
+
+/// One of the player's factories, as the store's supplier of what it makes.
+class _FactoryTile extends StatelessWidget {
+  const _FactoryTile({
+    required this.factory,
+    required this.store,
+    required this.onOrder,
+  });
+
+  final FactoryView factory;
+  final StoreView store;
+  final VoidCallback? onOrder;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final seller = Seller.factory(game, factory, store);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(factory.name, style: Theme.of(context).textTheme.titleSmall),
+      subtitle: Text(
+        [
+          tr('orders.yourFactory'),
+          tr('orders.deliversIn', {'count': seller.leadTimeDays}),
+          tr('orders.payWithin', {'days': seller.paymentTermsDays}),
+          tr('orders.perProduct', {'units': seller.minOrderUnits}),
+          tr('orders.atWholesale'),
+        ].join(' · '),
+      ),
+      trailing: OutlinedButton(
+        onPressed: onOrder,
+        child: Text(tr('orders.order')),
+      ),
+    );
+  }
 }
 
 class _SupplierTile extends StatelessWidget {
@@ -203,7 +359,17 @@ class _OrderTile extends StatelessWidget {
       Money.zero,
       (sum, line) => sum + line.unitPrice.timesInt(line.quantity),
     );
-    final lead = game.content.suppliers[order.supplier.index].leadTimeDays;
+    final factory = switch (order.factory) {
+      final id? => game.factory(id),
+      null => null,
+    };
+    final store = game.myStores
+        .where((pair) => pair.$2.id == order.store)
+        .firstOrNull
+        ?.$2;
+    final lead = factory != null && store != null
+        ? Seller.factory(game, factory, store).leadTimeDays
+        : game.content.suppliers[order.supplier.index].leadTimeDays;
     final left = order.arrival.number - game.today.number;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -212,7 +378,9 @@ class _OrderTile extends StatelessWidget {
         children: [
           Line(
             tr('orders.arriving', {
-              'supplier': game.content.suppliers[order.supplier.index].name,
+              'supplier':
+                  factory?.name ??
+                  game.content.suppliers[order.supplier.index].name,
               'weekday': weekday(order.arrival),
               'date': shortDate(order.arrival),
             }),
@@ -229,11 +397,11 @@ class _OrderTile extends StatelessWidget {
   }
 }
 
-/// Picks quantities of each product [supplier] sells, for [store].
+/// Picks quantities of each product [seller] sells, for [store].
 class OrderSheet extends StatefulWidget {
-  const OrderSheet({super.key, required this.supplier, required this.store});
+  const OrderSheet({super.key, required this.seller, required this.store});
 
-  final SupplierDef supplier;
+  final Seller seller;
   final StoreView store;
 
   @override
@@ -243,7 +411,7 @@ class OrderSheet extends StatefulWidget {
 class _OrderSheetState extends State<OrderSheet> {
   final _quantities = <ProductId, int>{};
 
-  SupplierDef get _supplier => widget.supplier;
+  Seller get _supplier => widget.seller;
 
   /// The store as of today: the clock may run while the sheet is open.
   StoreView get _store => context.game.company!.stores.firstWhere(
@@ -254,7 +422,7 @@ class _OrderSheetState extends State<OrderSheet> {
   /// The products the supplier sells that the store stocks, or will.
   List<ProductDef> _products(SimulationController game) => [
     for (final product in game.content.products)
-      if (_supplier.carries[product.id.index] &&
+      if (_supplier.sells(game, _store, product) &&
           game.priceOf(_store, product.id) != null)
         product,
   ];
@@ -430,19 +598,14 @@ class _OrderSheetState extends State<OrderSheet> {
                       ? null
                       : () {
                           game.submit(
-                            PlaceOrder(
-                              game.player,
-                              store: _store.id,
-                              supplier: _supplier.id,
-                              lines: [
-                                for (final product in products)
-                                  if ((_quantities[product.id] ?? 0) > 0)
-                                    (
-                                      product: product.id,
-                                      quantity: _quantities[product.id]!,
-                                    ),
-                              ],
-                            ),
+                            _supplier.order(game.player, _store.id, [
+                              for (final product in products)
+                                if ((_quantities[product.id] ?? 0) > 0)
+                                  (
+                                    product: product.id,
+                                    quantity: _quantities[product.id]!,
+                                  ),
+                            ]),
                           );
                           Navigator.pop(context);
                         },

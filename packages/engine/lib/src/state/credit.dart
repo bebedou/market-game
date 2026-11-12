@@ -8,8 +8,8 @@ import 'entities.dart';
 import 'valuation.dart';
 import 'world_state.dart';
 
-/// A year's earnings of [company]'s stores, each counted as a buyer would
-/// (see [storeEarnings]): [values] if given, indexed by [StoreId], else
+/// A year's earnings of [company]'s stores and factories, each counted as a
+/// buyer would (see [storeEarnings] and [factoryEarnings]): [values] if given, indexed by [StoreId], else
 /// worked out. Stores too new to tell count nothing; losing ones count
 /// their losses.
 Money companyEarnings(
@@ -25,6 +25,10 @@ Money companyEarnings(
         values?[store.id.index]?.earnings ??
         storeEarnings(world, content, store);
     if (earnings != null) total += earnings;
+  }
+  for (final factory in world.factories) {
+    if (factory.company != company) continue;
+    total += factoryEarnings(world, content, factory) ?? Money.zero;
   }
   return total;
 }

@@ -6,6 +6,7 @@ import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
 import 'entities.dart';
+import 'factory.dart';
 import 'history.dart';
 import 'store.dart';
 import 'world_state.dart';
@@ -129,8 +130,8 @@ Money? storeEarnings(WorldState world, ContentDb content, Store store) {
           .timesInt(12);
 }
 
-/// What [company] sells for whole: its trading stores at their asking
-/// prices, [values] if given, indexed by [StoreId], plus its cash, less its
+/// What [company] sells for whole: its trading stores and its factories at
+/// their asking prices, [values] if given, indexed by [StoreId], plus its cash, less its
 /// bills and loans; never less than [symbolicPrice]. Null if it has been
 /// liquidated or the scenario sells nothing.
 Money? companyPrice(
@@ -150,6 +151,10 @@ Money? companyPrice(
         ? valueStore(world, content, store)
         : values[store.id.index];
     price += value!.price;
+  }
+  for (final factory in world.factories) {
+    if (factory.company != company.id) continue;
+    price += valueFactory(world, content, factory)?.price ?? Money.zero;
   }
   return price > symbolicPrice ? price : symbolicPrice;
 }
@@ -193,4 +198,67 @@ Company? bestBuyer(
     }
   }
   return best;
+}
+
+/// [factory]'s asking price, by the same excess earnings method as a
+/// store's: its fittings, what building it cost worn down with age, plus
+/// what a year's earnings beat a fair return on them by, capitalized. Null
+/// if it is closed, still being built, or the scenario sells nothing.
+Valuation? valueFactory(WorldState world, ContentDb content, Factory factory) {
+  final terms = content.acquisitions;
+  if (terms == null || !factory.runsOn(world.today)) return null;
+  final age = world.today.number - factory.opensOn.number;
+  final used = age >= terms.fittingsLifeDays
+      ? Fx.one
+      : Fx.raw(mulDivRound(age, Fx.scale, terms.fittingsLifeDays));
+  final wear = (Fx.one - terms.fittingsResidual) * used;
+  final fittings = factory.builtFor.times(Fx.one - wear);
+  final earnings = factoryEarnings(world, content, factory);
+  if (earnings == null) {
+    return (
+      stock: Money.zero,
+      fittings: fittings,
+      earnings: Money.zero,
+      price: fittings,
+    );
+  }
+  final excess = earnings - fittings.times(terms.tangibleReturn);
+  final price =
+      fittings +
+      Money(mulDivRound(excess.cents, Fx.scale, terms.capitalization.raw));
+  final floor = fittings.times(terms.distressFloor);
+  return (
+    stock: Money.zero,
+    fittings: fittings,
+    earnings: earnings,
+    price: price > floor ? price : floor,
+  );
+}
+
+/// A year's earnings for [factory] against buying: what the last
+/// [factoryHistoryDays] days' goods sold for beyond their materials and
+/// freight, scaled to a year, less a year of today's shifts and site. Null
+/// if it isn't making goods or has made them for fewer days than that.
+Money? factoryEarnings(WorldState world, ContentDb content, Factory factory) {
+  final factories = content.factories;
+  if (factories == null || !factory.runsOn(world.today)) return null;
+  if (world.today.number - factory.opensOn.number < factoryHistoryDays) {
+    return null;
+  }
+  final kind = factories.kinds[factory.kind.index];
+  final economy = world.macroOf(factory.country);
+  final shiftDay = kind.shiftWage
+      .times(economy.wageIndex)
+      .times(content.countries[factory.country.index].service)
+      .timesInt(factory.shifts);
+  final yesterday = Day(world.today.number - 1);
+  return Money(
+        mulDivRound(
+          factory.recentMargin(yesterday).cents,
+          365,
+          factoryHistoryDays,
+        ),
+      ) -
+      shiftDay.timesInt(365) -
+      kind.site.times(economy.priceIndex).timesInt(12);
 }
