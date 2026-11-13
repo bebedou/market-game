@@ -1,5 +1,6 @@
 import '../accounting/ledger.dart';
 import '../state/brands.dart';
+import '../state/buying_terms.dart';
 import '../state/entities.dart';
 import '../content/content_db.dart';
 import '../core/calendar.dart';
@@ -267,12 +268,15 @@ final class SleeperSystem implements TickSystem {
             premises;
         final sold = Money(mulDivRound(sales.cents, 1, 12));
         if (shop.company case final id?) {
+          final chain = world.companies[id.index];
+          // Less the buying terms its company has earned by its size.
+          final terms = Fx.one - buyingDiscount(content, chain);
           final profit = _book(
               world,
               ledger,
-              world.companies[id.index],
+              chain,
               sold: sold,
-              goods: bought + bought.times(habits.goodsExtra),
+              goods: (bought + bought.times(habits.goodsExtra)).times(terms),
               marketing: sales.times(strategy.marketingShare),
               wages: wages,
               rent: site.rentFor(shop.area).times(macro.priceIndex),

@@ -1,9 +1,11 @@
-// How a chain grows across a country by formula: the player, made rich,
+// How a chain grows across countries by formula: the player, made rich,
 // hands their company to a star director who may open shops run by formula
-// across France, so many a month, and plays some years. Prints each year
-// the shops run by formula, opened and closed, their sales a shop against
-// what a district shop of the same kind sells, their margin, and the
-// company's trading profit; then the regions at the end.
+// in its countries, so many a month, and plays some years. Prints each year
+// the shops run by formula in every country, opened and closed, their sales
+// a shop against what a district shop of the same kind sells, their margin,
+// the company's trading profit, and in France its buying terms, marketing
+// and the pull its brand adds; then France's regions, its chains' prices
+// and offers at the end.
 //
 //   dart run tool/national_balance.dart [--seeds 1-2] [--years 5]
 //       [--pace 3] [--strategy balanced]
@@ -40,7 +42,7 @@ void main(List<String> args) {
   );
   stdout.writeln(
     'seed year  shops  opened closed  a shop sells  (district)  margin  '
-    'company trading profit',
+    'company trading profit  terms  marketing  brand',
   );
   for (var seed = seeds.first; seed <= seeds.last; seed++) {
     final game = Simulation.newGame(content, seed: seed, citiesAsleep: true);
@@ -84,18 +86,28 @@ void main(List<String> args) {
       final block = france.blocks
           .where((b) => b.company == company)
           .firstOrNull;
+      // Every country's: a director may grow wherever pays back soonest.
+      final blocks = [
+        for (final country in game.observe(player).national)
+          for (final b in country.blocks)
+            if (b.company == company) b,
+      ];
       var opened = 0;
       var closed = 0;
       var sales = Money.zero;
       var profit = Money.zero;
       var shopMonths = 0;
-      for (final month in block?.months ?? const <BlockMonth>[]) {
-        if (month.start.date.year != calendar) continue;
-        opened += month.opened;
-        closed += month.closed;
-        sales += month.sales;
-        profit += month.profit;
-        shopMonths += month.stores;
+      var stores = 0;
+      for (final b in blocks) {
+        stores += b.stores;
+        for (final month in b.months) {
+          if (month.start.date.year != calendar) continue;
+          opened += month.opened;
+          closed += month.closed;
+          sales += month.sales;
+          profit += month.profit;
+          shopMonths += month.stores;
+        }
       }
       final perShop = shopMonths == 0
           ? 0
@@ -103,11 +115,14 @@ void main(List<String> args) {
       final margin = sales.cents == 0 ? 0 : profit.cents * 1000 ~/ sales.cents;
       stdout.writeln(
         '${'$seed'.padLeft(4)} ${'$year'.padLeft(4)}  '
-        '${'${block?.stores ?? 0}'.padLeft(5)}  ${'$opened'.padLeft(6)} '
+        '${'$stores'.padLeft(5)}  ${'$opened'.padLeft(6)} '
         '${'$closed'.padLeft(6)}  ${'$perShop'.padLeft(12)}  '
         '(${format.national!.salesIn(content.countries.first.id).cents ~/ 100})'
         '  ${(margin / 10).toStringAsFixed(1).padLeft(5)}%  '
-        '${'${trading.cents ~/ 100}'.padLeft(12)}',
+        '${'${trading.cents ~/ 100}'.padLeft(12)}  '
+        '${(-(block?.discount.raw ?? 0) / 100).toStringAsFixed(1).padLeft(5)}%  '
+        '${((block?.marketing.raw ?? 0) / 100).toStringAsFixed(1).padLeft(8)}%  '
+        '${((block?.brandPull.raw ?? 0) / 100).toStringAsFixed(1).padLeft(5)}%',
       );
     }
     final view = game.observe(player).national;
@@ -115,6 +130,19 @@ void main(List<String> args) {
     final block = france.blocks.where((b) => b.company == company).firstOrNull;
     if (block == null) continue;
     final trade = france.tradeOf(content, format.id)!;
+    for (final chain in france.chains) {
+      final value = chain.value;
+      if (chain.trade != trade || value == null) continue;
+      stdout.writeln(
+        '      chain ${chain.name.padRight(24)} ${'${chain.stores}'.padLeft(5)} '
+        'shops  earns ${value.earnings.cents ~/ 100}  price '
+        '${value.price.cents ~/ 100}',
+      );
+    }
+    stdout.writeln(
+      '      your shops: worth ${(block.value?.price.cents ?? 0) ~/ 100} '
+      'to ${block.buyer}; offers ${france.offers.length}',
+    );
     for (final (r, region) in france.def.regions.indexed) {
       final mine = block.regions[r];
       if (mine.trading + mine.pending == 0) continue;

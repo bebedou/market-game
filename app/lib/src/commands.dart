@@ -215,6 +215,22 @@ String describeCommand(Command command, ContentDb content, Observation view) {
         'supplier': _factoryName(view, factory),
         'store': store(s),
       }),
+    BuyNationalChain(
+      :final country,
+      :final chain,
+      :final borrow,
+      :final termMonths,
+    ) =>
+      tr('commands.buyNationalChain', {
+        'chain': _chainName(view, country, chain),
+        'country': content.countries[country.index].name,
+        'loan': _loan(borrow, termMonths),
+      }),
+    SellNational(:final country) => tr('commands.sellNational', {
+      'country': content.countries[country.index].name,
+    }),
+    AcceptNationalOffer() => tr('commands.acceptOffer'),
+    DeclineNationalOffer() => tr('commands.declineOffer'),
     OpenNational(
       :final country,
       :final region,
@@ -232,6 +248,17 @@ String describeCommand(Command command, ContentDb content, Observation view) {
         'loan': _loan(borrow, termMonths),
       }),
   };
+}
+
+/// The name of [chain] of the game's [country] in the national table.
+String _chainName(Observation view, CountryId country, int chain) {
+  for (final national in view.national) {
+    if (national.country != country) continue;
+    for (final view in national.chains) {
+      if (view.index == chain) return view.name;
+    }
+  }
+  return '';
 }
 
 /// The name of region [region] of [country] in the national table.

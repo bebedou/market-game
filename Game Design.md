@@ -180,7 +180,7 @@ Owning the chain brings businesses that sell to other businesses, and a player m
 
 ## Growing nationally
 
-Designed on 2026-11-12. The first two phases are built: the regions, a national chain opened by a director's brief with each region filling up, the country page's tile map, and directors' branches in districts asleep. Next comes what compounds beyond that. Districts played by hand are where the game begins, not where it ends: a chain must be able to grow to hundreds of shops across a country, so that success compounds. Three scales, played as close to the ground as the player likes:
+Designed on 2026-11-12. All three phases are built: the regions, a national chain opened by a director's brief with each region filling up, the country page's tile map, directors' branches in districts asleep, and what compounds (buying terms, national marketing, factories supplying national shops, chains bought whole and offers from them, the bank lending on it all, and rivals who place their shops where they pay). Districts played by hand are where the game begins, not where it ends: a chain must be able to grow to hundreds of shops across a country, so that success compounds. Three scales, played as close to the ground as the player likes:
 
 1. **Shops run by hand**, in districts played in full, as now.
 2. **Branches in districts asleep.** A company with a director may open and buy in districts run by formula, as AI chains do; its shops trade by formula in its books and wake nothing. The player can still wake a district to take a shop in hand.

@@ -8,6 +8,7 @@ import '../reports/period_report.dart' show ReportPeriod;
 import '../state/districts.dart';
 import 'national_view.dart';
 import '../state/brands.dart';
+import '../state/buying_terms.dart';
 import '../state/credit.dart';
 import '../state/director.dart';
 import '../state/entities.dart';
@@ -379,9 +380,16 @@ final class CompanyView {
     this.director,
     this.memos = const [],
     this.factories = const [],
+    this.goodsBought = Money.zero,
+    this.buyingDiscount = Fx.zero,
   });
 
   final CompanyId id;
+
+  /// What it bought of goods over its latest twelve months, and what its
+  /// suppliers take off them for it (see `buyingDiscount`).
+  final Money goodsBought;
+  final Fx buyingDiscount;
   final CompanyStatus status;
   final Day founded;
 
@@ -843,6 +851,8 @@ Observation observe(
             id: company.id,
             status: company.status,
             founded: company.founded,
+            goodsBought: goodsBoughtInYear(company),
+            buyingDiscount: buyingDiscount(content, company),
             balances: List.unmodifiable([
               for (final kind in AccountKind.values) company.accounts[kind],
             ]),

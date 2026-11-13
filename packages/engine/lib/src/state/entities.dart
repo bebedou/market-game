@@ -6,6 +6,9 @@ import '../persistence/state_io.dart';
 import 'director.dart';
 import 'orders.dart';
 
+/// The save version from which companies keep their goods bought by month.
+const _buyingVersion = 30;
+
 /// The player or an AI owner. Personal wealth is separate from the companies
 /// the person owns.
 final class Person implements LedgerParty {
@@ -72,7 +75,9 @@ final class Company implements LedgerParty {
     this.cushionDays = defaultCushionDays,
     this.director,
   }) : payables = [],
-       memos = [];
+       memos = [],
+       goodsMonths = [],
+       goodsMark = accounts[AccountKind.costOfGoods];
 
   Company.read(this.id, StateReader reader)
     : name = reader.readString(),
@@ -94,7 +99,18 @@ final class Company implements LedgerParty {
       memos = [
         if (reader.version >= 16)
           for (var i = 0, n = reader.readInt(); i < n; i++) Memo.read(reader),
-      ];
+      ],
+      goodsMonths = [
+        if (reader.version >= _buyingVersion)
+          for (var i = 0, n = reader.readInt(); i < n; i++)
+            Money(reader.readInt()),
+      ],
+      goodsMark = reader.version >= _buyingVersion
+          ? Money(reader.readInt())
+          : null {
+    // Older saves count from now.
+    goodsMark ??= accounts[AccountKind.costOfGoods];
+  }
 
   final CompanyId id;
   String name;
@@ -127,6 +143,13 @@ final class Company implements LedgerParty {
   /// What its directors did, oldest first, up to [maxMemos].
   final List<Memo> memos;
 
+  /// What it bought of goods each of its latest months, oldest first, up to
+  /// twelve: what its buying terms go by (see `buyingDiscount`).
+  final List<Money> goodsMonths;
+
+  /// Its cost of goods when the latest month was counted.
+  Money? goodsMark;
+
   bool get isActive => status == CompanyStatus.active;
 
   @override
@@ -154,6 +177,11 @@ final class Company implements LedgerParty {
     for (final memo in memos) {
       memo.write(writer);
     }
+    writer.writeInt(goodsMonths.length);
+    for (final month in goodsMonths) {
+      writer.writeInt(month.cents);
+    }
+    writer.writeInt(goodsMark!.cents);
   }
 
   /// Keeps [memo], dropping the oldest beyond [maxMemos].

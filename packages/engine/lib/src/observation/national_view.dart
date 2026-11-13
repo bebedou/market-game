@@ -6,18 +6,39 @@ import '../core/safe_int.dart';
 import '../countries/country_economy.dart';
 import '../countries/country_table.dart';
 import '../countries/shop_bridge.dart' show formatTrades;
+import '../core/calendar.dart';
+import '../state/buying_terms.dart';
+import '../state/national_value.dart';
 import '../state/world_state.dart';
 import '../systems/national.dart';
 
 /// A chain by formula, as anyone sees it: its trade, shops in all and by
 /// region, and a year's sales at last month's pace.
 typedef NationalChainView = ({
+  /// Its place among the country's chains in the national table.
+  int index,
   String name,
   int trade,
   int stores,
   List<int> regional,
   Money yearSales,
   bool independent,
+
+  /// What it sells for whole, if it does.
+  NationalValue? value,
+
+  /// The company that bought it, if one did.
+  CompanyId? boughtBy,
+});
+
+/// A chain's offer for the actor's shops run by formula: [block] is their
+/// place among the country's blocks.
+typedef NationalOfferView = ({
+  int number,
+  int block,
+  String chain,
+  Money price,
+  Day expires,
 });
 
 /// A company's shops run by formula in one region: trading and being
@@ -39,6 +60,13 @@ final class CompanyBlockView {
     required this.strategy,
     required this.regions,
     required this.months,
+    this.discount = Fx.zero,
+    this.marketing = Fx.zero,
+    this.brandPull = Fx.zero,
+    this.name,
+    this.index = 0,
+    this.value,
+    this.buyer,
   });
 
   final CompanyId company;
@@ -51,6 +79,21 @@ final class CompanyBlockView {
 
   /// Oldest first, at most two years.
   final List<BlockMonth> months;
+
+  /// What its suppliers take off its goods, the share of its sales it
+  /// spends on marketing, and how much more its shops draw for it.
+  final Fx discount;
+  final Fx marketing;
+  final Fx brandPull;
+
+  /// The chain it was bought from; null for the company's own shops.
+  final String? name;
+
+  /// Its place among the country's blocks, what it sells for whole, and
+  /// the chain that would buy it at that price, if any can.
+  final int index;
+  final NationalValue? value;
+  final String? buyer;
 
   int get stores => regions.fold(0, (sum, r) => sum + r.trading + r.pending);
   Money get yearSales =>
@@ -78,7 +121,10 @@ final class NationalCountryView {
     required this.rentLevels,
     required this.costLevels,
     required CountryEconomy economy,
-  }) : _economy = economy;
+    this.offers = const [],
+    Map<int, Fx> discounts = const {},
+  }) : _economy = economy,
+       _discounts = discounts;
 
   /// Its place in the national table.
   final int index;
@@ -101,6 +147,9 @@ final class NationalCountryView {
   /// The owner's shops run by formula here.
   final List<CompanyBlockView> blocks;
 
+  /// Chains' offers for them.
+  final List<NationalOfferView> offers;
+
   /// Its prices against the start.
   final Fx priceIndex;
 
@@ -112,6 +161,9 @@ final class NationalCountryView {
   /// against the country's, by trade then region.
   final List<List<Fx>> costLevels;
   final CountryEconomy _economy;
+
+  /// The actor's companies' buying terms, by company index.
+  final Map<int, Fx> _discounts;
 
   /// What fitting out one shop of [format] in [region] costs, or nothing if
   /// its shops can't run by formula.
@@ -148,6 +200,7 @@ final class NationalCountryView {
       perStore: national.salesIn(country!),
       price: Fx.one + rule.marketPosition,
       costs: nationalCosts(def, rule, country!),
+      discount: _discounts[company.index] ?? Fx.zero,
     );
   }
 
@@ -175,6 +228,10 @@ List<NationalCountryView> nationalViews(
     for (final company in world.companies)
       if (company.owner == actor) company.id.index,
   };
+  final discounts = {
+    for (final index in mine)
+      index: buyingDiscount(content, world.companies[index]),
+  };
   return [
     for (final (i, country) in economy.countries.indexed)
       () {
@@ -185,14 +242,20 @@ List<NationalCountryView> nationalViews(
         final chainViews = [
           for (final chain in country.chains)
             (
+              index: country.chains.indexOf(chain),
               name: chain.def.name,
               trade: chain.def.trade,
               stores: chain.stores,
               regional: List<int>.unmodifiable(chain.regionalStores),
-              yearSales: chain.months.isEmpty
+              yearSales: chain.months.isEmpty || !chain.isTrading
                   ? Money.zero
                   : chain.months.last.sales.timesInt(12),
               independent: chain.def.independent,
+              value: valueChain(content, economy, country, chain),
+              boughtBy: switch (chain.boughtBy) {
+                final index? => CompanyId(index),
+                null => null,
+              },
             ),
         ];
         final stores = [
@@ -247,6 +310,21 @@ List<NationalCountryView> nationalViews(
                       ),
                   ],
                   months: List.unmodifiable(block.months),
+                  discount: block.discount,
+                  marketing: block.marketing,
+                  brandPull:
+                      economy.brandFactor(country, block.trade, block) - Fx.one,
+                  name: block.name,
+                  index: country.blocks.indexOf(block),
+                  value: valueBlock(content, economy, country, block),
+                  buyer: switch (valueBlock(content, economy, country, block)) {
+                    final value? => nationalBuyer(
+                      country,
+                      block.trade,
+                      value.price,
+                    )?.def.name,
+                    null => null,
+                  },
                 ),
           ],
           priceIndex: country.priceIndex,
@@ -254,6 +332,18 @@ List<NationalCountryView> nationalViews(
           rentLevels: List.unmodifiable(country.rentLevels),
           costLevels: List.unmodifiable(country.costLevels),
           economy: economy,
+          discounts: discounts,
+          offers: [
+            for (final offer in economy.offers)
+              if (offer.country == i && mine.contains(offer.block.company))
+                (
+                  number: offer.number,
+                  block: country.blocks.indexOf(offer.block),
+                  chain: offer.chain.def.name,
+                  price: offer.price,
+                  expires: offer.expires,
+                ),
+          ],
         );
       }(),
   ];

@@ -4,6 +4,7 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../state/brands.dart';
+import '../state/buying_terms.dart';
 import '../state/credit.dart';
 import '../state/districts.dart';
 import '../state/sleepers.dart';
@@ -12,8 +13,10 @@ import '../state/director.dart';
 import '../state/entities.dart';
 import '../state/factories.dart';
 import '../systems/national.dart';
+import '../countries/country_economy.dart';
 import '../countries/shop_bridge.dart' show formatTrades;
 import '../state/factory.dart';
+import '../state/national_value.dart';
 import '../state/orders.dart';
 import '../state/store.dart';
 import '../observation/research.dart';
@@ -73,6 +76,10 @@ Refusal? applyCommand(
     CloseFactory() => _closeFactory(world, command),
     OrderFromFactory() => _orderFromFactory(world, content, command),
     OpenNational() => _openNational(world, content, ledger, command),
+    BuyNationalChain() => _buyNationalChain(world, content, ledger, command),
+    SellNational() => _sellNational(world, content, ledger, command),
+    AcceptNationalOffer() => _acceptOffer(world, content, ledger, command),
+    DeclineNationalOffer() => _declineOffer(world, content, command),
   };
 }
 
@@ -981,6 +988,9 @@ Refusal? _placeOrder(WorldState world, ContentDb content, PlaceOrder command) {
       return Refusal('overCapacity', product: product);
     }
   }
+  // Less the buying terms the store's company has earned by its size.
+  final terms =
+      Fx.one - buyingDiscount(content, world.companies[store.company.index]);
   world.orders.add(
     PurchaseOrder(
       number: world.nextOrderNumber++,
@@ -992,11 +1002,13 @@ Refusal? _placeOrder(WorldState world, ContentDb content, PlaceOrder command) {
           OrderLine(
             product: product,
             quantity: quantity,
-            unitPrice: supplier.unitPrice(
-              content.products[product.index],
-              quantity,
-              world.macroOf(supplier.country).priceIndex,
-            ),
+            unitPrice: supplier
+                .unitPrice(
+                  content.products[product.index],
+                  quantity,
+                  world.macroOf(supplier.country).priceIndex,
+                )
+                .times(terms),
           ),
       ],
     ),
@@ -1558,13 +1570,16 @@ Refusal? _orderFromFactory(
   }
   final abroad = country != factory.country;
   final making = world.macroOf(factory.country).priceIndex;
+  // What the store's wholesalers would charge it, its buying terms taken.
+  final terms =
+      Fx.one - buyingDiscount(content, world.companies[store.company.index]);
   var left = factory.capacityLeft(kind, world.today);
   final lines = <OrderLine>[];
   for (final (i, (:product, :quantity)) in command.lines.indexed) {
     final def = content.products[product.index];
     final quote = quotes[i];
     final price = factoryPrice(
-      quote.price,
+      quote.price.times(terms),
       rivalDiscount: own ? null : discount,
     );
     final made = own ? (quantity < left ? quantity : left) : quantity;
@@ -1695,5 +1710,210 @@ Refusal? _openNational(
     price: Fx.one + strategy.marketPosition,
     costs: nationalCosts(format, strategy, command.country),
   );
+  return null;
+}
+
+Refusal? _buyNationalChain(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  BuyNationalChain command,
+) {
+  if (content.acquisitions == null) return _nothingForSale;
+  final economy = currentNational(world, content);
+  if (economy == null) return const Refusal('noNational');
+  if (!_inRange(command.country.index, content.countries.length)) {
+    return const Refusal('unknownCountry');
+  }
+  final index = tableCountry(content, command.country);
+  if (index == null) return const Refusal('noNational');
+  final country = economy.countries[index];
+  if (!_inRange(command.chain, country.chains.length)) {
+    return const Refusal('unknownChain');
+  }
+  final chain = country.chains[command.chain];
+  final value = valueChain(content, economy, country, chain);
+  if (value == null) return const Refusal('chainNotForSale');
+  if (!_inRange(command.format.index, content.formats.length)) {
+    return const Refusal('unknownFormat');
+  }
+  final format = content.formats[command.format.index];
+  final tradeKey = formatTrades[format.key];
+  if (format.national == null ||
+      economy.table.trades[chain.def.trade].key != tradeKey) {
+    return Refusal('formatNotNational', format: format.id);
+  }
+  if (!_inRange(command.strategy.index, content.strategies.length)) {
+    return const Refusal('unknownStrategy');
+  }
+  final (company, error) = _ownedCompany(world, command.actor, command.company);
+  if (company == null) return error;
+  final price = value.price;
+  if (company.accounts[AccountKind.cash] + command.borrow < price) {
+    return Refusal('cannotPayPrice', amount: price);
+  }
+  if (command.borrow != Money.zero) {
+    final refusal = _loanRefusal(
+      world,
+      content,
+      command.borrow,
+      command.termMonths,
+    );
+    if (refusal != null) return refusal;
+  }
+  final person = world.persons[command.actor.index];
+  final loan = _purchaseLoan(
+    world,
+    content,
+    company,
+    person,
+    command.borrow,
+    extra: value.earnings,
+  );
+  if (command.borrow != Money.zero && loan == null) {
+    return const Refusal('bankWillNotLend');
+  }
+  if (loan != null) {
+    _lendFor(world, content, ledger, company, person, loan, command.termMonths);
+  }
+  // Its owners, beyond the districts played in full, take the price.
+  ledger.pay(
+    payer: company,
+    payerAccount: AccountKind.businessAssets,
+    payee: world.elsewhere,
+    payeeAccount: AccountKind.revenue,
+    amount: price,
+    reason: EntryReason.storeSale,
+  );
+  economy.buyChain(
+    index,
+    chain,
+    company: company.id.index,
+    format: format.id.index,
+    strategy: command.strategy.index,
+    cost: price,
+  );
+  return null;
+}
+
+Refusal? _sellNational(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  SellNational command,
+) {
+  if (content.acquisitions == null) return _nothingForSale;
+  final economy = currentNational(world, content);
+  if (economy == null) return const Refusal('noNational');
+  if (!_inRange(command.country.index, content.countries.length)) {
+    return const Refusal('unknownCountry');
+  }
+  final index = tableCountry(content, command.country);
+  if (index == null) return const Refusal('noNational');
+  final country = economy.countries[index];
+  if (!_inRange(command.block, country.blocks.length)) {
+    return const Refusal('unknownBlock');
+  }
+  final block = country.blocks[command.block];
+  if (block.company != command.company.index) {
+    return const Refusal('notYourCompany');
+  }
+  final (company, error) = _ownedCompany(world, command.actor, command.company);
+  if (company == null) return error;
+  final value = valueBlock(content, economy, country, block);
+  if (value == null) return const Refusal('nothingForSale');
+  final buyer = nationalBuyer(country, block.trade, value.price);
+  if (buyer == null) return const Refusal('noChainBuyer');
+  _sellBlock(world, ledger, economy, index, block, company, buyer, value.price);
+  return null;
+}
+
+/// Books [company] selling [block] to [buyer] for [price]: the price from
+/// the chain's owners beyond the districts played in full, against what the
+/// company had paid for a chain it bought, and the shops to the chain.
+void _sellBlock(
+  WorldState world,
+  Ledger ledger,
+  CountryEconomy economy,
+  int index,
+  CompanyBlock block,
+  Company company,
+  Chain buyer,
+  Money price,
+) {
+  ledger.pay(
+    payer: world.elsewhere,
+    payerAccount: AccountKind.spending,
+    payee: company,
+    payeeAccount: AccountKind.disposals,
+    amount: price,
+    reason: EntryReason.storeSale,
+  );
+  if (block.cost > Money.zero) {
+    ledger.post(
+      company,
+      debit: AccountKind.disposals,
+      credit: AccountKind.businessAssets,
+      amount: block.cost,
+      reason: EntryReason.storeSale,
+    );
+  }
+  economy.sellBlock(index, block, buyer, price);
+}
+
+Refusal? _acceptOffer(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  AcceptNationalOffer command,
+) {
+  final economy = currentNational(world, content);
+  if (economy == null) return const Refusal('noNational');
+  final offer = economy.offers
+      .where((offer) => offer.number == command.offer)
+      .firstOrNull;
+  if (offer == null || offer.expires.number < world.today.number) {
+    return const Refusal('unknownOffer');
+  }
+  final (company, error) = _ownedCompany(
+    world,
+    command.actor,
+    CompanyId(offer.block.company),
+  );
+  if (company == null) return error;
+  if (offer.chain.cash < offer.price || !offer.chain.isTrading) {
+    return const Refusal('offerWithdrawn');
+  }
+  _sellBlock(
+    world,
+    ledger,
+    economy,
+    offer.country,
+    offer.block,
+    company,
+    offer.chain,
+    offer.price,
+  );
+  return null;
+}
+
+Refusal? _declineOffer(
+  WorldState world,
+  ContentDb content,
+  DeclineNationalOffer command,
+) {
+  final economy = currentNational(world, content);
+  if (economy == null) return const Refusal('noNational');
+  final offer = economy.offers
+      .where((offer) => offer.number == command.offer)
+      .firstOrNull;
+  if (offer == null) return const Refusal('unknownOffer');
+  final (company, error) = _ownedCompany(
+    world,
+    command.actor,
+    CompanyId(offer.block.company),
+  );
+  if (company == null) return error;
+  economy.offers.remove(offer);
   return null;
 }

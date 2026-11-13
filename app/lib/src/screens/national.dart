@@ -63,6 +63,8 @@ class _NationalMapState extends State<NationalMap> {
     return Section(
       title: tr('market.regionsTitle'),
       children: [
+        for (final offer in national.offers)
+          _OfferRow(country: widget.country, offer: offer),
         Wrap(
           spacing: 6,
           runSpacing: 4,
@@ -96,6 +98,8 @@ class _NationalMapState extends State<NationalMap> {
             tr('market.openedThisYear'),
             tr('market.openedAndClosed', {'opened': opened, 'closed': closed}),
           ),
+          for (final block in ours.blocks)
+            _BlockWorth(country: widget.country, block: block),
         ],
         const SizedBox(height: 10),
         _TileMap(
@@ -596,4 +600,332 @@ String yearlyAmount(Money amount) {
             (euros / 1e6).toStringAsFixed(euros >= 1e8 ? 0 : 1),
           ),
         });
+}
+
+/// What a company's shops run by formula in one trade are worth, and the
+/// way to sell them to the chain that would buy them.
+class _BlockWorth extends StatelessWidget {
+  const _BlockWorth({required this.country, required this.block});
+
+  final CountryId country;
+  final CompanyBlockView block;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = block.value;
+    if (value == null) return const SizedBox.shrink();
+    final buyer = block.buyer;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Line(
+          block.name == null
+              ? tr('market.worth')
+              : tr('market.worthOf', {'chain': block.name}),
+          money(value.price, cents: false),
+          hint: buyer == null
+              ? tr('market.noBuyer')
+              : tr('market.buyerWouldBe', {'chain': buyer}),
+        ),
+        if (buyer != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () => _sell(context, buyer, value.price),
+              child: Text(tr('market.sellShops', {'count': block.stores})),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _sell(BuildContext context, String buyer, Money price) async {
+    final game = context.game;
+    final confirmed = await _confirm(
+      context,
+      title: tr('market.sellTitle', {'chain': buyer}),
+      body: tr('market.sellBody', {
+        'count': block.stores,
+        'price': money(price, cents: false),
+      }),
+      action: tr('market.sellAction'),
+    );
+    if (!confirmed) return;
+    game.submit(
+      SellNational(
+        game.player,
+        company: block.company,
+        country: country,
+        block: block.index,
+      ),
+    );
+  }
+}
+
+/// A chain's offer for the player's shops run by formula, with the way to
+/// accept or turn it down.
+class _OfferRow extends StatelessWidget {
+  const _OfferRow({required this.country, required this.offer});
+
+  final CountryId country;
+  final NationalOfferView offer;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final ledger = Ledger.of(context);
+    final national = nationalOf(game, country);
+    final block = national?.blocks
+        .where((b) => b.index == offer.block)
+        .firstOrNull;
+    if (national == null || block == null) return const SizedBox.shrink();
+    final trades = game.national!.table.trades;
+    final trade = tradeName(trades[block.trade].key, trades[block.trade].name);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(border: Border.all(color: ledger.ink)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Line(
+            tr('market.offerFrom', {'chain': offer.chain}),
+            money(offer.price, cents: false),
+            strong: true,
+            color: ledger.gain,
+            hint: tr('market.offerFor', {
+              'count': block.stores,
+              'trade': trade.toLowerCase(),
+              'date': shortDate(offer.expires),
+            }),
+          ),
+          if (block.value case final value?)
+            Hint(
+              tr('market.offerAgainst', {
+                'worth': money(value.price, cents: false),
+              }),
+            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => game.submit(
+                  DeclineNationalOffer(game.player, offer: offer.number),
+                ),
+                child: Text(tr('market.declineOffer')),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () async {
+                  final confirmed = await _confirm(
+                    context,
+                    title: tr('market.sellTitle', {'chain': offer.chain}),
+                    body: tr('market.sellBody', {
+                      'count': block.stores,
+                      'price': money(offer.price, cents: false),
+                    }),
+                    action: tr('market.sellAction'),
+                  );
+                  if (confirmed) {
+                    game.submit(
+                      AcceptNationalOffer(game.player, offer: offer.number),
+                    );
+                  }
+                },
+                child: Text(tr('market.acceptOffer')),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Asks [title] with [body], to go ahead with [action] or not.
+Future<bool> _confirm(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String action,
+}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(tr('common.notNow')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(action),
+          ),
+        ],
+      ),
+    ) ??
+    false;
+
+/// Opens the page of [chain], by its place among the chains of the game's
+/// [country] in the national table: what it sells and earns, where its
+/// shops are, what it would cost to buy whole, and the way to.
+void openChain(BuildContext context, CountryId country, int chain) {
+  final national = nationalOf(context.game, country);
+  if (national == null) return;
+  final def = national.chains.where((c) => c.index == chain).firstOrNull;
+  if (def == null) return;
+  context.openPage(
+    def.name,
+    (context) => [_ChainFigures(country: country, chain: chain)],
+  );
+}
+
+class _ChainFigures extends StatelessWidget {
+  const _ChainFigures({required this.country, required this.chain});
+
+  final CountryId country;
+  final int chain;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final national = nationalOf(game, country);
+    final view = national?.chains.where((c) => c.index == chain).firstOrNull;
+    if (national == null || view == null) return const SizedBox.shrink();
+    final ledger = Ledger.of(context);
+    final mine = {for (final company in game.view.companies) company.id};
+    final value = view.value;
+    // Where most of its shops are.
+    final regions = [
+      for (final (r, count) in view.regional.indexed)
+        if (count > 0) (region: national.def.regions[r].name, count: count),
+    ]..sort((a, b) => b.count.compareTo(a.count));
+    return Section(
+      title: view.name,
+      children: [
+        if (view.boughtBy case final company? when mine.contains(company))
+          Hint(tr('market.chainYours'))
+        else ...[
+          Line(tr('market.chainShops'), '${view.stores}', strong: true),
+          Line(tr('market.salesAYear'), yearlyAmount(view.yearSales)),
+          if (value != null) ...[
+            Line(
+              tr('market.earnsAYear'),
+              signedMoney(value.earnings, cents: false),
+              color: gainColor(context, value.earnings.cents.sign),
+            ),
+            Line(
+              tr('market.chainPrice'),
+              money(value.price, cents: false),
+              strong: true,
+            ),
+            if (value.earnings > Money.zero)
+              Line(
+                tr('market.paysBackYears'),
+                tr('market.yearsCount', {
+                  'count': decimalText(
+                    (value.price.cents / value.earnings.cents).toStringAsFixed(
+                      1,
+                    ),
+                  ),
+                }),
+              ),
+          ],
+          if (regions.isNotEmpty)
+            Line(
+              tr('market.mostShopsIn'),
+              regions.take(2).map((r) => r.region).join(', '),
+            ),
+          if (value != null && game.company != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton(
+                onPressed: () => _buy(context, national, view, value),
+                child: Text(tr('market.buyChain', {'chain': view.name})),
+              ),
+            ),
+          ],
+          Hint(tr('market.chainHint')),
+        ],
+        if (value == null && view.boughtBy == null)
+          Text(
+            tr('market.chainNotForSale'),
+            style: TextStyle(color: ledger.muted),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _buy(
+    BuildContext context,
+    NationalCountryView national,
+    NationalChainView view,
+    NationalValue value,
+  ) async {
+    final game = context.game;
+    final content = game.content;
+    final company = game.company!;
+    // Runs as the company's shops of the trade already do, or else as the
+    // trade's first kind of shop that can run by formula.
+    FormatId? format;
+    for (final block in national.blocks) {
+      if (block.trade == view.trade && block.company == company.id) {
+        format = block.format;
+      }
+    }
+    format ??= content.formats
+        .firstWhere((f) => national.tradeOf(content, f.id) == view.trade)
+        .id;
+    final strategies = [
+      for (final s in content.strategies)
+        if (s.format == format) s,
+    ];
+    final director = game.directorOf(company);
+    final strategy =
+        director != null &&
+            content.strategies[director.strategy.index].format == format
+        ? director.strategy
+        : strategies
+              .firstWhere(
+                (s) => s.marketPosition == Fx.zero,
+                orElse: () => strategies.first,
+              )
+              .id;
+    final short = value.price - company.cash;
+    final borrow = short > Money.zero ? short : Money.zero;
+    final term = content.finance.maxTermMonths;
+    final confirmed = await _confirm(
+      context,
+      title: tr('market.buyChainTitle', {'chain': view.name}),
+      body: [
+        tr('market.buyChainBody', {
+          'count': view.stores,
+          'price': money(value.price, cents: false),
+          'company': game.companyName(company.id),
+        }),
+        if (borrow > Money.zero)
+          tr('market.buyChainLoan', {
+            'amount': money(borrow, cents: false),
+            'term': termName(term),
+          }),
+      ].join(' '),
+      action: tr('market.buyAction'),
+    );
+    if (!confirmed) return;
+    game.submit(
+      BuyNationalChain(
+        game.player,
+        company: company.id,
+        country: country,
+        chain: chain,
+        format: format,
+        strategy: strategy,
+        borrow: borrow,
+        termMonths: borrow > Money.zero ? term : 0,
+      ),
+    );
+  }
 }

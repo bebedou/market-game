@@ -34,7 +34,8 @@ enum AlertKind {
   monthEnd,
   manager,
   director,
-  milestone;
+  milestone,
+  offer;
 
   String get label => tr('alerts.kinds.$name');
 }
@@ -1086,6 +1087,30 @@ class SimulationController extends ChangeNotifier {
             'memo': memoSentence(memo, content, after),
           }),
         );
+      }
+    }
+
+    // Chains offer for the player's shops run by formula on the first of
+    // the month.
+    if (day.isFirstOfMonth) {
+      final known = {
+        for (final country in before.national)
+          for (final offer in country.offers) offer.number,
+      };
+      for (final country in after.national) {
+        for (final offer in country.offers) {
+          if (known.contains(offer.number)) continue;
+          add(
+            AlertKind.offer,
+            tr('alerts.chainOffers', {
+              'chain': offer.chain,
+              'price': money(offer.price, cents: false),
+              'country': country.country == null
+                  ? country.def.name
+                  : content.countries[country.country!.index].name,
+            }),
+          );
+        }
       }
     }
 

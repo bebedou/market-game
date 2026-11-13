@@ -177,6 +177,25 @@ final class RegionalTuning {
   );
 }
 
+/// How marketing across a country builds a company's pull there: what it
+/// spends adds to its goodwill, which loses [decay] of itself a month, and
+/// goodwill G pulls up to [pull] more shoppers, half that at G = [half] of
+/// the trade's yearly market. Spread over more shops, the same share of
+/// sales buys a big chain more.
+final class BrandTuning {
+  const BrandTuning({
+    required this.pull,
+    required this.half,
+    required this.decay,
+  });
+
+  final Fx pull;
+  final Fx half;
+  final Fx decay;
+
+  static const none = BrandTuning(pull: Fx.zero, half: Fx.one, decay: Fx.one);
+}
+
 /// A chain as the table starts it, or a trade's independents taken together.
 final class ChainDef {
   const ChainDef({
@@ -275,6 +294,7 @@ final class CountryTable {
     required this.trades,
     required this.countries,
     this.regional = RegionalTuning.none,
+    this.brands = BrandTuning.none,
   }) : meanRealWageGrowth = _meanRealWageGrowth(regimes);
 
   final String key;
@@ -299,6 +319,9 @@ final class CountryTable {
   final List<Trade> trades;
   final List<NationalCountry> countries;
   final RegionalTuning regional;
+
+  /// How companies' marketing across a country builds their pull.
+  final BrandTuning brands;
 
   /// The cycle's real wage growth over its phases' expected lengths, so that
   /// a country's trend is what it grows through a whole cycle.
@@ -463,6 +486,18 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
         return tuning;
       }(),
       null => RegionalTuning.none,
+    },
+    brands: switch (root.optionalObject('brands')) {
+      final node? => () {
+        final tuning = BrandTuning(
+          pull: node.fx('pull'),
+          half: node.fx('half'),
+          decay: node.fx('decay'),
+        );
+        node.finish();
+        return tuning;
+      }(),
+      null => BrandTuning.none,
     },
   );
   root

@@ -242,6 +242,30 @@ sealed class Command {
         actor,
         factory: FactoryId(reader.readInt()),
       ),
+      BuyNationalChain.tag => BuyNationalChain(
+        actor,
+        company: CompanyId(reader.readInt()),
+        country: CountryId(reader.readInt()),
+        chain: reader.readInt(),
+        format: FormatId(reader.readInt()),
+        strategy: StrategyId(reader.readInt()),
+        borrow: Money(reader.readInt()),
+        termMonths: reader.readInt(),
+      ),
+      SellNational.tag => SellNational(
+        actor,
+        company: CompanyId(reader.readInt()),
+        country: CountryId(reader.readInt()),
+        block: reader.readInt(),
+      ),
+      AcceptNationalOffer.tag => AcceptNationalOffer(
+        actor,
+        offer: reader.readInt(),
+      ),
+      DeclineNationalOffer.tag => DeclineNationalOffer(
+        actor,
+        offer: reader.readInt(),
+      ),
       OpenNational.tag => OpenNational(
         actor,
         company: CompanyId(reader.readInt()),
@@ -1430,4 +1454,128 @@ final class OpenNational extends Command {
       'country: ${country.index}, region: $region, format: ${format.index}, '
       'strategy: ${strategy.index}, count: $count, '
       'borrow: ${borrow.toDecimalString()}, termMonths: $termMonths)';
+}
+
+/// Has [company] buy [chain], by its place among [country]'s chains in the
+/// national table, whole at its price, its shops then run as [strategy] has
+/// shops of [format], borrowing [borrow] over [termMonths] if asked, the
+/// chain's earnings counted.
+final class BuyNationalChain extends Command {
+  const BuyNationalChain(
+    super.actor, {
+    required this.company,
+    required this.country,
+    required this.chain,
+    required this.format,
+    required this.strategy,
+    this.borrow = Money.zero,
+    this.termMonths = 0,
+  });
+
+  static const int tag = 36;
+
+  final CompanyId company;
+  final CountryId country;
+  final int chain;
+  final FormatId format;
+  final StrategyId strategy;
+  final Money borrow;
+  final int termMonths;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(company.index)
+      ..writeInt(country.index)
+      ..writeInt(chain)
+      ..writeInt(format.index)
+      ..writeInt(strategy.index)
+      ..writeInt(borrow.cents)
+      ..writeInt(termMonths);
+  }
+
+  @override
+  String toString() =>
+      'BuyNationalChain(actor: ${actor.index}, company: ${company.index}, '
+      'country: ${country.index}, chain: $chain, format: ${format.index}, '
+      'strategy: ${strategy.index}, borrow: ${borrow.toDecimalString()}, '
+      'termMonths: $termMonths)';
+}
+
+/// Sells [company]'s shops run by formula in [country], [block] by its
+/// place among the country's blocks in the national table, to the chain of
+/// their trade with the most cash that can pay their price.
+final class SellNational extends Command {
+  const SellNational(
+    super.actor, {
+    required this.company,
+    required this.country,
+    required this.block,
+  });
+
+  static const int tag = 37;
+
+  final CompanyId company;
+  final CountryId country;
+  final int block;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(company.index)
+      ..writeInt(country.index)
+      ..writeInt(block);
+  }
+
+  @override
+  String toString() =>
+      'SellNational(actor: ${actor.index}, company: ${company.index}, '
+      'country: ${country.index}, block: $block)';
+}
+
+/// Accepts a chain's [offer], by its number, for the actor's shops run by
+/// formula.
+final class AcceptNationalOffer extends Command {
+  const AcceptNationalOffer(super.actor, {required this.offer});
+
+  static const int tag = 38;
+
+  final int offer;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(offer);
+  }
+
+  @override
+  String toString() =>
+      'AcceptNationalOffer(actor: ${actor.index}, offer: $offer)';
+}
+
+/// Turns down a chain's [offer], by its number.
+final class DeclineNationalOffer extends Command {
+  const DeclineNationalOffer(super.actor, {required this.offer});
+
+  static const int tag = 39;
+
+  final int offer;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(offer);
+  }
+
+  @override
+  String toString() =>
+      'DeclineNationalOffer(actor: ${actor.index}, offer: $offer)';
 }

@@ -94,7 +94,7 @@ typedef SalesBreakdown = ({
 /// with real books, but no store of its own until someone zooms in.
 final class Chain {
   Chain._(this.def, this.pull, this.perStore, this.cash, this.spread)
-    : stores = def.stores,
+    : regional = _apportion(def.stores, spread),
       price = def.price;
 
   final ChainDef def;
@@ -108,7 +108,12 @@ final class Chain {
 
   /// A store's yearly sales at the start, what its fixed costs are sized on.
   final Money perStore;
-  int stores;
+
+  /// Its shops in each region: spread by [spread] at the start, then where
+  /// it opened and closed them.
+  final List<int> regional;
+
+  int get stores => regional.fold(0, (sum, n) => sum + n);
 
   /// Its prices against the trade's average.
   Fx price;
@@ -118,14 +123,17 @@ final class Chain {
   int monthsShort = 0;
   bool failed = false;
 
+  /// The company that bought it, by the game's company index, whose shops
+  /// its were; null while it trades on its own.
+  int? boughtBy;
+
   /// The latest last, at most [countryMonthsKept].
   final List<ChainMonth> months = [];
 
   bool get isTrading => stores > 0;
 
-  /// Its shops in each region: [stores] spread by [spread], the largest
-  /// remainders first.
-  List<int> get regionalStores => _apportion(stores, spread);
+  /// Its shops in each region.
+  List<int> get regionalStores => regional;
 }
 
 /// A month of a company's shops in one trade of one country.
@@ -189,6 +197,36 @@ final class BlockMonth {
 /// Staff and premises are at the country's average wages and rents, which
 /// each region's own scale.
 typedef ShopCosts = ({Fx goods, Fx marketing, Fx staff, Fx premises});
+
+/// The save version from which chains keep their shops by region, and the
+/// national scale's later state.
+const _placedVersion = 30;
+
+/// A chain's offer to buy a company's shops run by formula across a
+/// country, until [expires]. Its [block] is found again by its company,
+/// trade, format and name when the offer is read from a save.
+final class NationalOffer {
+  NationalOffer({
+    required this.number,
+    required this.country,
+    required this.block,
+    required this.chain,
+    required this.price,
+    required this.expires,
+  });
+
+  final int number;
+
+  /// The country's place in the national table.
+  final int country;
+  final CompanyBlock block;
+  final Chain chain;
+  final Money price;
+  final Day expires;
+}
+
+/// The most of its sales a company spends on marketing across a country.
+const maxNationalMarketing = Fx.raw(800);
 
 /// A company's shops in one region: those settled, those in their first two
 /// years by the month they opened, those still being fitted out, and the
@@ -261,7 +299,9 @@ final class CompanyBlock {
     required this.costs,
     required this.perStore,
     required int regions,
-  }) : regions = [for (var i = 0; i < regions; i++) BlockRegion()];
+    this.name,
+  }) : regions = [for (var i = 0; i < regions; i++) BlockRegion()],
+       marketing = costs.marketing;
 
   CompanyBlock.read(StateReader reader)
     : company = reader.readInt(),
@@ -280,9 +320,19 @@ final class CompanyBlock {
       regions = [
         for (var i = 0, n = reader.readInt(); i < n; i++)
           BlockRegion.read(reader),
-      ] {
+      ],
+      marketing = Fx.zero {
     for (var i = 0, n = reader.readInt(); i < n; i++) {
       months.add(BlockMonth.read(reader));
+    }
+    if (reader.version >= _placedVersion) {
+      discount = Fx.raw(reader.readInt());
+      goodwill = Money(reader.readInt());
+      marketing = Fx.raw(reader.readInt());
+      name = reader.readBool() ? reader.readString() : null;
+      cost = Money(reader.readInt());
+    } else {
+      marketing = costs.marketing;
     }
   }
 
@@ -307,6 +357,24 @@ final class CompanyBlock {
 
   /// A shop's yearly sales at the start: what its fixed costs are sized on.
   final Money perStore;
+
+  /// What its suppliers take off its goods: its company's buying terms.
+  Fx discount = Fx.zero;
+
+  /// What its marketing across the country has built, losing some each
+  /// month (see `BrandTuning`).
+  Money goodwill = Money.zero;
+
+  /// The share of its sales it spends on marketing: its director's choice,
+  /// or else its strategy's.
+  Fx marketing;
+
+  /// The chain it was bought from, whose name it trades under; null for the
+  /// company's own shops, the only ones its director opens.
+  String? name;
+
+  /// What the company paid for that chain, carried as a business asset.
+  Money cost = Money.zero;
 
   final List<BlockRegion> regions;
 
@@ -337,6 +405,13 @@ final class CompanyBlock {
     for (final month in months) {
       month.write(writer);
     }
+    writer
+      ..writeInt(discount.raw)
+      ..writeInt(goodwill.cents)
+      ..writeInt(marketing.raw)
+      ..writeBool(name != null);
+    if (name case final name?) writer.writeString(name);
+    writer.writeInt(cost.cents);
   }
 }
 
@@ -741,8 +816,15 @@ final class CountryEconomy {
     final regions = country.regionCount;
     final demand = demandIn(def, t);
     final sales = List.filled(chains.length, Money.zero);
+    final chainSales = [
+      for (final _ in chains) List.filled(regions, Money.zero),
+    ];
     final blockSales = [
       for (final _ in blocks) List.filled(regions, Money.zero),
+    ];
+    // What a store of each company's draws, its brand counted.
+    final pulls = [
+      for (final block in blocks) block.pull * brandFactor(country, t, block),
     ];
     // What a company's shops draw in each region, crowding as they fill it.
     final draws = [
@@ -780,11 +862,12 @@ final class CountryEconomy {
             for (final (i, chain) in chains.indexed)
               _weight(regional[i][r], chain.pull, t, c, chain.price),
             for (final (b, block) in blocks.indexed)
-              _blockWeight(draws[b][r], block.pull, t, c, block.price),
+              _blockWeight(draws[b][r], pulls[b], t, c, block.price),
           ],
           (i, money) {
             if (i < chains.length) {
               sales[i] += money;
+              chainSales[i][r] += money;
             } else {
               blockSales[i - chains.length][r] += money;
             }
@@ -804,7 +887,7 @@ final class CountryEconomy {
       );
     if (months.length > countryMonthsKept) months.removeAt(0);
     for (final (i, chain) in chains.indexed) {
-      _books(index, country, chain, sales[i], chains, start);
+      _books(index, country, chain, sales[i], chainSales[i], chains, start);
     }
     for (final (b, block) in blocks.indexed) {
       _blockBooks(country, block, blockSales[b], start, opened);
@@ -910,8 +993,10 @@ final class CountryEconomy {
       final trading = region.trading;
       stores += trading;
       final sold = sales[r];
-      final regionGoods = sold.times(costs.goods);
-      final regionMarketing = sold.times(costs.marketing);
+      final regionGoods = sold
+          .times(costs.goods)
+          .times(Fx.one - block.discount);
+      final regionMarketing = sold.times(block.marketing);
       final wages = country.wageIndex * country.wageLevels[r];
       final regionStaff =
           monthly
@@ -943,6 +1028,8 @@ final class CountryEconomy {
         closed++;
       }
     }
+    block.goodwill =
+        block.goodwill.times(Fx.one - table.brands.decay) + marketing;
     block.months.add(
       BlockMonth(
         start: start,
@@ -971,6 +1058,7 @@ final class CountryEconomy {
     CountryState country,
     Chain chain,
     Money sales,
+    List<Money> regionSales,
     List<Chain> rivals,
     Day start,
   ) {
@@ -1041,9 +1129,8 @@ final class CountryEconomy {
       ),
     );
     if (chain.months.length > countryMonthsKept) chain.months.removeAt(0);
-    chain
-      ..stores += opened - closed
-      ..cash += profit - tax - fitOut;
+    _place(country, chain, regionSales, opened: opened, closed: closed);
+    chain.cash += profit - tax - fitOut;
     chain.monthsShort = chain.cash.isNegative ? chain.monthsShort + 1 : 0;
     if (chain.monthsShort >= 12 && !chain.def.independent) {
       _fail(chain, rivals);
@@ -1054,10 +1141,104 @@ final class CountryEconomy {
   /// independents, under new owners.
   void _fail(Chain chain, List<Chain> rivals) {
     final heirs = rivals.firstWhere((rival) => rival.def.independent);
-    heirs.stores += chain.stores;
-    chain
-      ..stores = 0
-      ..failed = true;
+    for (var r = 0; r < chain.regional.length; r++) {
+      heirs.regional[r] += chain.regional[r];
+      chain.regional[r] = 0;
+    }
+    chain.failed = true;
+  }
+
+  /// Where [chain]'s [opened] new shops go and its [closed] shops come
+  /// from, by its sales in each region last month ([regionSales]): each new
+  /// one where it would pay back soonest, at what it would add once it takes
+  /// its share from the chain's own shops there and its fitting out at the
+  /// region's cost level; each closing where a shop earns least. So rivals
+  /// open where shops pay, the player's included, and leave where they
+  /// don't.
+  void _place(
+    CountryState country,
+    Chain chain,
+    List<Money> regionSales, {
+    required int opened,
+    required int closed,
+  }) {
+    if (opened == 0 && closed == 0) return;
+    final t = chain.def.trade;
+    final trade = table.trades[t];
+    final row = country.def.trades[t];
+    final regions = chain.regional.length;
+    final levels = country.costLevels[t];
+    final cheaper = chain.def.price.div(chain.price);
+    // What a euro of sales leaves once its goods and the staff that come
+    // with sales are paid.
+    final margin =
+        Fx.one -
+        (row.goods + row.staff * (Fx.one - trade.staffFixed)) * cheaper;
+    final monthly = Money(mulDivRound(chain.perStore.cents, 1, 12));
+    Money fixed(int r) =>
+        monthly
+            .times(row.staff * trade.staffFixed * country.wageIndex)
+            .times(country.wageLevels[r]) +
+        monthly
+            .times(row.other)
+            .times(country.priceIndex)
+            .times(country.rentLevels[r]);
+    final sold = [...regionSales];
+    var total = Money.zero;
+    for (final money in sold) {
+      total += money;
+    }
+    final all = chain.stores;
+    // A shop's month in region [r]: its own there, or else the chain's
+    // average shop at the region's level.
+    Money perShop(int r) => chain.regional[r] > 0
+        ? Money(mulDivRound(sold[r].cents, 1, chain.regional[r]))
+        : all == 0
+        ? Money.zero
+        : Money(mulDivRound(total.cents, 1, all)).times(levels[r]);
+    int perLevel(Money profit, int r) =>
+        mulDivRound(profit.cents, Fx.scale, levels[r].raw);
+    for (var k = 0; k < closed; k++) {
+      var worst = -1;
+      var worstValue = 0;
+      for (var r = 0; r < regions; r++) {
+        if (chain.regional[r] == 0) continue;
+        final value = perLevel(perShop(r).times(margin) - fixed(r), r);
+        if (worst < 0 || value < worstValue) {
+          worst = r;
+          worstValue = value;
+        }
+      }
+      if (worst < 0) break;
+      sold[worst] -= perShop(worst);
+      chain.regional[worst]--;
+    }
+    for (var k = 0; k < opened; k++) {
+      var best = 0;
+      var bestValue = 0;
+      Money bestAdds = Money.zero;
+      for (var r = 0; r < regions; r++) {
+        final spend = country.regionSpend[t][r].fold(
+          Money.zero,
+          (sum, m) => sum + m,
+        );
+        // What it already has of the region's spending, it takes again.
+        final kept = spend.cents < 100
+            ? Fx.one
+            : Fx.raw(
+                mulDivRound(sold[r].cents ~/ 100, Fx.scale, spend.cents ~/ 100),
+              );
+        final adds = perShop(r).times(Fx.one - (kept > Fx.one ? Fx.one : kept));
+        final value = perLevel(adds.times(margin) - fixed(r), r);
+        if (r == 0 || value > bestValue) {
+          best = r;
+          bestValue = value;
+          bestAdds = adds;
+        }
+      }
+      sold[best] += bestAdds;
+      chain.regional[best]++;
+    }
   }
 
   static Fx _margin(Money profit, Money sales) {
@@ -1067,8 +1248,8 @@ final class CountryEconomy {
     return Fx.raw(mulDivRound(profit.cents ~/ 100, Fx.scale, whole));
   }
 
-  /// The block of [company]'s shops of [format] in trade [trade] of
-  /// [country], if it has opened any.
+  /// The block of [company]'s own shops of [format] in trade [trade] of
+  /// [country], if it has opened any: not those of a chain it bought.
   CompanyBlock? blockOf(
     CountryState country, {
     required int company,
@@ -1078,11 +1259,82 @@ final class CountryEconomy {
     for (final block in country.blocks) {
       if (block.company == company &&
           block.trade == trade &&
-          block.format == format) {
+          block.format == format &&
+          block.name == null) {
         return block;
       }
     }
     return null;
+  }
+
+  /// How much more a store of [block] draws in trade [trade] of [country]
+  /// for what its marketing has built (see [BrandTuning]): one with no
+  /// goodwill draws as its pull says.
+  Fx brandFactor(CountryState country, int trade, CompanyBlock block) {
+    final brands = table.brands;
+    final half = _brandHalf(country, trade);
+    if (brands.pull == Fx.zero || block.goodwill <= Money.zero || half == 0) {
+      return Fx.one;
+    }
+    // In euros, to stay safe in the division.
+    final goodwill = block.goodwill.cents ~/ 100;
+    return Fx.one +
+        brands.pull * Fx.raw(mulDivRound(goodwill, Fx.scale, goodwill + half));
+  }
+
+  /// The goodwill, in euros, at which a brand pulls half what it can in
+  /// trade [trade] of [country]: [BrandTuning.half] of its latest month's
+  /// market, a year of it.
+  int _brandHalf(CountryState country, int trade) {
+    final month = country.tradeMonths[trade].lastOrNull;
+    if (month == null) return 0;
+    return mulDivRound(
+      month.market.cents ~/ 100 * 12,
+      table.brands.half.raw,
+      Fx.scale,
+    );
+  }
+
+  /// The share of its sales [block] should spend on marketing across trade
+  /// [trade] of [country]: what pays back the most, as a shop's manager
+  /// works it out (see `StorePlan.bestMarketingShare`), with [m] what a
+  /// euro of sales leaves after goods and the staff that come with sales,
+  /// and its latest month's sales; never below [floor] nor above
+  /// [maxNationalMarketing], in half percents.
+  Fx bestMarketing(
+    CountryState country,
+    int trade,
+    CompanyBlock block, {
+    required Fx floor,
+  }) {
+    final brands = table.brands;
+    final sales = block.months.lastOrNull?.sales ?? Money.zero;
+    final half = _brandHalf(country, trade);
+    if (brands.pull == Fx.zero || sales <= Money.zero || half == 0) {
+      return floor;
+    }
+    final def = table.trades[trade];
+    final m =
+        Fx.one -
+        block.costs.goods * (Fx.one - block.discount) -
+        block.costs.staff * (Fx.one - def.staffFixed);
+    if (m <= Fx.zero) return floor;
+    // In thousands of euros, a month, to stay safe: one more euro of
+    // marketing pays back a euro at G = √(m·w·H·R/δ) − H.
+    final monthly = sales.cents ~/ 100000;
+    final halfK = half ~/ 1000;
+    final scaled = mulDivRound(
+      mulDivRound(halfK * monthly, (m * brands.pull).raw, Fx.scale),
+      Fx.scale,
+      brands.decay.raw,
+    );
+    final goodwill = isqrt(scaled) - halfK;
+    if (goodwill <= 0 || monthly == 0) return floor;
+    var share = Fx.raw(mulDivRound(goodwill, brands.decay.raw, monthly));
+    // In half percents.
+    share = Fx.raw(share.raw ~/ 50 * 50);
+    if (share < floor) return floor;
+    return share > maxNationalMarketing ? maxNationalMarketing : share;
   }
 
   /// Opens [count] of [company]'s shops of [format] in [region] of the
@@ -1143,6 +1395,7 @@ final class CountryEconomy {
     required Money perStore,
     required Fx price,
     required ShopCosts costs,
+    Fx discount = Fx.zero,
   }) {
     final country = countries[index];
     final block = blockOf(
@@ -1155,13 +1408,82 @@ final class CountryEconomy {
       country,
       trade,
       regionMarket(country, trade, region, company: company, format: format),
-      pull: block?.pull ?? pullFor(country, trade, perStore),
+      pull: block == null
+          ? pullFor(country, trade, perStore)
+          : block.pull * brandFactor(country, trade, block),
       price: price,
-      costs: costs,
+      costs: (
+        goods: costs.goods * (Fx.one - (block?.discount ?? discount)),
+        marketing: block?.marketing ?? costs.marketing,
+        staff: costs.staff,
+        premises: costs.premises,
+      ),
       perStore: perStore,
       drawMilli: block?.regions[region].drawMilli ?? 0,
     );
   }
+
+  /// [company] buys [chain] of the country at [index], for [cost]: its
+  /// shops become the company's, region by region, run as [strategy] has
+  /// shops of [format], under the chain's name, with the chain's pull,
+  /// prices and costs. The chain trades no more.
+  CompanyBlock buyChain(
+    int index,
+    Chain chain, {
+    required int company,
+    required int format,
+    required int strategy,
+    required Money cost,
+  }) {
+    final country = countries[index];
+    final t = chain.def.trade;
+    final row = country.def.trades[t];
+    final cheaper = chain.def.price.div(chain.price);
+    final block = CompanyBlock(
+      company: company,
+      trade: t,
+      format: format,
+      strategy: strategy,
+      pull: chain.pull,
+      price: chain.price,
+      costs: (
+        goods: row.goods * cheaper,
+        marketing: Fx.zero,
+        staff: row.staff,
+        premises: row.other,
+      ),
+      perStore: chain.perStore,
+      regions: country.regionCount,
+      name: chain.def.name,
+    )..cost = cost;
+    for (var r = 0; r < chain.regional.length; r++) {
+      block.regions[r].settled = chain.regional[r];
+      chain.regional[r] = 0;
+    }
+    chain
+      ..boughtBy = company
+      ..cash = Money.zero;
+    country.blocks.add(block);
+    return block;
+  }
+
+  /// [buyer], a chain of the country at [index], buys [block] for [price]:
+  /// its shops, settled or not, become the chain's in their regions.
+  void sellBlock(int index, CompanyBlock block, Chain buyer, Money price) {
+    final country = countries[index];
+    for (var r = 0; r < block.regions.length; r++) {
+      buyer.regional[r] += block.regions[r].stores;
+    }
+    buyer.cash -= price;
+    country.blocks.remove(block);
+    offers.removeWhere((offer) => offer.block == block);
+  }
+
+  /// Chains' offers for companies' shops run by formula, the latest last.
+  final List<NationalOffer> offers = [];
+
+  /// The number the next offer gets.
+  int nextOffer = 1;
 
   /// Takes away [company]'s shops run by formula, everywhere: it has been
   /// wound up.
@@ -1169,6 +1491,7 @@ final class CountryEconomy {
     for (final country in countries) {
       country.blocks.removeWhere((block) => block.company == company);
     }
+    offers.removeWhere((offer) => offer.block.company == company);
   }
 
   /// The pull that has a settled shop sell [perStore] a year at today's
@@ -1361,12 +1684,14 @@ final class CountryEconomy {
         }
       }
       for (final chain in country.chains) {
+        writer.writeInt(chain.regional.length);
+        chain.regional.forEach(writer.writeInt);
         writer
-          ..writeInt(chain.stores)
           ..writeInt(chain.price.raw)
           ..writeInt(chain.cash.cents)
           ..writeInt(chain.monthsShort)
           ..writeBool(chain.failed)
+          ..writeNullableInt(chain.boughtBy)
           ..writeInt(chain.months.length);
         for (final month in chain.months) {
           writer
@@ -1386,6 +1711,19 @@ final class CountryEconomy {
       for (final block in country.blocks) {
         block.write(writer);
       }
+    }
+    writer
+      ..writeInt(nextOffer)
+      ..writeInt(offers.length);
+    for (final offer in offers) {
+      final country = countries[offer.country];
+      writer
+        ..writeInt(offer.number)
+        ..writeInt(offer.country)
+        ..writeInt(country.blocks.indexOf(offer.block))
+        ..writeInt(country.chains.indexOf(offer.chain))
+        ..writeInt(offer.price.cents)
+        ..writeInt(offer.expires.number);
     }
   }
 
@@ -1433,12 +1771,23 @@ final class CountryEconomy {
         }
       }
       for (final chain in country.chains) {
+        // Saves before chains placed their own shops kept only a count,
+        // spread as at the start.
+        final regional = reader.version >= _placedVersion
+            ? [
+                for (var i = 0, n = reader.readInt(); i < n; i++)
+                  reader.readInt(),
+              ]
+            : _apportion(reader.readInt(), chain.spread);
+        chain.regional.setAll(0, regional);
         chain
-          ..stores = reader.readInt()
           ..price = Fx.raw(reader.readInt())
           ..cash = Money(reader.readInt())
           ..monthsShort = reader.readInt()
-          ..failed = reader.readBool();
+          ..failed = reader.readBool()
+          ..boughtBy = reader.version >= _placedVersion
+              ? reader.readNullableInt()
+              : null;
         chain.months.clear();
         for (var i = 0, n = reader.readInt(); i < n; i++) {
           chain.months.add(
@@ -1460,6 +1809,25 @@ final class CountryEconomy {
       country.blocks.clear();
       for (var i = 0, n = reader.readInt(); i < n; i++) {
         country.blocks.add(CompanyBlock.read(reader));
+      }
+    }
+    offers.clear();
+    if (reader.version >= _placedVersion) {
+      nextOffer = reader.readInt();
+      for (var i = 0, n = reader.readInt(); i < n; i++) {
+        final number = reader.readInt();
+        final index = reader.readInt();
+        final country = countries[index];
+        offers.add(
+          NationalOffer(
+            number: number,
+            country: index,
+            block: country.blocks[reader.readInt()],
+            chain: country.chains[reader.readInt()],
+            price: Money(reader.readInt()),
+            expires: Day(reader.readInt()),
+          ),
+        );
       }
     }
   }

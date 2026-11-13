@@ -5,6 +5,7 @@ import '../core/ids.dart';
 import '../core/rng.dart';
 import '../reports/attribution.dart';
 import '../state/world_state.dart';
+import 'buying_terms.dart';
 import 'close.dart';
 import 'demand.dart';
 import 'events.dart';
@@ -59,6 +60,8 @@ final class TickContext {
 /// run.
 const List<TickSystem> standardSystems = [
   MacroSystem(),
+  // Before the countries by formula, whose shops' buying terms it sets.
+  BuyingTermsSystem(),
   NationalSystem(),
   PopulationSystem(),
   TaxSystem(),

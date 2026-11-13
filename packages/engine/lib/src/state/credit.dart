@@ -4,7 +4,10 @@ import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
+import '../core/safe_int.dart';
+import '../countries/country_economy.dart';
 import 'entities.dart';
+import 'national_value.dart';
 import 'valuation.dart';
 import 'world_state.dart';
 
@@ -29,6 +32,21 @@ Money companyEarnings(
   for (final factory in world.factories) {
     if (factory.company != company) continue;
     total += factoryEarnings(world, content, factory) ?? Money.zero;
+  }
+  // Its shops run by formula, across countries and in districts asleep,
+  // once they have traded three months.
+  for (final country in world.national?.countries ?? const <CountryState>[]) {
+    for (final block in country.blocks) {
+      if (block.company == company.index) total += blockEarnings(block);
+    }
+  }
+  for (final sleeper in world.sleepers) {
+    for (final shop in sleeper.shops) {
+      if (shop.company != company || shop.profits.length < 3) continue;
+      total += Money(
+        mulDivRound(shop.yearProfit.cents, 12, shop.profits.length),
+      );
+    }
   }
   return total;
 }

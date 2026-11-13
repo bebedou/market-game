@@ -267,6 +267,7 @@
   },
   "taxes": { "reducedRate": "0.15", "reducedLimit": "42500.00", "corporateRate": "0.25", "dividendRate": "0.30" },
   "acquisitions": { "tangibleReturn": "0.08", "capitalization": "0.40", "distressFloor": "0.5", "fittingsLifeDays": 3650, "fittingsResidual": "0.25", "buyerReserve": "0.25", "intervalDays": 365 },
+  "buyingTerms": { "most": "0.06", "half": "30000000.00" },
   "categories": [
     { "id": "milk", "name": "Milk" },
     { "id": "bread", "name": "Bread" },

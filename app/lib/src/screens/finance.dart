@@ -692,10 +692,15 @@ class _DirectorSheetState extends State<_DirectorSheet> {
     var closed = 0;
     var earned = Money.zero;
     var hasBlocks = false;
+    // Its biggest shops run by formula, whose marketing and brand show.
+    CompanyBlockView? biggest;
     for (final country in countries) {
       for (final block in country.blocks) {
         if (block.company != widget.company.id) continue;
         hasBlocks = true;
+        if (biggest == null || block.stores > biggest.stores) {
+          biggest = block;
+        }
         for (final month in block.months) {
           if (month.start.date.year != year) continue;
           opened += month.opened;
@@ -897,6 +902,46 @@ class _DirectorSheetState extends State<_DirectorSheet> {
                       color: gainColor(context, earned.cents.sign),
                     ),
                   ],
+                ],
+                if (content.buyingTerms != null &&
+                    widget.company.goodsBought > Money.zero) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    tr('finance.whatSizeBuys'),
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  Line(
+                    tr('finance.buyingTerms'),
+                    '−${percent(widget.company.buyingDiscount)}',
+                    color: Ledger.of(context).gain,
+                    hint: tr('finance.boughtThisYear', {
+                      'amount': money(widget.company.goodsBought, cents: false),
+                    }),
+                  ),
+                  Line(
+                    tr('finance.atTwice', {
+                      'amount': money(
+                        widget.company.goodsBought.timesInt(2),
+                        cents: false,
+                      ),
+                    }),
+                    '−${percent(buyingDiscountAt(content, widget.company.goodsBought.timesInt(2)))}',
+                  ),
+                  if (biggest != null) ...[
+                    Line(
+                      tr('finance.nationalMarketing'),
+                      percent(biggest.marketing),
+                      hint: current == null
+                          ? tr('finance.marketingStrategy')
+                          : tr('finance.marketingDirector'),
+                    ),
+                    Line(
+                      tr('finance.brandPull'),
+                      '+${percent(biggest.brandPull)}',
+                      color: Ledger.of(context).gain,
+                    ),
+                  ],
+                  Hint(tr('finance.whatSizeBuysHint')),
                 ],
                 const SizedBox(height: 8),
                 Text(

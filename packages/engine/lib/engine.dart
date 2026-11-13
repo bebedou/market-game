@@ -13,6 +13,7 @@ export 'src/commands/apply_command.dart'
         maxRivalDiscount;
 export 'src/commands/command.dart'
     show
+        AcceptNationalOffer,
         BuildFactory,
         BuyCompany,
         BuyStore,
@@ -22,6 +23,8 @@ export 'src/commands/command.dart'
         ConvertStore,
         BuyInDistrict,
         CreateBrand,
+        BuyNationalChain,
+        DeclineNationalOffer,
         DelistProduct,
         ExpandStore,
         FireDirector,
@@ -42,6 +45,7 @@ export 'src/commands/command.dart'
         RenameCompany,
         RenameStore,
         RepayLoan,
+        SellNational,
         SellStore,
         SetCushion,
         SetFactoryShifts,
@@ -57,6 +61,8 @@ export 'src/content/scenario_loader.dart' show ContentException, loadScenario;
 export 'src/countries/country_economy.dart'
     show
         BlockMonth,
+        NationalOffer,
+        maxNationalMarketing,
         Chain,
         ChainMonth,
         CompanyBlock,
@@ -72,6 +78,7 @@ export 'src/countries/country_table.dart'
         NationalCountry,
         NationalRegion,
         RegionalTuning,
+        BrandTuning,
         loadCountryTable;
 export 'src/countries/shop_bridge.dart' show formatTrades;
 export 'src/core/calendar.dart' show CivilDate, Day;
@@ -100,7 +107,11 @@ export 'src/observation/national_view.dart'
         BlockRegionView,
         CompanyBlockView,
         NationalChainView,
-        NationalCountryView;
+        NationalCountryView,
+        NationalOfferView;
+export 'src/state/buying_terms.dart'
+    show buyingDiscount, buyingDiscountAt, goodsBoughtInYear;
+export 'src/state/national_value.dart' show NationalValue;
 export 'src/observation/outlook.dart'
     show
         ShopOutlook,

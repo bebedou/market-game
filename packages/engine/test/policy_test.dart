@@ -479,7 +479,7 @@ void main() {
     test('a year against the AI produces the committed state hash', () {
       final simulation = Simulation.newGame(aiContent, seed: 20261026);
       runPlayer(simulation, 365);
-      expect(simulation.stateHash(), 0xde6255b2);
+      expect(simulation.stateHash(), 0x67e27b37);
     });
   });
 }

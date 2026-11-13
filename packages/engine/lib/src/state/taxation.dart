@@ -204,9 +204,7 @@ List<CountryTax> companyTaxes(
     var shared = Money.zero;
     var largest = 0;
     for (var c = 0; c < countries; c++) {
-      final share = Money(
-        mulDivRound(rest.cents, sales[c].cents, totalSales.cents),
-      );
+      final share = _shareOf(rest, sales[c], totalSales);
       bases[c] += share;
       shared += share;
       if (sales[c] > sales[largest]) largest = c;
@@ -249,4 +247,23 @@ CountryId homeOf(WorldState world, ContentDb content, Company company) {
     if (factory.company == company.id) return factory.country;
   }
   return world.residence(content, company.owner);
+}
+
+/// [amount] shared out by [part] of [whole], to the cent as far as the
+/// figures allow: a chain's sales across countries run to billions, so the
+/// sales are taken in coarser units until the product stays safe.
+Money _shareOf(Money amount, Money part, Money whole) {
+  var p = part.cents;
+  var w = whole.cents;
+  bool unsafe() {
+    final room = (maxSafeInt - w) ~/ (2 * w);
+    return amount.cents.abs() > room && p.abs() > room;
+  }
+
+  while (w > 1 && unsafe()) {
+    p ~/= 10;
+    w ~/= 10;
+  }
+  if (w <= 0) return Money.zero;
+  return Money(mulDivRound(amount.cents, p, w));
 }

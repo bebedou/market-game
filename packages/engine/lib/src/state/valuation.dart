@@ -5,8 +5,10 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
+import 'districts.dart';
 import 'entities.dart';
 import 'factory.dart';
+import 'national_value.dart';
 import 'history.dart';
 import 'store.dart';
 import 'world_state.dart';
@@ -155,6 +157,32 @@ Money? companyPrice(
   for (final factory in world.factories) {
     if (factory.company != company.id) continue;
     price += valueFactory(world, content, factory)?.price ?? Money.zero;
+  }
+  // Its shops run by formula, across countries and in districts asleep.
+  if (world.national case final national?) {
+    for (final country in national.countries) {
+      for (final block in country.blocks) {
+        if (block.company != company.id.index) continue;
+        price +=
+            valueBlock(content, national, country, block)?.price ?? Money.zero;
+      }
+    }
+  }
+  final month = monthsSinceStart(content, world.today);
+  for (final sleeper in world.sleepers) {
+    for (final shop in sleeper.shops) {
+      if (shop.company != company.id) continue;
+      price +=
+          valueSleepingShop(
+            world,
+            content,
+            sitesOf(world, content, sleeper)[shop.site],
+            shop,
+            month,
+            country: content.neighbourhoods[sleeper.row].country,
+          )?.price ??
+          Money.zero;
+    }
   }
   return price > symbolicPrice ? price : symbolicPrice;
 }

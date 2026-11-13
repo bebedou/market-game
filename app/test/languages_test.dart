@@ -438,6 +438,32 @@ void main() {
           expect(text, isNot(contains('{')), reason: '$command');
           expect(text, contains(_firstRegion(national)), reason: '$command');
         }
+        final deals = <Command>[
+          BuyNationalChain(
+            player,
+            company: company,
+            country: national.countries.first.id,
+            chain: 0,
+            format: national.formats.first.id,
+            strategy: national.strategies.first.id,
+            borrow: amount,
+            termMonths: 60,
+          ),
+          SellNational(
+            player,
+            company: company,
+            country: national.countries.first.id,
+            block: 0,
+          ),
+          AcceptNationalOffer(player, offer: 1),
+          DeclineNationalOffer(player, offer: 1),
+        ];
+        for (final command in deals) {
+          final text = describeCommand(command, national, nationalView);
+          expect(text, isNot(contains('{')), reason: '$command');
+          expect(_rawKey.hasMatch(text), isFalse, reason: '$command');
+          expect(text, isNotEmpty, reason: '$command');
+        }
       });
 
       test('everything a director writes leaves no blank', () {

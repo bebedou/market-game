@@ -29,6 +29,7 @@ final class ContentDb {
     required this.finance,
     this.taxes,
     this.acquisitions,
+    this.buyingTerms,
     this.directors,
     this.factories,
     required this.strategies,
@@ -179,6 +180,9 @@ final class ContentDb {
   /// How stores and companies are priced for sale; null if none are ever
   /// sold.
   final AcquisitionDef? acquisitions;
+
+  /// How a company's goods get cheaper the more it buys; null for none.
+  final BuyingTermsDef? buyingTerms;
 
   /// Directors for hire; null if companies can't have one.
   final DirectorsDef? directors;
@@ -669,6 +673,16 @@ final class PlaceNames {
 /// plus whatever its earnings beat a fair return on them by, capitalised at
 /// a rate that prices in a small business's risk. A store earning less than
 /// that return sells below what it holds, down to a distress floor.
+/// Buying terms: what a company's suppliers take off its goods, by what it
+/// bought over its last twelve months, V: [most] × V / (V + [half]), so
+/// half the most at [half] a year.
+final class BuyingTermsDef {
+  const BuyingTermsDef({required this.most, required this.half});
+
+  final Fx most;
+  final Money half;
+}
+
 final class AcquisitionDef {
   const AcquisitionDef({
     required this.tangibleReturn,

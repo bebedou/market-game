@@ -10,6 +10,7 @@ import 'package:market_game/src/financials.dart';
 import 'package:market_game/src/format.dart';
 import 'package:market_game/src/letters.dart';
 import 'package:market_game/src/saves.dart';
+import 'package:market_game/src/screens/national.dart';
 import 'package:market_game/src/widgets.dart';
 
 import 'support.dart';
@@ -767,6 +768,103 @@ void main() {
     await tester.tap(restaurants);
     await tester.pumpAndSettle();
     expect(find.text('Rank among chains'), findsNothing);
+  });
+
+  testWidgets("a chain's page gives its price, and buys it whole", (
+    tester,
+  ) async {
+    final game = SimulationController.newGame(nationalPrototype, seed: 7);
+    for (var i = 0; i < 40; i++) {
+      game.step();
+    }
+    final france = nationalOf(
+      game,
+      nationalPrototype.countries.firstWhere((c) => c.key == 'fr').id,
+    )!;
+    final chain = france.chains.firstWhere(
+      (c) => c.value != null && c.trade == 0,
+    );
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await openIndex(tester, 'France');
+    final row = find.text(chain.name);
+    await scrollTo(tester, row);
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(find.text('Price, bought whole'), findsOneWidget);
+    expect(find.text('Pays back in'), findsOneWidget);
+    final buy = find.text('Buy ${chain.name}');
+    await scrollTo(tester, buy);
+    await tester.tap(buy);
+    await tester.pumpAndSettle();
+    expect(find.text('Buy ${chain.name}?'), findsOneWidget);
+    // Far beyond the company's cash: the rest is borrowed, if the bank will.
+    expect(find.textContaining('borrows'), findsOneWidget);
+    await tester.tap(find.text('Buy'));
+    await tester.pumpAndSettle();
+    final command = game.pending.single as BuyNationalChain;
+    expect(command.chain, chain.index);
+    expect(command.borrow > Money.zero, isTrue);
+  });
+
+  testWidgets("a chain's offer for your shops is accepted from the country "
+      'page', (tester) async {
+    final content = nationalPrototype;
+    final game = SimulationController.newGame(content, seed: 7);
+    final france = content.countries.firstWhere((c) => c.key == 'fr').id;
+    final grocer = content.strategies.firstWhere((s) => s.key == 'balanced');
+    game
+      ..submit(
+        InjectCapital(
+          content.player,
+          company: playerCompany,
+          amount: Money.parse('200000.00'),
+        ),
+      )
+      ..submit(
+        OpenNational(
+          content.player,
+          company: playerCompany,
+          country: france,
+          region: 0,
+          format: grocer.format,
+          strategy: grocer.id,
+          count: 3,
+        ),
+      );
+    for (var i = 0; i < 40; i++) {
+      game.step();
+    }
+    final economy = game.national!;
+    final table = economy.table.countries.indexWhere((c) => c.key == 'fr');
+    final country = economy.countries[table];
+    final buyer = country.chains.firstWhere(
+      (c) => c.def.trade == 0 && !c.def.independent && c.isTrading,
+    );
+    economy.offers.add(
+      NationalOffer(
+        number: economy.nextOffer++,
+        country: table,
+        block: country.blocks.single,
+        chain: buyer,
+        price: Money.parse('250000.00'),
+        expires: game.today + 30,
+      ),
+    );
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await openIndex(tester, 'France');
+    await scrollTo(tester, find.text('${buyer.def.name} offers'));
+    expect(find.text('250,000'), findsOneWidget);
+    await tester.tap(find.text('Accept'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sell to ${buyer.def.name}?'), findsOneWidget);
+    await tester.tap(find.text('Sell'));
+    await tester.pumpAndSettle();
+    final command = game.pending.single as AcceptNationalOffer;
+    expect(command.offer, 1);
   });
 
   testWidgets('a director is briefed to open shops across the country', (

@@ -756,6 +756,12 @@ class _NationalMarket extends StatelessWidget {
       if (trade == null || days == 0) continue;
       mine[trade] = (mine[trade] ?? 0) + revenue.cents * 365 / days;
     }
+    // And its shops run by formula across the country.
+    for (final block
+        in nationalOf(game, country.id)?.blocks ?? const <CompanyBlockView>[]) {
+      final key = economy.table.trades[block.trade].key;
+      mine[key] = (mine[key] ?? 0) + block.yearSales.cents;
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -768,6 +774,8 @@ class _NationalMarket extends StatelessWidget {
                 if (chain.def.trade == t && chain.isTrading) chain,
             ],
             mine: mine[trade.key],
+            onChain: (chain) =>
+                openChain(context, country.id, national.chains.indexOf(chain)),
           ),
         Hint(tr('market.nationalHint')),
       ],
@@ -782,11 +790,15 @@ class _NationalTrade extends StatelessWidget {
     required this.months,
     required this.chains,
     required this.mine,
+    this.onChain,
   });
 
   final String name;
   final List<TradeMonth> months;
   final List<Chain> chains;
+
+  /// Opens a chain's page, where it can be bought.
+  final void Function(Chain chain)? onChain;
 
   /// What the player's shops sell a year in it, in cents; null for none.
   final double? mine;
@@ -836,10 +848,19 @@ class _NationalTrade extends StatelessWidget {
       children: [
         if (change != null) Hint(change),
         for (final chain in ranked)
-          Line(
-            chain.def.independent ? tr('market.independents') : chain.def.name,
-            last == 0 ? '—' : shareOf(sold(chain) / last),
-            hint: tr('common.stores', {'count': chain.stores}),
+          InkWell(
+            onTap: chain.def.independent || onChain == null
+                ? null
+                : () => onChain!(chain),
+            child: Line(
+              chain.def.independent
+                  ? tr('market.independents')
+                  : chain.def.name,
+              last == 0 ? '—' : shareOf(sold(chain) / last),
+              hint: chain.def.independent
+                  ? tr('common.stores', {'count': chain.stores})
+                  : tr('market.chainLine', {'count': chain.stores}),
+            ),
           ),
         if (mine case final sales? when yearly > 0)
           Line(tr('market.you'), shareOf(sales / yearly), strong: true),

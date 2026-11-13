@@ -162,6 +162,15 @@ def main():
         'home': '3.00',
         'saturation': '0.10',
     }
+    # How a company's marketing across a country builds its pull: up to 30%
+    # more shoppers, half that once its goodwill is 0.05% of the trade's
+    # yearly market, goodwill losing 8% a month. A share of sales buys a big
+    # chain far more than a small one.
+    table['brands'] = {
+        'pull': '0.30',
+        'half': '0.0005',
+        'decay': '0.08',
+    }
     with open(path, 'w', encoding='utf-8', newline='\n') as file:
         json.dump(table, file, ensure_ascii=False, indent=1)
         file.write('\n')

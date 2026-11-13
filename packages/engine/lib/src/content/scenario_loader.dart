@@ -741,6 +741,18 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
     node.finish();
   }
 
+  BuyingTermsDef? buyingTerms;
+  if (root.optionalObject('buyingTerms') case final node?) {
+    buyingTerms = BuyingTermsDef(
+      most: node.fraction('most'),
+      half: node.money('half'),
+    );
+    if (buyingTerms.half <= Money.zero) {
+      node._fail('half', 'must be more than 0');
+    }
+    node.finish();
+  }
+
   final strategies = <StrategyDef>[];
   for (final node in root.objects('strategies')) {
     final key = node.string('id');
@@ -1019,6 +1031,7 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
     finance: finance,
     taxes: taxes,
     acquisitions: acquisitions,
+    buyingTerms: buyingTerms,
     directors: directors,
     factories: factories,
     strategies: List.unmodifiable(strategies),
