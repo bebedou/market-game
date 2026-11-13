@@ -117,7 +117,7 @@ export 'src/policies/cushion.dart'
         nextInstallment,
         storeCushion;
 export 'src/policies/director.dart'
-    show buyoutPaybackMonths, directorManagerDuties;
+    show buyoutPaybackMonths, directorManagerDuties, nationalPaybackMonths;
 export 'src/policies/entrepreneur_policy.dart' show EntrepreneurPolicy;
 export 'src/policies/policy.dart'
     show CombinedPolicy, Policy, ownerPolicy, standardPolicies;

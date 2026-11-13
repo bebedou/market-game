@@ -390,6 +390,7 @@ final class CountryState {
     this.regionWeights,
     this.wageLevels,
     this.rentLevels,
+    this.costLevels,
   ) : regionSpend = [
         for (final _ in regionWeights)
           [
@@ -408,6 +409,14 @@ final class CountryState {
   /// Each region's wages and rents against the country's, by region.
   final List<Fx> wageLevels;
   final List<Fx> rentLevels;
+
+  /// What a shop of each trade costs to run and to fit out in each region
+  /// against the country's, by trade then region: its wages and rents,
+  /// weighted as the trade spends on staff it keeps whatever it sells and on
+  /// premises. Shops are as many in a region as its spending over this
+  /// level: fewer and busier where they cost more, as they would be where
+  /// anyone may open until a shop only earns what's normal.
+  final List<List<Fx>> costLevels;
 
   /// Last month's spending, by trade, region and class.
   final List<List<List<Money>>> regionSpend;
@@ -507,16 +516,35 @@ final class CountryEconomy {
     final rentLevels = [
       for (final income in levels) level(tuning.rents, income, Fx.parse('0.5')),
     ];
+    final costLevels = [
+      for (final (t, trade) in trades.indexed)
+        () {
+          final row = def.trades[t];
+          final staff = row.staff * trade.staffFixed;
+          final fixed = staff + row.other;
+          return [
+            for (final (r, wages) in wageLevels.indexed)
+              fixed <= Fx.zero
+                  ? Fx.one
+                  : (staff * wages + row.other * rentLevels[r]).div(fixed),
+          ];
+        }(),
+    ];
     final chains = <Chain>[];
     for (final (t, _) in trades.indexed) {
       final mine = [
         for (final chain in def.chains)
           if (chain.trade == t) chain,
       ];
+      // Shops where the spending is, fewer where they cost more to run.
+      final stores = [
+        for (final (r, weight) in regionWeights[t].indexed)
+          mulDivRound(weight, Fx.scale, costLevels[t][r].raw),
+      ];
       final spreads = [
         for (final chain in mine)
           _apportion(_ppm, [
-            for (final (r, weight) in regionWeights[t].indexed)
+            for (final (r, weight) in stores.indexed)
               chain.home.contains(r)
                   ? mulDivRound(weight, tuning.home.raw, Fx.scale)
                   : weight,
@@ -550,6 +578,7 @@ final class CountryEconomy {
       regionWeights,
       wageLevels,
       rentLevels,
+      costLevels,
     );
   }
 

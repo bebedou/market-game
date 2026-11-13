@@ -151,8 +151,13 @@ class _PlannedCity extends StatelessWidget {
       for (final site in plan.sites)
         if (site.market == market.id && !taken.contains(site.id.index)) site,
     ];
-    final sleeper = context.game.sleeper(row);
+    final game = context.game;
+    final sleeper = game.sleeper(row);
     if (sleeper == null) return const SizedBox.shrink();
+    final mine = {for (final company in game.view.companies) company.id};
+    final yours = sleeper.shops.where(
+      (shop) => shop.company != null && mine.contains(shop.company),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -191,15 +196,38 @@ class _PlannedCity extends StatelessWidget {
                                 ),
                               ),
                             }),
+                          // Its owner knows what it makes.
+                          if (mine.contains(shop.company) &&
+                              shop.profits.isNotEmpty)
+                            tr('market.profitAbout', {
+                              'amount': _roughly(
+                                Money(
+                                  shop.yearProfit.cents *
+                                      12 ~/
+                                      shop.profits.length,
+                                ),
+                              ),
+                            }),
                         ].join(', '),
                         style: theme.textTheme.bodySmall,
                       ),
                     ],
                   ),
                 ),
+                if (mine.contains(shop.company)) Pill(tr('market.you')),
               ],
             ),
           ),
+        if (yours.isNotEmpty) ...[
+          Hint(tr('market.yoursAsleep')),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton(
+              onPressed: () => _takeInHand(context, row, market.name),
+              child: Text(tr('market.takeInHand', {'count': yours.length})),
+            ),
+          ),
+        ],
         const Divider(),
         Text(tr('market.vacantSites'), style: theme.textTheme.titleSmall),
         for (final site in vacant) _VacantSite(site: site, wakeRow: row),
@@ -207,6 +235,30 @@ class _PlannedCity extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Asks before waking the district run by formula in [row], named [name],
+/// so the player's shops there are run in full, then wakes it.
+Future<void> _takeInHand(BuildContext context, int row, String name) async {
+  final game = context.game;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(tr('market.takeInHandTitle', {'district': name})),
+      content: Text(tr('market.takeInHandBody')),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(tr('common.notNow')),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(tr('market.wakeIt')),
+        ),
+      ],
+    ),
+  );
+  if (confirmed ?? false) game.wake(row);
 }
 
 /// The player's own shops: what each earns, and what it sells against all that

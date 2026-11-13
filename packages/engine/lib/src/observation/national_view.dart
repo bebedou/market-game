@@ -76,6 +76,7 @@ final class NationalCountryView {
     required this.priceIndex,
     required this.wageLevels,
     required this.rentLevels,
+    required this.costLevels,
     required CountryEconomy economy,
   }) : _economy = economy;
 
@@ -106,7 +107,20 @@ final class NationalCountryView {
   /// Each region's wages and rents against the country's average.
   final List<Fx> wageLevels;
   final List<Fx> rentLevels;
+
+  /// What a shop of each trade costs to run and fit out in each region
+  /// against the country's, by trade then region.
+  final List<List<Fx>> costLevels;
   final CountryEconomy _economy;
+
+  /// What fitting out one shop of [format] in [region] costs, or nothing if
+  /// its shops can't run by formula.
+  Money fitOut(ContentDb content, FormatId format, int region) {
+    final national = content.formats[format.index].national;
+    final trade = tradeOf(content, format);
+    if (national == null || trade == null) return Money.zero;
+    return national.fitOut.times(priceIndex).times(costLevels[trade][region]);
+  }
 
   /// What one more settled shop of [company]'s [format] in [region] would
   /// add to its sales and profit a year, stocked and priced as [strategy]
@@ -238,6 +252,7 @@ List<NationalCountryView> nationalViews(
           priceIndex: country.priceIndex,
           wageLevels: List.unmodifiable(country.wageLevels),
           rentLevels: List.unmodifiable(country.rentLevels),
+          costLevels: List.unmodifiable(country.costLevels),
           economy: economy,
         );
       }(),

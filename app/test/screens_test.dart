@@ -222,6 +222,72 @@ void main() {
     expect(find.textContaining('a year'), findsWidgets);
   });
 
+  testWidgets("a director's shop in a district asleep is marked yours, and "
+      'taken in hand by waking the district', (tester) async {
+    final game = newController();
+    final row = game.content.neighbourhoods.indexWhere(
+      (r) => r.name == 'Lyon, Part-Dieu',
+    );
+    final district = game.view.districts.firstWhere((d) => d.row == row);
+    final site = district.free.firstWhere((site) => site.area >= 100);
+    game
+      ..submit(
+        InjectCapital(
+          prototype.player,
+          company: playerCompany,
+          amount: game.view.cash,
+        ),
+      )
+      ..submit(
+        HireDirector(
+          prototype.player,
+          company: playerCompany,
+          grade: prototype.directors!.grades.first.id,
+          strategy: strategy('balanced'),
+          managerGrade: grade('trainee'),
+          growth: Growth.open,
+          payout: false,
+        ),
+      )
+      ..submit(
+        OpenInDistrict(
+          prototype.player,
+          row: row,
+          site: site.number,
+          company: playerCompany,
+          format: format('grocery'),
+        ),
+      );
+    for (var day = 0; day < 40; day++) {
+      game.step();
+    }
+    final shop = game.sleeper(row)!.shops.last;
+    expect(shop.company, playerCompany);
+    await pumpGame(tester, game);
+    await tester.tap(find.text('World'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.textContaining('Show all'), 300);
+    await tester.ensureVisible(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Show all'));
+    await tester.pumpAndSettle();
+    await openIndex(tester, 'Lyon, Part-Dieu');
+    await scrollTo(tester, find.text(shop.name));
+    expect(find.textContaining('profit about'), findsOneWidget);
+    final take = find.text('Take your shop in hand');
+    await scrollTo(tester, take);
+    await tester.tap(take);
+    await tester.pumpAndSettle();
+    expect(find.text('Play Lyon, Part-Dieu in full?'), findsOneWidget);
+    await tester.tap(find.text('Wake it'));
+    await tester.pumpAndSettle();
+    expect(game.sleeper(row), isNull);
+    final store = game.view.shelves.firstWhere((s) => s.name == shop.name);
+    expect(store.company, playerCompany);
+    game.step();
+    await tester.pump();
+  });
+
   testWidgets('opening on a site asleep wakes its neighbourhood', (
     tester,
   ) async {

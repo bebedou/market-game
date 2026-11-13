@@ -882,7 +882,7 @@ class _DirectorSheetState extends State<_DirectorSheet> {
                     ),
                     Line(
                       tr('market.openedThisYear'),
-                      tr('market.openedClosed', {
+                      tr('market.openedAndClosed', {
                         'opened': opened,
                         'closed': closed,
                       }),

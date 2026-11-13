@@ -151,6 +151,37 @@ String memoSentence(Memo memo, ContentDb content, Observation view) {
         'months': paybackMonths,
         'loan': _loan(borrowed, content),
       }),
+    DistrictOpened(
+      :final row,
+      :final site,
+      :final format,
+      :final cost,
+      :final paybackMonths,
+      :final borrowed,
+    ) =>
+      tr('letters.openedInDistrict', {
+        'shop':
+            _districtShop(view, row, site) ??
+            aFormat(content.formats[format.index]),
+        'district': content.neighbourhoods[row].name,
+        'cost': amount(cost),
+        'months': paybackMonths,
+        'loan': _loan(borrowed, content),
+      }),
+    DistrictBought(
+      :final row,
+      :final site,
+      :final price,
+      :final paybackMonths,
+      :final borrowed,
+    ) =>
+      tr('letters.boughtInDistrict', {
+        'shop': _districtShop(view, row, site) ?? tr('letters.aStore'),
+        'district': content.neighbourhoods[row].name,
+        'price': amount(price),
+        'months': paybackMonths,
+        'loan': _loan(borrowed, content),
+      }),
     NationalOpened(
       :final region,
       :final format,
@@ -195,6 +226,18 @@ String memoSentence(Memo memo, ContentDb content, Observation view) {
       'amount': amount(needed),
     }),
   };
+}
+
+/// The name of the shop on [site] of the district run by formula in [row],
+/// while it sleeps.
+String? _districtShop(Observation view, int row, int site) {
+  for (final district in view.districts) {
+    if (district.row != row) continue;
+    for (final shop in district.shops) {
+      if (shop.site == site) return shop.name;
+    }
+  }
+  return null;
 }
 
 /// The name of the region the national table keys [key].

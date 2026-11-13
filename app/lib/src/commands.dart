@@ -67,8 +67,22 @@ String describeCommand(Command command, ContentDb content, Observation view) {
       }),
     WakeNeighbourhood() => '',
     CreateBrand() => '',
-    // Only AI chains open and buy in districts run by formula.
-    OpenInDistrict() || BuyInDistrict() => '',
+    // A director's, for the player's company.
+    OpenInDistrict(:final row, :final format) => tr('commands.openInDistrict', {
+      'format': aFormat(content.formats[format.index]),
+      'district': content.neighbourhoods[row].name,
+    }),
+    BuyInDistrict(:final row, :final site) => tr('commands.buyInDistrict', {
+      'shop':
+          [
+            for (final district in view.districts)
+              if (district.row == row)
+                for (final shop in district.shops)
+                  if (shop.site == site) shop.name,
+          ].firstOrNull ??
+          '',
+      'district': content.neighbourhoods[row].name,
+    }),
     SetMarketing(store: final s, :final share) =>
       share == Fx.zero
           ? tr('commands.stopMarketing', {'store': store(s)})

@@ -82,6 +82,18 @@ ShopCosts nationalCosts(
   );
 }
 
+/// What fitting out one shop of a format whose national figures are
+/// [national] costs in [region] of [country], for [trade]: its national
+/// fitting out at the country's prices and the region's cost level.
+Money nationalFitOut(
+  FormatNational national,
+  CountryState country,
+  int trade,
+  int region,
+) => national.fitOut
+    .times(country.priceIndex)
+    .times(country.costLevels[trade][region]);
+
 /// The table's country for the game's [country], if the table has it.
 int? tableCountry(ContentDb content, CountryId country) {
   final table = content.national;

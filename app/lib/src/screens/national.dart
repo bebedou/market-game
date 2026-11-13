@@ -94,7 +94,7 @@ class _NationalMapState extends State<NationalMap> {
           ),
           Line(
             tr('market.openedThisYear'),
-            tr('market.openedClosed', {'opened': opened, 'closed': closed}),
+            tr('market.openedAndClosed', {'opened': opened, 'closed': closed}),
           ),
         ],
         const SizedBox(height: 10),
@@ -263,8 +263,9 @@ final class _Ours {
   );
 }
 
-/// Each region where a new shop of [trade] would earn, best first: what it
-/// would add a year, and how soon its fitting out would pay back.
+/// Each region where a new shop of [trade] would earn, soonest paid back
+/// first: what it would add a year, and how soon its fitting out, at the
+/// region's costs, would pay back.
 List<({int region, Money profit, int months})> _room(
   SimulationController game,
   NationalCountryView national,
@@ -273,9 +274,6 @@ List<({int region, Money profit, int months})> _room(
   final shop = _newShopFor(game, national, trade);
   if (shop == null) return const [];
   final content = game.content;
-  final fitOut = content.formats[shop.format.index].national!.fitOut.times(
-    national.priceIndex,
-  );
   final room = [
     for (final (r, _) in national.def.regions.indexed)
       if (national.newShop(
@@ -289,10 +287,17 @@ List<({int region, Money profit, int months})> _room(
         (
           region: r,
           profit: profit,
-          months: (fitOut.cents * 12 + profit.cents - 1) ~/ profit.cents,
+          months:
+              (national.fitOut(content, shop.format, r).cents * 12 +
+                  profit.cents -
+                  1) ~/
+              profit.cents,
         ),
   ];
+  // As a director would see them: soonest paid back first.
   room.sort((a, b) {
+    final byMonths = a.months.compareTo(b.months);
+    if (byMonths != 0) return byMonths;
     final byProfit = b.profit.cents.compareTo(a.profit.cents);
     return byProfit != 0 ? byProfit : a.region - b.region;
   });
@@ -529,7 +534,7 @@ class _RegionFigures extends StatelessWidget {
               '${ours.shops[r]}',
               strong: true,
               hint: ours.pending[r] > 0
-                  ? tr('market.beingFitted', {'count': ours.pending[r]})
+                  ? tr('market.fittingOutCount', {'count': ours.pending[r]})
                   : null,
             ),
             if (ours.shops[r] > 0) ...[

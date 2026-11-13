@@ -33,6 +33,46 @@ Map<String, Object?> _leaves(Map<String, Object?> node, [String prefix = '']) {
   return leaves;
 }
 
+/// The keys written twice in one object of the JSON [text], by their path:
+/// decoding keeps the last and drops the first without a word.
+List<String> _repeatedKeys(String text) {
+  final repeated = <String>[];
+  // Each open object or list: the key it sits under, and an object's keys.
+  final open = <({String? name, Set<String>? keys})>[];
+  String? last;
+  String? key;
+  var i = 0;
+  while (i < text.length) {
+    final c = text[i];
+    if (c == '"') {
+      final buffer = StringBuffer();
+      for (i++; text[i] != '"'; i++) {
+        if (text[i] == r'\') i++;
+        buffer.write(text[i]);
+      }
+      last = buffer.toString();
+    } else if (c == ':') {
+      key = last;
+      if (!open.last.keys!.add(key!)) {
+        repeated.add(
+          [
+            for (final frame in open)
+              if (frame.name != null) frame.name!,
+            key,
+          ].join('.'),
+        );
+      }
+    } else if (c == '{' || c == '[') {
+      open.add((name: key, keys: c == '{' ? {} : null));
+      key = null;
+    } else if (c == '}' || c == ']') {
+      open.removeLast();
+    }
+    i++;
+  }
+  return repeated;
+}
+
 final _placeholder = RegExp(r'\{(\w+)\}');
 
 Set<String> _names(String text) => {
@@ -110,6 +150,15 @@ void main() {
     for (final code in ['fr', 'es']) {
       final language = _leaves(_read('locales/$code.json'));
 
+      test('$code writes no key twice in one place', () {
+        expect(
+          _repeatedKeys(
+            File('../content/locales/$code.json').readAsStringSync(),
+          ),
+          isEmpty,
+        );
+      });
+
       test('$code has every key English has, and no others', () {
         expect(language.keys.toSet().difference(english.keys.toSet()), isEmpty);
         expect(english.keys.toSet().difference(language.keys.toSet()), isEmpty);
@@ -146,6 +195,18 @@ void main() {
         }
       });
     }
+
+    test('English writes no key twice in one place', () {
+      expect(
+        _repeatedKeys(File('../content/locales/en.json').readAsStringSync()),
+        isEmpty,
+      );
+      // As it would have caught.
+      expect(_repeatedKeys('{"a": {"b": 1, "c": [1, {"d": 2}], "b": 3}}'), [
+        'a.b',
+      ]);
+      expect(_repeatedKeys('{"a": {"b": 1}, "c": {"b": 2}}'), isEmpty);
+    });
 
     test('the languages listed each have their words', () {
       final languages =

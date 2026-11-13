@@ -36,6 +36,11 @@ final _frIndex = _table.countries.indexWhere((c) => c.key == 'fr');
 /// Hauts-de-France's index among France's regions.
 const _north = 0;
 
+/// Île-de-France's.
+final _paris = _table.countries[_frIndex].regions.indexWhere(
+  (r) => r.key == 'FR1',
+);
+
 Simulation _game({int seed = 1}) {
   final game = Simulation.newGame(_content, seed: seed, citiesAsleep: true);
   game.submit(
@@ -91,8 +96,14 @@ void main() {
     final cash = game.world.companies[0].accounts[AccountKind.cash];
     expect(_apply(game, [_open()]), isEmpty);
     twin.step();
+    // Fitting out at the country's prices and the region's costs.
+    final economy = game.national!.countries[_frIndex];
+    final grocery = game.national!.table.trades.indexWhere(
+      (t) => t.key == 'grocery',
+    );
     final cost = _content.formats[_grocer.format.index].national!.fitOut
-        .times(game.world.macroOf(_france).priceIndex)
+        .times(economy.priceIndex)
+        .times(economy.costLevels[grocery][_north])
         .timesInt(3);
     final company = game.world.companies[0];
     final other = twin.world.companies[0];
@@ -177,7 +188,8 @@ void main() {
         _open(region: 99),
         _open(count: 0),
         _open(count: maxNationalOpenings + 1),
-        _open(count: maxNationalOpenings),
+        // Île-de-France costs the most to fit out.
+        _open(count: maxNationalOpenings, region: _paris),
         OpenNational(
           game.world.persons.last.id,
           company: _company,
@@ -300,6 +312,83 @@ void main() {
     );
   });
 
+  test('shops are fewer and busier where they cost more to run, so a new '
+      'one pays back about as soon anywhere', () {
+    final game = _game();
+    final france = game
+        .observe(_player)
+        .national
+        .firstWhere((n) => n.country == _france);
+    final grocery = france.tradeOf(_content, _grocer.format)!;
+    final regions = france.def.regions;
+    final paris = regions.indexWhere((r) => r.key == 'FR1');
+    // Île-de-France earns most and costs most.
+    for (final (r, _) in regions.indexed) {
+      expect(
+        france.costLevels[grocery][paris] >= france.costLevels[grocery][r],
+        isTrue,
+      );
+    }
+    int perShop(int r) =>
+        france.markets[grocery][r].cents ~/ france.stores[grocery][r];
+    expect(perShop(paris) > perShop(_north) * 12 ~/ 10, isTrue);
+    final paybacks = [
+      for (final (r, _) in regions.indexed)
+        () {
+          final shop = france.newShop(
+            _content,
+            company: _company,
+            format: _grocer.format,
+            strategy: _grocer.id,
+            region: r,
+          );
+          final cost = france.fitOut(_content, _grocer.format, r);
+          return cost.cents * 12 ~/ shop.profit.cents;
+        }(),
+    ];
+    // Within a few months of each other: where chains are at home, a little
+    // longer.
+    final soonest = paybacks.reduce((a, b) => a < b ? a : b);
+    final latest = paybacks.reduce((a, b) => a > b ? a : b);
+    expect(latest - soonest, lessThanOrEqualTo(4), reason: '$paybacks');
+  });
+
+  test('a director opens restaurants that pay back within three years', () {
+    final game = _game();
+    final steakhouse = _content.strategies.firstWhere(
+      (s) => s.key == 'steakhouse',
+    );
+    expect(steakhouse.expansionPaybackMonths, lessThan(nationalPaybackMonths));
+    game.submit(
+      HireDirector(
+        _player,
+        company: _company,
+        grade: _content.directors!.grades.last.id,
+        strategy: steakhouse.id,
+        managerGrade: _content.managers.grades.last.id,
+        growth: Growth.open,
+        payout: false,
+        nationalPace: 3,
+      ),
+    );
+    _advance(game, 120);
+    final memos = game
+        .observe(_player)
+        .companies
+        .first
+        .memos
+        .whereType<NationalOpened>()
+        .toList();
+    expect(memos.length, greaterThan(3));
+    for (final memo in memos) {
+      expect(memo.format, steakhouse.format);
+      expect(
+        memo.paybackMonths,
+        inInclusiveRange(steakhouse.expansionPaybackMonths + 1, 36),
+      );
+    }
+  });
+
   test('settled, they sell about what a district shop of their kind does', () {
     final game = _game();
     expect(_apply(game, [_open(count: 5)]), isEmpty);
@@ -308,9 +397,16 @@ void main() {
     final block = _block(game)!;
     expect(block.regions[_north].settled, 5);
     final perShop = block.regions[_north].yearSales.cents ~/ 5;
+    // The national figure at today's prices, scaled to the region's costs,
+    // as shops are busier where they cost more.
+    final economy = game.national!.countries[_frIndex];
+    final grocery = game.national!.table.trades.indexWhere(
+      (t) => t.key == 'grocery',
+    );
     final expected = _content.formats[_grocer.format.index].national!
         .salesIn(_france)
-        .times(game.world.macroOf(_france).priceIndex)
+        .times(economy.priceIndex)
+        .times(economy.costLevels[grocery][_north])
         .cents;
     expect(
       perShop,

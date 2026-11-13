@@ -139,6 +139,23 @@ sealed class Memo {
         paybackMonths: reader.readInt(),
         borrowed: reader.version >= 22 ? Money(reader.readInt()) : Money.zero,
       ),
+      DistrictOpened.tag => DistrictOpened(
+        day,
+        row: reader.readInt(),
+        site: reader.readInt(),
+        format: FormatId(reader.readInt()),
+        cost: Money(reader.readInt()),
+        paybackMonths: reader.readInt(),
+        borrowed: Money(reader.readInt()),
+      ),
+      DistrictBought.tag => DistrictBought(
+        day,
+        row: reader.readInt(),
+        site: reader.readInt(),
+        price: Money(reader.readInt()),
+        paybackMonths: reader.readInt(),
+        borrowed: Money(reader.readInt()),
+      ),
       StoreBought.tag => StoreBought(
         day,
         store: StoreId(reader.readInt()),
@@ -418,6 +435,80 @@ final class NationalOpened extends Memo {
       ..writeInt(count)
       ..writeInt(cost.cents)
       ..writeInt(earns.cents)
+      ..writeInt(paybackMonths)
+      ..writeInt(borrowed.cents);
+  }
+}
+
+/// Opened a shop of [format] on [site] of the district run by formula in
+/// [row], for [cost] of fitting out, expected to pay back in
+/// [paybackMonths], having [borrowed] towards it.
+final class DistrictOpened extends Memo {
+  const DistrictOpened(
+    super.day, {
+    required this.row,
+    required this.site,
+    required this.format,
+    required this.cost,
+    required this.paybackMonths,
+    this.borrowed = Money.zero,
+  });
+
+  static const int tag = 10;
+
+  /// The district's place in the scenario's neighbourhoods.
+  final int row;
+
+  /// The site's number in the district.
+  final int site;
+  final FormatId format;
+  final Money cost;
+  final int paybackMonths;
+  final Money borrowed;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(day.number)
+      ..writeInt(row)
+      ..writeInt(site)
+      ..writeInt(format.index)
+      ..writeInt(cost.cents)
+      ..writeInt(paybackMonths)
+      ..writeInt(borrowed.cents);
+  }
+}
+
+/// Bought the struggling shop on [site] of the district run by formula in
+/// [row] for [price], expected to pay it back in [paybackMonths], having
+/// [borrowed] towards it.
+final class DistrictBought extends Memo {
+  const DistrictBought(
+    super.day, {
+    required this.row,
+    required this.site,
+    required this.price,
+    required this.paybackMonths,
+    this.borrowed = Money.zero,
+  });
+
+  static const int tag = 11;
+
+  final int row;
+  final int site;
+  final Money price;
+  final int paybackMonths;
+  final Money borrowed;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(day.number)
+      ..writeInt(row)
+      ..writeInt(site)
+      ..writeInt(price.cents)
       ..writeInt(paybackMonths)
       ..writeInt(borrowed.cents);
   }

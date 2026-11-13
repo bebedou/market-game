@@ -396,6 +396,21 @@ void main() {
             market: content.markets.first.id,
             tier: content.researchTiers.first.id,
           ),
+          if (view.districts.firstOrNull case final district?) ...[
+            OpenInDistrict(
+              player,
+              row: district.row,
+              site: district.free.first.number,
+              company: company,
+              format: content.formats.first.id,
+            ),
+            BuyInDistrict(
+              player,
+              row: district.row,
+              site: district.shops.first.site,
+              company: company,
+            ),
+          ],
         ];
         for (final command in commands) {
           final text = describeCommand(command, content, view);
@@ -456,6 +471,33 @@ void main() {
           ProfitKept(day, site: site, needed: amount),
           ProfitKept(day, store: store, needed: amount),
           ProfitKept(day, needed: amount),
+          for (final district in game.view.districts.take(1)) ...[
+            DistrictOpened(
+              day,
+              row: district.row,
+              site: district.shops.first.site,
+              format: format,
+              cost: amount,
+              paybackMonths: 14,
+              borrowed: amount,
+            ),
+            DistrictBought(
+              day,
+              row: district.row,
+              site: district.shops.first.site,
+              price: amount,
+              paybackMonths: 14,
+            ),
+          ],
+          // A district since woken.
+          DistrictOpened(
+            day,
+            row: 0,
+            site: 99,
+            format: format,
+            cost: amount,
+            paybackMonths: 14,
+          ),
         ];
         for (final memo in memos) {
           final text = memoSentence(memo, content, game.view);

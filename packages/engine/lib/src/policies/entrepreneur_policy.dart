@@ -98,7 +98,7 @@ final class EntrepreneurPolicy implements Policy {
         }
       }
       if (there case (final district, final site)) {
-        final capital = _districtCapital(view, content, district, site);
+        final capital = districtCapital(view, content, district, site);
         if (view.cash < capital) return const [];
         return [
           OpenInDistrict(
@@ -157,7 +157,7 @@ final class EntrepreneurPolicy implements Policy {
 
   /// What a chain puts in to open on [site] of [district]: its fitting out
   /// and [startingMonths] of rent and wages. The formula keeps no stock.
-  Money _districtCapital(
+  Money districtCapital(
     Observation view,
     ContentDb content,
     DistrictView district,
@@ -406,7 +406,8 @@ final class EntrepreneurPolicy implements Policy {
   }
 
   /// [paybackMonths] for a [site] of a district run by formula: its
-  /// households as they stand, its shops of the channel as rivals.
+  /// households as they stand, its shops of the channel as rivals, its
+  /// margin taken as [judged] times the estimate.
   int? districtPaybackMonths(
     Observation view,
     ContentDb content,
@@ -414,6 +415,7 @@ final class EntrepreneurPolicy implements Policy {
     ({Fx location, int area, Money rent, Money openingCost}) site, {
     Money? cost,
     bool existing = false,
+    Fx judged = Fx.one,
   }) {
     final half = content.demand.halfSizeArea;
     Fx pull(Fx location, int area) =>
@@ -436,6 +438,7 @@ final class EntrepreneurPolicy implements Policy {
         .timesInt(district.households)
         .times(
           share *
+              judged *
               (channel < district.scale.length
                   ? district.scale[channel]
                   : Fx.one),

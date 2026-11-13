@@ -131,8 +131,11 @@ Refusal? _openInDistrict(
   Ledger ledger,
   OpenInDistrict command,
 ) {
-  // The player's shop wakes the district: see WakeNeighbourhood.
-  if (command.actor == world.player) return const Refusal('wakeToOpen');
+  // The player's shop wakes the district (see WakeNeighbourhood), unless
+  // a director opens it for one of their companies.
+  if (command.actor == world.player && !_directed(world, command.company)) {
+    return const Refusal('wakeToOpen');
+  }
   final sleeper = _sleeper(world, command.row);
   if (sleeper == null) return const Refusal('unknownDistrict');
   final sites = sitesOf(world, content, sleeper);
@@ -184,7 +187,7 @@ Refusal? _openInDistrict(
     SleepingShop(
       site: site.number,
       format: format.id,
-      strategy: _chainStrategy(content, command.actor, format),
+      strategy: _chainStrategy(content, command.actor, format, company),
       name: districtShopName(content, sleeper, brand, site),
       owner: person.name,
       area: site.area,
@@ -200,9 +203,27 @@ Refusal? _openInDistrict(
   return null;
 }
 
-/// How [actor] runs a shop of [format]: their strategy, if it's for that
-/// trade, or else the trade's usual one.
-StrategyId _chainStrategy(ContentDb content, PersonId actor, FormatDef format) {
+/// Whether [company] is one with a director.
+bool _directed(WorldState world, CompanyId company) =>
+    _inRange(company.index, world.companies.length) &&
+    world.companies[company.index].director != null;
+
+/// How [actor] runs a shop of [format] for [company]: as its director's
+/// strategy has it, or else the actor's, if either is for that trade, or
+/// else as the trade's usual one does.
+StrategyId _chainStrategy(
+  ContentDb content,
+  PersonId actor,
+  FormatDef format,
+  Company company,
+) {
+  if (company.director case final director?) {
+    final strategy = content.strategies[director.strategy.index];
+    if (content.formatChannels[strategy.format.index] ==
+        content.formatChannels[format.id.index]) {
+      return director.strategy;
+    }
+  }
   if (actor.index < content.persons.length) {
     if (content.persons[actor.index].strategy case final id?) {
       final strategy = content.strategies[id.index];
@@ -222,7 +243,9 @@ Refusal? _buyInDistrict(
   BuyInDistrict command,
 ) {
   if (content.acquisitions == null) return _nothingForSale;
-  if (command.actor == world.player) return const Refusal('wakeToOpen');
+  if (command.actor == world.player && !_directed(world, command.company)) {
+    return const Refusal('wakeToOpen');
+  }
   final sleeper = _sleeper(world, command.row);
   if (sleeper == null) return const Refusal('unknownDistrict');
   final shop = sleeper.shops
@@ -1623,9 +1646,12 @@ Refusal? _openNational(
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
-  final cost = national.fitOut
-      .times(world.macroOf(command.country).priceIndex)
-      .timesInt(command.count);
+  final cost = nationalFitOut(
+    national,
+    country,
+    trade,
+    command.region,
+  ).timesInt(command.count);
   if (company.accounts[AccountKind.cash] + command.borrow < cost) {
     return Refusal('cannotPayNational', amount: cost);
   }

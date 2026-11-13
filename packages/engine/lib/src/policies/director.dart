@@ -8,6 +8,7 @@ import '../core/rng.dart';
 import '../core/safe_int.dart';
 import '../observation/observation.dart';
 import '../state/director.dart';
+import '../state/districts.dart';
 import '../state/store.dart';
 import 'entrepreneur_policy.dart';
 import 'manager.dart';
@@ -197,10 +198,25 @@ List<Command> direct(
     switch (growth) {
       case (:final command, :final memo, :final cost, :final borrowed)
           when cost <= spare + borrowed:
+        // Opening and buying in districts run by formula take no loan of
+        // their own: the company borrows first.
+        if (borrowed > Money.zero &&
+            (command is OpenInDistrict || command is BuyInDistrict)) {
+          commands.add(
+            TakeLoan(
+              view.actor,
+              company: company.id,
+              amount: borrowed,
+              termMonths: term,
+              guarantee: false,
+            ),
+          );
+        }
         give(command, memo);
         // A loan takes all there was to spare, and leaves nothing to pay out.
         spare = borrowed > Money.zero ? Money.zero : spare - cost;
         if (memo is StoreOpened) retained -= memo.cost;
+        if (memo is DistrictOpened) retained -= memo.cost;
       case (:final command, :final cost, memo: _, borrowed: _):
         saving ??= ProfitKept(
           today,
@@ -212,9 +228,14 @@ List<Command> direct(
     }
   }
 
+  // Shops run by formula grow out of a business that earns: what the company
+  // made overall before what it spent fitting out shops, which serve for
+  // years, so a chain growing fast doesn't wait for each year's fitting out
+  // to be earned back before the next.
+  final earned = profit + company.balance(AccountKind.openingCosts);
   if (director.nationalPace > 0 &&
       director.allows(Growth.open) &&
-      profit > Money.zero) {
+      earned > Money.zero) {
     for (final (:command, :memo) in _nationalGrowth(
       view,
       content,
@@ -320,10 +341,26 @@ StrategyId _strategyFor(
     ),
     null => Fx.one,
   };
+  // A site of a district run by formula, by its row and number.
+  Fx judgedAt(int row, int site) => switch (judgment) {
+    final judgment? => judgmentFactor(
+      judgment(company.id.index * 100000 + 60000 + row * 100 + site),
+      error,
+    ),
+    null => Fx.one,
+  };
   var latest = company.founded.number;
   for (final store in company.stores) {
     final since = (store.acquiredOn ?? store.opensOn).number;
     if (since > latest) latest = since;
+  }
+  // Its shops in districts run by formula count too.
+  for (final district in view.districts) {
+    for (final shop in district.shops) {
+      if (shop.company == company.id && shop.since.number > latest) {
+        latest = shop.since.number;
+      }
+    }
   }
   final waited = view.today.number - latest;
   final term = content.finance.maxTermMonths;
@@ -386,6 +423,66 @@ StrategyId _strategyFor(
         price = value.price;
       }
     }
+    // Struggling shops in districts run by formula, weighed the same way.
+    (DistrictView, DistrictShop)? there;
+    for (final district in view.districts) {
+      for (final shop in district.shops) {
+        final value = shop.value;
+        if (shop.format != strategy.format ||
+            value == null ||
+            !value.earnings.isNegative ||
+            shop.company != null &&
+                view.companyOwners[shop.company!.index] == view.actor) {
+          continue;
+        }
+        if (view.today.number - shop.since.number < 365) continue;
+        final payback = owner.districtPaybackMonths(
+          view,
+          content,
+          district,
+          (
+            location: shop.location,
+            area: shop.area,
+            rent: shop.rent,
+            openingCost: Money.zero,
+          ),
+          cost: value.price,
+          existing: true,
+          judged: judgedAt(district.row, shop.site),
+        );
+        if (payback == null ||
+            payback > strategy.expansionPaybackMonths ||
+            (best != null || there != null) && payback >= bestPayback) {
+          continue;
+        }
+        best = null;
+        there = (district, shop);
+        bestPayback = payback;
+        price = value.price;
+      }
+    }
+    if (there case (final district, final shop)) {
+      final cost = withReserve(price);
+      final borrowed = borrowing(cost);
+      return (
+        command: BuyInDistrict(
+          view.actor,
+          row: district.row,
+          site: shop.site,
+          company: company.id,
+        ),
+        memo: DistrictBought(
+          view.today,
+          row: district.row,
+          site: shop.site,
+          price: price,
+          paybackMonths: bestPayback,
+          borrowed: borrowed,
+        ),
+        cost: cost,
+        borrowed: borrowed,
+      );
+    }
     if (best == null && profitable != null) {
       best = profitable;
       bestPayback = profitablePayback;
@@ -439,6 +536,53 @@ StrategyId _strategyFor(
       bestPayback = payback;
     }
   }
+  // Free sites in districts run by formula, weighed the same way.
+  (DistrictView, DistrictSite)? there;
+  for (final district in view.districts) {
+    for (final site in district.free) {
+      if (site.area < format.minArea) continue;
+      final payback = owner.districtPaybackMonths(view, content, district, (
+        location: site.location,
+        area: site.area,
+        rent: site.rent,
+        openingCost: site.openingCost,
+      ), judged: judgedAt(district.row, site.number));
+      if (payback == null ||
+          payback > strategy.expansionPaybackMonths ||
+          (best != null || there != null) && payback >= bestPayback) {
+        continue;
+      }
+      best = null;
+      there = (district, site);
+      bestPayback = payback;
+    }
+  }
+  if (there case (final district, final site)) {
+    final cost = owner.districtCapital(view, content, district, site);
+    final borrowed = borrowing(cost);
+    return (
+      command: OpenInDistrict(
+        view.actor,
+        row: district.row,
+        site: site.number,
+        company: company.id,
+        format: strategy.format,
+      ),
+      memo: DistrictOpened(
+        view.today,
+        row: district.row,
+        site: site.number,
+        format: strategy.format,
+        cost: site.openingCost
+            .times(format.fitOut)
+            .times(view.economy(district.country).priceIndex),
+        paybackMonths: bestPayback,
+        borrowed: borrowed,
+      ),
+      cost: cost,
+      borrowed: borrowed,
+    );
+  }
   if (best == null) return null;
   final cost = owner.startingCapital(view, content, best);
   final borrowed = borrowing(cost);
@@ -467,11 +611,18 @@ StrategyId _strategyFor(
   );
 }
 
+/// How soon a shop run by formula across a country must pay back its
+/// fitting out for a director to open it, in months, unless the strategy
+/// allows longer. Longer than a district shop's: its sales and costs are its
+/// trade's across a region, known rather than guessed for one site.
+const nationalPaybackMonths = 36;
+
 /// The shops run by formula [company]'s director would open this month: in
 /// the regions their brief allows (or every region of the countries the
 /// company trades in), one in each of those where a new shop of the
 /// strategy's kind would pay back soonest as they judge it, up to the brief's
-/// pace, each within the strategy's payback period.
+/// pace, each within [nationalPaybackMonths] or the strategy's payback
+/// period if longer.
 List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
   Observation view,
   ContentDb content,
@@ -489,14 +640,19 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
     for (final store in company.stores)
       if (store.status != StoreStatus.closed)
         content.countryOf(store.market).index,
+    for (final district in view.districts)
+      if (district.shops.any((shop) => shop.company == company.id))
+        district.country.index,
   };
+  final limit = strategy.expansionPaybackMonths > nationalPaybackMonths
+      ? strategy.expansionPaybackMonths
+      : nationalPaybackMonths;
   final candidates = <({OpenNational command, NationalOpened memo})>[];
   final paybacks = <int>[];
   for (final country in view.national) {
     final game = country.country;
     if (game == null || country.def.regions.isEmpty) continue;
     final ours = country.blocks.any((block) => block.company == company.id);
-    final cost = national.fitOut.times(country.priceIndex);
     for (final (r, region) in country.def.regions.indexed) {
       final allowed = director.nationalRegions.isEmpty
           ? home.contains(game.index) || ours
@@ -512,14 +668,17 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
       if (judgment != null) {
         profit = profit.times(
           judgmentFactor(
-            judgment(company.id.index * 100000 + 90000 + country.index * 100 + r),
+            judgment(
+              company.id.index * 100000 + 90000 + country.index * 100 + r,
+            ),
             error,
           ),
         );
       }
       if (profit <= Money.zero) continue;
+      final cost = country.fitOut(content, format.id, r);
       final payback = (cost.cents * 12 + profit.cents - 1) ~/ profit.cents;
-      if (payback > strategy.expansionPaybackMonths) continue;
+      if (payback > limit) continue;
       candidates.add((
         command: OpenNational(
           view.actor,
@@ -549,7 +708,5 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
       final byPayback = paybacks[a].compareTo(paybacks[b]);
       return byPayback != 0 ? byPayback : a - b;
     });
-  return [
-    for (final i in order.take(director.nationalPace)) candidates[i],
-  ];
+  return [for (final i in order.take(director.nationalPace)) candidates[i]];
 }
