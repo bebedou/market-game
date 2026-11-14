@@ -209,6 +209,24 @@ String describeCommand(Command command, ContentDb content, Observation view) {
     CloseFactory(:final factory) => tr('commands.closeFactory', {
       'factory': _factoryName(view, factory),
     }),
+    SetLab(:final factory, :final budget, project: final p) =>
+      p == null || budget == Money.zero
+          ? tr('commands.labPause', {'factory': _factoryName(view, factory)})
+          : tr('commands.labBudget', {
+              'factory': _factoryName(view, factory),
+              'budget': money(budget, cents: false),
+              'product': product(p),
+            }),
+    HireKeyPerson(:final person, :final factory) => tr(
+      'commands.hireKeyPerson',
+      {
+        'person': _keyPersonName(view, person),
+        'factory': _factoryName(view, factory),
+      },
+    ),
+    DismissKeyPerson(:final person) => tr('commands.dismissKeyPerson', {
+      'person': _keyPersonName(view, person),
+    }),
     OrderFromFactory(store: final s, :final factory, :final lines) =>
       tr('commands.order', {
         'units': lines.fold<int>(0, (sum, line) => sum + line.quantity),
@@ -277,6 +295,21 @@ String _factoryName(Observation view, FactoryId id) {
   for (final company in view.companies) {
     for (final factory in company.factories) {
       if (factory.id == id) return factory.name;
+    }
+  }
+  return '';
+}
+
+/// The name of key person [id], a candidate or one of the actor's.
+String _keyPersonName(Observation view, KeyPersonId id) {
+  for (final person in view.candidates) {
+    if (person.id == id) return person.name;
+  }
+  for (final company in view.companies) {
+    for (final factory in company.factories) {
+      for (final person in factory.lab?.people ?? const <KeyPersonView>[]) {
+        if (person.id == id) return person.name;
+      }
     }
   }
   return '';

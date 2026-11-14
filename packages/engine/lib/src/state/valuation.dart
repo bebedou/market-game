@@ -8,6 +8,7 @@ import '../core/safe_int.dart';
 import 'districts.dart';
 import 'entities.dart';
 import 'factory.dart';
+import 'labs.dart';
 import 'national_value.dart';
 import 'history.dart';
 import 'store.dart';
@@ -265,8 +266,9 @@ Valuation? valueFactory(WorldState world, ContentDb content, Factory factory) {
 
 /// A year's earnings for [factory] against buying: what the last
 /// [factoryHistoryDays] days' goods sold for beyond their materials and
-/// freight, scaled to a year, less a year of today's shifts and site. Null
-/// if it isn't making goods or has made them for fewer days than that.
+/// freight, scaled to a year, less a year of today's shifts and site, and
+/// of its lab as it stands. Null if it isn't making goods or has made them
+/// for fewer days than that.
 Money? factoryEarnings(WorldState world, ContentDb content, Factory factory) {
   final factories = content.factories;
   if (factories == null || !factory.runsOn(world.today)) return null;
@@ -288,5 +290,6 @@ Money? factoryEarnings(WorldState world, ContentDb content, Factory factory) {
         ),
       ) -
       shiftDay.timesInt(365) -
-      kind.site.times(economy.priceIndex).timesInt(12);
+      kind.site.times(economy.priceIndex).timesInt(12) -
+      labYearCost(world, content, factory);
 }

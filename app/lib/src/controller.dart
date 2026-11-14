@@ -594,6 +594,52 @@ class SimulationController extends ChangeNotifier {
     return terms;
   }
 
+  /// What [factory]'s lab spends a month and develops once pending changes
+  /// apply.
+  ({Money budget, ProductId? project}) labOf(FactoryView factory) {
+    var lab = (
+      budget: factory.lab?.budget ?? Money.zero,
+      project: factory.lab?.project,
+    );
+    for (final command in _pending) {
+      if (command case SetLab(
+        factory: final f,
+        :final budget,
+        :final project,
+      ) when f == factory.id) {
+        lab = (budget: budget, project: project);
+      }
+    }
+    return lab;
+  }
+
+  /// Whether [person] is to join one of the player's labs tomorrow.
+  bool hiring(KeyPersonId person) => _pending.any(
+    (command) => command is HireKeyPerson && command.person == person,
+  );
+
+  /// Whether [person] is to leave the player's lab tomorrow.
+  bool dismissing(KeyPersonId person) => _pending.any(
+    (command) => command is DismissKeyPerson && command.person == person,
+  );
+
+  /// How many key people [factory]'s lab has once pending changes apply.
+  int peopleOf(FactoryView factory) {
+    final people = factory.lab?.people ?? const <KeyPersonView>[];
+    var count = people.length;
+    for (final command in _pending) {
+      switch (command) {
+        case HireKeyPerson(factory: final f) when f == factory.id:
+          count++;
+        case DismissKeyPerson(:final person)
+            when people.any((p) => p.id == person):
+          count--;
+        default:
+      }
+    }
+    return count;
+  }
+
   /// Whether [factory] is to close tomorrow.
   bool closing(FactoryView factory) => _pending.any(
     (command) => command is CloseFactory && command.factory == factory.id,
@@ -713,6 +759,9 @@ class SimulationController extends ChangeNotifier {
     SetFactoryShifts(:final factory) => 'factory shifts ${factory.index}',
     SetFactoryTerms(:final factory) => 'factory terms ${factory.index}',
     CloseFactory(:final factory) => 'factory close ${factory.index}',
+    SetLab(:final factory) => 'lab ${factory.index}',
+    HireKeyPerson(:final person) ||
+    DismissKeyPerson(:final person) => 'key person ${person.index}',
     _ => null,
   };
 
@@ -787,6 +836,12 @@ class SimulationController extends ChangeNotifier {
                 now.rivalDiscount == rivalDiscount,
           null => false,
         },
+      SetLab(:final factory, :final budget, :final project) => switch (this
+          .factory(factory)
+          ?.lab) {
+        final lab? => lab.budget == budget && lab.project == project,
+        null => false,
+      },
       _ => false,
     };
   }
@@ -877,6 +932,31 @@ class SimulationController extends ChangeNotifier {
             AlertKind.bankruptcy,
             tr('alerts.bankrupt', {
               'company': after.companyNames[company.index],
+            }),
+          );
+        case GenerationLaunched(
+              :final company,
+              :final factory,
+              :final product,
+              :final generation,
+              :final gain,
+              :final lead,
+            )
+            when mine.contains(company):
+          add(
+            AlertKind.stores,
+            tr('alerts.generationLaunched', {
+              'factory':
+                  after.companies
+                      .expand((c) => c.factories)
+                      .where((f) => f.id == factory)
+                      .firstOrNull
+                      ?.name ??
+                  '',
+              'product': productName(product),
+              'generation': generation,
+              'gain': (gain.raw + 50) ~/ 100,
+              'lead': (lead.raw + 50) ~/ 100,
             }),
           );
         case DeliveryRefused(

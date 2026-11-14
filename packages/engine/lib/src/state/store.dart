@@ -2,8 +2,13 @@ import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
+import '../core/safe_int.dart';
 import '../persistence/state_io.dart';
 import 'history.dart';
+
+/// The save version from which factories have labs, shelves a quality and
+/// the world its key people.
+const labsVersion = 32;
 
 /// One delivery's worth of a product on hand.
 final class Lot {
@@ -39,9 +44,16 @@ final class Stock {
   Stock.read(StateReader reader)
     : _lots = [
         for (var i = 0, n = reader.readInt(); i < n; i++) Lot.read(reader),
-      ];
+      ] {
+    if (reader.version >= labsVersion) quality = Fx.raw(reader.readInt());
+  }
 
   final List<Lot> _lots;
+
+  /// How far what is on hand is over the market's standard: 0.10 is ten
+  /// points better. Goods from a wholesaler are at the standard; a
+  /// factory's are as good as its line. Deliveries blend into what is there.
+  Fx quality = Fx.zero;
 
   List<Lot> get lots => List.unmodifiable(_lots);
 
@@ -53,8 +65,23 @@ final class Stock {
     (sum, lot) => sum + lot.unitCost.timesInt(lot.quantity),
   );
 
-  void receive(int quantity, Money unitCost, Day? expiry) {
+  void receive(
+    int quantity,
+    Money unitCost,
+    Day? expiry, {
+    Fx quality = Fx.zero,
+  }) {
     assert(quantity > 0, 'Received $quantity units');
+    if (quality != this.quality) {
+      final had = units;
+      this.quality = Fx.raw(
+        mulDivRound(
+          this.quality.raw * had + quality.raw * quantity,
+          1,
+          had + quantity,
+        ),
+      );
+    }
     _lots.add(Lot(quantity: quantity, unitCost: unitCost, expiry: expiry));
   }
 
@@ -96,6 +123,7 @@ final class Stock {
     for (final lot in _lots) {
       lot.write(writer);
     }
+    writer.writeInt(quality.raw);
   }
 
   static Withdrawal _total(List<Lot> lots) => (

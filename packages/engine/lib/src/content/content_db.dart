@@ -943,6 +943,7 @@ final class SegmentDef {
     required this.serviceWeight,
     required this.sizeWeight,
     required this.incomeSpread,
+    this.qualityWeight = Fx.zero,
   });
 
   final SegmentId id;
@@ -998,6 +999,11 @@ final class SegmentDef {
   /// one plus this.
   final Fx incomeSpread;
 
+  /// What quality is worth to the segment in price: at 0.5, goods a tenth
+  /// better than the market's standard seem fairly priced a twentieth
+  /// dearer.
+  final Fx qualityWeight;
+
   /// The income, against the segment's average, of a household at [rank]
   /// from 0 (poorest) to 1 (richest).
   Fx relativeIncome(Fx rank) =>
@@ -1006,13 +1012,16 @@ final class SegmentDef {
   /// How expensive a shelf with [prices] (indexed by [ProductId]) is for
   /// this segment: its usual basket at those prices over the same basket at
   /// reference prices times [priceLevel], counting listed products only.
-  /// The reference prices are [references], a country's, if given.
+  /// The reference prices are [references], a country's, if given, each
+  /// raised by what the segment thinks the quality on the shelf worth:
+  /// [quality], each product's lead over the market's standard, if given.
   /// Null if nothing is listed.
   Fx? priceIndex(
     List<ProductDef> products,
     List<Money?> prices, {
     Fx priceLevel = Fx.one,
     List<Money>? references,
+    List<Fx>? quality,
   }) {
     var listed = false;
     var atShelf = 0;
@@ -1027,12 +1036,12 @@ final class SegmentDef {
           : Fx.one - share;
       final weight = (dailyUnits[product.category.index] * tierShare).raw;
       atShelf = checkedSafe(atShelf + checkedSafe(price.cents * weight));
+      var reference = references?[product.id.index] ?? product.referencePrice;
+      if (quality != null) {
+        reference = worthWith(reference, quality[product.id.index]);
+      }
       atReference = checkedSafe(
-        atReference +
-            checkedSafe(
-              (references?[product.id.index] ?? product.referencePrice).cents *
-                  weight,
-            ),
+        atReference + checkedSafe(reference.cents * weight),
       );
     }
     if (!listed) return null;
@@ -1040,6 +1049,12 @@ final class SegmentDef {
     if (reference <= 0) return Fx.one;
     return Fx.raw(mulDivRound(atShelf, Fx.scale, reference));
   }
+
+  /// What the segment thinks fair for goods whose normal price is
+  /// [reference], at [quality] over the market's standard.
+  Money worthWith(Money reference, Fx quality) => quality == Fx.zero
+      ? reference
+      : reference.times(Fx.one + qualityWeight * quality);
 
   /// Whether households of the segment buy [category] less often than
   /// [DemandTuning.maxNeedDays] apart, so their need is floored at a unit.
@@ -1454,9 +1469,13 @@ final class FactoriesDef {
     required this.freight,
     required this.paymentTermsDays,
     required this.maxShifts,
+    this.labs,
   });
 
   final List<FactoryKindDef> kinds;
+
+  /// How factories' labs develop their goods, if the scenario has labs.
+  final LabsDef? labs;
 
   /// The days a delivery to another country takes beyond one at home.
   final int abroadDays;
@@ -1470,6 +1489,102 @@ final class FactoriesDef {
 
   /// The most shifts a factory runs.
   final int maxShifts;
+}
+
+/// How a factory's lab develops its goods, a generation at a time, and the
+/// key people it hires to do it.
+///
+/// A line's quality is its lead over the market's standard, which rivals'
+/// own development raises: each month the market closes [catchUp] of every
+/// lead. A lab spends its budget on one line; its engineers multiply what
+/// the money gets done, and its designers what a generation gains.
+final class LabsDef {
+  const LabsDef({
+    required this.generationWork,
+    required this.leadHardness,
+    required this.gain,
+    required this.gainSpread,
+    required this.saving,
+    required this.maxSaving,
+    required this.catchUp,
+    required this.maxBudget,
+    required this.maxPeople,
+    required this.candidates,
+    required this.candidateDays,
+    required this.revealMonths,
+    required this.nationalPull,
+    required this.levels,
+    required this.firstNames,
+    required this.lastNames,
+  });
+
+  /// The work a line's next generation takes, in money spent by a lab with
+  /// no engineer, at a price index of one and no lead.
+  final Money generationWork;
+
+  /// How much more work a generation takes for a line already ahead: one
+  /// plus this times its lead.
+  final Fx leadHardness;
+
+  /// The lead a generation adds with no designer: 0.08 is eight points
+  /// over the standard.
+  final Fx gain;
+
+  /// How far a generation's gain can fall either side of what was
+  /// expected, as a share of it.
+  final Fx gainSpread;
+
+  /// The share of its materials a generation saves with no engineer, and
+  /// the most a line ever saves: each generation saves less as it nears it.
+  final Fx saving;
+  final Fx maxSaving;
+
+  /// The share of every lead the market closes each month.
+  final Fx catchUp;
+
+  /// The most a lab spends a month, at a price index of one.
+  final Money maxBudget;
+
+  /// The most key people a lab holds.
+  final int maxPeople;
+
+  /// How many candidates the market offers at a time, and how many days
+  /// one stays before another company takes them.
+  final int candidates;
+  final int candidateDays;
+
+  /// The months of work after which a key person's true level shows.
+  final int revealMonths;
+
+  /// What a point of quality across all its goods adds to the pull of a
+  /// company's shops run by formula.
+  final Fx nationalPull;
+
+  /// Key people's levels, the most ordinary first.
+  final List<TalentLevelDef> levels;
+
+  final List<String> firstNames;
+  final List<String> lastNames;
+}
+
+/// A level of key person: how common, what they add to a lab, and what
+/// someone known at that level asks.
+final class TalentLevelDef {
+  const TalentLevelDef({
+    required this.share,
+    required this.power,
+    required this.salary,
+  });
+
+  /// The share of people on the market at this level. They sum to one.
+  final Fx share;
+
+  /// What one adds to a lab's multiplier: its engineers' powers and one
+  /// multiply its work, its designers' and one a generation's gain.
+  final Fx power;
+
+  /// A month's pay, at a wage index of one in the first country.
+  final Money salary;
 }
 
 /// A kind of factory: the category it makes, both lines of it, and what it

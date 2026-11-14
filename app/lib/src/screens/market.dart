@@ -1782,6 +1782,9 @@ class _RivalStore extends StatelessWidget {
           content.sites[shelf.site.index].name,
           tr('common.areaM2', {'area': shelf.area}),
           tr('market.nProducts', {'count': listed}),
+          if (shelf.quality.where((q) => q.raw >= 50).length case final n
+              when n > 0)
+            tr('market.betterGoods', {'count': n}),
           if (shelf.status == StoreStatus.building) tr('market.beingFitted'),
         ].join(' · '),
       ),

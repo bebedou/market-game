@@ -7,6 +7,7 @@ import '../l10n.dart';
 import '../loans.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'lab.dart';
 
 /// The discounts a factory may offer rivals, as choices.
 final _discounts = [
@@ -188,6 +189,9 @@ class FactoryPage extends StatelessWidget {
                 color: gainColor(context, earnings.cents.sign),
                 hint: tr('factory.earnsHint'),
               ),
+            if (factory.lab case final lab?
+                when factory.status != FactoryStatus.closed)
+              _LabEntry(factory: factory, lab: lab),
           ],
         ),
         _Statement(factory: factory, shown: shown),
@@ -197,6 +201,39 @@ class FactoryPage extends StatelessWidget {
           _SellsTo(factory: factory, kind: kind, shown: shown),
         ],
       ],
+    );
+  }
+}
+
+/// The way into [factory]'s lab, with what is on its bench.
+class _LabEntry extends StatelessWidget {
+  const _LabEntry({required this.factory, required this.lab});
+
+  final FactoryView factory;
+  final LabView lab;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final (:budget, :project) = game.labOf(factory);
+    final best = lab.lines.fold(
+      Fx.zero,
+      (best, line) => line.lead > best ? line.lead : best,
+    );
+    return IndexRow(
+      icon: Icons.science_outlined,
+      title: tr('lab.title'),
+      subtitle: [
+        if (project == null || budget <= Money.zero)
+          tr('lab.idleRow')
+        else
+          tr('lab.benchRow', {
+            'product': game.content.products[project.index].name,
+          }),
+        tr('lab.peopleCount', {'count': game.peopleOf(factory)}),
+      ].join(' · '),
+      value: best > Fx.zero ? points(best) : null,
+      onTap: () => openLabPage(context, factory),
     );
   }
 }
@@ -245,6 +282,7 @@ class _Statement extends StatelessWidget {
         cost(tr('factory.site'), part.occupancy),
         if (part.freight > Money.zero)
           cost(tr('factory.freight'), part.freight),
+        if (part.lab > Money.zero) cost(tr('factory.lab'), part.lab),
         Container(height: 1, color: theme.colorScheme.onSurface),
         Line(
           tr('factory.earned'),

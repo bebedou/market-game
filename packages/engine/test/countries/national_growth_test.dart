@@ -196,4 +196,46 @@ void main() {
     expect(director.nationalAuto, isFalse);
     expect(loaded.stateHash(), game.stateHash());
   });
+
+  test('better goods from its plant draw a chain more, as far as the plant '
+      'can supply it', () {
+    final game = _game(_content);
+    _hundred(game);
+    final drinks = _content.factories!.kinds.firstWhere(
+      (kind) => kind.key == 'drinks',
+    );
+    game.submit(
+      BuildFactory(
+        _player,
+        kind: drinks.id,
+        country: _france,
+        name: 'Plant',
+        company: _company,
+        shifts: 1,
+      ),
+    );
+    expect(game.step().rejections, isEmpty);
+    final france = _table.countries.indexWhere((c) => c.key == 'fr');
+    final block = game.national!.countries[france].blocks.single;
+    _advance(game, 130);
+    expect(block.quality, Fx.zero);
+    final plant = game.world.factories.single;
+    for (final product in _content.products) {
+      if (product.category == drinks.category) {
+        plant.lineFor(product.id).lead = Fx.parse('0.30');
+      }
+    }
+    _advance(game, 31);
+    final one = block.quality;
+    expect(one > Fx.zero, isTrue);
+    // Drinks are a part of what a grocer sells, and one shift can't make
+    // a hundred shops' worth: far less than the lead times the pull.
+    expect(one < Fx.parse('0.30'), isTrue);
+    game.submit(SetFactoryShifts(_player, factory: plant.id, shifts: 3));
+    _advance(game, 31);
+    // The market caught up a little; three shifts cover three times more.
+    expect(block.quality > one, isTrue);
+    final loaded = Simulation.load(_content, game.save());
+    expect(loaded.stateHash(), game.stateHash());
+  });
 }

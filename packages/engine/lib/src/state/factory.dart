@@ -5,9 +5,70 @@ import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
 import '../persistence/state_io.dart';
+import 'store.dart' show labsVersion;
 
 /// Append only.
 enum FactoryStatus { running, closed }
+
+/// The months of its lead a line remembers.
+const lineHistoryMonths = 36;
+
+/// One of a factory's products as its lab has developed it.
+final class FactoryLine {
+  FactoryLine(this.product) : history = [];
+
+  FactoryLine.read(StateReader reader)
+    : product = ProductId(reader.readInt()),
+      generation = reader.readInt(),
+      lead = Fx.raw(reader.readInt()),
+      saving = Fx.raw(reader.readInt()),
+      launchedOn = switch (reader.readNullableInt()) {
+        final day? => Day(day),
+        null => null,
+      },
+      history = [
+        for (var i = 0, n = reader.readInt(); i < n; i++)
+          Fx.raw(reader.readInt()),
+      ];
+
+  final ProductId product;
+
+  /// Generations launched: none while it makes the product as bought.
+  int generation = 0;
+
+  /// How far it is over the market's standard, which catches up month by
+  /// month: 0.10 is ten points better.
+  Fx lead = Fx.zero;
+
+  /// The share of its materials its generations have saved.
+  Fx saving = Fx.zero;
+
+  /// When its latest generation launched.
+  Day? launchedOn;
+
+  /// Its lead on the first of each month since its lab took it up, oldest
+  /// first, at most [lineHistoryMonths].
+  final List<Fx> history;
+
+  /// Records [lead] as this month's.
+  void record(Fx lead) {
+    history.add(lead);
+    if (history.length > lineHistoryMonths) history.removeAt(0);
+  }
+
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(product.index)
+      ..writeInt(generation)
+      ..writeInt(lead.raw)
+      ..writeInt(saving.raw)
+      ..writeNullableInt(launchedOn?.number)
+      ..writeInt(history.length);
+    for (final lead in history) {
+      writer.writeInt(lead.raw);
+    }
+  }
+}
 
 /// The days a factory remembers of what it made.
 const factoryHistoryDays = 28;
@@ -60,7 +121,18 @@ final class Factory {
       _margin = [
         for (var i = 0; i < factoryHistoryDays; i++) Money(reader.readInt()),
       ],
-      _lastDay = reader.readInt();
+      _lastDay = reader.readInt() {
+    if (reader.version < labsVersion) return;
+    labBudget = Money(reader.readInt());
+    project = switch (reader.readNullableInt()) {
+      final index? => ProductId(index),
+      null => null,
+    };
+    labWork = Money(reader.readInt());
+    for (var i = 0, n = reader.readInt(); i < n; i++) {
+      lines.add(FactoryLine.read(reader));
+    }
+  }
 
   final FactoryId id;
   final FactoryKindId kind;
@@ -96,6 +168,41 @@ final class Factory {
 
   /// Units made this month so far.
   int madeThisMonth;
+
+  /// What its lab spends a month while it has a [project].
+  Money labBudget = Money.zero;
+
+  /// The product whose next generation its lab is developing, if any.
+  ProductId? project;
+
+  /// The work done towards that generation, in money's worth.
+  Money labWork = Money.zero;
+
+  /// The products its lab has worked on, in the order it took them up.
+  final List<FactoryLine> lines = [];
+
+  /// [product]'s line, if its lab ever took it up.
+  FactoryLine? lineOf(ProductId product) {
+    for (final line in lines) {
+      if (line.product == product) return line;
+    }
+    return null;
+  }
+
+  /// [product]'s line, opened if its lab hadn't taken it up.
+  FactoryLine lineFor(ProductId product) {
+    final existing = lineOf(product);
+    if (existing != null) return existing;
+    final line = FactoryLine(product);
+    lines.add(line);
+    return line;
+  }
+
+  /// How far [product] as it makes it is over the market's standard.
+  Fx leadOf(ProductId product) => lineOf(product)?.lead ?? Fx.zero;
+
+  /// The share of [product]'s materials its generations have saved.
+  Fx savingOf(ProductId product) => lineOf(product)?.saving ?? Fx.zero;
 
   final List<int> _own;
   final List<int> _rival;
@@ -225,7 +332,15 @@ final class Factory {
     for (final margin in _margin) {
       writer.writeInt(margin.cents);
     }
-    writer.writeInt(_lastDay);
+    writer
+      ..writeInt(_lastDay)
+      ..writeInt(labBudget.cents)
+      ..writeNullableInt(project?.index)
+      ..writeInt(labWork.cents)
+      ..writeInt(lines.length);
+    for (final line in lines) {
+      line.write(writer);
+    }
   }
 }
 

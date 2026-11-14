@@ -57,9 +57,52 @@ int factoryLeadTime(
 ) => kind.leadTimeDays + (country == home ? 0 : factories.abroadDays);
 
 /// What a unit of [product] takes in materials at [priceIndex], the
-/// factory's country's.
-Money materialsCost(FactoryKindDef kind, ProductDef product, Fx priceIndex) =>
-    product.baseCost.times(kind.materials).times(priceIndex);
+/// factory's country's, less the share its generations have [saved].
+Money materialsCost(
+  FactoryKindDef kind,
+  ProductDef product,
+  Fx priceIndex, {
+  Fx saved = Fx.zero,
+}) {
+  final cost = product.baseCost.times(kind.materials).times(priceIndex);
+  return saved == Fx.zero ? cost : cost.times(Fx.one - saved);
+}
+
+/// How far [product] as [factory] makes it is over the market's standard:
+/// the furthest any factory of its kind and its owner's has taken it, as
+/// what one lab develops all of them make. A closed factory's designs stay
+/// its owner's.
+Fx factoryLead(WorldState world, Factory factory, ProductId product) {
+  var best = factory.leadOf(product);
+  if (world.factories.length == 1) return best;
+  final owner = world.companies[factory.company.index].owner;
+  for (final other in world.factories) {
+    if (other.kind != factory.kind ||
+        world.companies[other.company.index].owner != owner) {
+      continue;
+    }
+    final lead = other.leadOf(product);
+    if (lead > best) best = lead;
+  }
+  return best;
+}
+
+/// The share of [product]'s materials [factory] saves: the most any
+/// factory of its kind and its owner's has reached.
+Fx factorySaving(WorldState world, Factory factory, ProductId product) {
+  var best = factory.savingOf(product);
+  if (world.factories.length == 1) return best;
+  final owner = world.companies[factory.company.index].owner;
+  for (final other in world.factories) {
+    if (other.kind != factory.kind ||
+        world.companies[other.company.index].owner != owner) {
+      continue;
+    }
+    final saving = other.savingOf(product);
+    if (saving > best) best = saving;
+  }
+  return best;
+}
 
 /// Whether [kind] makes [product].
 bool kindMakes(FactoryKindDef kind, ProductDef product) =>

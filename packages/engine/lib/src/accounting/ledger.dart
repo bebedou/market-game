@@ -216,6 +216,9 @@ enum EntryReason {
 
   /// Carrying a factory's goods to another country.
   freight,
+
+  /// A factory's lab developing a product's next generation.
+  development,
 }
 
 /// One double-entry posting in one party's books. [store], [product] and

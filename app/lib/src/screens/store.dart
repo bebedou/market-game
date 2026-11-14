@@ -594,6 +594,8 @@ class _ProductTile extends StatelessWidget {
     final price = game.priceOf(store, id);
     final listed = price != null;
     final maker = game.view.factoryFor(game.content, store, product);
+    // Points over the market's standard of what is on hand, whole.
+    final better = (store.qualityOf(product.id).raw + 50) ~/ 100;
     final cost = maker == null
         ? supplierCost(game, product)
         : marketQuote(
@@ -700,6 +702,11 @@ class _ProductTile extends StatelessWidget {
                     Text(
                       tr('store.madeBy', {'factory': maker.name}),
                       style: details,
+                    ),
+                  if (better > 0)
+                    Text(
+                      tr('store.better', {'points': better}),
+                      style: details?.copyWith(color: gainTone(context, 1)),
                     ),
                   if (managedPrice)
                     Text(

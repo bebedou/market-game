@@ -229,6 +229,10 @@ final class NationalOffer {
 /// far past their director's pace they are being grown.
 const _strainVersion = 31;
 
+/// The save version from which they keep what their goods' quality adds to
+/// their pull.
+const _qualityVersion = 32;
+
 /// What a chain grown faster than its director runs well draws, against
 /// what it would: 1 / (1 + [strainCost] × strain). Its shops are run worse,
 /// the further past the more.
@@ -346,6 +350,9 @@ final class CompanyBlock {
       name = reader.readBool() ? reader.readString() : null;
       cost = Money(reader.readInt());
       if (reader.version >= _strainVersion) strain = Fx.raw(reader.readInt());
+      if (reader.version >= _qualityVersion) {
+        quality = Fx.raw(reader.readInt());
+      }
     } else {
       marketing = costs.marketing;
     }
@@ -396,6 +403,10 @@ final class CompanyBlock {
   /// for it (see [strainFactor]).
   Fx strain = Fx.zero;
 
+  /// What the quality of the goods its owner's factories make for it adds
+  /// to its pull: 0.05 draws a twentieth more.
+  Fx quality = Fx.zero;
+
   final List<BlockRegion> regions;
 
   /// The latest last, at most [countryMonthsKept].
@@ -433,7 +444,8 @@ final class CompanyBlock {
     if (name case final name?) writer.writeString(name);
     writer
       ..writeInt(cost.cents)
-      ..writeInt(strain.raw);
+      ..writeInt(strain.raw)
+      ..writeInt(quality.raw);
   }
 }
 
@@ -849,7 +861,8 @@ final class CountryEconomy {
       for (final block in blocks)
         block.pull *
             brandFactor(country, t, block) *
-            strainFactor(block.strain),
+            strainFactor(block.strain) *
+            (Fx.one + block.quality),
     ];
     // What a company's shops draw in each region, crowding as they fill it.
     final draws = [
@@ -1452,7 +1465,8 @@ final class CountryEconomy {
           ? pullFor(country, trade, perStore)
           : block.pull *
                 brandFactor(country, trade, block) *
-                strainFactor(block.strain),
+                strainFactor(block.strain) *
+                (Fx.one + block.quality),
       price: price,
       costs: (
         goods: costs.goods * (Fx.one - (block?.discount ?? discount)),

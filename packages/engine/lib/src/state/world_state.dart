@@ -11,6 +11,7 @@ import '../reports/period_report.dart';
 import 'cohort.dart';
 import 'entities.dart';
 import 'factory.dart';
+import 'talent.dart';
 import 'game_start.dart';
 import 'history.dart';
 import 'macro.dart';
@@ -64,6 +65,10 @@ final class WorldState {
 
   /// Every factory ever built, by [FactoryId]; closed ones stay.
   final factories = <Factory>[];
+
+  /// Every key person who ever came onto the market, by [KeyPersonId];
+  /// those gone stay.
+  final keyPeople = <KeyPerson>[];
 
   /// The countries by formula, region by region, with companies' shops run
   /// there; null until first run, and for a world of one country or without
@@ -412,6 +417,11 @@ final class WorldState {
         _readList(reader, (i) => Factory.read(FactoryId(i), reader)),
       );
     }
+    if (reader.version >= labsVersion) {
+      world.keyPeople.addAll(
+        _readList(reader, (i) => KeyPerson.read(KeyPersonId(i), reader)),
+      );
+    }
     return world;
   }
 
@@ -629,6 +639,7 @@ final class WorldState {
     _writeList(writer, brands, (brand) => brand.write(writer));
     elsewhere.write(writer);
     _writeList(writer, factories, (factory) => factory.write(writer));
+    _writeList(writer, keyPeople, (person) => person.write(writer));
   }
 }
 

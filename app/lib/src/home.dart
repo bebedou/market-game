@@ -40,6 +40,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// The pages opened in each tab, the latest last.
   final _pages = {for (final tab in HomeTab.values) tab: <SubPage>[]};
+
+  /// The pages gone back from in each tab, the one to return to first last.
+  final _ahead = {for (final tab in HomeTab.values) tab: <SubPage>[]};
   late final AppLifecycleListener _lifecycle;
   GameAlert? _latestAlert;
   final _messenger = GlobalKey<ScaffoldMessengerState>();
@@ -107,27 +110,29 @@ class _HomeScreenState extends State<HomeScreen> {
   void _open(HomeTab tab, {ShopPart? part}) => setState(() {
     _tab = tab;
     _pages[tab]!.clear();
+    _ahead[tab]!.clear();
     if (part != null) _shopPart = part;
   });
 
   /// From the tabs: the tab as it was left, or back to its start if it is
   /// the one shown.
   void _pick(HomeTab tab) => setState(() {
-    if (tab == _tab) _pages[tab]!.clear();
+    if (tab == _tab) {
+      _ahead[tab]!.addAll(_pages[tab]!.reversed);
+      _pages[tab]!.clear();
+    }
     _tab = tab;
   });
 
-  void _push(SubPage page) => setState(() => _pages[_tab]!.add(page));
+  void _push(SubPage page) => setState(() {
+    _pages[_tab]!.add(page);
+    _ahead[_tab]!.clear();
+  });
 
-  void _pop() => setState(() => _pages[_tab]!.removeLast());
+  void _pop() => setState(() => _ahead[_tab]!.add(_pages[_tab]!.removeLast()));
 
-  static String _tabName(HomeTab tab) => switch (tab) {
-    HomeTab.holding => tr('home.tabs.holding'),
-    HomeTab.shop => tr('home.tabs.shop'),
-    HomeTab.finance => tr('home.tabs.finance'),
-    HomeTab.world => tr('home.tabs.world'),
-    HomeTab.books => tr('home.tabs.books'),
-  };
+  /// Returns to the page last gone back from.
+  void _next() => setState(() => _pages[_tab]!.add(_ahead[_tab]!.removeLast()));
 
   @override
   Widget build(BuildContext context) => GameScope(
@@ -168,6 +173,11 @@ class _HomeScreenState extends State<HomeScreen> {
               };
               return Scaffold(
                 appBar: AppBar(
+                  // The one way back: out of a page opened in the tab, or
+                  // from the tab itself to the main menu.
+                  leading: _pages[_tab]!.isEmpty
+                      ? null
+                      : BackButton(onPressed: _pop),
                   titleSpacing: 16,
                   title: InkWell(
                     onTap: switchable
@@ -215,6 +225,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   actions: [
+                    if (_ahead[_tab]!.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward),
+                        tooltip: tr('common.next'),
+                        onPressed: _next,
+                      ),
                     IconButton(
                       icon: Badge(
                         isLabelVisible: game.alerts.isNotEmpty,
@@ -254,16 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         HomeTab.world => const MarketScreen(),
                         HomeTab.books => const ReportsScreen(),
                       },
-                      [..., final under, final page] => _PageFrame(
-                        back: under.title,
-                        page: page,
-                        onBack: _pop,
-                      ),
-                      [final page] => _PageFrame(
-                        back: _tabName(_tab),
-                        page: page,
-                        onBack: _pop,
-                      ),
+                      [..., final page] => _PageFrame(page: page),
                     },
                   ),
                 ),
@@ -322,53 +329,23 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 }
 
-/// A page opened within a tab: a way back, then its sections.
+/// A page opened within a tab: its sections.
 class _PageFrame extends StatelessWidget {
-  const _PageFrame({
-    required this.back,
-    required this.page,
-    required this.onBack,
-  });
+  const _PageFrame({required this.page});
 
-  /// What going back returns to.
-  final String back;
   final SubPage page;
-  final VoidCallback onBack;
 
+  // Laid out whole rather than lazily: pages are short, and a lazy list
+  // trips the framework's semantics when a dialog over it closes.
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
+  Widget build(BuildContext context) => SingleChildScrollView(
+    key: PageStorageKey('page ${page.title}'),
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          onTap: onBack,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 16, 0),
-            child: Row(
-              children: [
-                const Icon(Icons.arrow_back, size: 18),
-                const SizedBox(width: 6),
-                Text(back, style: theme.textTheme.labelLarge),
-              ],
-            ),
-          ),
-        ),
-        // Laid out whole rather than lazily: pages are short, and a lazy
-        // list trips the framework's semantics when a dialog over it closes.
-        Expanded(
-          child: SingleChildScrollView(
-            key: PageStorageKey('page ${page.title}'),
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: page.build(context),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+      children: page.build(context),
+    ),
+  );
 }
 
 /// The date, the economy, and the clock's controls. While the clock runs, a

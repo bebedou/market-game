@@ -8,6 +8,7 @@ import '../core/safe_int.dart';
 import '../persistence/state_io.dart';
 import '../state/entities.dart';
 import '../state/orders.dart' show factoriesVersion;
+import '../state/store.dart' show labsVersion;
 import '../state/world_state.dart';
 import '../systems/tick_system.dart';
 import 'attribution.dart';
@@ -293,9 +294,7 @@ final class StoreReport {
       _runningCosts = reader.version >= 15
           ? Money(reader.readInt())
           : Money.zero,
-      _occupancy = reader.version >= 20
-          ? Money(reader.readInt())
-          : Money.zero;
+      _occupancy = reader.version >= 20 ? Money(reader.readInt()) : Money.zero;
 
   final StoreId store;
   int _visits;
@@ -411,7 +410,8 @@ final class FactoryReport {
       _site = Money.zero,
       _freight = Money.zero,
       _occupancy = Money.zero,
-      _build = Money.zero;
+      _build = Money.zero,
+      _lab = Money.zero;
 
   FactoryReport._copyOf(FactoryReport other)
     : factory = other.factory,
@@ -425,7 +425,8 @@ final class FactoryReport {
       _site = other._site,
       _freight = other._freight,
       _occupancy = other._occupancy,
-      _build = other._build;
+      _build = other._build,
+      _lab = other._lab;
 
   FactoryReport._read(StateReader reader)
     : factory = FactoryId(reader.readInt()),
@@ -439,7 +440,10 @@ final class FactoryReport {
       _site = Money(reader.readInt()),
       _freight = Money(reader.readInt()),
       _occupancy = Money(reader.readInt()),
-      _build = Money(reader.readInt());
+      _build = Money(reader.readInt()),
+      _lab = reader.version >= labsVersion
+          ? Money(reader.readInt())
+          : Money.zero;
 
   final FactoryId factory;
   final List<int> _madeOwn;
@@ -453,6 +457,7 @@ final class FactoryReport {
   Money _freight;
   Money _occupancy;
   Money _build;
+  Money _lab;
 
   void _grow(int products) {
     while (_madeOwn.length < products) {
@@ -518,16 +523,21 @@ final class FactoryReport {
   /// Building and fitting it, if that fell in the period.
   Money get build => _build;
 
-  /// What it sold for less its materials, staff, site and freight, with the
-  /// site counted day by day: against buying, what it saved its owner's
-  /// shops and earned from rivals. Building it isn't counted.
+  /// Its lab: its key people's pay and what it spent developing its goods.
+  Money get lab => _lab;
+
+  /// What it sold for less its materials, staff, site, freight and lab,
+  /// with the site counted day by day: against buying, what it saved its
+  /// owner's shops and earned from rivals. Building it isn't counted, nor
+  /// what better goods sell for in the shops, which is in their books.
   Money get profit =>
       totalOwnGoods +
       totalRivalSales -
       totalMaterials -
       _wages -
       _occupancy -
-      _freight;
+      _freight -
+      _lab;
 
   FactoryReport _copy() => FactoryReport._copyOf(this);
 
@@ -544,7 +554,8 @@ final class FactoryReport {
       ..writeInt(_site.cents)
       ..writeInt(_freight.cents)
       ..writeInt(_occupancy.cents)
-      ..writeInt(_build.cents);
+      ..writeInt(_build.cents)
+      ..writeInt(_lab.cents);
   }
 }
 
@@ -622,8 +633,7 @@ void recordPeriodReports(WorldState world, TickContext context) {
   final days = daysInMonth(day.date.year, day.date.month);
   for (final store in world.stores) {
     if (!store.isTrading ||
-        world.companies[store.company.index].status !=
-            CompanyStatus.active) {
+        world.companies[store.company.index].status != CompanyStatus.active) {
       continue;
     }
     final monthly =
@@ -742,6 +752,8 @@ void _recordFactory(FactoryReport report, JournalEntry entry) {
       report._site += entry.amount;
     case EntryReason.openingCosts:
       report._build += entry.amount;
+    case EntryReason.salary || EntryReason.development:
+      report._lab += entry.amount;
     default:
   }
 }

@@ -45,6 +45,12 @@ abstract final class RngStream {
 
   /// A generated neighbourhood's sites and who opens where.
   static const neighbourhoods = 13;
+
+  /// Who comes onto the market for key people each month.
+  static const talent = 14;
+
+  /// How a product generation turns out when a lab launches it.
+  static const labs = 15;
 }
 
 /// Deterministic random numbers (xoshiro128**).

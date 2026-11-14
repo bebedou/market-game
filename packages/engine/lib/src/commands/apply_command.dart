@@ -16,6 +16,8 @@ import '../systems/national.dart';
 import '../countries/country_economy.dart';
 import '../countries/shop_bridge.dart' show formatTrades;
 import '../state/factory.dart';
+import '../state/labs.dart';
+import '../state/talent.dart';
 import '../state/national_value.dart';
 import '../state/orders.dart';
 import '../state/store.dart';
@@ -75,6 +77,9 @@ Refusal? applyCommand(
     SetFactoryTerms() => _setFactoryTerms(world, content, command),
     CloseFactory() => _closeFactory(world, command),
     OrderFromFactory() => _orderFromFactory(world, content, command),
+    SetLab() => _setLab(world, content, command),
+    HireKeyPerson() => _hireKeyPerson(world, content, command),
+    DismissKeyPerson() => _dismissKeyPerson(world, command),
     OpenNational() => _openNational(world, content, ledger, command),
     BuyNationalChain() => _buyNationalChain(world, content, ledger, command),
     SellNational() => _sellNational(world, content, ledger, command),
@@ -1587,7 +1592,14 @@ Refusal? _orderFromFactory(
     final made = own ? (quantity < left ? quantity : left) : quantity;
     left -= made;
     if (made > 0) {
-      var unitMargin = price - materialsCost(kind, def, making);
+      var unitMargin =
+          price -
+          materialsCost(
+            kind,
+            def,
+            making,
+            saved: factorySaving(world, factory, product),
+          );
       if (abroad) unitMargin -= price.times(kind.freight);
       factory.recordMade(
         world.today,
@@ -1618,6 +1630,77 @@ Refusal? _orderFromFactory(
       factory: factory.id,
     ),
   );
+  return null;
+}
+
+Refusal? _setLab(WorldState world, ContentDb content, SetLab command) {
+  final (factory, error) = _ownedFactory(world, command.actor, command.factory);
+  if (factory == null) return error;
+  final labs = content.factories?.labs;
+  if (labs == null) return const Refusal('noLabs');
+  final limit = labBudgetLimit(world, labs, factory);
+  if (command.budget.isNegative || command.budget > limit) {
+    return Refusal('labBudgetRange', amount: limit);
+  }
+  if (command.project case final product?) {
+    if (!_inRange(product.index, content.products.length)) {
+      return const Refusal('unknownProduct');
+    }
+    final kind = content.factories!.kinds[factory.kind.index];
+    if (!kindMakes(kind, content.products[product.index])) {
+      return Refusal('factoryDoesNotMake', product: product);
+    }
+  }
+  factory
+    ..labBudget = command.budget
+    ..project = command.project;
+  // Its record starts when its lab takes it up.
+  if (command.project case final product?) factory.lineFor(product);
+  return null;
+}
+
+Refusal? _hireKeyPerson(
+  WorldState world,
+  ContentDb content,
+  HireKeyPerson command,
+) {
+  final labs = content.factories?.labs;
+  if (labs == null) return const Refusal('noLabs');
+  if (!_inRange(command.person.index, world.keyPeople.length)) {
+    return const Refusal('unknownKeyPerson');
+  }
+  final (factory, error) = _ownedFactory(world, command.actor, command.factory);
+  if (factory == null) return error;
+  final person = world.keyPeople[command.person.index];
+  if (person.status != KeyStatus.candidate) {
+    return const Refusal('keyPersonTaken');
+  }
+  if (labPeople(world, factory.id).length >= labs.maxPeople) {
+    return Refusal('labFull', count: labs.maxPeople);
+  }
+  person
+    ..status = KeyStatus.employed
+    ..factory = factory.id
+    ..since = world.today
+    ..monthsWorked = 0;
+  return null;
+}
+
+Refusal? _dismissKeyPerson(WorldState world, DismissKeyPerson command) {
+  if (!_inRange(command.person.index, world.keyPeople.length)) {
+    return const Refusal('unknownKeyPerson');
+  }
+  final person = world.keyPeople[command.person.index];
+  final factory = person.factory;
+  if (person.status != KeyStatus.employed ||
+      factory == null ||
+      world.companies[world.factories[factory.index].company.index].owner !=
+          command.actor) {
+    return const Refusal('notYourKeyPerson');
+  }
+  person
+    ..status = KeyStatus.gone
+    ..factory = null;
   return null;
 }
 

@@ -26,10 +26,12 @@ export 'src/commands/command.dart'
         BuyNationalChain,
         DeclineNationalOffer,
         DelistProduct,
+        DismissKeyPerson,
         ExpandStore,
         FireDirector,
         FireManager,
         HireDirector,
+        HireKeyPerson,
         HireManager,
         InjectCapital,
         ListProduct,
@@ -50,6 +52,7 @@ export 'src/commands/command.dart'
         SetCushion,
         SetFactoryShifts,
         SetFactoryTerms,
+        SetLab,
         SetMarketing,
         SetPrice,
         SetStaffing,
@@ -93,6 +96,9 @@ export 'src/observation/observation.dart'
         BillView,
         FactoryOffer,
         FactoryView,
+        KeyPersonView,
+        LabView,
+        LineView,
         LoanView,
         MacroView,
         ManagerView,
@@ -164,6 +170,9 @@ export 'src/state/districts.dart' show DistrictShop, DistrictSite, DistrictView;
 export 'src/state/research.dart' show ResearchReport, SegmentEstimate;
 export 'src/state/sleepers.dart' show SleepingNeighbourhood, SleepingShop;
 export 'src/state/store.dart' show ManagerDuty, StoreStatus, Works;
+export 'src/state/labs.dart'
+    show generationGain, generationSaving, generationWork, labMonthlyWork;
+export 'src/state/talent.dart' show KeyRole;
 export 'src/state/taxation.dart' show CountryTax;
 export 'src/state/valuation.dart' show Valuation, symbolicPrice;
 export 'src/systems/events.dart';

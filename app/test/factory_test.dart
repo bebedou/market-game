@@ -4,6 +4,7 @@ import 'package:engine/engine.dart';
 import 'package:flutter/material.dart' hide Simulation;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:market_game/src/controller.dart';
+import 'package:market_game/src/format.dart';
 import 'package:market_game/src/l10n.dart';
 
 import 'flutter_test_config.dart';
@@ -128,10 +129,119 @@ void main() {
     expect(game.view.companies.first.orders.last.factory, order.factory);
   });
 
-  for (final code in ['fr', 'es']) {
-    testWidgets('in $code, the page of a factory fits a narrow phone', (
-      tester,
-    ) async {
+  testWidgets('a factory has a lab: a line and a budget on the bench, and '
+      'people hired from the market', (tester) async {
+    final game = _making();
+    await pumpGame(tester, game);
+    await openIndex(tester, 'Boissons du Coin');
+    await openIndex(tester, 'The lab');
+    expect(find.text('On the bench'), findsOneWidget);
+    expect(find.textContaining('The lab is idle'), findsOneWidget);
+    final premium = _rich.products.firstWhere(
+      (product) =>
+          _rich.categories[product.category.index].key == 'drinks' &&
+          product.tier == ProductTier.premium,
+    );
+    final chip = find.widgetWithText(ChoiceChip, premium.name);
+    await scrollTo(tester, chip);
+    await tester.tap(chip);
+    await tester.pumpAndSettle();
+    final lab = game.pending.single as SetLab;
+    expect(lab.project, premium.id);
+    expect(lab.budget, Money.parse('1000.00'));
+    expect(find.text('Next generation'), findsOneWidget);
+    final market = find.widgetWithText(OutlinedButton, 'The market for people');
+    await scrollTo(tester, market);
+    await tester.tap(market);
+    await tester.pumpAndSettle();
+    final candidate = game.view.candidates.first;
+    expect(find.text(candidate.name), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Hire').first);
+    await tester.pumpAndSettle();
+    expect(game.pending.whereType<HireKeyPerson>().single.person, candidate.id);
+    expect(
+      find.text(
+        'joins tomorrow · ${money(candidate.salary.times(game.myFactories.single.$2.lab!.wageLevel), cents: false)} a month',
+      ),
+      findsOneWidget,
+    );
+    game.step();
+    await tester.pumpAndSettle();
+    final factory = game.myFactories.single.$2;
+    expect(factory.lab!.project, premium.id);
+    expect(factory.lab!.people.single.id, candidate.id);
+    // Developing, it shows how far the work has come.
+    for (var day = 0; day < 70; day++) {
+      game.step();
+    }
+    await goBack(tester);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('of work done'), findsOneWidget);
+    expect(find.text('Team · 1 of 5'), findsOneWidget);
+    expect(find.text(candidate.name), findsOneWidget);
+  });
+
+  testWidgets('goods a lab has bettered are marked so on the shelves', (
+    tester,
+  ) async {
+    final game = _making();
+    final store = game.myStores.first.$2;
+    final drink = _rich.products.firstWhere(
+      (product) =>
+          _rich.categories[product.category.index].key == 'drinks' &&
+          store.prices[product.id.index] != null,
+    );
+    final factory = game.myFactories.single.$2;
+    game.submit(
+      SetLab(
+        _rich.player,
+        factory: factory.id,
+        budget: Money.parse('2000.00'),
+        project: drink.id,
+      ),
+    );
+    var lead = Fx.zero;
+    for (var day = 0; day < 200 && lead == Fx.zero; day++) {
+      game.step();
+      lead = game.myFactories.single.$2.lab!.lines
+          .firstWhere((line) => line.product == drink.id)
+          .lead;
+    }
+    expect(lead > Fx.zero, isTrue);
+    game.submit(
+      OrderFromFactory(
+        _rich.player,
+        store: store.id,
+        factory: factory.id,
+        lines: [(product: drink.id, quantity: 96)],
+      ),
+    );
+    for (var day = 0; day < 5; day++) {
+      game.step();
+    }
+    final quality = game.myStores.first.$2.qualityOf(drink.id);
+    expect(quality > Fx.zero, isTrue);
+    await pumpGame(tester, game);
+    await tester.tap(find.text('Shop'));
+    await tester.pumpAndSettle();
+    await scrollTo(tester, find.text(drink.name));
+    expect(
+      find.text(
+        '${(quality.raw + 50) ~/ 100} points better than the standard: '
+        'shoppers will pay more for it',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  for (final (code, lab) in [
+    ('fr', false),
+    ('es', false),
+    ('fr', true),
+    ('es', true),
+  ]) {
+    testWidgets('in $code, the page of a factory${lab ? "'s lab" : ''} fits '
+        'a narrow phone', (tester) async {
       useStrings(stringsFromFiles(code));
       addTearDown(() => useStrings(stringsFromFiles('en')));
       final content = loadScenario(
@@ -149,6 +259,24 @@ void main() {
       for (var day = 0; day < 10; day++) {
         game.step();
       }
+      final hired = game.view.candidates.first.id;
+      game
+        ..submit(
+          SetLab(
+            content.player,
+            factory: game.myFactories.single.$2.id,
+            budget: Money.parse('1500.00'),
+            project: game.myFactories.single.$2.lab!.lines.first.product,
+          ),
+        )
+        ..submit(
+          HireKeyPerson(
+            content.player,
+            person: hired,
+            factory: game.myFactories.single.$2.id,
+          ),
+        );
+      game.step();
       game.submit(
         SetFactoryTerms(
           content.player,
@@ -168,6 +296,7 @@ void main() {
         ..devicePixelRatio = 3;
       await tester.pumpAndSettle();
       await openIndex(tester, 'Boissons du Coin');
+      if (lab) await openIndex(tester, tr('lab.title'));
       for (var i = 0; i < 6; i++) {
         await tester.drag(
           find.byType(Scrollable).first,

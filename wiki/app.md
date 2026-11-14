@@ -1,0 +1,155 @@
+# The app
+
+The Flutter app is in [app/](../app), package `market_game`. It runs the
+engine on the main isolate (the web has no isolates) and talks to it only
+through commands in and observations out. Design detail: *Flutter
+integration* in [Engine Architecture.md](<../Engine Architecture.md>).
+
+## Start-up
+
+- [main.dart](../app/lib/main.dart) registers the fonts' licences and runs
+  `MarketGameApp`.
+- [app.dart](../app/lib/src/app.dart): `MarketGameApp` picks the language
+  (the one saved, else the phone's if offered, else English), calls
+  `useLanguage`, then `loadContent()`: `loadOutlines()`, then
+  `loadScenario(localizedScenario(prototype.json, words), national:
+  loadCountryTable(euro.json, calibration.json))`. Asset paths are the
+  `scenarioAsset`, `nationalAsset` and `calibrationAsset` constants.
+- `openGame(content, store)` loads a slot's save into a
+  `SimulationController`, or sets the save aside on a `FormatException`.
+- `ScreenMargins` keeps 5% of the screen height clear top and bottom.
+- `newSeed()` is the only place a seed comes from the clock.
+
+## `SimulationController`
+
+[controller.dart](../app/lib/src/controller.dart), a `ChangeNotifier` handed
+to widgets by `GameScope` (an `InheritedNotifier` in
+[widgets.dart](../app/lib/src/widgets.dart); `GameScope.of(context)` to
+listen, `GameScope.read(context)` in `initState`).
+
+- **Holds** the `Simulation`, the player's latest `Observation` (`view`),
+  pending commands, alerts (up to `alertsKept`, 100) and the clock.
+- **Clock.** `Speed` (paused, slow 2 s, normal 1 s, fast 250 ms per day),
+  `setSpeed`, `advanceWeek` (seven days fast, then pause). A
+  `Timer.periodic` calls `step()`.
+- **Pending changes.** `submit` replaces an earlier change to the same thing
+  (`_changeKey`) and drops one that changes nothing (`_changesNothing`).
+  Getters such as `priceOf`, `staffOf`, `managerOf`, `directorOf`,
+  `shiftsOf` show values as they will be tomorrow.
+- **Step.** `step()` submits the pending commands, steps the engine, takes a
+  new observation, builds news with `_news(result, before, after,
+  submitted)`, pauses if any alert's kind is in `pauseOn`, and saves on the
+  first of the month.
+- **News.** `AlertKind` (refused, overdue, bankruptcy, stockout,
+  deliveryRefused, stores, economy, monthEnd, manager, director, milestone,
+  offer). `_news` compares the observations before and after and reads
+  `TickResult.events`.
+- **Immediate actions.** `wake(row)` and `createBrand(name, format)` go to
+  the engine at once, as the engine applies them on submit.
+- **Derived figures.** `netWorth`, `holdingProfits`, `cushion`, `myStores`,
+  `myFactories`, `homeCountry`, `residence`, `economyAt`, `plan`,
+  `national`.
+
+## The five tabs
+
+[home.dart](../app/lib/src/home.dart): `HomeScreen`, `HomeTab` (holding,
+shop, finance, world, books), the clock bar, the pending bar, `AlertTile`,
+and an `AppLifecycleListener` that saves when the app goes to the
+background. File names keep the tabs' older names:
+
+| Tab | File | Main widgets |
+|---|---|---|
+| Holding | [screens/dashboard.dart](../app/lib/src/screens/dashboard.dart) | `DashboardScreen`: masthead, to-dos, last week, companies, brands, stores, news, profit bars |
+| Shop | [screens/store.dart](../app/lib/src/screens/store.dart), [screens/orders.dart](../app/lib/src/screens/orders.dart) | `StoreScreen` (shelves, running, staff, manager, marketing, size, conversion); `OrdersScreen`, `OrderSheet` (supplies) |
+| Finance | [screens/finance.dart](../app/lib/src/screens/finance.dart), [screens/financials.dart](../app/lib/src/screens/financials.dart) | `FinanceScreen`: company pages, director sheet and letters, borrowing, cushion, taxes, bargains; `FinancialsSection`: key figures, P&L, balance sheet, years |
+| World | [screens/market.dart](../app/lib/src/screens/market.dart), [screens/national.dart](../app/lib/src/screens/national.dart) | `MarketScreen`: economy, countries, competitors, cities, `NewBusiness` (start a business on any vacant site, waking its city); `NationalMap`: the country page and its ink map |
+| Books | [screens/reports.dart](../app/lib/src/screens/reports.dart) | `ReportsScreen`: periods, what changed, results, shoppers, products, research |
+
+Other screens: [menu.dart](../app/lib/src/screens/menu.dart) (`MainMenu`:
+three slots, continue, new game, delete, language),
+[new_game.dart](../app/lib/src/screens/new_game.dart) (`NewGameScreen`: only
+the holding's name), [factory.dart](../app/lib/src/screens/factory.dart)
+(`FactoriesSection`, `FactoryPage`, `BuildFactoryPage`),
+[guide.dart](../app/lib/src/screens/guide.dart) (`HowToPlayScreen`).
+
+Layout pattern: each tab has a summary on top and index lines (`IndexRow`)
+that open pages within the tab (`SubPages`). The top bar's arrow is the only
+way back (as is the phone's back gesture): out of a page, then from the tab
+to the main menu. A forward arrow beside the bell returns to the page last
+gone back from (`_ahead` in `HomeScreen`), until another page is opened. Pages are laid out whole, not lazily, because a lazy list under
+a closing dialog trips Flutter's semantics.
+
+## Support files
+
+| File | What it does |
+|---|---|
+| [financials.dart](../app/lib/src/financials.dart) | Company financials worked out in the app from month reports and balances: `Financials`, margins, ROIC, money tied up (`_tiedUp`, `_fitOut`) |
+| [commands.dart](../app/lib/src/commands.dart) | `describeCommand`: a pending command in words |
+| [letters.dart](../app/lib/src/letters.dart) | `directorLetters`, `memoSentence`: the director's monthly letter from memos |
+| [loans.dart](../app/lib/src/loans.dart) | `loanTerms` (12 to 84 months), `firstPayment`, the `LoanTerms` widget |
+| [format.dart](../app/lib/src/format.dart) | `money`, `percent`, dates, `refusalText`, `parseMoney`, names with articles (`aFormat`, `aManager`, …) |
+| [widgets.dart](../app/lib/src/widgets.dart) | `GameScope`, `Section`, `SubPages`, `IndexRow`, `TradeMark`, `Line`, `Hint`, `CountStepper` |
+| [visuals.dart](../app/lib/src/visuals.dart) | `AnimatedMoney`, `Pill`, `Stamp`, `Sparkline`, `BarChart`, `SplitBar`, `TrendChart`, `FadeSlideIn` |
+| [outlines.dart](../app/lib/src/outlines.dart) | `parseOutlines`, `loadOutlines`, `outlineOf`, `CountryOutline`, `RegionOutline` |
+| [saves.dart](../app/lib/src/saves.dart) | Save slots; see [state-and-saves.md](state-and-saves.md) |
+
+## The ledger theme
+
+[theme.dart](../app/lib/src/theme.dart): one design system, an account book.
+
+- `Ledger`, a `ThemeExtension` with `paper`, `shade`, `ink`, `muted`,
+  `rule`, `gain` (green ink), `loss` (red ink); `Ledger.day` and
+  `Ledger.nightEdition` for dark mode. `Ledger.of(context)`.
+- `gameTheme(brightness)` builds the `ThemeData`.
+- Fonts: Fraunces for titles (`titleFont`, `displayFont`), IBM Plex Sans for
+  text (`textFont`), IBM Plex Mono for every figure (`figuresFont`). Bundled
+  in [app/assets/fonts](../app/assets/fonts) with their OFL licences.
+- `Ledger.trade(format)` gives each kind of business its colour;
+  `formatIcon`, `categoryIcon`, `slotIcon` give icons. `Ledger.works` is the
+  factories' slate.
+- Sections are a serif title over a rule, not cards; warnings are red
+  stamps (`Stamp`).
+
+The owner chooses looks from mockups; the app's look is the ledger.
+
+## Words: `tr()`
+
+[l10n.dart](../app/lib/src/l10n.dart). No string the player reads is in the
+code.
+
+- [content/locales/en.json](../content/locales/en.json),
+  [fr.json](../content/locales/fr.json), [es.json](../content/locales/es.json)
+  hold the interface, nested by screen; `Strings` flattens them to dotted
+  keys. [languages.json](../content/locales/languages.json) lists the
+  languages.
+- `tr('store.sell', {'store': name})` looks a key up and fills
+  `{placeholders}`. An entry given as an object holds plural forms (`one`,
+  exact counts, `other`), picked by `args['count']`; `format.singular` says
+  which counts take `one`.
+- `trMaybe` returns null for a missing key; `trList` reads a list (month
+  names, weekdays).
+- Missing keys fall back on English, then show the key itself.
+- `useLanguage(code)` loads a language; `useStrings` sets one directly
+  (tests). The language is a global, chosen on the main menu only.
+- The scenario's words come from `prototype.<lang>.json` under `scenario.`
+  and are swapped into the scenario by `localizedScenario` before the engine
+  loads it.
+- Refusals: `refusalText` in [format.dart](../app/lib/src/format.dart) words
+  `refusals.<key>`.
+
+Flutter's own strings follow through `flutter_localizations`.
+
+## Outlines and ink maps
+
+[content/countries/outlines.json](../content/countries/outlines.json), built
+by [build_outlines.py](../content/countries/build_outlines.py) from GISCO
+NUTS 2021 boundaries, holds per country a frame 1,000 units wide, an
+optional inset box (the Canary Islands), and per region an even-odd path, a
+label point and an area. Region keys match the national table's.
+
+[outlines.dart](../app/lib/src/outlines.dart) parses it once into a global
+map (`loadOutlines` at start-up, `useOutlines` in tests); `outlineOf(country)`
+returns a `CountryOutline`. `_InkMap` and `_InkPainter` in
+[screens/national.dart](../app/lib/src/screens/national.dart) draw the
+regions shaded by the player's share, smaller regions over larger ones, and
+find the tapped region with `Path.contains`, smallest first.

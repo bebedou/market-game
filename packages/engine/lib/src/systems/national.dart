@@ -79,11 +79,13 @@ const offerDays = 30;
 /// company's buying terms, and the marketing its director judges pays best,
 /// or else the strategy's (none more for a chain it bought).
 void _brief(WorldState world, ContentDb content, CountryEconomy economy) {
-  for (final country in economy.countries) {
+  for (final (i, country) in economy.countries.indexed) {
+    final home = gameCountry(content, i);
     for (final block in country.blocks) {
       final company = world.companies[block.company];
       block.discount = buyingDiscount(content, company);
       block.strain = _strain(content, company.director);
+      block.quality = _quality(world, content, company, block, home);
       final floor = block.name == null
           ? content.strategies[block.strategy].marketingShare
           : Fx.zero;
@@ -92,6 +94,56 @@ void _brief(WorldState world, ContentDb content, CountryEconomy economy) {
           : economy.bestMarketing(country, block.trade, block, floor: floor);
     }
   }
+}
+
+/// What the quality of the goods its owner's factories make adds to the
+/// pull of [company]'s shops run by formula in [country], [block]: each
+/// product's lead over the market's standard, by its share of the shops'
+/// goods and by how much of what they sold of it last month the factory
+/// can make in a month, times what a point of quality draws. Nothing in
+/// their first month.
+Fx _quality(
+  WorldState world,
+  ContentDb content,
+  Company company,
+  CompanyBlock block,
+  CountryId? country,
+) {
+  final factories = content.factories;
+  final labs = factories?.labs;
+  final goods = block.months.lastOrNull?.goods ?? Money.zero;
+  if (labs == null ||
+      country == null ||
+      world.factories.isEmpty ||
+      goods <= Money.zero) {
+    return Fx.zero;
+  }
+  final level = world.macroOf(country).priceIndex;
+  var total = Fx.zero;
+  for (final (:product, :share) in formatGoodsMix(
+    content,
+    content.formats[block.format],
+  )) {
+    final factory = _factoryFor(world, content, company, country, product);
+    if (factory == null) continue;
+    final lead = factoryLead(world, factory, product.id);
+    if (lead <= Fx.zero) continue;
+    final kind = factories!.kinds[factory.kind.index];
+    final quote = marketQuote(
+      content,
+      country,
+      product,
+      kind.minOrderUnits,
+      level,
+    );
+    if (quote == null || quote.price <= Money.zero) continue;
+    final wanted = goods.times(share).cents;
+    final able = quote.price.cents * factory.monthCapacity(kind, world.today);
+    total += wanted <= able
+        ? share * lead
+        : share * lead * Fx.raw(mulDivRound(able, Fx.scale, wanted));
+  }
+  return labs.nationalPull * total;
 }
 
 /// How far past what [director]'s grade runs well their brief grows the
@@ -365,6 +417,7 @@ final class NationalSystem implements TickSystem {
         kind,
         product,
         world.macroOf(factory.country).priceIndex,
+        saved: factorySaving(world, factory, product.id),
       ).timesInt(units);
       final freight = factory.country == country
           ? Money.zero
@@ -405,38 +458,38 @@ final class NationalSystem implements TickSystem {
     }
     return owed;
   }
+}
 
-  /// The running factory of [company]'s owner, in any of their companies,
-  /// that makes [product] and serves [country], with the most left to make
-  /// this month; the first built of equals.
-  Factory? _factoryFor(
-    WorldState world,
-    ContentDb content,
-    Company company,
-    CountryId country,
-    ProductDef product,
-  ) {
-    final kinds = content.factories!.kinds;
-    Factory? best;
-    var bestLeft = 0;
-    for (final factory in world.factories) {
-      final maker = world.companies[factory.company.index];
-      if (!factory.runsOn(world.today) ||
-          !factory.servesCountry(country) ||
-          maker.owner != company.owner ||
-          !maker.isActive) {
-        continue;
-      }
-      final kind = kinds[factory.kind.index];
-      if (!kindMakes(kind, product)) continue;
-      final left = factory.capacityLeft(kind, world.today);
-      if (left > bestLeft) {
-        best = factory;
-        bestLeft = left;
-      }
+/// The running factory of [company]'s owner, in any of their companies,
+/// that makes [product] and serves [country], with the most left to make
+/// this month; the first built of equals.
+Factory? _factoryFor(
+  WorldState world,
+  ContentDb content,
+  Company company,
+  CountryId country,
+  ProductDef product,
+) {
+  final kinds = content.factories!.kinds;
+  Factory? best;
+  var bestLeft = 0;
+  for (final factory in world.factories) {
+    final maker = world.companies[factory.company.index];
+    if (!factory.runsOn(world.today) ||
+        !factory.servesCountry(country) ||
+        maker.owner != company.owner ||
+        !maker.isActive) {
+      continue;
     }
-    return best;
+    final kind = kinds[factory.kind.index];
+    if (!kindMakes(kind, product)) continue;
+    final left = factory.capacityLeft(kind, world.today);
+    if (left > bestLeft) {
+      best = factory;
+      bestLeft = left;
+    }
   }
+  return best;
 }
 
 /// What share of a shop of [format]'s goods, at what they cost, each

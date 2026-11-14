@@ -229,6 +229,9 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
         incomeSpread: node.has('incomeSpread')
             ? node.fraction('incomeSpread')
             : Fx.zero,
+        qualityWeight: node.has('qualityWeight')
+            ? node.nonNegativeFx('qualityWeight')
+            : Fx.zero,
       ),
     );
     node.finish();
@@ -674,12 +677,54 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
       );
       kind.finish();
     }
+    LabsDef? labs;
+    if (node.optionalObject('labs') case final lab?) {
+      final levels = <TalentLevelDef>[];
+      var shares = Fx.zero;
+      for (final level in lab.objects('levels')) {
+        final share = level.fraction('share');
+        shares += share;
+        levels.add(
+          TalentLevelDef(
+            share: share,
+            power: level.fx('power'),
+            salary: level.money('salary'),
+          ),
+        );
+        level.finish();
+      }
+      if (shares != Fx.one) lab._fail('levels', 'shares must sum to 1');
+      final firstNames = lab.strings('firstNames');
+      final lastNames = lab.strings('lastNames');
+      if (firstNames.isEmpty) lab._fail('firstNames', 'must not be empty');
+      if (lastNames.isEmpty) lab._fail('lastNames', 'must not be empty');
+      labs = LabsDef(
+        generationWork: lab.money('generationWork'),
+        leadHardness: lab.fx('leadHardness'),
+        gain: lab.fraction('gain'),
+        gainSpread: lab.fraction('gainSpread'),
+        saving: lab.fraction('saving'),
+        maxSaving: lab.fraction('maxSaving'),
+        catchUp: lab.fraction('catchUp'),
+        maxBudget: lab.money('maxBudget'),
+        maxPeople: lab.positiveInt('maxPeople'),
+        candidates: lab.positiveInt('candidates'),
+        candidateDays: lab.positiveInt('candidateDays'),
+        revealMonths: lab.positiveInt('revealMonths'),
+        nationalPull: lab.fx('nationalPull'),
+        levels: List.unmodifiable(levels),
+        firstNames: List.unmodifiable(firstNames),
+        lastNames: List.unmodifiable(lastNames),
+      );
+      lab.finish();
+    }
     factories = FactoriesDef(
       kinds: List.unmodifiable(kinds),
       abroadDays: node.nonNegativeInt('abroadDays'),
       freight: freight,
       paymentTermsDays: node.nonNegativeInt('paymentTermsDays'),
       maxShifts: node.positiveInt('maxShifts'),
+      labs: labs,
     );
     node.finish();
   }

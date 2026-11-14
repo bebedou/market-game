@@ -33,6 +33,10 @@ final closingLoss = Fx.parse('0.03');
 /// still losing money two years after it opened, and a year after its owner
 /// bought it, is closed on the first of the month. Every other number comes
 /// from a [StrategyDef].
+/// The share of what shoppers think better goods worth that a shop run by
+/// policy takes in their price.
+const qualityInPrice = Fx.raw(5000);
+
 final class RetailPolicy implements Policy {
   const RetailPolicy(this.strategy);
 
@@ -393,11 +397,28 @@ final class StorePlan {
       sum += price.cents;
       count++;
     }
-    if (count == 0) return base;
+    if (count == 0) return _forQuality(product, base);
     final rivals = Money(
       mulDivRound(sum, 1, count),
     ).times(Fx.one + strategy.marketPosition);
-    return base + (rivals - base).times(strategy.marketWeight);
+    return _forQuality(
+      product,
+      base + (rivals - base).times(strategy.marketWeight),
+    );
+  }
+
+  /// [price] raised for goods better than the market's standard, by
+  /// [qualityInPrice] of what shoppers think them worth, the average
+  /// segment's: the rest is left them as better value, which draws them.
+  Money _forQuality(ProductDef product, Money price) {
+    final quality = store.qualityOf(product.id);
+    if (quality <= Fx.zero) return price;
+    var weight = Fx.zero;
+    for (final segment in content.segments) {
+      weight += segment.qualityWeight;
+    }
+    weight = Fx.raw(weight.raw ~/ content.segments.length);
+    return price.times(Fx.one + qualityInPrice * weight * quality);
   }
 
   /// Expected daily gross margin, weighted by the taste for premium.

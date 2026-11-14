@@ -289,6 +289,24 @@ sealed class Command {
             (product: ProductId(reader.readInt()), quantity: reader.readInt()),
         ],
       ),
+      SetLab.tag => SetLab(
+        actor,
+        factory: FactoryId(reader.readInt()),
+        budget: Money(reader.readInt()),
+        project: switch (reader.readNullableInt()) {
+          final index? => ProductId(index),
+          null => null,
+        },
+      ),
+      HireKeyPerson.tag => HireKeyPerson(
+        actor,
+        person: KeyPersonId(reader.readInt()),
+        factory: FactoryId(reader.readInt()),
+      ),
+      DismissKeyPerson.tag => DismissKeyPerson(
+        actor,
+        person: KeyPersonId(reader.readInt()),
+      ),
       _ => throw FormatException('Unknown command tag $tag'),
     };
   }
@@ -1585,4 +1603,87 @@ final class DeclineNationalOffer extends Command {
   @override
   String toString() =>
       'DeclineNationalOffer(actor: ${actor.index}, offer: $offer)';
+}
+
+/// Sets what a factory's lab spends a month, and the product whose next
+/// generation it develops: one the factory makes, or null for none, when
+/// it spends nothing.
+final class SetLab extends Command {
+  const SetLab(
+    super.actor, {
+    required this.factory,
+    required this.budget,
+    this.project,
+  });
+
+  static const int tag = 40;
+
+  final FactoryId factory;
+  final Money budget;
+  final ProductId? project;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(factory.index)
+      ..writeInt(budget.cents)
+      ..writeNullableInt(project?.index);
+  }
+
+  @override
+  String toString() =>
+      'SetLab(actor: ${actor.index}, factory: ${factory.index}, '
+      'budget: ${budget.toDecimalString()}, project: ${project?.index})';
+}
+
+/// Hires [person], a candidate on the market, into [factory]'s lab, at
+/// what someone of their repute asks.
+final class HireKeyPerson extends Command {
+  const HireKeyPerson(
+    super.actor, {
+    required this.person,
+    required this.factory,
+  });
+
+  static const int tag = 41;
+
+  final KeyPersonId person;
+  final FactoryId factory;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(person.index)
+      ..writeInt(factory.index);
+  }
+
+  @override
+  String toString() =>
+      'HireKeyPerson(actor: ${actor.index}, person: ${person.index}, '
+      'factory: ${factory.index})';
+}
+
+/// Lets [person] go from the actor's lab: they leave for good.
+final class DismissKeyPerson extends Command {
+  const DismissKeyPerson(super.actor, {required this.person});
+
+  static const int tag = 42;
+
+  final KeyPersonId person;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(person.index);
+  }
+
+  @override
+  String toString() =>
+      'DismissKeyPerson(actor: ${actor.index}, person: ${person.index})';
 }

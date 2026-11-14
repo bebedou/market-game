@@ -10,6 +10,7 @@ import 'close.dart';
 import 'demand.dart';
 import 'events.dart';
 import 'factories.dart';
+import 'labs.dart';
 import 'logistics.dart';
 import 'macro.dart';
 import 'national.dart';
@@ -70,6 +71,7 @@ const List<TickSystem> standardSystems = [
   OperationsSystem(),
   DemandSystem(),
   FactorySystem(),
+  LabSystem(),
   SettlementSystem(),
   // Before solvency and reports: chains' shops in districts book there.
   SleeperSystem(),

@@ -1,6 +1,8 @@
 import '../accounting/ledger.dart';
+import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
+import '../core/safe_int.dart';
 import '../state/entities.dart';
 import '../state/factories.dart';
 import '../state/factory.dart';
@@ -110,11 +112,21 @@ final class LogisticsSystem implements TickSystem {
       refuse(line.quantity - accepted, RefusalReason.storageFull);
     }
     if (accepted == 0) return;
+    final fromFactory = making
+        ? (line.made < accepted ? line.made : accepted)
+        : 0;
+    // What the factory made is as good as its line; the rest is standard.
+    final lead = fromFactory == 0
+        ? Fx.zero
+        : factoryLead(world, factory!, product.id);
     final shelfLife = product.shelfLifeDays;
     store.stock[product.id.index].receive(
       accepted,
       line.unitPrice,
       shelfLife == null ? null : context.day + shelfLife,
+      quality: lead == Fx.zero
+          ? Fx.zero
+          : Fx.raw(mulDivRound(lead.raw, fromFactory, accepted)),
     );
     final cost = line.unitPrice.timesInt(accepted);
     context.ledger.post(
@@ -131,9 +143,6 @@ final class LogisticsSystem implements TickSystem {
       invoice.add(order.supplier, cost);
       return;
     }
-    final fromFactory = making
-        ? (line.made < accepted ? line.made : accepted)
-        : 0;
     final bought = accepted - fromFactory;
     if (bought > 0) {
       invoice.add(line.from ?? order.supplier, line.unitPrice.timesInt(bought));
@@ -259,6 +268,7 @@ final class LogisticsSystem implements TickSystem {
         kind,
         product,
         world.macroOf(factory.country).priceIndex,
+        saved: factorySaving(world, factory, product.id),
       ).timesInt(units),
     );
     if (content.countryOf(market) != factory.country) {

@@ -1,5 +1,6 @@
 import '../accounting/ledger.dart';
 import '../core/calendar.dart';
+import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 
@@ -93,4 +94,27 @@ final class StoreSold extends TickEvent {
   final StoreId store;
   final CompanyId seller;
   final CompanyId buyer;
+}
+
+/// A factory's lab launched [product]'s next [generation]: it gained
+/// [gain] in quality, which leaves it [lead] over the market's standard,
+/// and its materials now cost [saving] less than at the start.
+final class GenerationLaunched extends TickEvent {
+  const GenerationLaunched({
+    required this.factory,
+    required this.company,
+    required this.product,
+    required this.generation,
+    required this.gain,
+    required this.lead,
+    required this.saving,
+  });
+
+  final FactoryId factory;
+  final CompanyId company;
+  final ProductId product;
+  final int generation;
+  final Fx gain;
+  final Fx lead;
+  final Fx saving;
 }

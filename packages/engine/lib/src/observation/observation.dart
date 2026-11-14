@@ -12,7 +12,10 @@ import '../state/buying_terms.dart';
 import '../state/credit.dart';
 import '../state/director.dart';
 import '../state/entities.dart';
+import '../state/factories.dart' show factoryLead, factorySaving, kindMakes;
 import '../state/factory.dart';
+import '../state/labs.dart';
+import '../state/talent.dart';
 import '../state/history.dart';
 import '../state/macro.dart';
 import '../state/market.dart';
@@ -54,6 +57,7 @@ final class Observation {
     this.guaranteeRoom = Money.zero,
     this.brands = const [],
     this.offers = const [],
+    this.candidates = const [],
     List<DistrictView> Function() districts = _noDistricts,
     List<NationalCountryView> Function() national = _noNational,
   }) : _districts = districts,
@@ -162,6 +166,10 @@ final class Observation {
   /// How much more the actor can guarantee (see `guaranteeRoom`).
   final Money guaranteeRoom;
 
+  /// The key people on the market, for anyone to hire, as their track
+  /// records show them.
+  final List<KeyPersonView> candidates;
+
   /// The factories that sell to anyone's shops, with what each can spare
   /// this month: public, as a supplier's terms are.
   final List<FactoryOffer> offers;
@@ -222,6 +230,127 @@ typedef FactoryOffer = ({
   int spare,
 });
 
+/// A key person as a candidate, or as their employer sees them.
+final class KeyPersonView {
+  const KeyPersonView({
+    required this.id,
+    required this.name,
+    required this.role,
+    required this.level,
+    required this.known,
+    required this.salary,
+    required this.since,
+    required this.monthsWorked,
+    this.leaves,
+  });
+
+  final KeyPersonId id;
+  final String name;
+  final KeyRole role;
+
+  /// Their place in the scenario's levels: what their track record
+  /// suggests, or once [known], what they have shown at work.
+  final int level;
+
+  /// Whether their employer has seen enough of their work to know it.
+  final bool known;
+
+  /// A month's pay: for a candidate, at a wage index of one in the first
+  /// country; for someone employed, at their factory's country's wages.
+  final Money salary;
+
+  /// The day they came onto the market, or were hired.
+  final Day since;
+  final int monthsWorked;
+
+  /// The day a candidate is taken by another company: the first of the
+  /// month after their time on the market runs out.
+  final Day? leaves;
+}
+
+/// One of a factory's products as its lab has developed it.
+typedef LineView = ({
+  ProductId product,
+  int generation,
+  Fx lead,
+  Fx saving,
+  Day? launchedOn,
+
+  /// Its lead on the first of each month since its lab took it up, oldest
+  /// first.
+  List<Fx> history,
+});
+
+/// A factory's lab as its owner sees it, its people taken at what is known
+/// of them.
+final class LabView {
+  const LabView({
+    required this.budget,
+    required this.budgetLimit,
+    required this.project,
+    required this.work,
+    required this.needed,
+    required this.monthlyWork,
+    required this.expectedGain,
+    required this.gainSpread,
+    required this.expectedSaving,
+    required this.engineers,
+    required this.designers,
+    required this.wageLevel,
+    required this.maxPeople,
+    required this.lines,
+    required this.people,
+  });
+
+  /// What it spends a month while it has a [project], and the most it may.
+  final Money budget;
+  final Money budgetLimit;
+
+  /// The product whose next generation it is developing, if any.
+  final ProductId? project;
+
+  /// The work done towards that generation, the work it takes, and what a
+  /// month adds at this budget with these engineers.
+  final Money work;
+  final Money? needed;
+  final Money monthlyWork;
+
+  /// The lead that generation should add, give or take [gainSpread] of it,
+  /// and the share of its materials it should save.
+  final Fx expectedGain;
+  final Fx gainSpread;
+  final Fx? expectedSaving;
+
+  /// What its engineers and designers add to its multipliers.
+  final Fx engineers;
+  final Fx designers;
+
+  /// Wages where it stands against the first country's at the start: what
+  /// a candidate's pay is multiplied by here.
+  final Fx wageLevel;
+  final int maxPeople;
+
+  /// Each product the factory makes, as developed so far.
+  final List<LineView> lines;
+
+  /// Its key people, in the order hired.
+  final List<KeyPersonView> people;
+
+  /// The months until the generation launches at this pace; null with no
+  /// project or nothing spent.
+  int? get monthsLeft {
+    final needed = this.needed;
+    if (needed == null || monthlyWork <= Money.zero) return null;
+    final left = needed - work;
+    if (left <= Money.zero) return 1;
+    return (left.cents + monthlyWork.cents - 1) ~/ monthlyWork.cents;
+  }
+
+  /// A month of its people's pay.
+  Money get monthlyPay =>
+      people.fold(Money.zero, (sum, person) => sum + person.salary);
+}
+
 /// A factory as its owner sees it.
 final class FactoryView {
   const FactoryView({
@@ -248,7 +377,11 @@ final class FactoryView {
     required this.dailyWages,
     required this.monthlySite,
     required this.value,
+    this.lab,
   });
+
+  /// Its lab, if the scenario has labs.
+  final LabView? lab;
 
   final FactoryId id;
   final FactoryKindId kind;
@@ -480,7 +613,16 @@ final class StoreView {
     this.acquiredOn,
     this.buyer,
     this.recentMonths = (revenue: Money.zero, profit: Money.zero, days: 0),
+    this.quality = const [],
   });
+
+  /// How far what is on hand of each product is over the market's
+  /// standard, indexed by [ProductId]: empty if all are at it.
+  final List<Fx> quality;
+
+  /// How far [product] on its shelves is over the market's standard.
+  Fx qualityOf(ProductId product) =>
+      product.index < quality.length ? quality[product.index] : Fx.zero;
 
   final StoreId id;
   final SiteId site;
@@ -564,7 +706,16 @@ final class ShelfView {
     this.format = const FormatId(0),
     this.opensOn = const Day(0),
     this.acquiredOn,
+    this.quality = const [],
   });
+
+  /// How far each product on its shelves is over the market's standard,
+  /// which anyone can see, indexed by [ProductId]: empty if all are at it.
+  final List<Fx> quality;
+
+  /// How far [product] on its shelves is over the market's standard.
+  Fx qualityOf(ProductId product) =>
+      product.index < quality.length ? quality[product.index] : Fx.zero;
 
   final StoreId id;
   final String name;
@@ -695,8 +846,10 @@ final class PublicView {
             format: store.format,
             opensOn: store.opensOn,
             acquiredOn: store.acquiredOn,
+            quality: _shelfQuality(store),
           ),
       ]),
+      candidates = _candidates(world, content),
       vacantSites = _vacantSites(world, content),
       companyOwners = List.unmodifiable([
         for (final company in world.companies) company.owner,
@@ -749,6 +902,7 @@ final class PublicView {
   final List<PersonId> companyOwners;
   final List<Valuation?> valuations;
   final List<FactoryOffer> offers;
+  final List<KeyPersonView> candidates;
   final WorldState _world;
   final ContentDb _content;
 
@@ -935,6 +1089,7 @@ Observation observe(
     districts: () => shared.districts,
     national: () => nationalViews(world, content, actor),
     offers: shared.offers,
+    candidates: shared.candidates,
     guaranteeRoom: guaranteeRoom(world, content, person),
     reports: List.unmodifiable([
       for (final report in world.reports)
@@ -955,6 +1110,119 @@ Money _committed(WorldState world, CompanyId company) {
     }
   }
   return total;
+}
+
+/// How far each product on [store]'s shelves is over the market's
+/// standard, by [ProductId]; empty if all are at it.
+List<Fx> _shelfQuality(Store store) =>
+    store.stock.every((stock) => stock.quality == Fx.zero)
+    ? const []
+    : List.unmodifiable([for (final stock in store.stock) stock.quality]);
+
+List<KeyPersonView> _candidates(WorldState world, ContentDb content) {
+  final labs = content.factories?.labs;
+  if (labs == null) return const [];
+  return List.unmodifiable([
+    for (final person in world.keyPeople)
+      if (person.status == KeyStatus.candidate)
+        KeyPersonView(
+          id: person.id,
+          name: person.name,
+          role: person.role,
+          level: person.repute,
+          known: false,
+          salary: labs.levels[person.repute].salary,
+          since: person.since,
+          monthsWorked: 0,
+          leaves: _firstOnOrAfter(person.since + labs.candidateDays),
+        ),
+  ]);
+}
+
+/// [day] if it is the first of a month, else the first of the next: the
+/// market for people turns over on the first.
+Day _firstOnOrAfter(Day day) {
+  if (day.isFirstOfMonth) return day;
+  final date = day.date;
+  return date.month == 12
+      ? Day.fromDate(date.year + 1, 1, 1)
+      : Day.fromDate(date.year, date.month + 1, 1);
+}
+
+LabView? _labView(WorldState world, ContentDb content, Factory factory) {
+  final labs = content.factories?.labs;
+  if (labs == null) return null;
+  final kind = content.factories!.kinds[factory.kind.index];
+  final level = labWageLevel(world, content, factory);
+  final engineers = labPower(
+    world,
+    labs,
+    factory.id,
+    KeyRole.engineer,
+    shown: true,
+  );
+  final designers = labPower(
+    world,
+    labs,
+    factory.id,
+    KeyRole.designer,
+    shown: true,
+  );
+  final project = factory.project;
+  return LabView(
+    budget: factory.labBudget,
+    budgetLimit: labBudgetLimit(world, labs, factory),
+    project: project,
+    work: factory.labWork,
+    needed: project == null
+        ? null
+        : generationWork(
+            labs,
+            factoryLead(world, factory, project),
+            world.macroOf(factory.country).priceIndex,
+          ),
+    monthlyWork: labMonthlyWork(factory.labBudget, engineers),
+    expectedGain: generationGain(labs, designers),
+    gainSpread: labs.gainSpread,
+    expectedSaving: project == null
+        ? null
+        : generationSaving(
+            labs,
+            factorySaving(world, factory, project),
+            engineers,
+          ),
+    engineers: engineers,
+    designers: designers,
+    wageLevel: level,
+    maxPeople: labs.maxPeople,
+    lines: List.unmodifiable([
+      for (final product in content.products)
+        if (kindMakes(kind, product))
+          (
+            product: product.id,
+            generation: factory.lineOf(product.id)?.generation ?? 0,
+            lead: factoryLead(world, factory, product.id),
+            saving: factorySaving(world, factory, product.id),
+            launchedOn: factory.lineOf(product.id)?.launchedOn,
+            history: List<Fx>.unmodifiable(
+              factory.lineOf(product.id)?.history ?? const <Fx>[],
+            ),
+          ),
+    ]),
+    people: List.unmodifiable([
+      for (final person in labPeople(world, factory.id))
+        KeyPersonView(
+          id: person.id,
+          name: person.name,
+          role: person.role,
+          level: person.shownLevel(labs.revealMonths),
+          known: person.knownAfter(labs.revealMonths),
+          salary: keySalary(labs, person, level),
+          since: person.since,
+          monthsWorked: person.monthsWorked,
+        ),
+    ]),
+  );
 }
 
 FactoryView _factoryView(WorldState world, ContentDb content, Factory factory) {
@@ -992,6 +1260,7 @@ FactoryView _factoryView(WorldState world, ContentDb content, Factory factory) {
         .timesInt(factory.shifts),
     monthlySite: kind.site.times(economy.priceIndex),
     value: valueFactory(world, content, factory),
+    lab: _labView(world, content, factory),
   );
 }
 
@@ -1036,6 +1305,7 @@ StoreView _storeView(
     enlargedOn: store.enlargedOn,
     boughtFor: store.boughtFor,
     acquiredOn: store.acquiredOn,
+    quality: _shelfQuality(store),
     recentMonths:
         months[store.id.index] ??
         (revenue: Money.zero, profit: Money.zero, days: 0),

@@ -1,0 +1,95 @@
+# Technical debt register
+
+Known problems in the code, found by reading it at commit `5a03209`
+(2026-11-14). None of them is fixed here. Each row says where it is and why
+it matters. "Read, not run" means the problem follows from the code but no
+test or run has shown it yet; confirm it before fixing.
+
+Ids are stable: refer to them as D1, D2… When you fix one, delete its row
+and say so in the commit message. When you find one, add a row.
+
+## Suggested order
+
+1. **D1, D2**: the chain-offer news, a likely live bug with a small fix.
+2. **D4, D5, D6**: saves that can break or mis-read when content changes
+   shape, and the app crashing instead of setting the save aside.
+3. **D3**: the known `_fitOut` mistake in company financials.
+4. **D18, D19**: test coverage of the web build and of older saves, which
+   guard everything else.
+5. The rest as the code around them is touched.
+
+## Correctness
+
+| Id | Issue | Where | Why it matters |
+|---|---|---|---|
+| D1 | The news of a chain's offer for the player's shops probably never shows. `_news` builds `known` from `before.national`, but `Observation.national` is worked out when read, from the live world, so after the step `before` already holds the new offers. No test covers `alerts.chainOffers`. Read, not run. | [app/lib/src/controller.dart](../app/lib/src/controller.dart) `_news` (the "Chains offer" block); [observation.dart](../packages/engine/lib/src/observation/observation.dart) `Observation.national` | Offers last 30 days and are worth millions; the player is never told of them unless they open the country page. |
+| D2 | `Observation` says it is "a copy, unaffected by later steps", but `districts` and `national` are closures over the live world (`observe` passes `() => shared.districts` and `() => nationalViews(world, …)`). Anything that keeps an observation across a step and reads them gets today's state, not that day's. | [observation.dart](../packages/engine/lib/src/observation/observation.dart) `observe`, `Observation` | The cause of D1, and a trap for any before/after comparison or for moving the engine to an isolate. |
+| D3 | `_fitOut` assumes world store *i* is scenario store *i* for the stores a game began with (`index >= content.stores.length` skips the rest). Waking a district appends scenario stores to `content.stores`, so a store the player opened later can fall below that length and gain the fit-out of an unrelated scenario store. Holding starts return early and are safe; older saves and chosen or classic starts are not. | [app/lib/src/financials.dart](../app/lib/src/financials.dart) `_fitOut` | Inflates money tied up, so ROIC and the company page read wrong after a wake. |
+| D4 | The saved national economy is read by position against the current national table: `CountryEconomy.read` loops over today's countries, classes, trades, regions and chains, and `chain.regional.setAll` throws a `RangeError` if a saved list is longer. The national table is not in the save's content structure, so nothing checks it. | [country_economy.dart](../packages/engine/lib/src/countries/country_economy.dart) `CountryEconomy.read`; [save_file.dart](../packages/engine/lib/src/persistence/save_file.dart) `readNational` | Rebuilding `euro.json` with another region, chain or country silently mis-reads or crashes every saved game with national state. |
+| D5 | Neighbourhood rows are not in the content structure either. Sleepers and woken districts are matched to rows by index; the only check is `row >= length`. | [save_file.dart](../packages/engine/lib/src/persistence/save_file.dart) `SaveData.decode`; [simulation.dart](../packages/engine/lib/src/simulation.dart) `Simulation.load` | Reordering or removing a row in `prototype.json` attaches saved districts to the wrong rows without an error. |
+| D6 | `openGame` sets a save aside only on `FormatException`. Errors such as the `RangeError` of D4 or a `StateError` escape and stop the app at load. | [app/lib/src/app.dart](../app/lib/src/app.dart) `openGame` | A bad save should free its slot with a note, as designed, not crash the menu. |
+| D7 | Reading the national economy can create and advance it: `currentNational` makes `world.national` on first use, and is called from `Simulation.national`, `nationalViews` and commands, not only from `NationalSystem`. `stateHash` and saves include it only once it exists. Read, not run; the window is small (until the first 1st of the month, or an old save's first read). | [systems/national.dart](../packages/engine/lib/src/systems/national.dart) `currentNational`; [simulation.dart](../packages/engine/lib/src/simulation.dart) `stateHash` | A getter that changes state means the hash can depend on whether a screen looked. |
+| D8 | Two saves can run at once: `step()` starts an unawaited `save()` on the 1st of the month, and the app also saves when it goes to the background. Both write the same `slotN.mgsave.tmp` before renaming. Read, not run. | [controller.dart](../app/lib/src/controller.dart) `step`, `save`; [saves_io.dart](../app/lib/src/saves_io.dart) `FileSaveStore.write` | Rare, but it can leave a torn save in the slot. |
+| D9 | The ink map force-unwraps `outline.regions[key]!` for every region of the national table, and no test checks that `outlines.json` has every region `euro.json` has. | [screens/national.dart](../app/lib/src/screens/national.dart) `_InkMap` | Adding a region to the table without redrawing the outlines breaks the country page. |
+
+## Architecture
+
+| Id | Issue | Where | Why it matters |
+|---|---|---|---|
+| D10 | The app reads `WorldState` directly in three places, against the rule that only observations leave the engine: `residence`, `sleeper(row)` and `start` go through `Simulation.world`, whose own comment says the app will read observations instead. | [controller.dart](../app/lib/src/controller.dart); [simulation.dart](../packages/engine/lib/src/simulation.dart) `world` | Blocks moving the engine to a background isolate, and lets the UI see what the player shouldn't. |
+| D11 | Lower layers import higher ones: `state/game_start.dart` imports `commands/apply_command.dart` (for `maxNameLength`) and `commands/refusal.dart`; `state/districts.dart` imports the neighbourhood generator; `reports/period_report.dart` imports `systems/tick_system.dart`; `systems/sleepers.dart` imports `observation/outlook.dart` and `policies/retail_policy.dart` (`closingLoss`); `observation/national_view.dart` imports `systems/national.dart`. | those files | The folders no longer form layers, so a change in a policy or command can ripple into state and saves. Moving shared limits and helpers into `state/` or a rules file would untangle it. |
+| D12 | State is saved in four pieces, each with its own presence rule: `world.write`, then sleepers, economies (`writeEconomies`) and the national economy (`writeNational`). `SaveData.encode`, `SaveData.decode` and `Simulation.stateHash` each list them by hand, and the hash skips economies with one country and national when null. | [save_file.dart](../packages/engine/lib/src/persistence/save_file.dart); [simulation.dart](../packages/engine/lib/src/simulation.dart) `stateHash`; [world_state.dart](../packages/engine/lib/src/state/world_state.dart) | New state has three places to forget; one function used by both save and hash would keep them in step. |
+
+## Moddability
+
+| Id | Issue | Where | Why it matters |
+|---|---|---|---|
+| D13 | Scenario keys are written into code. The engine maps format keys to national trades in `formatTrades`; the generator uses `'grocery'`, `'supermarket'`, `'balanced'`, opening hours per strategy key, and French shop words as a fallback. The app picks colours and icons by key in `Ledger.trade`, `formatIcon`, `categoryIcon`, `regimeIcon`. | [shop_bridge.dart](../packages/engine/lib/src/countries/shop_bridge.dart); [neighbourhood_generator.dart](../packages/engine/lib/src/neighbourhoods/neighbourhood_generator.dart); [app/lib/src/theme.dart](../app/lib/src/theme.dart) | Goal 6 says what differs between worlds is data. A mod's formats get no national trade, a default colour, and generated districts that assume the prototype's formats. |
+| D14 | Balance numbers live in code, not content: `offerChance`, `offerMinimumShops`, `offerDays` ([national.dart](../packages/engine/lib/src/systems/national.dart)); `strainCost`, `maxNationalMarketing`, `youngMonths` ([country_economy.dart](../packages/engine/lib/src/countries/country_economy.dart)); `nationalPaybackMonths`, `buyoutPaybackMonths` ([director.dart](../packages/engine/lib/src/policies/director.dart)); `closingLoss`, `maxManagedMarketing` ([retail_policy.dart](../packages/engine/lib/src/policies/retail_policy.dart)); `maxNationalRate`, `maxRivalDiscount` ([apply_command.dart](../packages/engine/lib/src/commands/apply_command.dart)); `_shakyMargin`, `_shakyChance` ([sleepers.dart](../packages/engine/lib/src/systems/sleepers.dart)). | those files | The headless runner can't sweep them, and a mod can't change them. |
+| D27 | A block's quality counts a plant's whole month of capacity for every block and product it could supply, though hand-run shops, other blocks and rivals share it; and shops run by policy pick a source on price alone, blind to a factory's better goods. Read, not run. | `_quality` in [national.dart](../packages/engine/lib/src/systems/national.dart), `StorePlan` in [retail_policy.dart](../packages/engine/lib/src/policies/retail_policy.dart) | A chain much larger than its plants gets more pull from quality than its shelves could hold; rivals never choose a factory for its quality. |
+
+## Performance and scale
+
+| Id | Issue | Where | Why it matters |
+|---|---|---|---|
+| D15 | Growing content goes through JSON: `withNeighbourhoods` and `withCitiesAsleep` decode `content.source`, edit it and call `loadScenario` again. `Simulation.plan` does this each month; `SaveData.decode` does it once per district ever woken. Each load also hashes the canonical JSON for `fingerprint`. | [neighbourhood_generator.dart](../packages/engine/lib/src/neighbourhoods/neighbourhood_generator.dart); [save_file.dart](../packages/engine/lib/src/persistence/save_file.dart) `SaveData.decode` | Loading a game slows with every city woken, on a phone, on the main isolate. |
+| D16 | A save holds every command the player ever gave, and saves are not compressed (compression was deferred). | [save_file.dart](../packages/engine/lib/src/persistence/save_file.dart) `SaveData.encode` | 40-year games grow without bound, and each save rewrites it all on the main isolate. |
+| D17 | The engine runs on the main isolate, stepped by `Timer.periodic`; the first of each month adds the national economy, the sleepers and a rebuild of `plan` to the day. Accepted in the design; worth watching as the national level grows. | [controller.dart](../app/lib/src/controller.dart) `_run`, `step` | Frames can drop on month ends at fast speed. |
+
+## Tests
+
+| Id | Issue | Where | Why it matters |
+|---|---|---|---|
+| D18 | The Node (web) run covers only the core and the small test scenario. Every test that uses the prototype, the national table or neighbourhoods reads files with `dart:io` and is VM-only. | [packages/engine/test](../packages/engine/test), e.g. [test/countries](../packages/engine/test/countries), [test/neighbourhoods](../packages/engine/test/neighbourhoods) | Web determinism of the largest and newest code (formula layer, sleepers, generator) is unchecked. Embedding the content as Dart constants for tests would let them run on both. |
+| D19 | Only one whole-save fixture, format 6. Formats 7 to 31 are tested one entity at a time with `StateReader(bytes, version: N)`; no full save of, say, format 28 or 30 is ever loaded. | [test/fixtures](../packages/engine/test/fixtures) | The save layout is the riskiest thing to break; a fixture per layout milestone (27, 29, 30) would catch sidecar mistakes (D12). |
+| D20 | No test for the chain-offer news (D1) or for outlines covering every region (D9). | [app/test](../app/test) | Both would have caught live problems. |
+| D28 | The labs' save fields (format 32) have no test reading a format 31 layout: only the format 6 fixture and a same-version round trip cover them. | [labs_test.dart](../packages/engine/test/labs_test.dart) | A mistake in the version gates of `Stock`, `Factory`, `FactoryReport` or `CompanyBlock` would break saves from before labs. |
+
+## Dead code and drift
+
+| Id | Issue | Where | Why it matters |
+|---|---|---|---|
+| D21 | Region tiles are dead but required: `loadCountryTable` fails without each region's `tile`, `NationalRegion.col` and `row` are read, and nothing uses them since the ink map replaced the tiles. `build_regions.py` still writes them. | [country_table.dart](../packages/engine/lib/src/countries/country_table.dart); [build_regions.py](../content/countries/build_regions.py) | Data and code kept alive for nothing; misleading for anyone editing regions. |
+| D22 | `ContentDb.fingerprint` is computed on every load and read only by a test; its comment says a save loads only with the content it was made with, which stopped being true at format 9. | [content_db.dart](../packages/engine/lib/src/content/content_db.dart); [scenario_loader.dart](../packages/engine/lib/src/content/scenario_loader.dart) | Wasted work (D15) and a wrong explanation of how saves match content. |
+| D23 | Stale or misplaced doc comments: [neighbourhoods.dart](../packages/engine/lib/neighbourhoods.dart) says the game doesn't use the generator yet; `SleeperSystem` says districts touch no account, but chains' shops there book against `elsewhere`; in [command.dart](../packages/engine/lib/src/commands/command.dart) the `Command` class's doc comment sits on `_readBrand`; in [save_file.dart](../packages/engine/lib/src/persistence/save_file.dart) `SaveData`'s doc comment is merged into `CitiesAsleep`'s. | those files | Comments are how this codebase explains itself; wrong ones mislead the next change. |
+| D24 | [Engine Architecture.md](<../Engine Architecture.md>) has drifted: its header still says version 0.1, October 2026; the daily tick table lists 11 phases while `standardSystems` runs 15 (no buying terms, national, tax, factory or sleeper phases); the repository layout lists four screens and three country scripts; the testing table says the goldens compare daily state hashes on VM and Node, while the code checks one hash after a year; *Decisions to confirm* still says taxes are stubbed and that unguaranteed credit needs a net-asset threshold. | that file | It is the main design reference; sessions trust it. |
+| D25 | Screen files keep the tabs' old names: World is `market.dart`, Holding `dashboard.dart`, Shop `store.dart`, Books `reports.dart`; tests and the design doc still say "Market tab". | [app/lib/src/screens](../app/lib/src/screens) | Small, but every newcomer has to learn the mapping ([app.md](app.md)). |
+
+## Size
+
+| Id | Issue | Where | Why it matters |
+|---|---|---|---|
+| D26 | Very large files: [screens/market.dart](../app/lib/src/screens/market.dart) (2,731 lines: the World tab, starting a business, buying dialogs), [country_economy.dart](../packages/engine/lib/src/countries/country_economy.dart) (1,932), [apply_command.dart](../packages/engine/lib/src/commands/apply_command.dart) (1,922), [content_db.dart](../packages/engine/lib/src/content/content_db.dart) (1,744), [screens/store.dart](../app/lib/src/screens/store.dart) (1,641), [command.dart](../packages/engine/lib/src/commands/command.dart) and [screens/finance.dart](../app/lib/src/screens/finance.dart) (1,588 each). In [controller.dart](../app/lib/src/controller.dart), `_news` alone is about 430 lines. | those files | Hard to review and easy to conflict on; splitting by feature (national commands, factory commands, the new-business flow, news per kind) would help. |
+
+## To check
+
+Not confirmed as problems; look before acting.
+
+- Only `observe` filters out `CompanyStatus.dormant`, for the owner's own
+  companies. Check that public lists (company names, filings, valuations,
+  rivals on the World tab) never show the player's dormant scenario company.
+  [observation.dart](../packages/engine/lib/src/observation/observation.dart),
+  [systems/taxes.dart](../packages/engine/lib/src/systems/taxes.dart).
+- Web saves live in memory and vanish on reload
+  ([saves_web.dart](../app/lib/src/saves_web.dart)). Fine for development;
+  a limitation if the web build is ever shown to players.

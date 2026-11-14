@@ -93,9 +93,10 @@ final class _ShoppingDay {
                 priceLevel:
                     world.macroAt(context.content, store.market).priceIndex *
                     context.content.markets[store.market.index].priceLevel,
-                references: context.content.references[context.content
-                    .countryOf(store.market)
-                    .index],
+                references: context
+                    .content
+                    .references[context.content.countryOf(store.market).index],
+                quality: _qualityOf(store),
               ),
           ],
       ],
@@ -250,6 +251,13 @@ final class _ShoppingDay {
   /// What households in each market think each product should cost today,
   /// indexed by [MarketId], then [ProductId].
   final List<List<Money>> references = [];
+
+  /// How far each product on [store]'s shelves is over the market's
+  /// standard, by [ProductId]; null if all are at it.
+  static List<Fx>? _qualityOf(Store store) {
+    if (store.stock.every((stock) => stock.quality == Fx.zero)) return null;
+    return [for (final stock in store.stock) stock.quality];
+  }
 
   static Fx _withConfidence(Fx units, Fx? confidence) =>
       confidence == null ? units : units * confidence;
@@ -713,7 +721,7 @@ final class _Trip {
     if (store.stock[product.index].units == 0) {
       return (bought: 0, reason: MissReason.outOfStock);
     }
-    if (!_accepts(price, day.content.products[product.index])) {
+    if (!_accepts(price, product, store.stock[product.index].quality)) {
       return (bought: 0, reason: MissReason.overpriced);
     }
     final bought = sellUnits(
@@ -729,11 +737,12 @@ final class _Trip {
     );
   }
 
-  /// Whether the cohort accepts [price] for [product]. Within the segment's
-  /// tolerance of the reference price it always does; beyond it, the chance
-  /// falls off exponentially with the excess.
-  bool _accepts(Money price, ProductDef product) {
-    final reference = _references[product.id.index];
+  /// Whether the cohort accepts [price] for [product] at [quality] over
+  /// the market's standard. Within the segment's tolerance of the reference
+  /// price, raised by what it thinks the quality worth, it always does;
+  /// beyond it, the chance falls off exponentially with the excess.
+  bool _accepts(Money price, ProductId product, Fx quality) {
+    final reference = segment.worthWith(_references[product.index], quality);
     final ratio = Fx.raw(mulDivRound(price.cents, Fx.scale, reference.cents));
     final excess = ratio - Fx.one - priceTolerance;
     return excess <= Fx.zero || rng.chance(expNeg(priceSensitivity * excess));

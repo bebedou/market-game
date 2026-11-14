@@ -339,7 +339,7 @@
         "phones": { "dailyUnits": "0.0004", "premiumShare": "0.10" },
         "smarthome": { "dailyUnits": "0.0010", "premiumShare": "0.15" }
       },
-      "slots": { "morning": "0.15", "midday": "0.15", "evening": "0.60", "night": "0.10" }, "serviceWeight": "1.0", "sizeWeight": "2.5", "incomeSpread": "0.4"
+      "slots": { "morning": "0.15", "midday": "0.15", "evening": "0.60", "night": "0.10" }, "serviceWeight": "1.0", "sizeWeight": "2.5", "incomeSpread": "0.4", "qualityWeight": "0.4"
     },
     {
       "id": "professionals", "name": "Young professionals", "tripIntervalDays": 2,
@@ -360,7 +360,7 @@
         "phones": { "dailyUnits": "0.0005", "premiumShare": "0.55" },
         "smarthome": { "dailyUnits": "0.0020", "premiumShare": "0.50" }
       },
-      "slots": { "morning": "0.25", "midday": "0.10", "evening": "0.45", "night": "0.20" }, "serviceWeight": "2.0", "sizeWeight": "1.0", "incomeSpread": "0.5"
+      "slots": { "morning": "0.25", "midday": "0.10", "evening": "0.45", "night": "0.20" }, "serviceWeight": "2.0", "sizeWeight": "1.0", "incomeSpread": "0.5", "qualityWeight": "0.9"
     },
     {
       "id": "students", "name": "Students", "tripIntervalDays": 2,
@@ -381,7 +381,7 @@
         "phones": { "dailyUnits": "0.0005", "premiumShare": "0.15" },
         "smarthome": { "dailyUnits": "0.0010", "premiumShare": "0.10" }
       },
-      "slots": { "morning": "0.05", "midday": "0.25", "evening": "0.35", "night": "0.35" }, "serviceWeight": "0.5", "sizeWeight": "1.0", "incomeSpread": "0.3"
+      "slots": { "morning": "0.05", "midday": "0.25", "evening": "0.35", "night": "0.35" }, "serviceWeight": "0.5", "sizeWeight": "1.0", "incomeSpread": "0.3", "qualityWeight": "0.4"
     },
     {
       "id": "retirees", "name": "Retirees", "tripIntervalDays": 4,
@@ -402,7 +402,7 @@
         "phones": { "dailyUnits": "0.0002", "premiumShare": "0.20" },
         "smarthome": { "dailyUnits": "0.0010", "premiumShare": "0.20" }
       },
-      "slots": { "morning": "0.45", "midday": "0.45", "evening": "0.10", "night": "0" }, "serviceWeight": "1.5", "sizeWeight": "2.0", "incomeSpread": "0.5"
+      "slots": { "morning": "0.45", "midday": "0.45", "evening": "0.10", "night": "0" }, "serviceWeight": "1.5", "sizeWeight": "2.0", "incomeSpread": "0.5", "qualityWeight": "0.6"
     },
     {
       "id": "singles", "name": "Working singles", "tripIntervalDays": 2,
@@ -423,7 +423,7 @@
         "phones": { "dailyUnits": "0.0004", "premiumShare": "0.35" },
         "smarthome": { "dailyUnits": "0.0015", "premiumShare": "0.30" }
       },
-      "slots": { "morning": "0.15", "midday": "0.15", "evening": "0.50", "night": "0.20" }, "serviceWeight": "1.5", "sizeWeight": "0.8", "incomeSpread": "0.5"
+      "slots": { "morning": "0.15", "midday": "0.15", "evening": "0.50", "night": "0.20" }, "serviceWeight": "1.5", "sizeWeight": "0.8", "incomeSpread": "0.5", "qualityWeight": "0.6"
     },
     {
       "id": "comfortable", "name": "Comfortable families", "tripIntervalDays": 3,
@@ -444,7 +444,7 @@
         "phones": { "dailyUnits": "0.0005", "premiumShare": "0.45" },
         "smarthome": { "dailyUnits": "0.0020", "premiumShare": "0.45" }
       },
-      "slots": { "morning": "0.20", "midday": "0.10", "evening": "0.60", "night": "0.10" }, "serviceWeight": "1.5", "sizeWeight": "2.5", "incomeSpread": "0.4"
+      "slots": { "morning": "0.20", "midday": "0.10", "evening": "0.60", "night": "0.10" }, "serviceWeight": "1.5", "sizeWeight": "2.5", "incomeSpread": "0.4", "qualityWeight": "1.0"
     }
   ],
   "demand": { "neutralLoyalty": "0.50", "loyaltyRate": "0.20", "loyaltyDecay": "0.10", "substituteCredit": "0.50", "maxNeedDays": 7,
@@ -498,6 +498,30 @@
     "freight": "0.04",
     "paymentTermsDays": 30,
     "maxShifts": 3,
+    "labs": {
+      "generationWork": "6000.00",
+      "leadHardness": "3",
+      "gain": "0.06",
+      "gainSpread": "0.25",
+      "saving": "0.03",
+      "maxSaving": "0.25",
+      "catchUp": "0.03",
+      "maxBudget": "2000.00",
+      "maxPeople": 5,
+      "candidates": 6,
+      "candidateDays": 90,
+      "revealMonths": 6,
+      "nationalPull": "2",
+      "levels": [
+        { "share": "0.20", "power": "0.10", "salary": "200.00" },
+        { "share": "0.40", "power": "0.25", "salary": "280.00" },
+        { "share": "0.25", "power": "0.50", "salary": "400.00" },
+        { "share": "0.11", "power": "1.00", "salary": "700.00" },
+        { "share": "0.04", "power": "2.50", "salary": "1600.00" }
+      ],
+      "firstNames": ["Camille", "Lukas", "Giulia", "Mateo", "Sofia", "Noah", "Elena", "Hugo", "Marta", "Jonas", "Chiara", "Pablo", "Anna", "Louis", "Lucia", "Felix", "Ines", "Marco", "Clara", "Theo", "Nora", "Diego", "Emma", "Paul"],
+      "lastNames": ["Lefevre", "Schmidt", "Rossi", "Garcia", "Moreau", "Weber", "Bianchi", "Fernandez", "Girard", "Fischer", "Ricci", "Navarro", "Roux", "Becker", "Conti", "Ortega", "Fontaine", "Hoffmann", "Greco", "Vidal", "Marchand", "Keller", "Gallo", "Serrano"]
+    },
     "kinds": [
       { "id": "bakery", "name": "Bakery", "category": "bread", "buildCost": "150000.00", "buildDays": 90, "shiftUnits": 350, "shiftWage": "81.00", "site": "1850.00", "materials": "0.40", "leadTimeDays": 1, "minOrderUnits": 12, "local": true },
       { "id": "drinks", "name": "Drinks plant", "category": "drinks", "buildCost": "120000.00", "buildDays": 90, "shiftUnits": 400, "shiftWage": "66.00", "site": "1500.00", "materials": "0.40", "leadTimeDays": 3, "minOrderUnits": 48, "freight": "0.12" },
