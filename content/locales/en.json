@@ -382,38 +382,17 @@
     "language": "Language"
   },
   "newGame": {
-    "country": "Country",
-    "countryHint": "Corporate tax {tax}, dividend tax {dividends}. {cycle}",
-    "cycleDeep": "Its downturns run deeper than most.",
-    "cycleMild": "Its downturns run milder, and often on their own.",
-    "cycleUsual": "Its ups and downs are the usual ones.",
-    "yourCompany": "Your company",
-    "nameLabel": "Name of the company and its first store",
-    "city": "City",
-    "cityHint": "Its shoppers spend {market} a year. Prices {prices}, incomes {incomes} and wages {wages} of the usual.",
-    "site": "Site",
-    "business": "Business",
-    "rivals": {
-      "0": "No one competes with you here at the start.",
-      "1": "One business here competes with you at the start.",
-      "other": "{count} businesses here compete with you at the start."
-    },
-    "startingOut": "Starting out",
-    "companyCash": "Your company's cash",
-    "capitalIn": "You put {capital} of your own into the company so it starts with {cash}.",
-    "wellOff": "Everyone starts as well off: a cheaper store leaves more cash, a dearer one less.",
-    "tooDear": "{format} here: fitting out costs {cost}; you can spend {budget}, keeping {keep} in the company. Pick a cheaper site or business.",
-    "start": "Start",
-    "siteDetails": "{area} m² · rent {rent} a month · location {location}\n",
-    "fittingOutCost": "Fitting out {cost}",
-    "tooSmall": "Too small for this business"
+    "yourHolding": "Your holding",
+    "holdingLabel": "Name of your holding",
+    "holdingHint": "You start with {cash} of your own and no business yet. Start your first from the dashboard: any city, any trade, as a company of its own.",
+    "start": "Start"
   },
   "guide": {
     "goal": {
       "title": "The goal",
       "paragraphs": [
         "Grow your net worth: the cash you hold, plus what your companies own, less what they owe. There is no end; play as long as you like.",
-        "You start with one business and some money. Run it well, open or buy more, and keep clear of unpaid bills."
+        "You start with a holding and some money: start your first business from the dashboard. Run it well, open or buy more, and keep clear of unpaid bills."
       ]
     },
     "time": {
@@ -476,7 +455,7 @@
   },
   "dashboard": {
     "noCompany": "You have no company trading.",
-    "noCompanyDetail": "Start a new business below, or buy one in Finance.",
+    "noCompanyDetail": "Start a new business, in any city, or buy one in Finance.",
     "essentials": "Your managers are buying only the essentials.",
     "essentialsDetail": "{at}free cash is below the cushion kept for wages, rent and tax, so only the best sellers are restocked, a few days at a time. Add capital or borrow in Finance.",
     "emptyShelves": "Your shelves are empty.",
@@ -990,8 +969,18 @@
     },
     "payingForIt": "Paying for it",
     "acrossCountry": "Across the country",
-    "nationalPace": "Shops run by formula, a month",
-    "nationalOff": "None",
+    "growRate": "How fast the chain grows",
+    "growRateHint": "New shops a month, as a share of the chain's shops in each country.",
+    "rateOff": "Off",
+    "rateAsJudged": "As they judge",
+    "thisMonth": "This month",
+    "aboutShops": {"one": "about {count} shop, of {total}", "other": "about {count} shops, of {total}"},
+    "runsWellUpTo": "{director} runs well up to",
+    "aMonth": "{rate} a month",
+    "slowsPast": "Slows past",
+    "ofItsTrade": "{share} of its trade in a country",
+    "beyondPace": "beyond what they run well",
+    "beyondPaceHint": "Faster than that, they pick worse places and every shop of the chain is run worse, the more the further past it.",
     "nationalPaceHint": "Each costs about {cost} to fit out and is run from head office, opened where it pays back soonest within the strategy's limit.",
     "nationalAnywhere": "No region picked: anywhere in the countries the company trades in.",
     "nationalOnly": {"one": "Only in the region picked.", "other": "Only in the {count} regions picked."},
@@ -1259,7 +1248,7 @@
       "electronics": "Electronics"
     },
     "subsidiaryHint": "A subsidiary is a separate company in your holding, with its own cash, books, loans and director: if it fails, the rest is safe. Pick a city, then a vacant site for its first store. To buy a going company instead, see World.",
-    "businessHint": "Pick a city, then a vacant site: you choose the kind of business, its name and the capital it starts with when you open. To buy a going business instead, see Finance.",
+    "businessHint": "Pick a country and a city, then a vacant site: you choose the kind of business, its name and the capital it starts with when you open. To buy a going business instead, see Finance.",
     "noVacant": "There is no vacant site anywhere.",
     "vacantDetails": "{area} m², room for {most} · location {location} · rent {rent} a month · fitting out from {cost}, {days} days",
     "open": "Open",
@@ -1272,7 +1261,12 @@
     "ownedBy": "Owned by {company}",
     "capitalFromCash": "Capital from your cash",
     "youHave": "You have {cash}",
-    "openWithLoan": "Open with a loan"
+    "openWithLoan": "Open with a loan",
+    "countryHint": "Corporate tax {tax}, dividend tax {dividends}. {cycle}",
+    "cycleDeep": "Its downturns run deeper than most.",
+    "cycleMild": "Its downturns run milder, and often on their own.",
+    "cycleUsual": "Its ups and downs are the usual ones.",
+    "cityHint": "Its shoppers spend {market} a year. Prices {prices}, incomes {incomes} and wages {wages} of the usual."
   },
   "factory": {
     "yourFactory": "Your factory",
@@ -1377,7 +1371,7 @@
     "noChainBuyer": "no chain can pay for these shops",
     "unknownOffer": "that offer is no longer open",
     "offerWithdrawn": "the chain can no longer pay what it offered",
-    "nationalPaceRange": "a director opens from 0 to {count} shops a month",
+    "nationalRateRange": "a director grows a chain by 0 to {count}% a month",
     "servesEachCountry": "say for each of the {count} countries whether it delivers there",
     "servesItsCountry": "a factory always delivers in its own country",
     "factoryLocal": "this factory's goods don't travel to other countries",

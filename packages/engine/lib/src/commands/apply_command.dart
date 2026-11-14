@@ -368,8 +368,9 @@ Refusal? _hireDirector(
   if (!_inRange(command.managerGrade.index, content.managers.grades.length)) {
     return const Refusal('unknownManagerGrade');
   }
-  if (command.nationalPace < 0 || command.nationalPace > maxNationalPace) {
-    return Refusal('nationalPaceRange', count: maxNationalPace);
+  if (command.nationalRate.isNegative ||
+      command.nationalRate > maxNationalRate) {
+    return Refusal('nationalRateRange', count: maxNationalRate.raw ~/ 100);
   }
   final table = content.national;
   for (final key in command.nationalRegions) {
@@ -386,7 +387,8 @@ Refusal? _hireDirector(
     growth: command.growth,
     payout: command.payout,
     borrows: command.borrows,
-    nationalPace: command.nationalPace,
+    nationalRate: command.nationalRate,
+    nationalAuto: command.nationalAuto,
     nationalRegions: List.unmodifiable(command.nationalRegions),
     hiredOn: current != null && current.grade == command.grade
         ? current.hiredOn
@@ -1619,8 +1621,9 @@ Refusal? _orderFromFactory(
   return null;
 }
 
-/// The most shops run by formula a director may open a month.
-const maxNationalPace = 5;
+/// The fastest a director may be asked to grow a chain across a country:
+/// new shops a month as a share of its shops.
+const maxNationalRate = Fx.raw(1000);
 
 /// The most shops run by formula one command opens.
 const maxNationalOpenings = 20;

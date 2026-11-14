@@ -485,11 +485,12 @@
   },
   "directors": {
     "judgmentError": "0.30",
+    "criticalShare": "0.05",
     "coaching": "0.50",
     "grades": [
-      { "id": "promoted", "name": "Promoted manager", "skill": "0.40", "salary": "8.00" },
-      { "id": "seasoned", "name": "Seasoned director", "skill": "0.70", "salary": "14.00" },
-      { "id": "star", "name": "Star director", "skill": "0.95", "salary": "22.00" }
+      { "id": "promoted", "name": "Promoted manager", "skill": "0.40", "salary": "8.00", "growth": "0.015" },
+      { "id": "seasoned", "name": "Seasoned director", "skill": "0.70", "salary": "14.00", "growth": "0.035" },
+      { "id": "star", "name": "Star director", "skill": "0.95", "salary": "22.00", "growth": "0.06" }
     ]
   },
   "factories": {

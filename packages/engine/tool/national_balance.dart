@@ -1,6 +1,7 @@
 // How a chain grows across countries by formula: the player, made rich,
 // hands their company to a star director who may open shops run by formula
-// in its countries, so many a month, and plays some years. Prints each year
+// in its countries at a rate, a share of its shops a month, and plays some
+// years. Prints each year
 // the shops run by formula in every country, opened and closed, their sales
 // a shop against what a district shop of the same kind sells, their margin,
 // the company's trading profit, and in France its buying terms, marketing
@@ -8,7 +9,7 @@
 // and offers at the end.
 //
 //   dart run tool/national_balance.dart [--seeds 1-2] [--years 5]
-//       [--pace 3] [--strategy balanced]
+//       [--rate auto|0.04] [--grade star] [--strategy balanced]
 import 'dart:io';
 
 import 'package:engine/engine.dart';
@@ -18,7 +19,8 @@ void main(List<String> args) {
       args.contains(name) ? args[args.indexOf(name) + 1] : fallback;
   final seeds = option('--seeds', '1-2').split('-').map(int.parse).toList();
   final years = int.parse(option('--years', '5'));
-  final pace = int.parse(option('--pace', '3'));
+  final rate = option('--rate', 'auto');
+  final gradeKey = option('--grade', 'star');
   final strategyKey = option('--strategy', 'balanced');
   final root = Platform.script.resolve('../../../content/');
   String read(String path) =>
@@ -38,7 +40,8 @@ void main(List<String> args) {
   final strategy = content.strategies.firstWhere((s) => s.key == strategyKey);
   final format = content.formats[strategy.format.index];
   stdout.writeln(
-    '${format.name}, pace $pace a month, star director, $years years',
+    '${format.name}, growing ${rate == 'auto' ? 'as they judge' : '$rate a month'}, '
+    '$gradeKey director, $years years',
   );
   stdout.writeln(
     'seed year  shops  opened closed  a shop sells  (district)  margin  '
@@ -58,12 +61,15 @@ void main(List<String> args) {
         HireDirector(
           player,
           company: company,
-          grade: content.directors!.grades.last.id,
+          grade: content.directors!.grades
+              .firstWhere((g) => g.key == gradeKey)
+              .id,
           strategy: strategy.id,
           managerGrade: content.managers.grades.last.id,
           growth: Growth.open,
           payout: false,
-          nationalPace: pace,
+          nationalAuto: rate == 'auto',
+          nationalRate: rate == 'auto' ? Fx.zero : Fx.parse(rate),
         ),
       );
     for (var year = 1; year <= years; year++) {

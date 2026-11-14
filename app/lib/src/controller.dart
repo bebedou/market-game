@@ -264,6 +264,12 @@ class SimulationController extends ChangeNotifier {
   /// How the player chose to start, if they did.
   GameStart? get start => _simulation.world.start;
 
+  /// The holding's name, if the player started with a holding alone.
+  String? get holdingName => switch (start) {
+    GameStart(holding: true, :final name) => name,
+    _ => null,
+  };
+
   String describe(Command command) => describeCommand(command, content, _view);
 
   /// Queues [command] for the next step. It replaces a pending change to the
@@ -476,7 +482,8 @@ class SimulationController extends ChangeNotifier {
               :final growth,
               :final payout,
               :final borrows,
-              :final nationalPace,
+              :final nationalRate,
+              :final nationalAuto,
               :final nationalRegions,
             )
             when c == company.id:
@@ -487,7 +494,8 @@ class SimulationController extends ChangeNotifier {
             growth: growth,
             payout: payout,
             borrows: borrows,
-            nationalPace: nationalPace,
+            nationalRate: nationalRate,
+            nationalAuto: nationalAuto,
             nationalRegions: nationalRegions,
             hiredOn: director != null && director.grade == grade
                 ? director.hiredOn
@@ -656,9 +664,11 @@ class SimulationController extends ChangeNotifier {
     await saves?.write(
       _simulation.save(),
       summary: (
-        company: company == null
-            ? tr('common.noCompany')
-            : companyName(company.id),
+        company:
+            holdingName ??
+            (company == null
+                ? tr('common.noCompany')
+                : companyName(company.id)),
         day: today,
         netWorth: netWorth,
         saved: DateTime.now(),

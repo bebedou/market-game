@@ -225,6 +225,20 @@ final class NationalOffer {
   final Day expires;
 }
 
+/// The save version from which a company's shops run by formula keep how
+/// far past their director's pace they are being grown.
+const _strainVersion = 31;
+
+/// What a chain grown faster than its director runs well draws, against
+/// what it would: 1 / (1 + [strainCost] × strain). Its shops are run worse,
+/// the further past the more.
+Fx strainFactor(Fx strain) =>
+    strain <= Fx.zero ? Fx.one : Fx.one.div(Fx.one + strainCost * strain);
+
+/// How much worse a chain's shops are run for each time over its director's
+/// pace it is grown.
+const strainCost = Fx.raw(6000);
+
 /// The most of its sales a company spends on marketing across a country.
 const maxNationalMarketing = Fx.raw(800);
 
@@ -331,6 +345,7 @@ final class CompanyBlock {
       marketing = Fx.raw(reader.readInt());
       name = reader.readBool() ? reader.readString() : null;
       cost = Money(reader.readInt());
+      if (reader.version >= _strainVersion) strain = Fx.raw(reader.readInt());
     } else {
       marketing = costs.marketing;
     }
@@ -376,6 +391,11 @@ final class CompanyBlock {
   /// What the company paid for that chain, carried as a business asset.
   Money cost = Money.zero;
 
+  /// How far past what its director runs well they are growing it: the
+  /// rate over their grade's, less one; zero within it. Its shops draw less
+  /// for it (see [strainFactor]).
+  Fx strain = Fx.zero;
+
   final List<BlockRegion> regions;
 
   /// The latest last, at most [countryMonthsKept].
@@ -411,7 +431,9 @@ final class CompanyBlock {
       ..writeInt(marketing.raw)
       ..writeBool(name != null);
     if (name case final name?) writer.writeString(name);
-    writer.writeInt(cost.cents);
+    writer
+      ..writeInt(cost.cents)
+      ..writeInt(strain.raw);
   }
 }
 
@@ -824,7 +846,10 @@ final class CountryEconomy {
     ];
     // What a store of each company's draws, its brand counted.
     final pulls = [
-      for (final block in blocks) block.pull * brandFactor(country, t, block),
+      for (final block in blocks)
+        block.pull *
+            brandFactor(country, t, block) *
+            strainFactor(block.strain),
     ];
     // What a company's shops draw in each region, crowding as they fill it.
     final draws = [
@@ -1396,6 +1421,7 @@ final class CountryEconomy {
     required Fx price,
     required ShopCosts costs,
     Fx discount = Fx.zero,
+    int extra = 0,
   }) {
     final country = countries[index];
     final block = blockOf(
@@ -1404,13 +1430,29 @@ final class CountryEconomy {
       trade: trade,
       format: format,
     );
+    final market = regionMarket(
+      country,
+      trade,
+      region,
+      company: company,
+      format: format,
+    );
     return newShopOutlook(
       country,
       trade,
-      regionMarket(country, trade, region, company: company, format: format),
+      // With [extra] thousandths of a shop of its placed there already.
+      (
+        spend: market.spend,
+        others: market.others,
+        stores: market.stores + extra ~/ 1000,
+        wageLevel: market.wageLevel,
+        rentLevel: market.rentLevel,
+      ),
       pull: block == null
           ? pullFor(country, trade, perStore)
-          : block.pull * brandFactor(country, trade, block),
+          : block.pull *
+                brandFactor(country, trade, block) *
+                strainFactor(block.strain),
       price: price,
       costs: (
         goods: costs.goods * (Fx.one - (block?.discount ?? discount)),
@@ -1419,7 +1461,7 @@ final class CountryEconomy {
         premises: costs.premises,
       ),
       perStore: perStore,
-      drawMilli: block?.regions[region].drawMilli ?? 0,
+      drawMilli: (block?.regions[region].drawMilli ?? 0) + extra,
     );
   }
 

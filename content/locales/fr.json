@@ -383,38 +383,17 @@
     "language": "Langue"
   },
   "newGame": {
-    "country": "Pays",
-    "countryHint": "Impôt sur les sociétés {tax}, sur les dividendes {dividends}. {cycle}",
-    "cycleDeep": "Ses crises sont plus dures qu’ailleurs.",
-    "cycleMild": "Ses crises sont plus douces, et souvent à part.",
-    "cycleUsual": "Ses hauts et ses bas sont ceux d’ordinaire.",
-    "yourCompany": "Votre société",
-    "nameLabel": "Nom de la société et de son premier magasin",
-    "city": "Ville",
-    "cityHint": "Ses clients dépensent {market} par an. Prix {prices}, revenus {incomes} et salaires {wages} de la normale.",
-    "site": "Emplacement",
-    "business": "Activité",
-    "rivals": {
-      "0": "Personne ne vous fait concurrence ici au départ.",
-      "1": "Une affaire vous fait concurrence ici au départ.",
-      "other": "{count} affaires vous font concurrence ici au départ."
-    },
-    "startingOut": "Au départ",
-    "companyCash": "Trésorerie de votre société",
-    "capitalIn": "Vous apportez {capital} de votre argent à la société pour qu’elle démarre avec {cash}.",
-    "wellOff": "Tout le monde part aussi riche : un magasin moins cher laisse plus de trésorerie, un plus cher moins.",
-    "tooDear": "{format} ici : l’aménagement coûte {cost} ; vous pouvez dépenser {budget} en gardant {keep} dans la société. Choisissez un emplacement ou une activité moins chers.",
-    "start": "Commencer",
-    "siteDetails": "{area} m² · loyer {rent} par mois · situation {location}\n",
-    "fittingOutCost": "Aménagement {cost}",
-    "tooSmall": "Trop petit pour cette activité"
+    "yourHolding": "Votre holding",
+    "holdingLabel": "Nom de votre holding",
+    "holdingHint": "Vous commencez avec {cash} à vous et aucune affaire. Lancez la première depuis le tableau de bord : n’importe quelle ville, n’importe quel métier, en société à part entière.",
+    "start": "Commencer"
   },
   "guide": {
     "goal": {
       "title": "L’objectif",
       "paragraphs": [
         "Faites grandir votre patrimoine net : votre argent, plus ce que possèdent vos sociétés, moins ce qu’elles doivent. Il n’y a pas de fin ; jouez aussi longtemps que vous voulez.",
-        "Vous commencez avec une affaire et un peu d’argent. Gérez-la bien, ouvrez-en ou achetez-en d’autres, et évitez les factures impayées."
+        "Vous commencez avec une holding et un peu d’argent : lancez votre première affaire depuis le tableau de bord. Gérez-la bien, ouvrez-en ou achetez-en d’autres, et évitez les factures impayées."
       ]
     },
     "time": {
@@ -477,7 +456,7 @@
   },
   "dashboard": {
     "noCompany": "Vous n’avez aucune société en activité.",
-    "noCompanyDetail": "Lancez une nouvelle affaire ci-dessous, ou achetez-en une dans Finance.",
+    "noCompanyDetail": "Lancez une nouvelle affaire, dans n’importe quelle ville, ou achetez-en une dans Finance.",
     "essentials": "Vos gérants n’achètent que l’essentiel.",
     "essentialsDetail": "{at}la trésorerie libre est sous le matelas gardé pour les salaires, le loyer et l’impôt : seuls les meilleurs produits sont réapprovisionnés, quelques jours à la fois. Ajoutez du capital ou empruntez dans Finance.",
     "emptyShelves": "Vos rayons sont vides.",
@@ -991,8 +970,18 @@
     },
     "payingForIt": "Le financement",
     "acrossCountry": "Dans tout le pays",
-    "nationalPace": "Magasins gérés par formule, par mois",
-    "nationalOff": "Aucun",
+    "growRate": "Vitesse de croissance de l’enseigne",
+    "growRateHint": "Nouveaux magasins par mois, en part des magasins de l’enseigne dans chaque pays.",
+    "rateOff": "Aucune",
+    "rateAsJudged": "Selon son jugement",
+    "thisMonth": "Ce mois-ci",
+    "aboutShops": {"one": "environ {count} magasin, sur {total}", "other": "environ {count} magasins, sur {total}"},
+    "runsWellUpTo": "{director} tient bien jusqu’à",
+    "aMonth": "{rate} par mois",
+    "slowsPast": "Ralentit au-delà de",
+    "ofItsTrade": "{share} de son secteur dans un pays",
+    "beyondPace": "au-delà de ce qu’il tient",
+    "beyondPaceHint": "Plus vite, il choisit de moins bons emplacements et tous les magasins de l’enseigne sont moins bien tenus, d’autant plus qu’il dépasse son rythme.",
     "nationalPaceHint": "Chacun coûte environ {cost} à aménager et se gère depuis le siège, ouvert là où il se rentabilise le plus vite dans la limite de la stratégie.",
     "nationalAnywhere": "Aucune région choisie : partout dans les pays où la société est présente.",
     "nationalOnly": {"one": "Seulement dans la région choisie.", "other": "Seulement dans les {count} régions choisies."},
@@ -1260,7 +1249,7 @@
       "electronics": "Électronique"
     },
     "subsidiaryHint": "Une filiale est une société à part dans votre holding, avec sa trésorerie, ses comptes, ses prêts et son directeur : si elle échoue, le reste est à l’abri. Choisissez une ville, puis un emplacement libre pour son premier magasin. Pour acheter plutôt une société existante, voyez Monde.",
-    "businessHint": "Choisissez une ville, puis un emplacement libre : vous choisissez le type d’activité, son nom et son capital de départ à l’ouverture. Pour acheter plutôt une affaire existante, voyez Finance.",
+    "businessHint": "Choisissez un pays et une ville, puis un emplacement libre : vous choisissez le type d’activité, son nom et son capital de départ à l’ouverture. Pour acheter plutôt une affaire existante, voyez Finance.",
     "noVacant": "Aucun emplacement libre nulle part.",
     "vacantDetails": "{area} m², place pour {most} · situation {location} · loyer {rent} par mois · aménagement dès {cost}, {days} jours",
     "open": "Ouvrir",
@@ -1273,7 +1262,12 @@
     "ownedBy": "Appartient à {company}",
     "capitalFromCash": "Capital depuis votre argent",
     "youHave": "Vous avez {cash}",
-    "openWithLoan": "Ouvrir avec un prêt"
+    "openWithLoan": "Ouvrir avec un prêt",
+    "countryHint": "Impôt sur les sociétés {tax}, sur les dividendes {dividends}. {cycle}",
+    "cycleDeep": "Ses crises sont plus dures qu’ailleurs.",
+    "cycleMild": "Ses crises sont plus douces, et souvent à part.",
+    "cycleUsual": "Ses hauts et ses bas sont ceux d’ordinaire.",
+    "cityHint": "Ses clients dépensent {market} par an. Prix {prices}, revenus {incomes} et salaires {wages} de la normale."
   },
   "factory": {
     "yourFactory": "Votre usine",
@@ -1378,7 +1372,7 @@
     "noChainBuyer": "aucune enseigne ne peut payer ces magasins",
     "unknownOffer": "cette offre n’est plus ouverte",
     "offerWithdrawn": "l’enseigne ne peut plus payer ce qu’elle proposait",
-    "nationalPaceRange": "un directeur ouvre de 0 à {count} magasins par mois",
+    "nationalRateRange": "un directeur fait croître une enseigne de 0 à {count} % par mois",
     "servesEachCountry": "il faut dire pour chacun des {count} pays si elle y livre",
     "servesItsCountry": "une usine livre toujours dans son propre pays",
     "factoryLocal": "les produits de cette usine ne voyagent pas à l'étranger",

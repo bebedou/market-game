@@ -244,7 +244,7 @@ void main() {
     );
   });
 
-  test("a director opens them at the brief's pace, where it allows, and "
+  test("a director opens them at the brief's rate, where it allows, and "
       'writes of each', () {
     final game = _game();
     game.submit(
@@ -256,7 +256,7 @@ void main() {
         managerGrade: _content.managers.grades.last.id,
         growth: Growth.open,
         payout: false,
-        nationalPace: 2,
+        nationalRate: Fx.parse('0.04'),
         nationalRegions: const ['FRJ'],
       ),
     );
@@ -268,7 +268,7 @@ void main() {
     for (final (r, region) in block.regions.indexed) {
       if (r != occitanie) expect(region.stores, 0);
     }
-    // One in Occitanie each month at most: the one region allowed.
+    // One in Occitanie each month: 4% of so few shops is less than one.
     expect(block.regions[occitanie].stores, inInclusiveRange(1, 7));
     final memos = game
         .observe(_player)
@@ -282,7 +282,7 @@ void main() {
     expect(memos.length, block.regions[occitanie].stores);
   });
 
-  test('a director may not be given a pace beyond the most', () {
+  test('a director may not be asked to grow faster than the most', () {
     final game = _game();
     expect(
       _apply(game, [
@@ -294,7 +294,7 @@ void main() {
           managerGrade: _content.managers.grades.last.id,
           growth: Growth.open,
           payout: false,
-          nationalPace: maxNationalPace + 1,
+          nationalRate: maxNationalRate + Fx.raw(1),
         ),
         HireDirector(
           _player,
@@ -304,11 +304,11 @@ void main() {
           managerGrade: _content.managers.grades.last.id,
           growth: Growth.open,
           payout: false,
-          nationalPace: 1,
+          nationalAuto: true,
           nationalRegions: const ['XX9'],
         ),
       ]),
-      ['nationalPaceRange', 'unknownRegion'],
+      ['nationalRateRange', 'unknownRegion'],
     );
   });
 
@@ -368,7 +368,7 @@ void main() {
         managerGrade: _content.managers.grades.last.id,
         growth: Growth.open,
         payout: false,
-        nationalPace: 3,
+        nationalAuto: true,
       ),
     );
     _advance(game, 120);

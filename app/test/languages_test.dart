@@ -622,10 +622,16 @@ void main() {
 
     await tester.tap(find.text('Nouvelle partie'));
     await tester.pumpAndSettle();
-    // The scenario's words came with it.
-    expect(find.text('Épicerie du Coin'), findsOneWidget);
     // Flutter's own words come over too: the way back is "Retour".
     expect(find.byTooltip('Retour'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Holding');
+    await tester.pump();
+    await tester.tap(find.text('Commencer'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('aucune société en activité'));
+    await tester.pumpAndSettle();
+    // The scenario's words came with it.
+    expect(find.widgetWithText(ChoiceChip, 'Allemagne'), findsOneWidget);
     useStrings(stringsFromFiles('en'));
   });
 }

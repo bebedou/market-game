@@ -2294,8 +2294,9 @@ class _Hours extends StatelessWidget {
   }
 }
 
-/// Starting a new business: a city, then a vacant site there to open a
-/// store of any kind on.
+/// Starting a new business: a country and a city, played in full or asleep
+/// (which opening there wakes), then a vacant site there to open a store of
+/// any kind on.
 class NewBusiness extends StatefulWidget {
   const NewBusiness({super.key, this.subsidiary = false});
 
@@ -2310,15 +2311,54 @@ class NewBusiness extends StatefulWidget {
 class _NewBusinessState extends State<NewBusiness> {
   MarketId? _market;
 
+  /// What sets [country] apart: its taxes and how it takes the cycle.
+  String _countryHint(ContentDb content, CountryId country) {
+    final def = content.countries[country.index];
+    final taxes = content.taxesOf(country);
+    return tr('market.countryHint', {
+      'tax': taxes == null ? '—' : percent(taxes.corporateRate, decimals: 0),
+      'dividends': taxes == null
+          ? '—'
+          : percent(taxes.dividendRate, decimals: 0),
+      'cycle': def.depth > Fx.parse('1.1')
+          ? tr('market.cycleDeep')
+          : def.depth < Fx.parse('0.95')
+          ? tr('market.cycleMild')
+          : tr('market.cycleUsual'),
+    });
+  }
+
+  /// What [market]'s shoppers spend a year, to the nearest thousand, and
+  /// its levels.
+  String _cityHint(ContentDb source, MarketDef market) {
+    var spending = Money.zero;
+    for (var channel = 0; channel < source.channelCount; channel++) {
+      spending += marketSpending(source, market, channel);
+    }
+    return tr('market.cityHint', {
+      'market': money(
+        Money((spending.cents / 100000).round() * 100000),
+        cents: false,
+      ),
+      'prices': percent(market.priceLevel, decimals: 0),
+      'incomes': percent(market.incomeLevel, decimals: 0),
+      'wages': percent(market.wageLevel, decimals: 0),
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final game = context.game;
     final content = game.content;
+    // The cities asleep follow those played in full, in the plan.
+    final plan = game.plan;
+    final source = plan ?? content;
     final vacant = [
       for (final id in game.view.vacantSites) content.sites[id.index],
+      if (plan != null) ..._plannedVacant(plan, content),
     ];
     final cities = [
-      for (final market in content.markets)
+      for (final market in source.markets)
         if (vacant.any((site) => site.market == market.id)) market,
     ];
     // The player's first city by default, while it has room.
@@ -2326,6 +2366,15 @@ class _NewBusinessState extends State<NewBusiness> {
     final market =
         _market ??
         (cities.any((city) => city.id == home) ? home : cities.firstOrNull?.id);
+    final chosen = market == null ? null : source.markets[market.index];
+    final countries = [
+      for (final country in content.countries)
+        if (cities.any((city) => city.country == country.id)) country,
+    ];
+    // Opening in a city asleep wakes it.
+    final row = chosen == null || chosen.id.index < content.markets.length
+        ? null
+        : plan!.neighbourhoods.indexWhere((row) => row.key == chosen.key);
     return Section(
       title: widget.subsidiary
           ? tr('common.startSubsidiary')
@@ -2337,7 +2386,29 @@ class _NewBusinessState extends State<NewBusiness> {
               : tr('market.businessHint'),
         ),
         if (cities.isEmpty) Hint(tr('market.noVacant')),
-        if (content.markets.length > 1)
+        if (chosen != null && countries.length > 1) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final country in countries)
+                  ChoiceChip(
+                    label: Text(country.name),
+                    selected: country.id == chosen.country,
+                    onSelected: (_) => setState(
+                      () => _market = cities
+                          .firstWhere((city) => city.country == country.id)
+                          .id,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Hint(_countryHint(content, chosen.country)),
+        ],
+        if (chosen != null && source.markets.length > 1)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Wrap(
@@ -2345,17 +2416,23 @@ class _NewBusinessState extends State<NewBusiness> {
               runSpacing: 6,
               children: [
                 for (final city in cities)
-                  ChoiceChip(
-                    label: Text(city.name),
-                    selected: city.id == market,
-                    onSelected: (_) => setState(() => _market = city.id),
-                  ),
+                  if (city.country == chosen.country)
+                    ChoiceChip(
+                      label: Text(city.name),
+                      selected: city.id == market,
+                      onSelected: (_) => setState(() => _market = city.id),
+                    ),
               ],
             ),
           ),
+        if (chosen != null) Hint(_cityHint(source, chosen)),
         for (final site in vacant)
           if (site.market == market)
-            _VacantSite(site: site, subsidiary: widget.subsidiary),
+            _VacantSite(
+              site: site,
+              subsidiary: widget.subsidiary,
+              wakeRow: row,
+            ),
       ],
     );
   }

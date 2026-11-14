@@ -7,41 +7,61 @@ import '../core/safe_int.dart';
 import '../persistence/state_io.dart';
 
 /// Where and how the player chose to start: the site and format of their
-/// first store, and the name it and their company go by. Without one, the
-/// game starts as the scenario sets out.
+/// first store, and the name it and their company go by; or, for a
+/// [GameStart.holding], only their holding's name, with no business yet.
+/// Without one, the game starts as the scenario sets out.
 final class GameStart {
   const GameStart({
-    required this.site,
-    required this.format,
+    required SiteId this.site,
+    required FormatId this.format,
     required this.name,
   });
 
+  /// The player starts with a holding named [name] and no business: the
+  /// scenario's company for them sleeps, its cash theirs, and they start
+  /// their first business where they like.
+  const GameStart.holding(this.name) : site = null, format = null;
+
   GameStart.read(StateReader reader)
-    : site = SiteId(reader.readInt()),
-      format = FormatId(reader.readInt()),
+    : site = switch (reader.readInt()) {
+        < 0 => null,
+        final index => SiteId(index),
+      },
+      format = switch (reader.readInt()) {
+        < 0 => null,
+        final index => FormatId(index),
+      },
       name = reader.readString();
 
-  final SiteId site;
-  final FormatId format;
+  /// The first store's site and format; null for a holding start.
+  final SiteId? site;
+  final FormatId? format;
   final String name;
+
+  /// Whether the player starts with only a holding, named [name].
+  bool get holding => site == null;
 
   void write(StateWriter writer) {
     writer
-      ..writeInt(site.index)
-      ..writeInt(format.index)
+      ..writeInt(site?.index ?? -1)
+      ..writeInt(format?.index ?? -1)
       ..writeString(name);
   }
 
   @override
-  String toString() =>
-      'GameStart(site: ${site.index}, format: ${format.index}, name: $name)';
+  String toString() => holding
+      ? 'GameStart.holding($name)'
+      : 'GameStart(site: ${site!.index}, format: ${format!.index}, '
+            'name: $name)';
 }
 
 /// What a [GameStart] comes to. The player starts as well off as with the
 /// scenario's own first store: what fitting out the chosen store costs
 /// beyond it comes out of the company's cash, and the player's own if the
 /// company would keep less than [minStartingCash]; a cheaper store leaves
-/// the company the difference.
+/// the company the difference. With a holding start, the company's cash
+/// and what its store would have cost are the player's own, and nothing
+/// is fitted out.
 typedef StartTerms = ({
   /// Fitting out the chosen store.
   Money fitOut,
@@ -86,30 +106,43 @@ List<SiteId> startingSites(ContentDb content) {
 (StartTerms?, Refusal?) startTerms(ContentDb content, GameStart start) {
   final setup = playerSetup(content);
   if (setup == null) return (null, const Refusal('noStartingStore'));
-  if (start.site.index < 0 || start.site.index >= content.sites.length) {
-    return (null, const Refusal('unknownSite'));
-  }
-  if (!startingSites(content).contains(start.site)) {
-    return (null, const Refusal('siteTaken'));
-  }
-  if (start.format.index < 0 || start.format.index >= content.formats.length) {
-    return (null, const Refusal('unknownFormat'));
-  }
   final name = start.name;
   if (name.trim() != name || name.isEmpty || name.length > maxNameLength) {
     return (null, const Refusal('nameRule', count: maxNameLength));
-  }
-  final site = content.sites[start.site.index];
-  final format = content.formats[start.format.index];
-  if (format.minArea > site.area) {
-    return (null, Refusal('siteTooSmall', format: format.id));
   }
   final usual = content.stores[setup.store];
   final usualFitOut = content.sites[usual.site.index].openingCost.times(
     content.formats[usual.format.index].fitOut,
   );
-  final fitOut = site.openingCost.times(format.fitOut);
   final player = content.persons[content.player.index];
+  final (chosenSite, chosenFormat) = (start.site, start.format);
+  if (chosenSite == null || chosenFormat == null) {
+    return (
+      (
+        fitOut: Money.zero,
+        companyCash: Money.zero,
+        personalCash:
+            player.cash + content.companies[setup.company].cash + usualFitOut,
+        capital: Money.zero,
+      ),
+      null,
+    );
+  }
+  if (chosenSite.index < 0 || chosenSite.index >= content.sites.length) {
+    return (null, const Refusal('unknownSite'));
+  }
+  if (!startingSites(content).contains(chosenSite)) {
+    return (null, const Refusal('siteTaken'));
+  }
+  if (chosenFormat.index < 0 || chosenFormat.index >= content.formats.length) {
+    return (null, const Refusal('unknownFormat'));
+  }
+  final site = content.sites[chosenSite.index];
+  final format = content.formats[chosenFormat.index];
+  if (format.minArea > site.area) {
+    return (null, Refusal('siteTooSmall', format: format.id));
+  }
+  final fitOut = site.openingCost.times(format.fitOut);
   var companyCash =
       content.companies[setup.company].cash + usualFitOut - fitOut;
   var personalCash = player.cash;
@@ -181,9 +214,7 @@ List<SiteId> startingSites(ContentDb content) {
     prices: [
       for (final product in content.products)
         if (sells[product.category.index] && listed++ < shelfSlots)
-          content
-              .referenceIn(product, content.countryOf(market))
-              .times(level)
+          content.referenceIn(product, content.countryOf(market)).times(level)
         else
           null,
     ],

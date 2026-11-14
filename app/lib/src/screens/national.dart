@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../controller.dart';
 import '../format.dart';
 import '../l10n.dart';
+import '../outlines.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -102,20 +103,22 @@ class _NationalMapState extends State<NationalMap> {
             _BlockWorth(country: widget.country, block: block),
         ],
         const SizedBox(height: 10),
-        _TileMap(
-          regions: regions,
-          shops: ours.shops,
-          shares: [
-            for (final (r, sales) in ours.sales.indexed)
-              national.markets[trade][r].cents == 0
-                  ? 0.0
-                  : sales.cents / national.markets[trade][r].cents,
-          ],
-          ink: ledger.ink,
-          paper: ledger.paper,
-          muted: ledger.muted,
-          onTap: (r) => openRegion(context, widget.country, trade, r),
-        ),
+        if (outlineOf(national.def.key) case final outline?)
+          _InkMap(
+            outline: outline,
+            regions: regions,
+            shops: ours.shops,
+            shares: [
+              for (final (r, sales) in ours.sales.indexed)
+                national.markets[trade][r].cents == 0
+                    ? 0.0
+                    : sales.cents / national.markets[trade][r].cents,
+            ],
+            ink: ledger.ink,
+            paper: ledger.paper,
+            muted: ledger.muted,
+            onTap: (r) => openRegion(context, widget.country, trade, r),
+          ),
         Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
@@ -324,31 +327,12 @@ String tinyShare(Money part, Money whole) {
   );
 }
 
-/// "HF" for Hauts-de-France, "PACA" for Provence-Alpes-Côte d'Azur, "Bay"
-/// for Bayern: the capitals of a name of several words, the first three
-/// letters of one, four where three would be [taken].
-String regionMark(String name, Set<String> taken) {
-  final words = name
-      .split(RegExp(r"[\s\-]+"))
-      .map((w) => w.contains("'") ? w.substring(w.indexOf("'") + 1) : w)
-      .where((w) => w.isNotEmpty)
-      .toList();
-  final capitals = [
-    for (final word in words)
-      if (word[0] != word[0].toLowerCase()) word[0],
-  ];
-  if (capitals.length > 1) return capitals.join();
-  final word = words.first;
-  final short = word.length <= 3 ? word : word.substring(0, 3);
-  return taken.contains(short) && word.length > 3
-      ? word.substring(0, 4)
-      : short;
-}
-
-/// The regions as tiles laid out roughly as on a map, each shaded by
-/// [shares] against the most and marked with [shops].
-class _TileMap extends StatelessWidget {
-  const _TileMap({
+/// The regions as an ink map, as in the country's outline, each shaded
+/// by [shares] against the most and marked with [shops] where it has any;
+/// a region tapped opens its page.
+class _InkMap extends StatelessWidget {
+  const _InkMap({
+    required this.outline,
     required this.regions,
     required this.shops,
     required this.shares,
@@ -358,6 +342,7 @@ class _TileMap extends StatelessWidget {
     required this.onTap,
   });
 
+  final CountryOutline outline;
   final List<NationalRegion> regions;
   final List<int> shops;
   final List<double> shares;
@@ -366,100 +351,160 @@ class _TileMap extends StatelessWidget {
   final Color muted;
   final void Function(int region) onTap;
 
-  static const _gap = 3.0;
+  /// How deep the ink of region [r] is: light paper for none, deepening
+  /// with its share.
+  double _depth(int r, double most) =>
+      most <= 0 || shares[r] <= 0 ? 0.04 : 0.10 + 0.70 * shares[r] / most;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    var cols = 1;
-    var rows = 1;
-    for (final region in regions) {
-      if (region.col + 1 > cols) cols = region.col + 1;
-      if (region.row + 1 > rows) rows = region.row + 1;
-    }
-    // Marks, the first of a short name taking it before the next.
-    final taken = <String>{};
-    final marks = [
-      for (final region in regions)
-        () {
-          final mark = regionMark(region.name, taken);
-          taken.add(mark);
-          return mark;
-        }(),
-    ];
     final most = shares.fold(0.0, (a, b) => b > a ? b : a);
+    // Larger regions first, so the smaller inside them are drawn over them.
+    final order =
+        [
+          for (final (r, region) in regions.indexed)
+            if (outline.regions.containsKey(region.key)) r,
+        ]..sort(
+          (a, b) => outline.regions[regions[b].key]!.area.compareTo(
+            outline.regions[regions[a].key]!.area,
+          ),
+        );
     return LayoutBuilder(
       builder: (context, constraints) {
-        final room = (constraints.maxWidth - _gap * (cols - 1)) / cols;
-        final tile = room < 64 ? room : 64.0;
-        final width = cols * tile + (cols - 1) * _gap;
+        final width = constraints.maxWidth < 440 ? constraints.maxWidth : 440.0;
+        final scale = width / outline.width;
+        final height = outline.height * scale;
+        // The smallest region under a touch, as the smaller lie on top.
+        int? hit(Offset local) {
+          final point = local / scale;
+          for (final r in order.reversed) {
+            if (outline.regions[regions[r].key]!.path.contains(point)) return r;
+          }
+          return null;
+        }
+
         return Center(
-          child: SizedBox(
-            width: width,
-            height: rows * tile + (rows - 1) * _gap,
-            child: Stack(
-              children: [
-                for (final (r, region) in regions.indexed)
-                  Positioned(
-                    left: region.col * (tile + _gap),
-                    top: region.row * (tile + _gap),
-                    width: tile,
-                    height: tile,
-                    child: () {
-                      // Light paper for none; ink deepening with the share.
-                      final depth = most <= 0 || shares[r] <= 0
-                          ? 0.04
-                          : 0.10 + 0.70 * shares[r] / most;
-                      final dark = depth > 0.45;
-                      return Semantics(
-                        button: true,
-                        label: tr('market.tileLabel', {
-                          'region': region.name,
-                          'count': shops[r],
-                        }),
-                        excludeSemantics: true,
-                        child: Material(
-                          color: Color.alphaBlend(
-                            ink.withValues(alpha: depth),
-                            paper,
-                          ),
-                          shape: Border.all(
-                            color: ink.withValues(alpha: 0.6),
-                            width: 0.5,
-                          ),
-                          child: InkWell(
-                            onTap: () => onTap(r),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  marks[r],
-                                  maxLines: 1,
-                                  overflow: TextOverflow.clip,
-                                  style: figures(
-                                    theme.textTheme.labelSmall,
-                                  ).copyWith(color: dark ? paper : muted),
-                                ),
-                                Text(
-                                  '${shops[r]}',
-                                  style: figures(
-                                    theme.textTheme.bodyMedium,
-                                  ).copyWith(color: dark ? paper : ink),
-                                ),
-                              ],
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: (details) {
+              if (hit(details.localPosition) case final r?) onTap(r);
+            },
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _InkPainter(
+                        outline: outline,
+                        paths: [
+                          for (final r in order)
+                            (
+                              path: outline.regions[regions[r].key]!.path,
+                              depth: _depth(r, most),
                             ),
+                        ],
+                        scale: scale,
+                        ink: ink,
+                        paper: paper,
+                        muted: muted,
+                      ),
+                    ),
+                  ),
+                  for (final r in order)
+                    Positioned(
+                      left:
+                          outline.regions[regions[r].key]!.label.dx * scale -
+                          22,
+                      top:
+                          outline.regions[regions[r].key]!.label.dy * scale -
+                          10,
+                      width: 44,
+                      height: 20,
+                      child: IgnorePointer(
+                        child: Semantics(
+                          label: tr('market.tileLabel', {
+                            'region': regions[r].name,
+                            'count': shops[r],
+                          }),
+                          excludeSemantics: true,
+                          child: Center(
+                            child: shops[r] == 0
+                                ? const SizedBox.shrink()
+                                : Text(
+                                    '${shops[r]}',
+                                    style: figures(theme.textTheme.labelSmall)
+                                        .copyWith(
+                                          color: _depth(r, most) > 0.45
+                                              ? paper
+                                              : ink,
+                                        ),
+                                  ),
                           ),
                         ),
-                      );
-                    }(),
-                  ),
-              ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );
       },
     );
   }
+}
+
+/// Draws an ink map: each region filled with ink at its depth over the
+/// paper and ruled round in ink, and the box of any inset.
+class _InkPainter extends CustomPainter {
+  _InkPainter({
+    required this.outline,
+    required this.paths,
+    required this.scale,
+    required this.ink,
+    required this.paper,
+    required this.muted,
+  });
+
+  final CountryOutline outline;
+  final List<({Path path, double depth})> paths;
+  final double scale;
+  final Color ink;
+  final Color paper;
+  final Color muted;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(scale);
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8 / scale
+      ..strokeJoin = StrokeJoin.round
+      ..color = ink;
+    for (final (:path, :depth) in paths) {
+      canvas
+        ..drawPath(
+          path,
+          Paint()
+            ..color = Color.alphaBlend(ink.withValues(alpha: depth), paper),
+        )
+        ..drawPath(path, line);
+    }
+    if (outline.inset case final box?) {
+      canvas.drawRect(
+        box,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6 / scale
+          ..color = muted,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_InkPainter old) => true;
 }
 
 /// Opens region [region] of the game's [country] for [trade]: its

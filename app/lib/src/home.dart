@@ -156,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
               final switchable = picked && game.myStores.length > 1;
               final small = theme.textTheme.bodySmall;
               final title = switch (_tab) {
-                HomeTab.holding => tr('home.yourHolding'),
+                HomeTab.holding => game.holdingName ?? tr('home.yourHolding'),
                 HomeTab.finance => tr('home.tabs.finance'),
                 HomeTab.world => tr('home.theWorld'),
                 HomeTab.shop || HomeTab.books =>

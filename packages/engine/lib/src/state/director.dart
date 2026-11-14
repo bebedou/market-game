@@ -1,7 +1,11 @@
 import '../core/calendar.dart';
+import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../persistence/state_io.dart';
+
+/// The save version from which a brief grows by a rate.
+const _rateVersion = 31;
 
 /// How far a director may grow the company they run, each step allowing
 /// what the ones before it do.
@@ -33,7 +37,8 @@ final class Director {
     required this.payout,
     required this.hiredOn,
     this.borrows = false,
-    this.nationalPace = 0,
+    this.nationalRate = Fx.zero,
+    this.nationalAuto = false,
     this.nationalRegions = const [],
   });
 
@@ -45,7 +50,14 @@ final class Director {
       payout = reader.readBool(),
       hiredOn = Day(reader.readInt()),
       borrows = reader.version >= 22 ? reader.readBool() : false,
-      nationalPace = reader.version >= 29 ? reader.readInt() : 0,
+      // Before rates, a brief to open some shops a month left the rate to
+      // the director.
+      nationalAuto = reader.version >= _rateVersion
+          ? reader.readBool()
+          : reader.version >= 29 && reader.readInt() > 0,
+      nationalRate = reader.version >= _rateVersion
+          ? Fx.raw(reader.readInt())
+          : Fx.zero,
       nationalRegions = [
         if (reader.version >= 29)
           for (var i = 0, n = reader.readInt(); i < n; i++) reader.readString(),
@@ -69,9 +81,15 @@ final class Director {
   /// earnings; never on the owner's guarantee.
   final bool borrows;
 
-  /// How many shops run by formula across the country they may open a
-  /// month, where each pays back soonest; none at 0.
-  final int nationalPace;
+  /// How fast they grow the company's shops run by formula across its
+  /// countries: new shops a month as a share of its shops of the trade in
+  /// each country (see `nationalBudget`); none at zero. Ignored when
+  /// [nationalAuto].
+  final Fx nationalRate;
+
+  /// Whether they grow at the rate their grade runs well
+  /// ([DirectorGradeDef.growth]).
+  final bool nationalAuto;
 
   /// The regions they may open those in, by the national table's keys; any
   /// region of the company's countries if empty.
@@ -88,7 +106,8 @@ final class Director {
       ..writeBool(payout)
       ..writeInt(hiredOn.number)
       ..writeBool(borrows)
-      ..writeInt(nationalPace)
+      ..writeBool(nationalAuto)
+      ..writeInt(nationalRate.raw)
       ..writeInt(nationalRegions.length);
     nationalRegions.forEach(writer.writeString);
   }

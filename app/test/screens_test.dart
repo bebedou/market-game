@@ -749,11 +749,15 @@ void main() {
     await openIndex(tester, 'France');
     await scrollTo(tester, find.text('Your shops by region'));
     expect(find.text('Rank among chains'), findsOneWidget);
-    // Hauts-de-France holds the three.
-    await scrollTo(tester, find.text('HF'));
-    expect(find.text('ÎF'), findsOneWidget);
-    expect(find.text('PACA'), findsOneWidget);
-    await tester.tap(find.text('HF'));
+    // Hauts-de-France holds the three, on the country's ink map.
+    Finder region(String label) => find.byWidgetPredicate(
+      (widget) => widget is Semantics && widget.properties.label == label,
+    );
+    final north = region('Hauts-de-France: your shops, 3');
+    await scrollTo(tester, north);
+    expect(region('Île-de-France: your shops, 0'), findsOneWidget);
+    expect(find.text('3'), findsWidgets);
+    await tester.tap(north, warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(find.text('Yours here'), findsOneWidget);
     expect(find.text('Wages against the country'), findsOneWidget);
@@ -889,10 +893,22 @@ void main() {
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Across the country'));
     await tester.pumpAndSettle();
-    // Off until the player sets a pace; then the regions to pick from.
+    // Off until the player sets a rate; then the regions to pick from.
     expect(find.widgetWithText(FilterChip, 'Occitanie'), findsNothing);
-    await tester.tap(find.byTooltip('More').first);
+    final fast = find.widgetWithText(ChoiceChip, '10%');
+    await tester.ensureVisible(fast);
     await tester.pumpAndSettle();
+    await tester.tap(fast);
+    await tester.pumpAndSettle();
+    // Faster than a seasoned director runs well.
+    expect(find.text('beyond what they run well'), findsOneWidget);
+    final steady = find.widgetWithText(ChoiceChip, '2%');
+    await tester.ensureVisible(steady);
+    await tester.pumpAndSettle();
+    await tester.tap(steady);
+    await tester.pumpAndSettle();
+    expect(find.text('beyond what they run well'), findsNothing);
+    expect(find.textContaining('about 1 shop'), findsOneWidget);
     final occitanie = find.widgetWithText(FilterChip, 'Occitanie');
     await tester.ensureVisible(occitanie);
     await tester.pumpAndSettle();
@@ -903,7 +919,8 @@ void main() {
     await tester.pumpAndSettle();
     final hire = game.pending.single as HireDirector;
     expect(hire.growth, Growth.open);
-    expect(hire.nationalPace, 1);
+    expect(hire.nationalRate, Fx.parse('0.02'));
+    expect(hire.nationalAuto, isFalse);
     expect(hire.nationalRegions, ['FRJ']);
   });
 
@@ -972,7 +989,7 @@ void main() {
     expect(find.textContaining('Continue'), findsNothing);
   });
 
-  testWidgets('the main menu sets up a new game where the player chooses, '
+  testWidgets('the main menu starts a new game with only a holding named, '
       'saves it in a slot and continues it', (tester) async {
     final saves = MemorySaveSlots();
     await pumpMenu(tester, saves);
@@ -980,32 +997,70 @@ void main() {
     expect(find.textContaining('Continue'), findsNothing);
     await tester.tap(find.text('New game'));
     await tester.pumpAndSettle();
-    expect(find.text('Corner Shop'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), 'Burger Lab');
-    await tester.tap(find.text('Montpellier, Boutonnet'));
-    await tester.pumpAndSettle();
-    await scrollTo(tester, find.text('Arceaux corner'));
-    await tester.tap(find.text('Arceaux corner'));
-    await tester.pumpAndSettle();
-    await scrollTo(tester, find.text('Fast food'));
-    await tester.tap(find.text('Fast food'));
-    await tester.pumpAndSettle();
-    await scrollTo(tester, find.text('Start'));
-    // 18,000 × 1.6 to fit out leaves the company 16,200.
-    expect(find.text('16,200'), findsOneWidget);
+    // The holding's name is all it asks.
+    expect(find.byType(TextField), findsOneWidget);
+    // 20,000 of their own, the company's 15,000, the corner's 30,000.
+    expect(find.textContaining('You start with 65,000'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+    await tester.enterText(find.byType(TextField), 'Rayan Holding');
+    await tester.pump();
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
-    expect(find.text('Your holding'), findsOneWidget);
-    expect(saves.stores[0].summary?.company, 'Burger Lab');
+    expect(find.text('Rayan Holding'), findsOneWidget);
+    expect(find.text('You have no company trading.'), findsOneWidget);
+    expect(saves.stores[0].summary?.company, 'Rayan Holding');
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Main menu'));
     await tester.pumpAndSettle();
-    expect(find.text('Continue · Burger Lab, Thu 1 Jan 2026'), findsOneWidget);
+    expect(
+      find.text('Continue · Rayan Holding, Thu 1 Jan 2026'),
+      findsOneWidget,
+    );
     expect(find.text('Empty'), findsNWidgets(2));
     await tester.tap(find.textContaining('Continue'));
     await tester.pumpAndSettle();
-    expect(find.text('Your holding'), findsOneWidget);
+    expect(find.text('Rayan Holding'), findsOneWidget);
+  });
+
+  testWidgets("a holding's first business starts from the dashboard, in any "
+      'country, and waking the city asleep it opens in', (tester) async {
+    final game = SimulationController.newGame(
+      prototype,
+      seed: 7,
+      start: const GameStart.holding('Rayan Holding'),
+      citiesAsleep: true,
+    );
+    await pumpGame(tester, game);
+    await tester.tap(find.text('You have no company trading.'));
+    await tester.pumpAndSettle();
+    expect(find.text('Start a new business'), findsWidgets);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Germany'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Corporate tax'), findsOneWidget);
+    expect(find.textContaining('Its shoppers spend'), findsOneWidget);
+    final markets = game.content.markets.length;
+    final open = find.widgetWithText(OutlinedButton, 'Open').first;
+    await scrollTo(tester, open);
+    await tester.tap(open);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Capital from your cash'),
+      '60000',
+    );
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Open').last);
+    await tester.pumpAndSettle();
+    expect(game.content.markets, hasLength(markets + 1));
+    final woken = game.content.markets.last;
+    expect(game.content.countries[woken.country.index].name, 'Germany');
+    expect(game.pending.single, isA<OpenStore>());
+    game.step();
+    await tester.pumpAndSettle();
+    expect(game.view.companies.single.stores.single.market, woken.id);
   });
 
   testWidgets('a game that cannot be loaded is set aside and frees its slot', (

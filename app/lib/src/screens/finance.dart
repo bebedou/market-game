@@ -617,7 +617,8 @@ class _DirectorSheetState extends State<_DirectorSheet> {
   bool? _borrows;
   ManagerGradeId? _managerGrade;
   StrategyId? _strategy;
-  int? _pace;
+  Fx? _rate;
+  bool? _auto;
   Set<String>? _regions;
 
   @override
@@ -683,7 +684,21 @@ class _DirectorSheetState extends State<_DirectorSheet> {
         national != null &&
         countries.isNotEmpty &&
         (growth == Growth.open || growth == Growth.buy);
-    final pace = _pace ?? current?.nationalPace ?? 0;
+    final auto = _auto ?? current?.nationalAuto ?? false;
+    final rate = _rate ?? current?.nationalRate ?? Fx.zero;
+    final gradeDef = grades[grade.index];
+    // What the director grows the chain at, and so opens this month.
+    final growing = auto ? gradeDef.growth : rate;
+    final growsAtAll = growing > Fx.zero;
+    final planned = nationally
+        ? _planned(
+            game,
+            widget.company,
+            countries,
+            content.strategies[strategy.index].format,
+            growing,
+          )
+        : (opens: 0, shops: 0);
     final picked = _regions ?? {...?current?.nationalRegions};
     // This year's shops run by formula: opened and closed, their fitting
     // out and what they earned.
@@ -825,17 +840,68 @@ class _DirectorSheetState extends State<_DirectorSheet> {
                     tr('finance.acrossCountry'),
                     style: theme.textTheme.titleSmall,
                   ),
-                  Row(
+                  Text(tr('finance.growRate')),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
                     children: [
-                      Expanded(child: Text(tr('finance.nationalPace'))),
-                      CountStepper(
-                        value: pace,
-                        max: maxNationalPace,
-                        label: pace == 0 ? tr('finance.nationalOff') : null,
-                        onChanged: (value) => setState(() => _pace = value),
+                      for (final option in _rates)
+                        ChoiceChip(
+                          label: Text(
+                            option == Fx.zero
+                                ? tr('finance.rateOff')
+                                : percent(option, decimals: 0),
+                          ),
+                          selected: !auto && rate == option,
+                          onSelected: (_) => setState(() {
+                            _auto = false;
+                            _rate = option;
+                          }),
+                        ),
+                      ChoiceChip(
+                        label: Text(tr('finance.rateAsJudged')),
+                        selected: auto,
+                        onSelected: (_) => setState(() => _auto = true),
                       ),
                     ],
                   ),
+                  Hint(tr('finance.growRateHint')),
+                  if (growsAtAll)
+                    Line(
+                      tr('finance.thisMonth'),
+                      tr('finance.aboutShops', {
+                        'count': planned.opens,
+                        'total': planned.shops,
+                      }),
+                    ),
+                  Line(
+                    capitalized(
+                      tr('finance.runsWellUpTo', {
+                        'director': aDirector(gradeDef),
+                      }),
+                    ),
+                    tr('finance.aMonth', {
+                      'rate': percent(gradeDef.growth, decimals: 1),
+                    }),
+                  ),
+                  Line(
+                    tr('finance.slowsPast'),
+                    tr('finance.ofItsTrade', {
+                      'share': percent(
+                        content.directors!.criticalShare,
+                        decimals: 0,
+                      ),
+                    }),
+                  ),
+                  if (!auto && rate > gradeDef.growth) ...[
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Stamp(tr('finance.beyondPace')),
+                    ),
+                    Hint(tr('finance.beyondPaceHint')),
+                  ],
                   Hint(
                     tr('finance.nationalPaceHint', {
                       'cost': money(
@@ -844,7 +910,7 @@ class _DirectorSheetState extends State<_DirectorSheet> {
                       ),
                     }),
                   ),
-                  if (pace > 0) ...[
+                  if (growsAtAll) ...[
                     for (final country in countries) ...[
                       if (countries.length > 1)
                         Padding(
@@ -1017,9 +1083,10 @@ class _DirectorSheetState extends State<_DirectorSheet> {
                     growth: growth,
                     payout: payout,
                     borrows: borrows,
-                    nationalPace: nationally ? pace : 0,
+                    nationalRate: nationally && !auto ? rate : Fx.zero,
+                    nationalAuto: nationally && auto,
                     nationalRegions: [
-                      if (nationally && pace > 0)
+                      if (nationally && growsAtAll)
                         for (final country in countries)
                           for (final region in country.def.regions)
                             if (picked.contains(region.key)) region.key,
@@ -1046,6 +1113,38 @@ class _DirectorSheetState extends State<_DirectorSheet> {
       ),
     );
   }
+}
+
+/// The rates a brief may grow a chain at, a month.
+final _rates = [
+  Fx.zero,
+  Fx.parse('0.01'),
+  Fx.parse('0.02'),
+  Fx.parse('0.04'),
+  Fx.parse('0.06'),
+  maxNationalRate,
+];
+
+/// What a director growing [company]'s shops of [format] at [rate] opens
+/// this month across [countries], and its shops of that trade there.
+({int opens, int shops}) _planned(
+  SimulationController game,
+  CompanyView company,
+  List<NationalCountryView> countries,
+  FormatId format,
+  Fx rate,
+) {
+  final view = game.view;
+  final content = game.content;
+  var opens = 0;
+  var shops = 0;
+  for (final country in countries) {
+    final trade = country.tradeOf(content, format);
+    if (trade == null) continue;
+    shops += nationalChainShops(view, content, company, country, trade);
+    opens += nationalBudget(view, content, company, country, trade, rate);
+  }
+  return (opens: opens, shops: shops);
 }
 
 /// The director's monthly letters, newest first: the latest two, or [all].

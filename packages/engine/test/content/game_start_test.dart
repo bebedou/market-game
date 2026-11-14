@@ -72,10 +72,7 @@ void main() {
         ).$2?.key;
     expect(problem('par_clichy', 'grocery'), 'fitOutTooDear');
     expect(problem('prime', 'grocery'), 'siteTaken');
-    expect(
-      problem('backstreet', 'supermarket'),
-      'siteTooSmall',
-    );
+    expect(problem('backstreet', 'supermarket'), 'siteTooSmall');
     expect(problem('backstreet', 'grocery', ' Mine'), 'nameRule');
   });
 
@@ -118,6 +115,84 @@ void main() {
     );
     final replayed = Simulation.replay(content, file);
     expect(replayed.stateHash(), simulation.stateHash());
+  });
+
+  test('a holding start puts the company\'s cash and what its store cost in '
+      "the player's hands, and opens nothing", () {
+    final (terms, problem) = startTerms(
+      content,
+      const GameStart.holding('Bebedou Holding'),
+    );
+    expect(problem, isNull);
+    // 20,000 of their own, the company's 15,000, the corner's 30,000.
+    expect(terms, (
+      fitOut: Money.zero,
+      companyCash: Money.zero,
+      personalCash: Money.parse('65000.00'),
+      capital: Money.zero,
+    ));
+    expect(
+      startTerms(content, const GameStart.holding(' Mine')).$2?.key,
+      'nameRule',
+    );
+    final simulation = Simulation.newGame(
+      content,
+      seed: 3,
+      start: const GameStart.holding('Bebedou Holding'),
+    );
+    final view = simulation.observe(player);
+    expect(view.companies, isEmpty);
+    expect(view.cash, Money.parse('65000.00'));
+    expect(view.vacantSites, contains(site('corner')));
+    // The scenario's company for the player sleeps, out of sight.
+    final setup = content.companies.indexWhere((c) => c.owner == player);
+    expect(simulation.world.companies[setup].status, CompanyStatus.dormant);
+    expect(invariantViolations(simulation.world), isEmpty);
+  });
+
+  test('a holding opens its first business where it likes, lives where that '
+      'is, and saves, loads and replays the same', () {
+    const start = GameStart.holding('Bebedou Holding');
+    final simulation = Simulation.newGame(content, seed: 3, start: start);
+    final france = content.countryOf(
+      content.sites[site('corner').index].market,
+    );
+    final abroad = content.sites.firstWhere(
+      (s) =>
+          content.countryOf(s.market) != france &&
+          simulation.observe(player).vacantSites.contains(s.id),
+    );
+    simulation
+      ..submit(
+        OpenStore(
+          player,
+          site: abroad.id,
+          name: 'First',
+          capital: Money.parse('60000.00'),
+          format: format('grocery'),
+        ),
+      )
+      ..step();
+    final view = simulation.observe(player);
+    final company = view.companies.single;
+    expect(company.stores.single.site, abroad.id);
+    expect(
+      simulation.world.residence(content, player),
+      content.countryOf(abroad.market),
+    );
+    for (var i = 0; i < 20; i++) {
+      simulation.step();
+    }
+    expect(invariantViolations(simulation.world), isEmpty);
+    final file = simulation.save();
+    expect(
+      Simulation.load(content, file).world.start.toString(),
+      start.toString(),
+    );
+    expect(
+      Simulation.replay(content, file).stateHash(),
+      simulation.stateHash(),
+    );
   });
 
   test('a start that is refused never makes a world', () {

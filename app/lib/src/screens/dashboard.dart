@@ -47,13 +47,16 @@ class DashboardScreen extends StatelessWidget {
     final active = game.view.companies.any(
       (company) => company.status == CompanyStatus.active,
     );
-    final items = <(String, String, StoreView?, (HomeTab, ShopPart?)?)>[
+    final items = <(String, String, StoreView?, VoidCallback?)>[
       if (!active)
         (
           tr('dashboard.noCompany'),
           tr('dashboard.noCompanyDetail'),
           null,
-          null,
+          () => context.openPage(
+            tr('common.startBusiness'),
+            (_) => [const NewBusiness()],
+          ),
         ),
       for (final company in game.view.companies)
         if (_belowCushion(game, company))
@@ -67,7 +70,7 @@ class DashboardScreen extends StatelessWidget {
                   : '',
             }),
             null,
-            (HomeTab.finance, null),
+            () => onOpen(HomeTab.finance),
           ),
       for (final (company, store) in stores)
         if (company.status == CompanyStatus.active &&
@@ -87,7 +90,7 @@ class DashboardScreen extends StatelessWidget {
               tr('dashboard.emptyShelves'),
               tr('dashboard.emptyShelvesDetail', {'at': _at(game, store)}),
               store,
-              (HomeTab.shop, ShopPart.supplies),
+              () => onOpen(HomeTab.shop, part: ShopPart.supplies),
             ),
           if (game.staffOf(store).every((staff) => staff == 0) &&
               !game.delegates(store, ManagerDuty.staffing))
@@ -95,21 +98,21 @@ class DashboardScreen extends StatelessWidget {
               tr('dashboard.noStaff'),
               tr('dashboard.noStaffDetail', {'at': _at(game, store)}),
               store,
-              (HomeTab.shop, ShopPart.running),
+              () => onOpen(HomeTab.shop, part: ShopPart.running),
             ),
         ],
     ];
     final theme = Theme.of(context);
     final ledger = Ledger.of(context);
     return [
-      for (final (title, detail, store, target) in items)
+      for (final (title, detail, store, open) in items)
         FadeSlideIn(
           child: InkWell(
-            onTap: target == null
+            onTap: open == null
                 ? null
                 : () {
                     if (store != null) game.selectStore(store.id);
-                    onOpen(target.$1, part: target.$2);
+                    open();
                   },
             child: Container(
               margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -128,7 +131,7 @@ class DashboardScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (target != null) const Icon(Icons.chevron_right),
+                  if (open != null) const Icon(Icons.chevron_right),
                 ],
               ),
             ),

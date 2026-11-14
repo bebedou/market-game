@@ -9,7 +9,7 @@ export 'src/commands/apply_command.dart'
         maxMarketingShare,
         maxNameLength,
         maxNationalOpenings,
-        maxNationalPace,
+        maxNationalRate,
         maxRivalDiscount;
 export 'src/commands/command.dart'
     show
@@ -63,6 +63,8 @@ export 'src/countries/country_economy.dart'
         BlockMonth,
         NationalOffer,
         maxNationalMarketing,
+        strainCost,
+        strainFactor,
         Chain,
         ChainMonth,
         CompanyBlock,
@@ -128,7 +130,13 @@ export 'src/policies/cushion.dart'
         nextInstallment,
         storeCushion;
 export 'src/policies/director.dart'
-    show buyoutPaybackMonths, directorManagerDuties, nationalPaybackMonths;
+    show
+        buyoutPaybackMonths,
+        directorManagerDuties,
+        nationalBudget,
+        nationalChainShops,
+        nationalGrowthRate,
+        nationalPaybackMonths;
 export 'src/policies/entrepreneur_policy.dart' show EntrepreneurPolicy;
 export 'src/policies/policy.dart'
     show CombinedPolicy, Policy, ownerPolicy, standardPolicies;

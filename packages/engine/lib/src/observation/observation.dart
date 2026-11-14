@@ -846,7 +846,8 @@ Observation observe(
     companyNames: shared.companyNames,
     companies: [
       for (final company in world.companies)
-        if (company.owner == actor)
+        // A holding start's sleeping company was never the player's.
+        if (company.owner == actor && company.status != CompanyStatus.dormant)
           CompanyView(
             id: company.id,
             status: company.status,

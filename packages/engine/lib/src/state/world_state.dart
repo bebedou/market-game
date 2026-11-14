@@ -114,9 +114,16 @@ final class WorldState {
   /// Where [person] lives: as the scenario has it, but the player lives
   /// where the game's start put their first store.
   CountryId residence(ContentDb content, PersonId person) => switch (start) {
-    final start? when person == player => content.countryOf(
-      content.sites[start.site.index].market,
+    GameStart(:final site?) when person == player => content.countryOf(
+      content.sites[site.index].market,
     ),
+    // A holding lives where its first business opened.
+    GameStart(holding: true) when person == player => switch (stores
+        .where((store) => companies[store.company.index].owner == person)
+        .firstOrNull) {
+      final first? => content.countryOf(content.sites[first.site.index].market),
+      null => content.residenceOf(person),
+    },
     _ => content.residenceOf(person),
   };
 
@@ -180,8 +187,9 @@ final class WorldState {
   Elsewhere elsewhere = Elsewhere(accounts: Accounts());
 
   /// The world at the scenario's start date, the player's first store where
-  /// and as [start] chose if given. Opening cash is the only money ever
-  /// created; from then on it only changes hands.
+  /// and as [start] chose if given, or none for a holding start, the
+  /// scenario's company for them left [CompanyStatus.dormant]. Opening cash
+  /// is the only money ever created; from then on it only changes hands.
   factory WorldState.initial(
     ContentDb content, {
     required int seed,
@@ -250,6 +258,9 @@ final class WorldState {
             injected: terms != null && i == setup!.company
                 ? terms.capital
                 : Money.zero,
+            status: start != null && start.holding && i == setup!.company
+                ? CompanyStatus.dormant
+                : CompanyStatus.active,
           ),
       ],
       stores: [],
@@ -284,13 +295,15 @@ final class WorldState {
     )..growEconomies(content);
     for (final (i, store) in content.stores.indexed) {
       if (start != null && i == setup!.store) {
-        final site = content.sites[start.site.index];
+        final (chosen, format) = (start.site, start.format);
+        // A holding start opens no store.
+        if (chosen == null || format == null) continue;
+        final site = content.sites[chosen.index];
         final shop = startingShop(
           content,
-          start.format,
+          format,
           site.market,
-          shelfSlots:
-              site.shelfSlots + content.formats[start.format.index].slotBonus,
+          shelfSlots: site.shelfSlots + content.formats[format.index].slotBonus,
         );
         world.addStore(
           content,
@@ -300,7 +313,7 @@ final class WorldState {
           prices: shop.prices,
           staff: shop.staff,
           opensOn: content.startDay,
-          format: start.format,
+          format: format,
         );
         continue;
       }
@@ -568,9 +581,8 @@ final class WorldState {
               priceLevel:
                   macroAt(content, site.market).priceIndex *
                   content.markets[site.market.index].priceLevel,
-              references: content.references[content
-                  .countryOf(site.market)
-                  .index],
+              references:
+                  content.references[content.countryOf(site.market).index],
             ) ??
             Fx.one,
     ];

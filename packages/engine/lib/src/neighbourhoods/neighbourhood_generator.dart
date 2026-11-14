@@ -284,8 +284,9 @@ String generateScenario(
   final playerSite = setup == null
       ? null
       : content.sites[content.stores[setup.store].site.index];
-  final keep = start != null
-      ? content.sites[start.site.index].market
+  final chosen = start?.site;
+  final keep = chosen != null
+      ? content.sites[chosen.index].market
       : playerSite?.market ?? const MarketId(0);
   final root = jsonDecode(content.source) as Map<String, dynamic>;
   final figures = rowsFromScenario(content);
@@ -307,14 +308,14 @@ String generateScenario(
   final rows = <Object?>[...((root['neighbourhoods'] as List?) ?? const [])];
   // The player's store first, if it stood in a city that now sleeps.
   if (setup != null &&
-      start != null &&
+      chosen != null &&
       playerSite != null &&
       playerSite.market != keep) {
     final json = stores.firstWhere(
       (store) => store['id'] == content.stores[setup.store].key,
     );
-    final chosen = content.sites[start.site.index];
-    json['site'] = chosen.key;
+    final site = content.sites[chosen.index];
+    json['site'] = site.key;
     final fitOut =
         content.formats[content.stores[setup.store].format.index].fitOut;
     final company = list('companies').firstWhere(
@@ -323,7 +324,7 @@ String generateScenario(
     company['cash'] =
         (Money.parse(company['cash']! as String) +
                 playerSite.openingCost.times(fitOut) -
-                chosen.openingCost.times(fitOut))
+                site.openingCost.times(fitOut))
             .toDecimalString();
   }
   for (final market in content.markets) {
@@ -386,15 +387,16 @@ String generateScenario(
   );
   return (
     asleepContent,
-    start == null
-        ? null
+    // A holding start has no site to carry over.
+    start == null || chosen == null
+        ? start
         : GameStart(
             site: asleepContent.sites
                 .firstWhere(
-                  (site) => site.key == content.sites[start.site.index].key,
+                  (kept) => kept.key == content.sites[chosen.index].key,
                 )
                 .id,
-            format: start.format,
+            format: start.format!,
             name: start.name,
           ),
   );
@@ -441,10 +443,7 @@ ContentDb withNeighbourhoods(
       shops: shops,
     );
   }
-  return loadScenario(
-    jsonEncode(world.scenario()),
-    national: content.national,
-  );
+  return loadScenario(jsonEncode(world.scenario()), national: content.national);
 }
 
 /// What a chain's shop of a woken district takes up as a store: its site's
@@ -1205,7 +1204,11 @@ final class _World {
     return normal == product.referencePrice
         ? price
         : Money(
-            mulDivRound(price.cents, normal.cents, product.referencePrice.cents),
+            mulDivRound(
+              price.cents,
+              normal.cents,
+              product.referencePrice.cents,
+            ),
           );
   }
 
@@ -1248,13 +1251,15 @@ final class _World {
       if (!format.sells[product.category.index]) continue;
       margin += _yearlyMargin(row, product, strategy);
       for (final segment in content.segments) {
-        goods += product.baseCost.times(content.costLevel(row.country)).times(
-          _yearlyUnits(
-            row,
-            segment,
-            product,
-          ).timesInt(row.households[segment.id.index]),
-        );
+        goods += product.baseCost
+            .times(content.costLevel(row.country))
+            .times(
+              _yearlyUnits(
+                row,
+                segment,
+                product,
+              ).timesInt(row.households[segment.id.index]),
+            );
       }
     }
     final premises =

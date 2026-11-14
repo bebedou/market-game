@@ -183,6 +183,7 @@ final class NationalCountryView {
     required FormatId format,
     required StrategyId strategy,
     required int region,
+    int extra = 0,
   }) {
     final def = content.formats[format.index];
     final trade = tradeOf(content, format);
@@ -201,6 +202,7 @@ final class NationalCountryView {
       price: Fx.one + rule.marketPosition,
       costs: nationalCosts(def, rule, country!),
       discount: _discounts[company.index] ?? Fx.zero,
+      extra: extra,
     );
   }
 

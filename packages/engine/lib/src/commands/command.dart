@@ -191,7 +191,10 @@ sealed class Command {
         growth: Growth.values[reader.readInt()],
         payout: reader.readBool(),
         borrows: reader.version >= 22 ? reader.readBool() : false,
-        nationalPace: reader.version >= 29 ? reader.readInt() : 0,
+        nationalAuto: reader.version >= 31
+            ? reader.readBool()
+            : reader.version >= 29 && reader.readInt() > 0,
+        nationalRate: reader.version >= 31 ? Fx.raw(reader.readInt()) : Fx.zero,
         nationalRegions: [
           if (reader.version >= 29)
             for (var i = 0, n = reader.readInt(); i < n; i++)
@@ -958,7 +961,8 @@ final class HireDirector extends Command {
     required this.growth,
     required this.payout,
     this.borrows = false,
-    this.nationalPace = 0,
+    this.nationalRate = Fx.zero,
+    this.nationalAuto = false,
     this.nationalRegions = const [],
   });
 
@@ -974,9 +978,10 @@ final class HireDirector extends Command {
   /// Whether they may borrow to grow, on the company's earnings.
   final bool borrows;
 
-  /// Shops run by formula they may open a month, and where (see
-  /// `Director.nationalPace`).
-  final int nationalPace;
+  /// How fast they grow the shops run by formula, or whether at the rate
+  /// their grade runs well, and where (see `Director.nationalRate`).
+  final Fx nationalRate;
+  final bool nationalAuto;
   final List<String> nationalRegions;
 
   @override
@@ -991,7 +996,8 @@ final class HireDirector extends Command {
       ..writeInt(growth.index)
       ..writeBool(payout)
       ..writeBool(borrows)
-      ..writeInt(nationalPace)
+      ..writeBool(nationalAuto)
+      ..writeInt(nationalRate.raw)
       ..writeInt(nationalRegions.length);
     nationalRegions.forEach(writer.writeString);
   }
@@ -1001,7 +1007,8 @@ final class HireDirector extends Command {
       'HireDirector(actor: ${actor.index}, company: ${company.index}, '
       'grade: ${grade.index}, strategy: ${strategy.index}, '
       'managerGrade: ${managerGrade.index}, growth: ${growth.name}, '
-      'payout: $payout, borrows: $borrows, nationalPace: $nationalPace, '
+      'payout: $payout, borrows: $borrows, nationalRate: ${nationalRate.toDecimalString()}, '
+      'nationalAuto: $nationalAuto, '
       'nationalRegions: $nationalRegions)';
 }
 

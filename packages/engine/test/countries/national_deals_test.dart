@@ -216,7 +216,7 @@ void main() {
         managerGrade: _content.managers.grades.last.id,
         growth: Growth.open,
         payout: false,
-        nationalPace: 5,
+        nationalAuto: true,
         nationalRegions: const ['FRE', 'FRF', 'FR1'],
       ),
     );

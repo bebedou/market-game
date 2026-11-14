@@ -581,6 +581,10 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
           name: grade.string('name'),
           skill: grade.fraction('skill'),
           salary: grade.money('salary'),
+          // Without a figure of its own, in proportion to their skill.
+          growth: grade.has('growth')
+              ? grade.fraction('growth')
+              : grade.fraction('skill') * Fx.raw(600),
         ),
       );
       grade.finish();
@@ -589,6 +593,9 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
       judgmentError: node.fraction('judgmentError'),
       coaching: node.fraction('coaching'),
       grades: List.unmodifiable(grades),
+      criticalShare: node.has('criticalShare')
+          ? node.fraction('criticalShare')
+          : Fx.raw(500),
     );
     node.finish();
   }

@@ -259,12 +259,14 @@ Money _fitOut(SimulationController game, CompanyView company) {
     (store) => content.companies[store.company.index].owner == content.player,
   );
   var total = company.balance(AccountKind.openingCosts);
+  // A holding began with no store: its books show every one.
+  if (start != null && start.holding) return total;
   for (final store in company.stores) {
     final index = store.id.index;
     if (index >= content.stores.length || store.acquiredOn != null) continue;
     // As the store began: converting it since is among the works.
     final format = index == chosen && start != null
-        ? start.format
+        ? start.format!
         : content.stores[index].format;
     total += content.sites[store.site.index].openingCost.times(
       content.formats[format.index].fitOut,

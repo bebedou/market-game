@@ -1338,7 +1338,13 @@ final class DirectorsDef {
     required this.judgmentError,
     required this.coaching,
     required this.grades,
+    required this.criticalShare,
   });
+
+  /// A company's share of a trade in a country at which a director grows
+  /// its shops of that trade there half as fast as they otherwise would:
+  /// past it, growth by opening turns from compounding to steady.
+  final Fx criticalShare;
 
   /// How far, either way, a director of no skill misjudges the margin a new
   /// store, or a rival's store for sale, would earn. A director of skill s
@@ -1365,9 +1371,14 @@ final class DirectorGradeDef {
     required this.name,
     required this.skill,
     required this.salary,
+    required this.growth,
   });
 
   final DirectorGradeId id;
+
+  /// The most of a chain's shops they open in a month and still choose
+  /// well: pushed faster, they misjudge where in proportion.
+  final Fx growth;
   final String key;
   final String name;
 

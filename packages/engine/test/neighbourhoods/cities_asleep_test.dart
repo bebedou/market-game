@@ -134,6 +134,43 @@ void main() {
       expect(invariantViolations(game.world), isEmpty);
     });
 
+    test('starts with a holding alone, its first business waking the city '
+        'it opens in', () {
+      final player = _content.player;
+      final game = Simulation.newGame(
+        _content,
+        seed: 4,
+        start: const GameStart.holding('Bebedou Holding'),
+        citiesAsleep: true,
+      );
+      expect(game.observe(player).companies, isEmpty);
+      _advance(game, 10);
+      game.submit(WakeNeighbourhood(player, row: _row(game, 'Nantes, Rezé')));
+      final reze = game.content.markets.last;
+      final site = game.content.sites.firstWhere(
+        (site) =>
+            site.market == reze.id &&
+            game.observe(player).vacantSites.contains(site.id),
+      );
+      game
+        ..submit(
+          OpenStore(
+            player,
+            site: site.id,
+            name: 'First',
+            capital: Money.parse('60000.00'),
+          ),
+        )
+        ..step();
+      final company = game.observe(player).companies.single;
+      expect(company.stores.single.market, reze.id);
+      _advance(game, 20);
+      expect(invariantViolations(game.world), isEmpty);
+      final file = game.save();
+      expect(Simulation.load(_content, file).stateHash(), game.stateHash());
+      expect(Simulation.replay(_content, file).stateHash(), game.stateHash());
+    });
+
     test('saves, loads and replays the same', () {
       final game = Simulation.newGame(_content, seed: 2, citiesAsleep: true);
       _advance(game, 70);

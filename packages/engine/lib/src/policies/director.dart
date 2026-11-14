@@ -1,4 +1,5 @@
 import '../accounting/ledger.dart';
+import '../commands/apply_command.dart' show maxNationalOpenings;
 import '../commands/command.dart';
 import '../content/content_db.dart';
 import '../core/fx.dart';
@@ -6,6 +7,7 @@ import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/rng.dart';
 import '../core/safe_int.dart';
+import '../observation/national_view.dart';
 import '../observation/observation.dart';
 import '../state/director.dart';
 import '../state/districts.dart';
@@ -233,7 +235,7 @@ List<Command> direct(
   // years, so a chain growing fast doesn't wait for each year's fitting out
   // to be earned back before the next.
   final earned = profit + company.balance(AccountKind.openingCosts);
-  if (director.nationalPace > 0 &&
+  if (nationalGrowthRate(content, director) > Fx.zero &&
       director.allows(Growth.open) &&
       earned > Money.zero) {
     for (final (:command, :memo) in _nationalGrowth(
@@ -617,12 +619,104 @@ StrategyId _strategyFor(
 /// trade's across a region, known rather than guessed for one site.
 const nationalPaybackMonths = 36;
 
-/// The shops run by formula [company]'s director would open this month: in
-/// the regions their brief allows (or every region of the countries the
-/// company trades in), one in each of those where a new shop of the
-/// strategy's kind would pay back soonest as they judge it, up to the brief's
-/// pace, each within [nationalPaybackMonths] or the strategy's payback
-/// period if longer.
+/// The rate [director] grows their company's shops run by formula at:
+/// their brief's, or what their grade runs well.
+Fx nationalGrowthRate(ContentDb content, Director director) =>
+    director.nationalAuto
+    ? content.directors!.grades[director.grade.index].growth
+    : director.nationalRate;
+
+/// [company]'s shops of [trade] in [country]: run by hand, in districts run
+/// by formula, and across the country, its chains bought among them.
+int nationalChainShops(
+  Observation view,
+  ContentDb content,
+  CompanyView company,
+  NationalCountryView country,
+  int trade,
+) {
+  final game = country.country;
+  var shops = 0;
+  for (final block in country.blocks) {
+    if (block.company == company.id && block.trade == trade) {
+      shops += block.stores;
+    }
+  }
+  for (final store in company.stores) {
+    if (store.status != StoreStatus.closed &&
+        content.countryOf(store.market) == game &&
+        country.tradeOf(content, store.format) == trade) {
+      shops++;
+    }
+  }
+  for (final district in view.districts) {
+    if (district.country != game) continue;
+    for (final shop in district.shops) {
+      if (shop.company == company.id &&
+          country.tradeOf(content, shop.format) == trade) {
+        shops++;
+      }
+    }
+  }
+  return shops;
+}
+
+/// How many shops of [trade] a director growing [company] at [rate] opens
+/// in [country] this month: that share of its shops of the trade there, run
+/// by hand, in districts run by formula and across the country, slowed as
+/// it nears critical mass there (at [DirectorsDef.criticalShare] of the
+/// trade at its sales' yearly pace, half as fast), and at least one. A part
+/// of a shop is one more with that chance by [rng], so growth compounds on
+/// average however small; without [rng], it rounds. None at no rate.
+int nationalBudget(
+  Observation view,
+  ContentDb content,
+  CompanyView company,
+  NationalCountryView country,
+  int trade,
+  Fx rate, {
+  Rng? rng,
+}) {
+  if (rate <= Fx.zero) return 0;
+  final shops = nationalChainShops(view, content, company, country, trade);
+  var sales = Money.zero;
+  for (final block in country.blocks) {
+    if (block.company != company.id || block.trade != trade) continue;
+    // A year at its latest months' pace.
+    final months = block.months.length > 12
+        ? block.months.sublist(block.months.length - 12)
+        : block.months;
+    if (months.isEmpty) continue;
+    var sold = Money.zero;
+    for (final month in months) {
+      sold += month.sales;
+    }
+    sales += Money(mulDivRound(sold.cents, 12, months.length));
+  }
+  final market = country.markets[trade].fold(Money.zero, (sum, m) => sum + m);
+  final critical = content.directors!.criticalShare;
+  var slowed = rate;
+  if (market.cents >= 100 && critical > Fx.zero) {
+    // In euros, to stay safe in the division.
+    final share = Fx.raw(
+      mulDivRound(sales.cents ~/ 100, Fx.scale, market.cents ~/ 100),
+    );
+    slowed = rate * critical.div(critical + share);
+  }
+  final whole = shops * slowed.raw;
+  var count = whole ~/ Fx.scale;
+  final part = Fx.raw(whole % Fx.scale);
+  if (rng == null ? part.raw * 2 >= Fx.scale : rng.chance(part)) count++;
+  return count < 1 ? 1 : count;
+}
+
+/// The shops run by formula [company]'s director would open this month, the
+/// soonest paid back first: in each country, as many as [nationalBudget]
+/// allows at the rate they grow it, each in the region allowed where one
+/// more would pay back soonest as they judge it, counting those placed
+/// before it this month, within [nationalPaybackMonths] or the strategy's
+/// payback period if longer. Asked to grow faster than their grade runs
+/// well, they misjudge in proportion.
 List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
   Observation view,
   ContentDb content,
@@ -635,7 +729,12 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
   final national = format.national;
   if (national == null) return const [];
   final grade = content.directors!.grades[director.grade.index];
-  final error = content.directors!.judgmentError * (Fx.one - grade.skill);
+  final rate = nationalGrowthRate(content, director);
+  if (rate <= Fx.zero) return const [];
+  var error = content.directors!.judgmentError * (Fx.one - grade.skill);
+  if (grade.growth > Fx.zero && rate > grade.growth) {
+    error = error * rate.div(grade.growth);
+  }
   final home = {
     for (final store in company.stores)
       if (store.status != StoreStatus.closed)
@@ -647,66 +746,106 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
   final limit = strategy.expansionPaybackMonths > nationalPaybackMonths
       ? strategy.expansionPaybackMonths
       : nationalPaybackMonths;
-  final candidates = <({OpenNational command, NationalOpened memo})>[];
-  final paybacks = <int>[];
+  final picks = <({OpenNational command, NationalOpened memo})>[];
   for (final country in view.national) {
     final game = country.country;
     if (game == null || country.def.regions.isEmpty) continue;
+    final trade = country.tradeOf(content, format.id);
+    if (trade == null) continue;
     final ours = country.blocks.any((block) => block.company == company.id);
-    for (final (r, region) in country.def.regions.indexed) {
-      final allowed = director.nationalRegions.isEmpty
-          ? home.contains(game.index) || ours
-          : director.nationalRegions.contains(region.key);
-      if (!allowed) continue;
-      var (:sales, :profit) = country.newShop(
-        content,
-        company: company.id,
-        format: format.id,
-        strategy: strategy.id,
-        region: r,
-      );
-      if (judgment != null) {
-        profit = profit.times(
-          judgmentFactor(
-            judgment(
-              company.id.index * 100000 + 90000 + country.index * 100 + r,
-            ),
-            error,
-          ),
-        );
+    final regions = [
+      for (final (r, region) in country.def.regions.indexed)
+        if (director.nationalRegions.isEmpty
+            ? home.contains(game.index) || ours
+            : director.nationalRegions.contains(region.key))
+          r,
+    ];
+    if (regions.isEmpty) continue;
+    // How far off they are about each region, this month.
+    final judged = {
+      for (final r in regions)
+        r: judgment == null
+            ? Fx.one
+            : judgmentFactor(
+                judgment(
+                  company.id.index * 100000 + 90000 + country.index * 100 + r,
+                ),
+                error,
+              ),
+    };
+    final placed = List.filled(country.def.regions.length, 0);
+    final first = <int, ({Money earns, int payback})>{};
+    var budget = nationalBudget(
+      view,
+      content,
+      company,
+      country,
+      trade,
+      rate,
+      rng: judgment?.call(company.id.index * 100000 + 95000 + country.index),
+    );
+    while (budget-- > 0) {
+      var best = -1;
+      var bestPayback = 0;
+      var bestProfit = Money.zero;
+      for (final r in regions) {
+        final profit = country
+            .newShop(
+              content,
+              company: company.id,
+              format: format.id,
+              strategy: strategy.id,
+              region: r,
+              extra: placed[r] * 1000,
+            )
+            .profit
+            .times(judged[r]!);
+        if (profit <= Money.zero) continue;
+        final cost = country.fitOut(content, format.id, r);
+        final payback = (cost.cents * 12 + profit.cents - 1) ~/ profit.cents;
+        if (payback > limit) continue;
+        if (best < 0 || payback < bestPayback) {
+          best = r;
+          bestPayback = payback;
+          bestProfit = profit;
+        }
       }
-      if (profit <= Money.zero) continue;
+      if (best < 0) break;
+      placed[best]++;
+      first[best] ??= (earns: bestProfit, payback: bestPayback);
+    }
+    for (final r in regions) {
+      var left = placed[r];
       final cost = country.fitOut(content, format.id, r);
-      final payback = (cost.cents * 12 + profit.cents - 1) ~/ profit.cents;
-      if (payback > limit) continue;
-      candidates.add((
-        command: OpenNational(
-          view.actor,
-          company: company.id,
-          country: game,
-          region: r,
-          format: format.id,
-          strategy: strategy.id,
-          count: 1,
-        ),
-        memo: NationalOpened(
-          view.today,
-          country: game,
-          region: region.key,
-          format: format.id,
-          count: 1,
-          cost: cost,
-          earns: profit,
-          paybackMonths: payback,
-        ),
-      ));
-      paybacks.add(payback);
+      while (left > 0) {
+        final count = left < maxNationalOpenings ? left : maxNationalOpenings;
+        left -= count;
+        picks.add((
+          command: OpenNational(
+            view.actor,
+            company: company.id,
+            country: game,
+            region: r,
+            format: format.id,
+            strategy: strategy.id,
+            count: count,
+          ),
+          memo: NationalOpened(
+            view.today,
+            country: game,
+            region: country.def.regions[r].key,
+            format: format.id,
+            count: count,
+            cost: cost.timesInt(count),
+            earns: first[r]!.earns,
+            paybackMonths: first[r]!.payback,
+          ),
+        ));
+      }
     }
   }
-  final order = [for (var i = 0; i < candidates.length; i++) i]
-    ..sort((a, b) {
-      final byPayback = paybacks[a].compareTo(paybacks[b]);
-      return byPayback != 0 ? byPayback : a - b;
-    });
-  return [for (final i in order.take(director.nationalPace)) candidates[i]];
+  // Soonest paid back first, so what the cash runs short of is the least
+  // good.
+  picks.sort((a, b) => a.memo.paybackMonths.compareTo(b.memo.paybackMonths));
+  return picks;
 }

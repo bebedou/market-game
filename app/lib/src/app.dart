@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'controller.dart';
 import 'l10n.dart';
+import 'outlines.dart';
 import 'saves.dart';
 import 'screens/menu.dart';
 import 'theme.dart';
@@ -22,8 +23,14 @@ const calibrationAsset = 'packages/market_content/countries/calibration.json';
 int newSeed() => DateTime.now().microsecondsSinceEpoch & 0x7fffffff;
 
 /// The bundled scenario, in the words of the language in use, with the
-/// national statistics beside it.
-Future<ContentDb> loadContent() async => loadScenario(
+/// national statistics beside it, and the countries' outlines loaded for
+/// their maps.
+Future<ContentDb> loadContent() async {
+  await loadOutlines();
+  return _loadScenario();
+}
+
+Future<ContentDb> _loadScenario() async => loadScenario(
   localizedScenario(
     await rootBundle.loadString(scenarioAsset),
     currentStrings?.scenario ?? const {},

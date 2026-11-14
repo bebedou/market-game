@@ -7,6 +7,7 @@ import '../core/rng.dart';
 import '../core/safe_int.dart';
 import '../countries/country_economy.dart';
 import '../state/buying_terms.dart';
+import '../state/director.dart';
 import '../state/entities.dart';
 import '../state/factories.dart';
 import '../state/factory.dart';
@@ -82,6 +83,7 @@ void _brief(WorldState world, ContentDb content, CountryEconomy economy) {
     for (final block in country.blocks) {
       final company = world.companies[block.company];
       block.discount = buyingDiscount(content, company);
+      block.strain = _strain(content, company.director);
       final floor = block.name == null
           ? content.strategies[block.strategy].marketingShare
           : Fx.zero;
@@ -90,6 +92,20 @@ void _brief(WorldState world, ContentDb content, CountryEconomy economy) {
           : economy.bestMarketing(country, block.trade, block, floor: floor);
     }
   }
+}
+
+/// How far past what [director]'s grade runs well their brief grows the
+/// company's shops run by formula: the rate over their grade's, less one;
+/// nothing as they judge, within it, or without them.
+Fx _strain(ContentDb content, Director? director) {
+  if (director == null ||
+      director.nationalAuto ||
+      !director.allows(Growth.open)) {
+    return Fx.zero;
+  }
+  final limit = content.directors!.grades[director.grade.index].growth;
+  if (limit <= Fx.zero || director.nationalRate <= limit) return Fx.zero;
+  return director.nationalRate.div(limit) - Fx.one;
 }
 
 /// The game's country for the table's country at [index], if it plays it.

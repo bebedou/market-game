@@ -14,3 +14,4 @@ flutter:
     - locales/
     - countries/euro.json
     - countries/calibration.json
+    - countries/outlines.json
