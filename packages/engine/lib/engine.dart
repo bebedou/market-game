@@ -176,3 +176,4 @@ export 'src/state/talent.dart' show KeyRole;
 export 'src/state/taxation.dart' show CountryTax;
 export 'src/state/valuation.dart' show Valuation, symbolicPrice;
 export 'src/systems/events.dart';
+export 'src/systems/national.dart' show offerDays;

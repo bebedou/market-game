@@ -42,7 +42,8 @@ Future<ContentDb> _loadScenario() async => loadScenario(
 );
 
 /// The game saved in [store], or null if there is none. A save that can't
-/// be loaded is set aside, emptying the slot, and the notice says why.
+/// be loaded, for whatever reason, is set aside, emptying the slot, and the
+/// notice says why.
 Future<(SimulationController?, String?)> openGame(
   ContentDb content,
   SaveStore store,
@@ -58,9 +59,12 @@ Future<(SimulationController?, String?)> openGame(
       ),
       null,
     );
-  } on FormatException catch (error) {
+  } catch (error) {
+    // Any failure to read it, not only a malformed file: a save the code
+    // can't make sense of must free its slot rather than stop the app.
     await store.setAside(file);
-    return (null, tr('app.loadFailed', {'error': error.message}));
+    final reason = error is FormatException ? error.message : '$error';
+    return (null, tr('app.loadFailed', {'error': reason}));
   }
 }
 

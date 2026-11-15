@@ -10,11 +10,14 @@ and say so in the commit message. When you find one, add a row.
 
 ## Suggested order
 
-1. **D1, D2**: the chain-offer news, a likely live bug with a small fix.
-2. **D4, D5, D6**: saves that can break or mis-read when content changes
-   shape, and the app crashing instead of setting the save aside.
-3. **D3**: the known `_fitOut` mistake in company financials.
-4. **D18, D19**: test coverage of the web build and of older saves, which
+Fixed 2026-11-15: D1 (the chain-offer news, now told by the offer's
+expiry), D4 (format 33 checks the national table's shape), D6 (any load
+failure sets the save aside) and D28 (fixtures of formats 31 and 32).
+
+1. **D2, D5**: the observation's live closures, and neighbourhood rows
+   matched by index.
+2. **D3**: the known `_fitOut` mistake in company financials.
+3. **D18, D19**: test coverage of the web build and of older saves, which
    guard everything else.
 5. The rest as the code around them is touched.
 
@@ -22,12 +25,9 @@ and say so in the commit message. When you find one, add a row.
 
 | Id | Issue | Where | Why it matters |
 |---|---|---|---|
-| D1 | The news of a chain's offer for the player's shops probably never shows. `_news` builds `known` from `before.national`, but `Observation.national` is worked out when read, from the live world, so after the step `before` already holds the new offers. No test covers `alerts.chainOffers`. Read, not run. | [app/lib/src/controller.dart](../app/lib/src/controller.dart) `_news` (the "Chains offer" block); [observation.dart](../packages/engine/lib/src/observation/observation.dart) `Observation.national` | Offers last 30 days and are worth millions; the player is never told of them unless they open the country page. |
-| D2 | `Observation` says it is "a copy, unaffected by later steps", but `districts` and `national` are closures over the live world (`observe` passes `() => shared.districts` and `() => nationalViews(world, …)`). Anything that keeps an observation across a step and reads them gets today's state, not that day's. | [observation.dart](../packages/engine/lib/src/observation/observation.dart) `observe`, `Observation` | The cause of D1, and a trap for any before/after comparison or for moving the engine to an isolate. |
+| D2 | `Observation` says it is "a copy, unaffected by later steps", but `districts` and `national` are closures over the live world (`observe` passes `() => shared.districts` and `() => nationalViews(world, …)`). Anything that keeps an observation across a step and reads them gets today's state, not that day's. | [observation.dart](../packages/engine/lib/src/observation/observation.dart) `observe`, `Observation` | It caused D1 (fixed 2026-11-15), and is a trap for any before/after comparison or for moving the engine to an isolate. |
 | D3 | `_fitOut` assumes world store *i* is scenario store *i* for the stores a game began with (`index >= content.stores.length` skips the rest). Waking a district appends scenario stores to `content.stores`, so a store the player opened later can fall below that length and gain the fit-out of an unrelated scenario store. Holding starts return early and are safe; older saves and chosen or classic starts are not. | [app/lib/src/financials.dart](../app/lib/src/financials.dart) `_fitOut` | Inflates money tied up, so ROIC and the company page read wrong after a wake. |
-| D4 | The saved national economy is read by position against the current national table: `CountryEconomy.read` loops over today's countries, classes, trades, regions and chains, and `chain.regional.setAll` throws a `RangeError` if a saved list is longer. The national table is not in the save's content structure, so nothing checks it. | [country_economy.dart](../packages/engine/lib/src/countries/country_economy.dart) `CountryEconomy.read`; [save_file.dart](../packages/engine/lib/src/persistence/save_file.dart) `readNational` | Rebuilding `euro.json` with another region, chain or country silently mis-reads or crashes every saved game with national state. |
 | D5 | Neighbourhood rows are not in the content structure either. Sleepers and woken districts are matched to rows by index; the only check is `row >= length`. | [save_file.dart](../packages/engine/lib/src/persistence/save_file.dart) `SaveData.decode`; [simulation.dart](../packages/engine/lib/src/simulation.dart) `Simulation.load` | Reordering or removing a row in `prototype.json` attaches saved districts to the wrong rows without an error. |
-| D6 | `openGame` sets a save aside only on `FormatException`. Errors such as the `RangeError` of D4 or a `StateError` escape and stop the app at load. | [app/lib/src/app.dart](../app/lib/src/app.dart) `openGame` | A bad save should free its slot with a note, as designed, not crash the menu. |
 | D7 | Reading the national economy can create and advance it: `currentNational` makes `world.national` on first use, and is called from `Simulation.national`, `nationalViews` and commands, not only from `NationalSystem`. `stateHash` and saves include it only once it exists. Read, not run; the window is small (until the first 1st of the month, or an old save's first read). | [systems/national.dart](../packages/engine/lib/src/systems/national.dart) `currentNational`; [simulation.dart](../packages/engine/lib/src/simulation.dart) `stateHash` | A getter that changes state means the hash can depend on whether a screen looked. |
 | D8 | Two saves can run at once: `step()` starts an unawaited `save()` on the 1st of the month, and the app also saves when it goes to the background. Both write the same `slotN.mgsave.tmp` before renaming. Read, not run. | [controller.dart](../app/lib/src/controller.dart) `step`, `save`; [saves_io.dart](../app/lib/src/saves_io.dart) `FileSaveStore.write` | Rare, but it can leave a torn save in the slot. |
 | D9 | The ink map force-unwraps `outline.regions[key]!` for every region of the national table, and no test checks that `outlines.json` has every region `euro.json` has. | [screens/national.dart](../app/lib/src/screens/national.dart) `_InkMap` | Adding a region to the table without redrawing the outlines breaks the country page. |
@@ -61,9 +61,8 @@ and say so in the commit message. When you find one, add a row.
 | Id | Issue | Where | Why it matters |
 |---|---|---|---|
 | D18 | The Node (web) run covers only the core and the small test scenario. Every test that uses the prototype, the national table or neighbourhoods reads files with `dart:io` and is VM-only. | [packages/engine/test](../packages/engine/test), e.g. [test/countries](../packages/engine/test/countries), [test/neighbourhoods](../packages/engine/test/neighbourhoods) | Web determinism of the largest and newest code (formula layer, sleepers, generator) is unchecked. Embedding the content as Dart constants for tests would let them run on both. |
-| D19 | Only one whole-save fixture, format 6. Formats 7 to 31 are tested one entity at a time with `StateReader(bytes, version: N)`; no full save of, say, format 28 or 30 is ever loaded. | [test/fixtures](../packages/engine/test/fixtures) | The save layout is the riskiest thing to break; a fixture per layout milestone (27, 29, 30) would catch sidecar mistakes (D12). |
-| D20 | No test for the chain-offer news (D1) or for outlines covering every region (D9). | [app/test](../app/test) | Both would have caught live problems. |
-| D28 | The labs' save fields (format 32) have no test reading a format 31 layout: only the format 6 fixture and a same-version round trip cover them. | [labs_test.dart](../packages/engine/test/labs_test.dart) | A mistake in the version gates of `Stock`, `Factory`, `FactoryReport` or `CompanyBlock` would break saves from before labs. |
+| D19 | Whole-save fixtures exist for formats 6, 31 and 32 only. Formats 7 to 30 are tested one entity at a time with `StateReader(bytes, version: N)`; no full save of, say, format 28 or 30 is ever loaded. | [test/fixtures](../packages/engine/test/fixtures) | The save layout is the riskiest thing to break; a fixture per earlier milestone (27, 29, 30) would catch sidecar mistakes (D12). |
+| D20 | No test for outlines covering every region (D9). | [app/test](../app/test) | It would catch a broken country page before players do. |
 
 ## Dead code and drift
 

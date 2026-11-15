@@ -871,6 +871,62 @@ void main() {
     expect(command.offer, 1);
   });
 
+  test("a chain's offer made on the first of the month is in the news", () {
+    final content = nationalPrototype;
+    final game = SimulationController.newGame(content, seed: 7);
+    final france = content.countries.firstWhere((c) => c.key == 'fr').id;
+    final grocer = content.strategies.firstWhere((s) => s.key == 'balanced');
+    game
+      ..submit(
+        InjectCapital(
+          content.player,
+          company: playerCompany,
+          amount: Money.parse('200000.00'),
+        ),
+      )
+      ..submit(
+        OpenNational(
+          content.player,
+          company: playerCompany,
+          country: france,
+          region: 0,
+          format: grocer.format,
+          strategy: grocer.id,
+          count: 3,
+        ),
+      );
+    for (var i = 0; i < 40 || !game.today.isFirstOfMonth; i++) {
+      game.step();
+    }
+    final economy = game.national!;
+    final table = economy.table.countries.indexWhere((c) => c.key == 'fr');
+    final country = economy.countries[table];
+    final buyer = country.chains.firstWhere(
+      (c) => c.def.trade == 0 && !c.def.independent && c.isTrading,
+    );
+    // As the national step would make it today: the view before the step is
+    // worked out from the live world, so it shows the offer too.
+    economy.offers.add(
+      NationalOffer(
+        number: economy.nextOffer++,
+        country: table,
+        block: country.blocks.single,
+        chain: buyer,
+        price: Money.parse('250000.00'),
+        expires: game.today + offerDays,
+      ),
+    );
+    game.step();
+    expect(
+      game.alerts.where(
+        (alert) =>
+            alert.kind == AlertKind.offer &&
+            alert.message.contains('${buyer.def.name} offers 250,000'),
+      ),
+      hasLength(1),
+    );
+  });
+
   testWidgets('a director is briefed to open shops across the country', (
     tester,
   ) async {

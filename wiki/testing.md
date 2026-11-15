@@ -37,7 +37,12 @@ Node run covers the core and the small test scenario only.
   `playerStore`, `milkBudget`, `ScriptedDemandSystem`, `quietSystems`,
   `testSystems`, `scriptedCommands`, `runScripted`.
 - [test/fixtures/save_v6.bin](../packages/engine/test/fixtures/save_v6.bin):
-  a format-6 save, the only whole-save fixture. Later formats are tested
+  a format-6 save on the test scenario.
+- `save_v31.bin.gz` and `save_v32.bin.gz` in the same folder: 150 days of the
+  prototype (seed 11, other cities asleep, three grocers across France, a
+  drinks plant, and in 32 a lab with one person), each written by the commit
+  before the next format. [old_saves_test.dart](../packages/engine/test/old_saves_test.dart)
+  loads them, plays on and round-trips them. Formats in between are tested
   field by field, by writing a snippet and reading it with
   `StateReader(bytes, version: N)` (in `borrowing_test`, `cushion_test`,
   `director_test`).

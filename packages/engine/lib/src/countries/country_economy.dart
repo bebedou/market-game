@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import '../core/calendar.dart';
 import '../core/exp_neg.dart';
 import '../core/fx.dart';
+import '../core/hash32.dart';
 import '../core/money.dart';
 import '../core/rng.dart';
 import '../core/safe_int.dart';
@@ -232,6 +235,47 @@ const _strainVersion = 31;
 /// The save version from which they keep what their goods' quality adds to
 /// their pull.
 const _qualityVersion = 32;
+
+/// The save version from which the economy keeps the [tableShape] it was
+/// saved against.
+const _shapeVersion = 33;
+
+/// What a save of the economy must agree with in [table], as its state is
+/// read in the table's order: its regimes, classes and trades, and each
+/// country's regions and chains, by key or name and in order. Figures may
+/// change; a row added, removed or moved may not.
+int tableShape(CountryTable table) {
+  final hash = Hash32();
+  void add(String text) => hash.addBytes(utf8.encode('$text\u0000'));
+  void count(int n) => hash.addInt(n);
+  count(table.regimes.length);
+  for (final regime in table.regimes) {
+    add(regime.key);
+  }
+  count(table.classes.length);
+  for (final income in table.classes) {
+    add(income.key);
+  }
+  count(table.trades.length);
+  for (final trade in table.trades) {
+    add(trade.key);
+  }
+  count(table.countries.length);
+  for (final country in table.countries) {
+    add(country.key);
+    count(country.regions.length);
+    for (final region in country.regions) {
+      add(region.key);
+    }
+    count(country.classes.length);
+    count(country.trades.length);
+    count(country.chains.length);
+    for (final chain in country.chains) {
+      add(chain.name);
+    }
+  }
+  return hash.finish();
+}
 
 /// What a chain grown faster than its director runs well draws, against
 /// what it would: 1 / (1 + [strainCost] × strain). Its shops are run worse,
@@ -1702,6 +1746,7 @@ final class CountryEconomy {
   /// own figures and the chains' pull are worked out again on reading.
   void write(StateWriter writer) {
     writer
+      ..writeInt(tableShape(table))
       ..writeInt(today.number)
       ..writeInt(regime)
       ..writeInt(monthsRun)
@@ -1786,6 +1831,14 @@ final class CountryEconomy {
   /// Reads what [write] wrote over this economy, made afresh from the same
   /// table and seed.
   void read(StateReader reader) {
+    // Read by position against the table: one that has changed shape would
+    // misread it, or fail partway.
+    if (reader.version >= _shapeVersion &&
+        reader.readInt() != tableShape(table)) {
+      throw const FormatException(
+        'The save was made with different national figures',
+      );
+    }
     today = Day(reader.readInt());
     regime = reader.readInt();
     monthsRun = reader.readInt();

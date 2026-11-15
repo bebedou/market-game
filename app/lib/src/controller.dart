@@ -1181,15 +1181,12 @@ class SimulationController extends ChangeNotifier {
     }
 
     // Chains offer for the player's shops run by formula on the first of
-    // the month.
+    // the month. Offers made today are the ones open for the full term: the
+    // view before the step is worked out from the live world, so can't tell.
     if (day.isFirstOfMonth) {
-      final known = {
-        for (final country in before.national)
-          for (final offer in country.offers) offer.number,
-      };
       for (final country in after.national) {
         for (final offer in country.offers) {
-          if (known.contains(offer.number)) continue;
+          if (offer.expires != day + offerDays) continue;
           add(
             AlertKind.offer,
             tr('alerts.chainOffers', {

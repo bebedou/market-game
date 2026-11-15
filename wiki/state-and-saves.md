@@ -99,7 +99,7 @@ added since. Any problem is a `FormatException`.
 
 ## Version gating
 
-- `currentStateVersion` (32) in
+- `currentStateVersion` (33) in
   [state_io.dart](../packages/engine/lib/src/persistence/state_io.dart) is
   the layout written. Bump it whenever the layout or the rules change.
 - `oldestReadableVersion` (6) in
@@ -110,12 +110,19 @@ added since. Any problem is a `FormatException`.
   in `Command.read`.
 - Milestones named in `save_file.dart`: 9 (structure in the header), 24
   (woken neighbourhoods), 26 (cities asleep), 27 (countries' economies), 29
-  (the national economy). The full history of what each version added is in
+  (the national economy), 33 (the national table's shape, `tableShape` in
+  [country_economy.dart](../packages/engine/lib/src/countries/country_economy.dart),
+  checked before the economy is read). The full history of what each version added is in
   *Persistence* in [Engine Architecture.md](<../Engine Architecture.md>).
 
 Rule of thumb when adding state: write it in `write`, read it in `read`
 behind `reader.version >= N`, bump `currentStateVersion` to N, give older
-saves a sensible default, and add a test that reads an older layout.
+saves a sensible default, and add a test that reads an older layout. For a
+new format, the commit before it can write a whole-save fixture: see
+[old_saves_test.dart](../packages/engine/test/old_saves_test.dart).
+
+A save that fails to load for any reason, not only a `FormatException`, is
+set aside by the app's `openGame` and its slot freed.
 
 ## Growing worlds
 
