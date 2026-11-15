@@ -228,6 +228,17 @@ String describeCommand(Command command, ContentDb content, Observation view) {
       'person': _keyPersonName(view, person),
     }),
     StartSoftware(:final name) => tr('commands.startSoftware', {'name': name}),
+    BidTender(:final tender, :final factory, :final price) =>
+      price == null
+          ? tr('commands.withdrawBid', {'number': tender})
+          : tr('commands.bidTender', {
+              'factory': _factoryName(view, factory),
+              'price': money(price),
+              'number': tender,
+            }),
+    EnlargeFactory(:final factory) => tr('commands.enlargeFactory', {
+      'factory': _factoryName(view, factory),
+    }),
     SetSoftwarePrice(:final software, :final price) => tr(
       'commands.setSoftwarePrice',
       {'name': _softwareName(view, software), 'price': money(price)},

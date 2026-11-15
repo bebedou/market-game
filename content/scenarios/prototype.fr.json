@@ -200,6 +200,7 @@
     "reze_halles": "Place du marché de Rezé"
   },
   "factories": {
+    "sizes": {"workshop": "Atelier", "plant": "Usine", "industrial": "Site industriel"},
     "kinds": {
       "bakery": "Boulangerie industrielle",
       "drinks": "Usine de boissons",

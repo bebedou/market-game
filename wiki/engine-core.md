@@ -82,27 +82,29 @@ order that runs:
 |---|---|---|---|
 | 1 | `MacroSystem` | [macro.dart](../packages/engine/lib/src/systems/macro.dart) | 1st of month: cycle, inflation, wages, labour, the one central-bank rate, per country |
 | 2 | `BuyingTermsSystem` | [buying_terms.dart](../packages/engine/lib/src/systems/buying_terms.dart) | 1st of month: counts each company's goods bought, for its buying discount |
-| 3 | `NationalSystem` | [national.dart](../packages/engine/lib/src/systems/national.dart) | 1st of month: advances the countries by formula and books companies' blocks |
-| 4 | `PopulationSystem` | [population.dart](../packages/engine/lib/src/systems/population.dart) | 1st of month; census on 1 January |
-| 5 | `TaxSystem` | [taxes.dart](../packages/engine/lib/src/systems/taxes.dart) | 1 January: corporate tax, filings |
-| 6 | `LogisticsSystem` | [logistics.dart](../packages/engine/lib/src/systems/logistics.dart) | Daily: deliveries become stock lots and bills |
-| 7 | `SpoilageSystem` | [spoilage.dart](../packages/engine/lib/src/systems/spoilage.dart) | Daily: expired lots written off |
-| 8 | `OperationsSystem` | [operations.dart](../packages/engine/lib/src/systems/operations.dart) | Daily: openings, finished works, service levels |
-| 9 | `DemandSystem` | [demand.dart](../packages/engine/lib/src/systems/demand.dart) (with [sales.dart](../packages/engine/lib/src/systems/sales.dart)) | Daily: households shop; about 60% of a day's time |
-| 10 | `FactorySystem` | [factories.dart](../packages/engine/lib/src/systems/factories.dart) | Daily wages, monthly site |
-| 11 | `LabSystem` | [labs.dart](../packages/engine/lib/src/systems/labs.dart) | Daily key people's pay; 1st of month: leads fade, the market for people turns, labs develop |
-| 12 | `SoftwareSystem` | [software.dart](../packages/engine/lib/src/systems/software.dart) | Daily: subscriptions paid, team, offices, marketing and serving billed; 1st of month: the software market turns (standard, products, rivals, startups, customers, offers) |
-| 13 | `SettlementSystem` | [settlement.dart](../packages/engine/lib/src/systems/settlement.dart) | Daily wages and salaries; monthly rent, overheads, loans; pays bills due |
-| 14 | `SleeperSystem` | [sleepers.dart](../packages/engine/lib/src/systems/sleepers.dart) | 1st of month: neighbourhoods asleep, by formula |
-| 15 | `SolvencySystem` | [solvency.dart](../packages/engine/lib/src/systems/solvency.dart) | Daily: liquidates companies overdue past the grace period |
-| 16 | `CloseSystem` | [close.dart](../packages/engine/lib/src/systems/close.dart) | Daily: sales history, reputation |
-| 17 | `ReportSystem` | [report.dart](../packages/engine/lib/src/systems/report.dart) | Daily: folds the day into week and month reports |
+| 3 | `FactorySalesSystem` | [factory_sales.dart](../packages/engine/lib/src/systems/factory_sales.dart) | 1st of month: contracts delivered, tenders closed and opened; month's last day: independents buy |
+| 4 | `NationalSystem` | [national.dart](../packages/engine/lib/src/systems/national.dart) | 1st of month: advances the countries by formula and books companies' blocks |
+| 5 | `PopulationSystem` | [population.dart](../packages/engine/lib/src/systems/population.dart) | 1st of month; census on 1 January |
+| 6 | `TaxSystem` | [taxes.dart](../packages/engine/lib/src/systems/taxes.dart) | 1 January: corporate tax, filings |
+| 7 | `LogisticsSystem` | [logistics.dart](../packages/engine/lib/src/systems/logistics.dart) | Daily: deliveries become stock lots and bills |
+| 8 | `SpoilageSystem` | [spoilage.dart](../packages/engine/lib/src/systems/spoilage.dart) | Daily: expired lots written off |
+| 9 | `OperationsSystem` | [operations.dart](../packages/engine/lib/src/systems/operations.dart) | Daily: openings, finished works, service levels |
+| 10 | `DemandSystem` | [demand.dart](../packages/engine/lib/src/systems/demand.dart) (with [sales.dart](../packages/engine/lib/src/systems/sales.dart)) | Daily: households shop; about 60% of a day's time |
+| 11 | `FactorySystem` | [factories.dart](../packages/engine/lib/src/systems/factories.dart) | Daily wages, monthly site |
+| 12 | `LabSystem` | [labs.dart](../packages/engine/lib/src/systems/labs.dart) | Daily key people's pay; 1st of month: leads fade, the market for people turns, labs develop |
+| 13 | `SoftwareSystem` | [software.dart](../packages/engine/lib/src/systems/software.dart) | Daily: subscriptions paid, team, offices, marketing and serving billed; 1st of month: the software market turns (standard, products, rivals, startups, customers, offers) |
+| 14 | `SettlementSystem` | [settlement.dart](../packages/engine/lib/src/systems/settlement.dart) | Daily wages and salaries; monthly rent, overheads, loans; pays bills due |
+| 15 | `SleeperSystem` | [sleepers.dart](../packages/engine/lib/src/systems/sleepers.dart) | 1st of month: neighbourhoods asleep, by formula |
+| 16 | `SolvencySystem` | [solvency.dart](../packages/engine/lib/src/systems/solvency.dart) | Daily: liquidates companies overdue past the grace period |
+| 17 | `CloseSystem` | [close.dart](../packages/engine/lib/src/systems/close.dart) | Daily: sales history, reputation |
+| 18 | `ReportSystem` | [report.dart](../packages/engine/lib/src/systems/report.dart) | Daily: folds the day into week and month reports |
 
 [closure.dart](../packages/engine/lib/src/systems/closure.dart) (`closeStore`)
 is shared by commands and solvency. [events.dart](../packages/engine/lib/src/systems/events.dart)
 holds the sealed `TickEvent` family: `DeliveryRefused`, `PaymentOverdue`,
 `CensusTaken`, `CompanyLiquidated`, `StoreSold`, `GenerationLaunched`,
-`SoftwareLaunched`, `SoftwareOfferMade`, `RivalLaunched`, `RivalFolded`.
+`SoftwareLaunched`, `SoftwareOfferMade`, `RivalLaunched`, `RivalFolded`,
+`TenderOpened`, `TenderClosed`.
 
 Order matters: `BuyingTermsSystem` before `NationalSystem` (blocks need the
 month's discount), `SleeperSystem` before `SolvencySystem` and
@@ -111,7 +113,7 @@ month's discount), `SleeperSystem` before `SolvencySystem` and
 ## Commands and refusals
 
 - [commands/command.dart](../packages/engine/lib/src/commands/command.dart):
-  the sealed `Command` class and 51 subclasses (`SetPrice`, `PlaceOrder`,
+  the sealed `Command` class and 53 subclasses (`SetPrice`, `PlaceOrder`,
   `OpenStore`, `HireDirector`, `BuildFactory`, `OpenNational`,
   `BuyNationalChain`, …). Each has a `static const tag` and a `write`;
   `Command.read` switches on the tag and gates fields on `reader.version`.

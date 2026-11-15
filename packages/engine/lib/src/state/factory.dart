@@ -5,6 +5,7 @@ import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
 import '../persistence/state_io.dart';
+import 'factory_sales.dart' show factorySalesVersion;
 import 'store.dart' show labsVersion;
 
 /// Append only.
@@ -132,6 +133,14 @@ final class Factory {
     for (var i = 0, n = reader.readInt(); i < n; i++) {
       lines.add(FactoryLine.read(reader));
     }
+    if (reader.version < factorySalesVersion) return;
+    size = reader.readInt();
+    enlargedOn = switch (reader.readNullableInt()) {
+      final day? => Day(day),
+      null => null,
+    };
+    reliability = Fx.raw(reader.readInt());
+    independentShare = reader.readInt();
   }
 
   final FactoryId id;
@@ -148,8 +157,24 @@ final class Factory {
   /// The day it starts making: building takes the kind's build days.
   final Day opensOn;
 
-  /// What building and fitting it cost.
-  final Money builtFor;
+  /// What building and fitting it cost, and enlarging it since.
+  Money builtFor;
+
+  /// Its size, by index into the scenario's sizes: 0 is a workshop.
+  int size = 0;
+
+  /// The day the works enlarging it to the next size end, if under way; it
+  /// runs at its size until then.
+  Day? enlargedOn;
+
+  /// How reliably it has delivered its contracts, from 0 to 1: chains weigh
+  /// it when choosing between bids.
+  Fx reliability = Fx.one;
+
+  /// The share of independent shops' goods it supplies, in millionths,
+  /// which moves month by month toward what its list price and quality
+  /// earn.
+  int independentShare = 0;
 
   /// Shifts it runs, from 0, stopped, to the scenario's most.
   int shifts;
@@ -341,6 +366,11 @@ final class Factory {
     for (final line in lines) {
       line.write(writer);
     }
+    writer
+      ..writeInt(size)
+      ..writeNullableInt(enlargedOn?.number)
+      ..writeInt(reliability.raw)
+      ..writeInt(independentShare);
   }
 }
 

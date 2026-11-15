@@ -695,6 +695,33 @@ class SimulationController extends ChangeNotifier {
     return lab;
   }
 
+  /// The player's bid on [tender] once pending changes apply: its price a
+  /// unit, or null.
+  Money? bidOn(TenderView tender) {
+    var price = tender.bidFactory == null ? null : tender.bidPrice;
+    for (final command in _pending) {
+      if (command case BidTender(
+        tender: final number,
+        price: final bid,
+      ) when number == tender.number) {
+        price = bid;
+      }
+    }
+    return price;
+  }
+
+  /// The enlargement of [factory] waiting for tomorrow, if any.
+  EnlargeFactory? enlarging(FactoryView factory) {
+    for (final command in _pending) {
+      if (command case EnlargeFactory(
+        factory: final id,
+      ) when id == factory.id) {
+        return command;
+      }
+    }
+    return null;
+  }
+
   /// Whether [person] is to join one of the player's labs tomorrow.
   bool hiring(KeyPersonId person) => _pending.any(
     (command) => command is HireKeyPerson && command.person == person,
@@ -842,6 +869,8 @@ class SimulationController extends ChangeNotifier {
     SetFactoryTerms(:final factory) => 'factory terms ${factory.index}',
     CloseFactory(:final factory) => 'factory close ${factory.index}',
     SetLab(:final factory) => 'lab ${factory.index}',
+    BidTender(:final tender) => 'bid $tender',
+    EnlargeFactory(:final factory) => 'enlarge factory ${factory.index}',
     HireKeyPerson(:final person) ||
     HireSoftwarePerson(:final person) ||
     DismissKeyPerson(:final person) => 'key person ${person.index}',
@@ -1104,6 +1133,46 @@ class SimulationController extends ChangeNotifier {
               'date': shortDate(offer?.expires ?? day),
             }),
           );
+        case TenderOpened(:final number):
+          final tender = after.tenders
+              .where((t) => t.number == number)
+              .firstOrNull;
+          if (tender != null) {
+            add(
+              AlertKind.offer,
+              tr('alerts.tenderOpened', {
+                'chain': tender.chain,
+                'units': compactCount(tender.units),
+                'product': productName(tender.product),
+                'country': content.countries[tender.country.index].name,
+                'months': tender.months,
+                'date': shortDate(tender.closes),
+              }),
+            );
+          }
+        case TenderClosed(:final number, :final won):
+          final tender = after.tenders
+              .where((t) => t.number == number)
+              .firstOrNull;
+          if (tender != null) {
+            add(
+              AlertKind.stores,
+              won
+                  ? tr('alerts.tenderWon', {
+                      'chain': tender.chain,
+                      'product': productName(tender.product),
+                      'price': money(tender.winningPrice ?? Money.zero),
+                      'units': compactCount(tender.units),
+                    })
+                  : tr('alerts.tenderLost', {
+                      'chain': tender.chain,
+                      'product': productName(tender.product),
+                      'winner': tender.winner ?? '',
+                      'price': money(tender.winningPrice ?? Money.zero),
+                      'bid': money(tender.bidPrice ?? Money.zero),
+                    }),
+            );
+          }
         case RivalLaunched(:final rival)
             when after.companies.any((c) => c.software?.running ?? false):
           add(

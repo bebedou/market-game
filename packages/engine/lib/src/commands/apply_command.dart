@@ -31,6 +31,7 @@ import '../systems/closure.dart';
 import 'command.dart';
 import 'refusal.dart';
 import 'transfers.dart';
+import '../state/factory_sales.dart';
 
 /// Validates and applies [command]. Returns null when it was applied, or the
 /// reason it was rejected. The rules are the same for every actor.
@@ -90,6 +91,8 @@ Refusal? applyCommand(
     AcceptNationalOffer() => _acceptOffer(world, content, ledger, command),
     DeclineNationalOffer() => _declineOffer(world, content, command),
     StartSoftware() => _startSoftware(world, content, ledger, command),
+    EnlargeFactory() => _enlargeFactory(world, content, ledger, command),
+    BidTender() => _bidTender(world, content, command),
     SetSoftwarePrice() => _setSoftwarePrice(world, content, command),
     SetSoftwareMarketing() => _setSoftwareMarketing(world, content, command),
     HireSoftwarePerson() => _hireSoftwarePerson(world, content, command),
@@ -1442,8 +1445,11 @@ Refusal? _buildFactory(
   if (command.shifts < 0 || command.shifts > factories.maxShifts) {
     return Refusal('shiftsRange', count: factories.maxShifts);
   }
+  if (!_inRange(command.size, factories.sizes.length)) {
+    return Refusal('factorySizeRange', count: factories.sizes.length);
+  }
   if (command.capital.isNegative) return const Refusal('capitalNegative');
-  final kind = factories.kinds[command.kind.index];
+  final kind = factories.sized(command.kind, command.size);
   final serves = [
     for (var c = 0; c < content.countries.length; c++)
       c == command.country.index,
@@ -1509,7 +1515,7 @@ Refusal? _buildFactory(
       builtFor: cost,
       shifts: command.shifts,
       serves: serves,
-    ),
+    )..size = command.size,
   );
   if (cost > Money.zero) {
     ledger.pay(
@@ -1619,7 +1625,7 @@ Refusal? _orderFromFactory(
   final discount = factory.rivalDiscount;
   if (!own && discount == null) return const Refusal('factoryExclusive');
   if (command.lines.isEmpty) return const Refusal('orderEmpty');
-  final kind = factories.kinds[factory.kind.index];
+  final kind = factories.sized(factory.kind, factory.size);
   final level = world.macroOf(country).priceIndex;
   final seen = <int>{};
   final quotes = <({SupplierDef supplier, Money price})>[];
@@ -2322,5 +2328,116 @@ Refusal? _shutDownSoftware(
   );
   if (software == null) return error;
   closeSoftware(world, world.softwareMarket!, software, SoftwareStatus.closed);
+  return null;
+}
+
+/// The most a bid may ask, as times the producer price.
+const maxBidTimes = 2;
+
+Refusal? _enlargeFactory(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  EnlargeFactory command,
+) {
+  final (factory, error) = _ownedFactory(world, command.actor, command.factory);
+  if (factory == null) return error;
+  final factories = content.factories!;
+  if (factory.enlargedOn != null) return const Refusal('factoryEnlarging');
+  final next = factory.size + 1;
+  if (next >= factories.sizes.length) return const Refusal('factoryLargest');
+  if (command.capital.isNegative) return const Refusal('capitalNegative');
+  final person = world.persons[command.actor.index];
+  if (person.accounts[AccountKind.cash] < command.capital) {
+    return const Refusal('notEnoughPersonalCash');
+  }
+  final company = world.companies[factory.company.index];
+  final cost =
+      (factories.sized(factory.kind, next).buildCost -
+              factories.sized(factory.kind, factory.size).buildCost)
+          .times(world.macroOf(factory.country).priceIndex);
+  final cash =
+      company.accounts[AccountKind.cash] + command.capital + command.borrow;
+  if (cash < cost) return Refusal('cannotPayFactory', amount: cost);
+  if (command.borrow != Money.zero) {
+    final refusal = _loanRefusal(
+      world,
+      content,
+      command.borrow,
+      command.termMonths,
+    );
+    if (refusal != null) return refusal;
+  }
+  final loan = _purchaseLoan(
+    world,
+    content,
+    company,
+    person,
+    command.borrow,
+    spent: command.capital,
+  );
+  if (command.borrow != Money.zero && loan == null) {
+    return const Refusal('bankWillNotLend');
+  }
+  if (command.capital > Money.zero) {
+    injectCapital(ledger, person, company, command.capital);
+  }
+  if (loan != null) {
+    _lendFor(world, content, ledger, company, person, loan, command.termMonths);
+  }
+  if (cost > Money.zero) {
+    ledger.pay(
+      payer: company,
+      payerAccount: AccountKind.openingCosts,
+      payee: world.landlords,
+      payeeAccount: AccountKind.revenue,
+      amount: cost,
+      reason: EntryReason.openingCosts,
+      factory: factory.id,
+    );
+  }
+  factory
+    ..builtFor += cost
+    ..enlargedOn = world.today + factories.sizes[next].buildDays;
+  return null;
+}
+
+Refusal? _bidTender(WorldState world, ContentDb content, BidTender command) {
+  final tender = world.tenders
+      .where((t) => t.number == command.tender)
+      .firstOrNull;
+  if (tender == null) return const Refusal('unknownTender');
+  if (tender.status != TenderStatus.open || tender.closes <= world.today) {
+    return const Refusal('tenderClosed');
+  }
+  final (factory, error) = _ownedFactory(world, command.actor, command.factory);
+  if (factory == null) return error;
+  final price = command.price;
+  if (price == null) {
+    if (tender.bidFactory == factory.id) {
+      tender
+        ..bidFactory = null
+        ..bidPrice = null;
+    }
+    return null;
+  }
+  final product = content.products[tender.product.index];
+  final factories = content.factories!;
+  if (!kindMakes(factories.kinds[factory.kind.index], product)) {
+    return Refusal('factoryDoesNotMake', product: product.id);
+  }
+  if (!factory.servesCountry(tender.country)) {
+    return const Refusal('tenderNotServed');
+  }
+  if (factoryLead(world, factory, tender.product) < tender.floor) {
+    return const Refusal('belowQualityFloor');
+  }
+  final most = tender.reference.timesInt(maxBidTimes);
+  if (price <= Money.zero || price > most) {
+    return Refusal('bidRange', amount: most);
+  }
+  tender
+    ..bidFactory = factory.id
+    ..bidPrice = price;
   return null;
 }

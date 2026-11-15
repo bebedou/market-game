@@ -149,6 +149,21 @@ final class RivalLaunched extends TickEvent {
   final SoftwareRivalId rival;
 }
 
+/// A chain opened a tender for a product the player's factories make.
+final class TenderOpened extends TickEvent {
+  const TenderOpened({required this.number});
+
+  final int number;
+}
+
+/// A tender the player bid on closed, won or lost.
+final class TenderClosed extends TickEvent {
+  const TenderClosed({required this.number, required this.won});
+
+  final int number;
+  final bool won;
+}
+
 /// A rival that started up gave up, its customers gone elsewhere.
 final class RivalFolded extends TickEvent {
   const RivalFolded({required this.rival});

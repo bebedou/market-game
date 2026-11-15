@@ -21,6 +21,7 @@ import 'orders.dart';
 import 'research.dart';
 import 'brands.dart';
 import 'sleepers.dart';
+import 'factory_sales.dart';
 import 'software.dart';
 import 'store.dart';
 import 'taxation.dart';
@@ -78,6 +79,19 @@ final class WorldState {
   /// Every software company's product, by [SoftwareId]; those closed or
   /// sold stay.
   final software = <Software>[];
+
+  /// The rival producers factories bid against, as the scenario sets them
+  /// out; empty if factories sell only to their owner's shops.
+  final producers = <Producer>[];
+
+  /// Chains' tenders, open and lately closed, in the order they opened.
+  final tenders = <Tender>[];
+
+  /// Contracts won, running and lately ended, in the order won.
+  final contracts = <Contract>[];
+
+  /// The number the next tender takes.
+  int nextTenderNumber = 1;
 
   /// The countries by formula, region by region, with companies' shops run
   /// there; null until first run, and for a world of one country or without
@@ -350,6 +364,9 @@ final class WorldState {
     if (content.software case final software?) {
       world.softwareMarket = initialSoftwareMarket(software, content.startDay);
     }
+    if (content.factories?.sales case final sales?) {
+      world.producers.addAll(initialProducers(sales));
+    }
     return world;
   }
 
@@ -439,6 +456,12 @@ final class WorldState {
       world.software.addAll(
         _readList(reader, (i) => Software.read(SoftwareId(i), reader)),
       );
+    }
+    if (reader.version >= factorySalesVersion) {
+      world.producers.addAll(_readList(reader, (_) => Producer.read(reader)));
+      world.tenders.addAll(_readList(reader, (_) => Tender.read(reader)));
+      world.contracts.addAll(_readList(reader, (_) => Contract.read(reader)));
+      world.nextTenderNumber = reader.readInt();
     }
     return world;
   }
@@ -661,6 +684,10 @@ final class WorldState {
     writer.writeBool(softwareMarket != null);
     softwareMarket?.write(writer);
     _writeList(writer, software, (product) => product.write(writer));
+    _writeList(writer, producers, (producer) => producer.write(writer));
+    _writeList(writer, tenders, (tender) => tender.write(writer));
+    _writeList(writer, contracts, (contract) => contract.write(writer));
+    writer.writeInt(nextTenderNumber);
   }
 }
 

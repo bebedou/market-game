@@ -8,6 +8,7 @@ import '../core/money.dart';
 import '../state/history.dart' show salesHistoryDays;
 import '../countries/country_table.dart';
 import 'content_db.dart';
+import 'factory_sales_def.dart';
 import 'software_def.dart';
 import 'household_demand.dart';
 
@@ -735,6 +736,29 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
       );
       lab.finish();
     }
+    final sizes = [
+      for (final size in node.objects('sizes', optional: true))
+        () {
+          final def = FactorySizeDef(
+            key: size.string('id'),
+            name: size.string('name'),
+            capacity: size.nonNegativeFx('capacity'),
+            cost: size.nonNegativeFx('cost'),
+            wages: size.nonNegativeFx('wages'),
+            site: size.nonNegativeFx('site'),
+            buildDays: size.nonNegativeInt('buildDays'),
+          );
+          size.finish();
+          return def;
+        }(),
+    ];
+    if (sizes.isNotEmpty && sizes.first.capacity != Fx.one) {
+      node._fail('sizes', 'the first must be a workshop, of capacity 1');
+    }
+    final sales = switch (node.optionalObject('sales')) {
+      final sales? => _factorySales(sales, factoryKeys, countryIn),
+      null => null,
+    };
     factories = FactoriesDef(
       kinds: List.unmodifiable(kinds),
       abroadDays: node.nonNegativeInt('abroadDays'),
@@ -742,6 +766,10 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
       paymentTermsDays: node.nonNegativeInt('paymentTermsDays'),
       maxShifts: node.positiveInt('maxShifts'),
       labs: labs,
+      sizes: sizes.isEmpty
+          ? const [FactorySizeDef.workshop]
+          : List.unmodifiable(sizes),
+      sales: sales,
     );
     node.finish();
   }
@@ -1650,4 +1678,65 @@ LabourDef? _labour(_Node macro) {
   }
   node.finish();
   return labour;
+}
+
+/// How factories sell to other companies, their rival producers' kinds
+/// and countries by key.
+FactorySalesDef _factorySales(
+  _Node node,
+  _Keys factoryKeys,
+  CountryId Function(_Node node) countryIn,
+) {
+  List<Fx> fxList(String key) => [
+    for (final text in node.strings(key)) Fx.parse(text),
+  ];
+  final lotShares = fxList('lotShares');
+  final floors = fxList('qualityFloors');
+  final terms = [
+    for (final text in node.strings('termMonths')) int.parse(text),
+  ];
+  if (lotShares.isEmpty) node._fail('lotShares', 'must not be empty');
+  if (floors.isEmpty) node._fail('qualityFloors', 'must not be empty');
+  if (terms.isEmpty || terms.any((months) => months <= 0)) {
+    node._fail('termMonths', 'must be positive whole months');
+  }
+  final producers = <ProducerDef>[];
+  for (final producer in node.objects('producers')) {
+    producers.add(
+      ProducerDef(
+        name: producer.string('name'),
+        kind: FactoryKindId(
+          factoryKeys.resolve(producer.string('kind'), producer.pathOf('kind')),
+        ),
+        country: countryIn(producer),
+        lead: producer.fx('lead'),
+        discount: producer.fx('discount'),
+      ),
+    );
+    producer.finish();
+  }
+  final sales = FactorySalesDef(
+    producerPrice: node.fraction('producerPrice'),
+    tenderChance: node.fraction('tenderChance'),
+    lotShares: List.unmodifiable(lotShares),
+    termMonths: List.unmodifiable(terms),
+    openDays: node.positiveInt('openDays'),
+    qualityFloors: List.unmodifiable(floors),
+    qualityWeight: node.nonNegativeFx('qualityWeight'),
+    shortfallPenalty: node.fraction('shortfallPenalty'),
+    reliabilityLoss: node.nonNegativeFx('reliabilityLoss'),
+    reliabilityGain: node.fraction('reliabilityGain'),
+    reliabilityWeight: node.nonNegativeFx('reliabilityWeight'),
+    independentResponse: node.nonNegativeFx('independentResponse'),
+    independentMove: node.fraction('independentMove'),
+    independentDelivery: node.fraction('independentDelivery'),
+    producerSpread: node.fraction('producerSpread'),
+    producerPushBack: node.fraction('producerPushBack'),
+    minDiscount: node.fx('minDiscount'),
+    maxDiscount: node.fx('maxDiscount'),
+    resultMonths: node.positiveInt('resultMonths'),
+    producers: List.unmodifiable(producers),
+  );
+  node.finish();
+  return sales;
 }

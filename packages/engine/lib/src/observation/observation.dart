@@ -28,6 +28,7 @@ import '../state/valuation.dart';
 import '../state/world_state.dart';
 import 'software_view.dart';
 import '../state/software_rules.dart' show softwareOf;
+import 'factory_sales_view.dart';
 
 /// What one actor can see at the start of a day: the economy, its own
 /// companies and stores in full, every store's shelf and hours, each
@@ -62,6 +63,7 @@ final class Observation {
     this.candidates = const [],
     this.softwareMarket,
     this.softwareCandidates = const [],
+    this.tenders = const [],
     List<DistrictView> Function() districts = _noDistricts,
     List<NationalCountryView> Function() national = _noNational,
   }) : _districts = districts,
@@ -178,6 +180,9 @@ final class Observation {
   /// its market for software work.
   final SoftwareMarketView? softwareMarket;
   final List<KeyPersonView> softwareCandidates;
+
+  /// Chains' tenders, open and lately closed, in the order they opened.
+  final List<TenderView> tenders;
 
   /// The factories that sell to anyone's shops, with what each can spare
   /// this month: public, as a supplier's terms are.
@@ -387,10 +392,18 @@ final class FactoryView {
     required this.monthlySite,
     required this.value,
     this.lab,
+    this.size = 0,
+    this.sales,
   });
 
   /// Its lab, if the scenario has labs.
   final LabView? lab;
+
+  /// Its size, by index into the scenario's sizes: 0 is a workshop.
+  final int size;
+
+  /// How it sells to other companies, if the scenario has such sales.
+  final FactorySalesView? sales;
 
   final FactoryId id;
   final FactoryKindId kind;
@@ -900,7 +913,7 @@ final class PublicView {
               serves: List<bool>.unmodifiable(factory.serves),
               discount: discount,
               spare: factory.spareFor(
-                content.factories!.kinds[factory.kind.index],
+                content.factories!.sized(factory.kind, factory.size),
                 world.today,
               ),
             ),
@@ -1128,6 +1141,7 @@ Observation observe(
     candidates: shared.candidates,
     softwareMarket: shared.softwareMarket,
     softwareCandidates: shared.softwareCandidates,
+    tenders: tenderViews(world),
     guaranteeRoom: guaranteeRoom(world, content, person),
     reports: List.unmodifiable([
       for (final report in world.reports)
@@ -1228,7 +1242,7 @@ Day _firstOnOrAfter(Day day) {
 LabView? _labView(WorldState world, ContentDb content, Factory factory) {
   final labs = content.factories?.labs;
   if (labs == null) return null;
-  final kind = content.factories!.kinds[factory.kind.index];
+  final kind = content.factories!.sized(factory.kind, factory.size);
   final level = labWageLevel(world, content, factory);
   final engineers = labPower(
     world,
@@ -1302,7 +1316,7 @@ LabView? _labView(WorldState world, ContentDb content, Factory factory) {
 }
 
 FactoryView _factoryView(WorldState world, ContentDb content, Factory factory) {
-  final kind = content.factories!.kinds[factory.kind.index];
+  final kind = content.factories!.sized(factory.kind, factory.size);
   final economy = world.macroOf(factory.country);
   final today = world.today;
   final yesterday = Day(today.number - 1);
@@ -1337,6 +1351,8 @@ FactoryView _factoryView(WorldState world, ContentDb content, Factory factory) {
     monthlySite: kind.site.times(economy.priceIndex),
     value: valueFactory(world, content, factory),
     lab: _labView(world, content, factory),
+    size: factory.size,
+    sales: factorySalesView(world, content, factory),
   );
 }
 

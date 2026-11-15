@@ -4,6 +4,7 @@ import '../core/ids.dart';
 import '../core/money.dart';
 import '../persistence/state_io.dart';
 import '../state/director.dart' show Growth;
+import '../state/factory_sales.dart' show factorySalesVersion;
 import '../state/store.dart' show allDuties;
 
 /// A command as it was applied: the day it took effect, and the command.
@@ -224,6 +225,7 @@ sealed class Command {
                   reader.readBool(),
               ]
             : null,
+        size: reader.version >= factorySalesVersion ? reader.readInt() : 0,
       ),
       SetFactoryShifts.tag => SetFactoryShifts(
         actor,
@@ -350,6 +352,22 @@ sealed class Command {
       ShutDownSoftware.tag => ShutDownSoftware(
         actor,
         software: SoftwareId(reader.readInt()),
+      ),
+      EnlargeFactory.tag => EnlargeFactory(
+        actor,
+        factory: FactoryId(reader.readInt()),
+        capital: Money(reader.readInt()),
+        borrow: Money(reader.readInt()),
+        termMonths: reader.readInt(),
+      ),
+      BidTender.tag => BidTender(
+        actor,
+        tender: reader.readInt(),
+        factory: FactoryId(reader.readInt()),
+        price: switch (reader.readNullableInt()) {
+          final cents? => Money(cents),
+          null => null,
+        },
       ),
       _ => throw FormatException('Unknown command tag $tag'),
     };
@@ -1295,6 +1313,7 @@ final class BuildFactory extends Command {
     this.termMonths = 0,
     this.shifts = 1,
     this.serves,
+    this.size = 0,
   });
 
   static const int tag = 30;
@@ -1314,6 +1333,9 @@ final class BuildFactory extends Command {
   /// among them; null for its own alone.
   final List<bool>? serves;
 
+  /// Its size, by index into the scenario's sizes: 0 is a workshop.
+  final int size;
+
   @override
   void write(StateWriter writer) {
     writer
@@ -1332,6 +1354,7 @@ final class BuildFactory extends Command {
       writer.writeInt(serves.length);
       serves.forEach(writer.writeBool);
     }
+    writer.writeInt(size);
   }
 
   @override
@@ -1340,7 +1363,7 @@ final class BuildFactory extends Command {
       'country: ${country.index}, name: $name, company: ${company?.index}, '
       'capital: ${capital.toDecimalString()}, '
       'borrow: ${borrow.toDecimalString()}, termMonths: $termMonths, '
-      'shifts: $shifts, serves: $serves)';
+      'shifts: $shifts, serves: $serves, size: $size)';
 }
 
 /// Sets how many shifts a factory runs, from 0, stopped, to the scenario's
@@ -1974,4 +1997,74 @@ final class ShutDownSoftware extends Command {
   @override
   String toString() =>
       'ShutDownSoftware(actor: ${actor.index}, software: ${software.index})';
+}
+
+/// Enlarges [factory] to the next of the scenario's sizes, paying the
+/// difference from its company's cash, with [capital] of the actor's own
+/// and [borrow] over [termMonths] if given; it runs at its size until the
+/// works end.
+final class EnlargeFactory extends Command {
+  const EnlargeFactory(
+    super.actor, {
+    required this.factory,
+    this.capital = Money.zero,
+    this.borrow = Money.zero,
+    this.termMonths = 0,
+  });
+
+  static const int tag = 52;
+
+  final FactoryId factory;
+  final Money capital;
+  final Money borrow;
+  final int termMonths;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(factory.index)
+      ..writeInt(capital.cents)
+      ..writeInt(borrow.cents)
+      ..writeInt(termMonths);
+  }
+
+  @override
+  String toString() =>
+      'EnlargeFactory(actor: ${actor.index}, factory: ${factory.index}, '
+      'capital: ${capital.toDecimalString()}, '
+      'borrow: ${borrow.toDecimalString()}, termMonths: $termMonths)';
+}
+
+/// Bids [price] a unit for [tender], numbered, to be supplied by
+/// [factory]; with no price, withdraws the actor's bid.
+final class BidTender extends Command {
+  const BidTender(
+    super.actor, {
+    required this.tender,
+    required this.factory,
+    this.price,
+  });
+
+  static const int tag = 53;
+
+  final int tender;
+  final FactoryId factory;
+  final Money? price;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(tender)
+      ..writeInt(factory.index)
+      ..writeNullableInt(price?.cents);
+  }
+
+  @override
+  String toString() =>
+      'BidTender(actor: ${actor.index}, tender: $tender, '
+      'factory: ${factory.index}, price: ${price?.toDecimalString()})';
 }

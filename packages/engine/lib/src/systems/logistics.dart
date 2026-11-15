@@ -229,7 +229,7 @@ final class LogisticsSystem implements TickSystem {
   }) {
     final content = context.content;
     final factories = content.factories!;
-    final kind = factories.kinds[factory.kind.index];
+    final kind = factories.sized(factory.kind, factory.size);
     final product = content.products[line.product.index];
     final ledger = context.ledger;
     ledger.post(

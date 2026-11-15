@@ -128,7 +128,7 @@ Fx _quality(
     if (factory == null) continue;
     final lead = factoryLead(world, factory, product.id);
     if (lead <= Fx.zero) continue;
-    final kind = factories!.kinds[factory.kind.index];
+    final kind = factories!.sized(factory.kind, factory.size);
     final quote = marketQuote(
       content,
       country,
@@ -362,7 +362,7 @@ final class NationalSystem implements TickSystem {
     for (final (:product, :share) in formatGoodsMix(content, format)) {
       final factory = _factoryFor(world, content, company, country, product);
       if (factory == null) continue;
-      final kind = factories.kinds[factory.kind.index];
+      final kind = factories.sized(factory.kind, factory.size);
       final quote = marketQuote(
         content,
         country,
@@ -470,7 +470,7 @@ Factory? _factoryFor(
   CountryId country,
   ProductDef product,
 ) {
-  final kinds = content.factories!.kinds;
+  final factories = content.factories!;
   Factory? best;
   var bestLeft = 0;
   for (final factory in world.factories) {
@@ -481,7 +481,7 @@ Factory? _factoryFor(
         !maker.isActive) {
       continue;
     }
-    final kind = kinds[factory.kind.index];
+    final kind = factories.sized(factory.kind, factory.size);
     if (!kindMakes(kind, product)) continue;
     final left = factory.capacityLeft(kind, world.today);
     if (left > bestLeft) {

@@ -70,6 +70,10 @@ three slots, continue, new game, delete, language),
 [new_game.dart](../app/lib/src/screens/new_game.dart) (`NewGameScreen`: only
 the holding's name), [factory.dart](../app/lib/src/screens/factory.dart)
 (`FactoriesSection`, `FactoryPage`, `BuildFactoryPage`),
+[sales_desk.dart](../app/lib/src/screens/sales_desk.dart) (a factory's
+sales desk in the owner's layout B: `SalesDeskEntry` on the factory page,
+`SalesDeskPage` with its market, contracts, open tenders, what lately won
+and independents, and `BidPage`),
 [software.dart](../app/lib/src/screens/software.dart) (`SoftwareSection` on
 the holding, `StartSoftwarePage`, and a software company's page in the
 owner's layout B: `SoftwarePage` with its four figures and `RaceChart`, then

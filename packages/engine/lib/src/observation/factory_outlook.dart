@@ -107,18 +107,19 @@ List<bool> outlookServes(
   return serves;
 }
 
-/// What a factory of [kindId] built in [country] would make, cost and earn
-/// for the actor's shops in the countries it [serves] (by default
-/// [outlookServes]), at one to the most shifts.
+/// What a factory of [kindId] and [size] built in [country] would make,
+/// cost and earn for the actor's shops in the countries it [serves] (by
+/// default [outlookServes]), at one to the most shifts.
 FactoryOutlook factoryOutlook(
   Observation view,
   ContentDb content,
   FactoryKindId kindId,
   CountryId country, {
   List<bool>? serves,
+  int size = 0,
 }) {
   final factories = content.factories!;
-  final kind = factories.kinds[kindId.index];
+  final kind = factories.sized(kindId, size);
   final served = serves ?? outlookServes(view, content, kind, country);
   final home = view.economy(country);
   // A month, on average: 365 days over 12.

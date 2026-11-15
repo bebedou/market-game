@@ -55,6 +55,10 @@ abstract final class RngStream {
   /// The software market's month: who comes onto its market for people,
   /// how rivals' pace wanders, who starts up, and who offers to buy.
   static const software = 16;
+
+  /// Which chains seek suppliers each month, on what terms, and how rival
+  /// producers bid.
+  static const factorySales = 17;
 }
 
 /// Deterministic random numbers (xoshiro128**).

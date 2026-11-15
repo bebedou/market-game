@@ -200,6 +200,7 @@
     "reze_halles": "Plaza del mercado de Rezé"
   },
   "factories": {
+    "sizes": {"workshop": "Taller", "plant": "Planta", "industrial": "Complejo industrial"},
     "kinds": {
       "bakery": "Panificadora",
       "drinks": "Planta de bebidas",

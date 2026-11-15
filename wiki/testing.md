@@ -57,7 +57,7 @@ Node run covers the core and the small test scenario only.
 - [simulation_test.dart](../packages/engine/test/simulation_test.dart):
   same seed gives the same hash, save/load continuity, replay, corrupt
   saves refused, and a scripted year's committed `stateHash`
-  (`0x6c7ac896`). If a rule change moves it on purpose, update it in the
+  (`0x75c8eaaf`). If a rule change moves it on purpose, update it in the
   same commit and say why.
 - [forbidden_api_test.dart](../packages/engine/test/forbidden_api_test.dart):
   the source scan for non-deterministic APIs.
@@ -74,7 +74,10 @@ Test files by area: [core/](../packages/engine/test/core),
 [tool/sim_test.dart](../packages/engine/test/tool/sim_test.dart), and one
 file per feature at the top level (`acquisitions_test`, `borrowing_test`,
 `director_test`, `factories_test`, `growth_test`, `manager_test`,
-`software_test`, …). `software_test` runs the software market on the test
+`software_test`, `factory_sales_test`, …). `factory_sales_test` plays the
+prototype with the national figures: sizes, enlarging, tenders opening,
+bids won and lost, a shortfall's penalty, independents and a save.
+`software_test` runs the software market on the test
 town with a million customers and round figures: a team's pace, launching,
 customers conserved, rounds, investors' dividends, a sale and a save.
 
@@ -98,6 +101,8 @@ flutter test
 - [screens_test.dart](../app/test/screens_test.dart): 57 widget tests on a
   phone-sized screen, from the menu to the ink map.
 - [factory_test.dart](../app/test/factory_test.dart): the factory pages.
+- [sales_desk_test.dart](../app/test/sales_desk_test.dart): a factory's
+  size and enlarging, its sales desk and a bid.
 - [software_test.dart](../app/test/software_test.dart): the software pages,
   net worth on paper, and money shortened to millions and billions.
 - [saves_test.dart](../app/test/saves_test.dart): file slots.

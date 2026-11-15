@@ -6,6 +6,7 @@ import '../core/rng.dart';
 import 'cohort.dart';
 import 'entities.dart';
 import 'market.dart';
+import 'factory_sales.dart' show initialProducers;
 import 'software.dart' show initialSoftwareMarket;
 import 'store.dart';
 import 'world_state.dart';
@@ -24,6 +25,14 @@ void growWorld(WorldState world, ContentDb content) {
   // market as the scenario sets it out, from today.
   if (content.software case final software? when world.softwareMarket == null) {
     world.softwareMarket = initialSoftwareMarket(software, day);
+  }
+  // Rival producers added since, the scenario's in order, join as it sets
+  // them out.
+  if (content.factories?.sales case final sales?) {
+    final fresh = initialProducers(sales);
+    for (var i = world.producers.length; i < fresh.length; i++) {
+      world.producers.add(fresh[i]);
+    }
   }
   for (final factory in world.factories) {
     factory.growCountries(content.countries.length);

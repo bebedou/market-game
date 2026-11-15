@@ -5,6 +5,7 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
+import 'factory_sales_def.dart';
 import 'software_def.dart';
 
 /// Everything a scenario defines, loaded once and never changed: the
@@ -1545,16 +1546,36 @@ final class SupplierDef {
 /// Factories a company can build to make goods its shops used to buy: the
 /// first rung of owning the chain.
 final class FactoriesDef {
-  const FactoriesDef({
+  FactoriesDef({
     required this.kinds,
     required this.abroadDays,
     required this.freight,
     required this.paymentTermsDays,
     required this.maxShifts,
     this.labs,
-  });
+    this.sizes = const [FactorySizeDef.workshop],
+    this.sales,
+  }) : _sized = [
+         for (final size in sizes)
+           [for (final kind in kinds) kind.sizedAs(size)],
+       ];
 
   final List<FactoryKindDef> kinds;
+
+  /// The sizes a factory comes in, the smallest, a workshop, first: kinds
+  /// are a workshop's figures.
+  final List<FactorySizeDef> sizes;
+
+  /// How factories sell to other companies; null if they sell only to their
+  /// owner's shops and to rivals' shops played in full.
+  final FactorySalesDef? sales;
+
+  final List<List<FactoryKindDef>> _sized;
+
+  /// [kind] as a factory of [size] has it: what its shifts make and are
+  /// paid, its site, and what building it at that size costs and takes.
+  FactoryKindDef sized(FactoryKindId kind, int size) =>
+      _sized[size][kind.index];
 
   /// How factories' labs develop their goods, if the scenario has labs.
   final LabsDef? labs;
@@ -1727,6 +1748,25 @@ final class FactoryKindDef {
 
   /// Whether its goods travel to other countries: bread doesn't.
   final bool exports;
+
+  /// This kind as a factory of [size] has it, built at that size from the
+  /// start.
+  FactoryKindDef sizedAs(FactorySizeDef size) => FactoryKindDef(
+    id: id,
+    key: key,
+    name: name,
+    category: category,
+    buildCost: buildCost.times(size.cost),
+    buildDays: buildDays + size.buildDays,
+    shiftUnits: mulDivRound(shiftUnits, size.capacity.raw, Fx.scale),
+    shiftWage: shiftWage.times(size.wages),
+    site: site.times(size.site),
+    materials: materials,
+    leadTimeDays: leadTimeDays,
+    minOrderUnits: minOrderUnits,
+    freight: freight,
+    exports: exports,
+  );
 }
 
 final class VolumeDiscount {

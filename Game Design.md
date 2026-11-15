@@ -160,7 +160,7 @@ Growing should not only mean more of the same store. Each trade can own more of 
 - *Made or bought, never both.* Once it runs, every shop of the player's that sells its category, in every company and every country it serves, buys those goods only from it.
 - *Where it delivers.* Its own country always, and any other the player ticks, two days slower and paying freight by what its goods weigh against their price: 12% of the price for drinks, 6% for snacks, 3% for household goods (decided 2026-11-12). So bottling stays near the shops, as a drinks plant abroad earns about what one at home does, while light or dear goods still pay to make where wages are low. Bread doesn't travel.
 - *Transfer price* (open question 6): what each shop's wholesalers would charge it. The shops' books are the same as when they bought, and what the factory makes is exactly what it saves against buying, taxed where it stands, as tax authorities require of prices between related companies.
-- *Rivals.* A switch, with a price under the wholesalers' (up to a fifth off). Rival shops in the places played in full buy from it, under the same rules as from any supplier, when it is their cheapest, and only from what the player's shops leave it: more use of it and more income, and cheaper goods for the rivals too. Places run by formula don't buy from it yet.
+- *Rivals.* A switch, with a price under the wholesalers' (up to a fifth off). Rival shops in the places played in full buy from it, under the same rules as from any supplier, when it is their cheapest, and only from what the player's shops leave it: more use of it and more income, and cheaper goods for the rivals too. Since 2026-11-15 the same discount also sells to the independent shops of the countries by formula, and chains buy through tenders (see Selling to other companies).
 - *Quality and the lab* (built 2026-11-14; see Quality, R&D and key people). A factory's goods can be better than what wholesalers sell, through its lab and the people in it.
 - *Not yet.* AI chains don't build factories yet: they buy from the player's, and climb their own ladders in a later step, with their shops run by formula. A factory can be closed, not sold.
 - *Legible.* Its page leads with the month against buying: what the shops would have paid their wholesalers, less materials, staff, site and freight, down to what it earned; then its capacity used against the point where it pays, its shifts, what each line sells for and costs to make, and whom it sells to. The holding lists it with its use and earnings, the shelves mark what it makes, and a company's accounts show what it made for the shops as a line of its own. News tells when it opens and of a month it lost money. The bank lends on its earnings and a company's price counts it.
@@ -177,6 +177,19 @@ Built on 2026-11-14 on factories, as the owner chose: quality on the goods a fac
 - *What it costs and earns.* The lab and its people are the factory's costs; what better goods earn is in the shops. At seven grocers a modest lab about pays for itself after two years; it pays with size, as its cost is fixed.
 - *The lab page* (the owner's layout B): a chart of the line on the bench against the standard, month by month, stepping up at each generation; the lines; the bench with its budget, line and months left; the team; and the market for people, a page of its own.
 - *Not yet.* Rivals with labs and factories of their own, poaching, financiers, operators and marketers, named breakthroughs for shops (see Post-launch direction), picking a grade of materials, and quality for districts asleep.
+
+### Selling to other companies
+
+Built on 2026-11-15, as the owner chose: the countries' chains and independent shops as buyers, contracts won through tenders, plants that grow in sizes, and named rival producers. The sales desk is their layout B.
+
+- *Sizes.* A factory is a workshop (the first rung's size), a plant or an industrial site. A plant makes ten times what a workshop does for eight times the building and the wages, an industrial site a hundred times for seventy times the building and sixty times the wages. A factory can be built at any size or enlarged a size at a time, paying the difference; the works take four or eight months while it runs at its size.
+- *Tenders.* Now and then a chain of a country the factory serves seeks a supplier for part of one product it makes: 0.05% to 1% of what the chain buys of it, for one to three years, of goods at least so far over the standard. It stays open 30 days. The player bids a price a unit; three named producers of that kind of goods in the country bid too, near the producer price (what chains pay producers buying direct, 85% of what wholesalers charge shops), less their discount. The chain takes the best price for the quality, a point of quality counting as a point of price and an unreliable supplier as a dearer one. A tender whose quality floor no producer meets lapses: a lab's better goods open those.
+- *Contracts.* Won tenders are delivered on the first of each month, before the owner's shops order, as far as the month's capacity goes. A month short costs a tenth of the shortfall's price and some reliability; full months restore it.
+- *Rival producers.* Each bids at its discount on the producer price, give or take; losing to the player, it cuts its price, and winning, it eases back.
+- *Independent shops.* At a discount on the wholesalers' price, independents buy from the factory at month's end from the capacity left; its share of what they buy moves slowly toward what its discount and quality earn, and reaching scattered shops costs a quarter of what they pay.
+- *What it earns* (tool/factory_sales_balance.dart, drinks in France, bidding 5 to 10% under the producer price): a workshop sells all a shift makes to independents for about 20k a year; a plant (960k) earns 0.3 to 1m a year once its contracts fill it, in its second or third year; an industrial site (8.4m) earns 2 to 5m a year by its fourth. Cola sells near cost to chains; the premium line carries the margin.
+- *The sales desk* (layout B): the factory page leads to it; it shows the factory's market, what contracts take of its capacity, its reliability, its contracts, the open tenders (stamped when too big), what lately won and at what discount, and independents. A tender opens a bid page with the wholesale and producer prices, the factory's cost a unit at full use, its quality against the floor, the bid in points under the producer price, what it would earn a month and whether it fits.
+- *Not yet.* Other industries as buyers, AI chains building factories, rival producers' quality moving, and contracts broken or renegotiated.
 
 ## Clothing
 
@@ -204,6 +217,8 @@ Built on 2026-11-15: the first tech business, where a small team of talented peo
 - *Not yet.* Poaching, rivals that hire and raise money, investing in the AI's startups, more than one market, and chips.
 
 ## Selling to businesses (roadmap)
+
+Chains' tenders and independent shops buying from the player's factories were built on 2026-11-15 (see Selling to other companies); what follows is the rest of the plan.
 
 Owning the chain brings businesses that sell to other businesses, and a player may run only those, selling to retailers or to other industries. They work by formula, as the places beyond the player's city do, rather than simulating every company in the world.
 

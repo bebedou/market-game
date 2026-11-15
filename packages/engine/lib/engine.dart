@@ -11,12 +11,14 @@ export 'src/commands/apply_command.dart'
         maxNationalOpenings,
         maxNationalRate,
         maxRivalDiscount,
+        maxBidTimes,
         maxSoftwareMarketing,
         maxSoftwarePriceTimes;
 export 'src/commands/command.dart'
     show
         AcceptNationalOffer,
         AcceptSoftwareOffer,
+        BidTender,
         BuildFactory,
         BuyCompany,
         BuyStore,
@@ -32,6 +34,7 @@ export 'src/commands/command.dart'
         DelistProduct,
         ClearStock,
         DismissKeyPerson,
+        EnlargeFactory,
         ExpandStore,
         FireDirector,
         FireManager,
@@ -120,6 +123,8 @@ export 'src/observation/observation.dart'
         StoreMonths,
         ShelfView,
         StoreView;
+export 'src/observation/factory_sales_view.dart'
+    show ContractView, FactorySalesView, SalesLine, TenderView;
 export 'src/observation/software_view.dart'
     show RivalView, SoftwareMarketView, SoftwareOfferView, SoftwareView;
 export 'src/observation/factory_outlook.dart'
@@ -186,6 +191,7 @@ export 'src/state/sleepers.dart' show SleepingNeighbourhood, SleepingShop;
 export 'src/state/store.dart' show ManagerDuty, StoreStatus, Works;
 export 'src/state/labs.dart'
     show generationGain, generationSaving, generationWork, labMonthlyWork;
+export 'src/state/factory_sales.dart' show TenderStatus;
 export 'src/state/software.dart'
     show FundingRound, RivalStatus, SoftwareMonth, SoftwareStatus;
 export 'src/state/software_rules.dart' show SoftwareWorth, roundMoney;

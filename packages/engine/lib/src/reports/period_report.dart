@@ -12,6 +12,7 @@ import '../state/store.dart' show labsVersion;
 import '../state/world_state.dart';
 import '../systems/tick_system.dart';
 import 'attribution.dart';
+import '../state/factory_sales.dart' show factorySalesVersion;
 
 /// How long a report runs: a calendar week from Monday, or a calendar month.
 /// Append only.
@@ -411,7 +412,8 @@ final class FactoryReport {
       _freight = Money.zero,
       _occupancy = Money.zero,
       _build = Money.zero,
-      _lab = Money.zero;
+      _lab = Money.zero,
+      _penalties = Money.zero;
 
   FactoryReport._copyOf(FactoryReport other)
     : factory = other.factory,
@@ -426,7 +428,8 @@ final class FactoryReport {
       _freight = other._freight,
       _occupancy = other._occupancy,
       _build = other._build,
-      _lab = other._lab;
+      _lab = other._lab,
+      _penalties = other._penalties;
 
   FactoryReport._read(StateReader reader)
     : factory = FactoryId(reader.readInt()),
@@ -443,6 +446,9 @@ final class FactoryReport {
       _build = Money(reader.readInt()),
       _lab = reader.version >= labsVersion
           ? Money(reader.readInt())
+          : Money.zero,
+      _penalties = reader.version >= factorySalesVersion
+          ? Money(reader.readInt())
           : Money.zero;
 
   final FactoryId factory;
@@ -458,6 +464,7 @@ final class FactoryReport {
   Money _occupancy;
   Money _build;
   Money _lab;
+  Money _penalties;
 
   void _grow(int products) {
     while (_madeOwn.length < products) {
@@ -526,6 +533,9 @@ final class FactoryReport {
   /// Its lab: its key people's pay and what it spent developing its goods.
   Money get lab => _lab;
 
+  /// What it paid chains for contract months it fell short of.
+  Money get penalties => _penalties;
+
   /// What it sold for less its materials, staff, site, freight and lab,
   /// with the site counted day by day: against buying, what it saved its
   /// owner's shops and earned from rivals. Building it isn't counted, nor
@@ -537,7 +547,8 @@ final class FactoryReport {
       _wages -
       _occupancy -
       _freight -
-      _lab;
+      _lab -
+      _penalties;
 
   FactoryReport _copy() => FactoryReport._copyOf(this);
 
@@ -555,7 +566,8 @@ final class FactoryReport {
       ..writeInt(_freight.cents)
       ..writeInt(_occupancy.cents)
       ..writeInt(_build.cents)
-      ..writeInt(_lab.cents);
+      ..writeInt(_lab.cents)
+      ..writeInt(_penalties.cents);
   }
 }
 
@@ -653,7 +665,7 @@ void recordPeriodReports(WorldState world, TickContext context) {
         world.companies[factory.company.index].status != CompanyStatus.active) {
       continue;
     }
-    final kind = context.content.factories!.kinds[factory.kind.index];
+    final kind = context.content.factories!.sized(factory.kind, factory.size);
     final monthly = kind.site.times(world.macroOf(factory.country).priceIndex);
     final share = Money(mulDivRound(monthly.cents, 1, days));
     add(factory.company, (report) {
@@ -754,6 +766,8 @@ void _recordFactory(FactoryReport report, JournalEntry entry) {
       report._build += entry.amount;
     case EntryReason.salary || EntryReason.development:
       report._lab += entry.amount;
+    case EntryReason.contractPenalty:
+      report._penalties += entry.amount;
     default:
   }
 }

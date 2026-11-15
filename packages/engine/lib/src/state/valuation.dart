@@ -275,7 +275,7 @@ Money? factoryEarnings(WorldState world, ContentDb content, Factory factory) {
   if (world.today.number - factory.opensOn.number < factoryHistoryDays) {
     return null;
   }
-  final kind = factories.kinds[factory.kind.index];
+  final kind = factories.sized(factory.kind, factory.size);
   final economy = world.macroOf(factory.country);
   final shiftDay = kind.shiftWage
       .times(economy.wageIndex)

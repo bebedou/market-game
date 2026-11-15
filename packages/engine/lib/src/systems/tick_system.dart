@@ -23,6 +23,7 @@ import 'software.dart';
 import 'solvency.dart';
 import 'spoilage.dart';
 import 'taxes.dart';
+import 'factory_sales.dart';
 
 /// One phase of the daily tick.
 abstract interface class TickSystem {
@@ -64,6 +65,7 @@ const List<TickSystem> standardSystems = [
   MacroSystem(),
   // Before the countries by formula, whose shops' buying terms it sets.
   BuyingTermsSystem(),
+  FactorySalesSystem(),
   NationalSystem(),
   PopulationSystem(),
   TaxSystem(),

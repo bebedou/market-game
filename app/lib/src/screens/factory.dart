@@ -8,6 +8,7 @@ import '../loans.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'lab.dart';
+import 'sales_desk.dart' show SalesDeskEntry;
 
 /// The discounts a factory may offer rivals, as choices.
 final _discounts = [
@@ -157,7 +158,8 @@ class FactoryPage extends StatelessWidget {
     final factory = game.factory(id);
     if (factory == null) return Hint(tr('factory.gone'));
     final content = game.content;
-    final kind = content.factories!.kinds[factory.kind.index];
+    final factories = content.factories!;
+    final kind = factories.sized(factory.kind, factory.size);
     final ledger = Ledger.of(context);
     final shown = _shownMonth(game, factory);
     return Column(
@@ -170,6 +172,8 @@ class FactoryPage extends StatelessWidget {
             Hint(
               [
                 kind.name,
+                if (factories.sizes.length > 1)
+                  factories.sizes[factory.size].name.toLowerCase(),
                 if (content.countries.length > 1)
                   content.countries[factory.country.index].name,
                 if (factory.status == FactoryStatus.closed)
@@ -192,6 +196,8 @@ class FactoryPage extends StatelessWidget {
             if (factory.lab case final lab?
                 when factory.status != FactoryStatus.closed)
               _LabEntry(factory: factory, lab: lab),
+            if (factory.sales != null && factory.status != FactoryStatus.closed)
+              SalesDeskEntry(factory: factory),
           ],
         ),
         _Statement(factory: factory, shown: shown),
@@ -316,8 +322,11 @@ class _Capacity extends StatelessWidget {
       factory.kind,
       factory.country,
       serves: factory.serves,
+      size: factory.size,
     );
     final plan = shifts == 0 ? null : outlook.plans[shifts - 1];
+    final sizes = content.factories!.sizes;
+    final sales = factory.sales;
     final capacity = factory.monthCapacity;
     final use = capacity == 0
         ? 0.0
@@ -376,8 +385,76 @@ class _Capacity extends StatelessWidget {
                   ),
                 }),
         ),
+        if (sales?.enlargedOn case final done?)
+          Hint(
+            tr('factory.enlarging', {
+              'size': sizes[factory.size + 1].name.toLowerCase(),
+              'date': shortDate(done),
+            }),
+          )
+        else if (sales?.enlargeCost case final cost?
+            when game.enlarging(factory) == null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: OutlinedButton(
+              onPressed: () => _enlarge(context, game, cost),
+              child: Text(
+                tr('factory.enlarge', {
+                  'size': sizes[factory.size + 1].name.toLowerCase(),
+                  'cost': compactMoney(cost),
+                }),
+              ),
+            ),
+          ),
       ],
     );
+  }
+
+  Future<void> _enlarge(
+    BuildContext context,
+    SimulationController game,
+    Money cost,
+  ) async {
+    final sizes = game.content.factories!.sizes;
+    final next = sizes[factory.size + 1];
+    final company = game.view.companies.firstWhere(
+      (c) => c.id == factory.company,
+    );
+    // What the company can't pay comes from the player's own cash.
+    final short = cost - (company.cash - company.committed);
+    final capital = short > Money.zero ? short : Money.zero;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          tr('factory.enlargeQuestion', {'size': next.name.toLowerCase()}),
+        ),
+        content: Text(
+          tr('factory.enlargeBody', {
+            'cost': money(cost, cents: false),
+            'months': (next.buildDays + 15) ~/ 30,
+            'capital': money(capital, cents: false),
+          }),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(tr('common.cancel')),
+          ),
+          FilledButton(
+            onPressed: game.view.cash < capital
+                ? null
+                : () => Navigator.pop(context, true),
+            child: Text(tr('factory.enlargeConfirm')),
+          ),
+        ],
+      ),
+    );
+    if (ok ?? false) {
+      game.submit(
+        EnlargeFactory(game.player, factory: factory.id, capital: capital),
+      );
+    }
   }
 }
 
@@ -665,6 +742,7 @@ class BuildFactoryPage extends StatefulWidget {
 
 class _BuildFactoryPageState extends State<BuildFactoryPage> {
   FactoryKindId? _kind;
+  int _size = 0;
   CountryId? _country;
   int? _shifts;
   bool _newCompany = false;
@@ -711,7 +789,13 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
     final kindId = _kind ??= _firstKind(game);
     final kind = factories.kinds[kindId.index];
     final country = _country ?? game.homeCountry;
-    final outlook = factoryOutlook(game.view, content, kindId, country);
+    final outlook = factoryOutlook(
+      game.view,
+      content,
+      kindId,
+      country,
+      size: _size,
+    );
     final shifts = _shifts ?? outlook.best.shifts;
     final plan = outlook.plans[shifts - 1];
     if (!_named) {
@@ -806,6 +890,37 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
             Hint(tr('factory.makes', {'products': products.join(', ')})),
           ],
         ),
+        if (factories.sizes.length > 1)
+          Section(
+            title: tr('factory.size'),
+            children: [
+              for (final (i, size) in factories.sizes.indexed)
+                picked(
+                  selected: i == _size,
+                  onTap: () => setState(() {
+                    _size = i;
+                    _shifts = null;
+                  }),
+                  child: Line(
+                    size.name,
+                    tr('factory.sizeLine', {
+                      'units': _count(
+                        factories.sized(kindId, i).shiftUnits *
+                            factories.maxShifts *
+                            30,
+                      ),
+                      'cost': compactMoney(
+                        factories
+                            .sized(kindId, i)
+                            .buildCost
+                            .times(game.view.economy(country).priceIndex),
+                      ),
+                    }),
+                  ),
+                ),
+              Hint(tr('factory.sizeHint')),
+            ],
+          ),
         if (content.countries.length > 1)
           Section(
             title: tr('factory.where'),
@@ -960,6 +1075,7 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
                             termMonths: borrow ? _months : 0,
                             shifts: shifts,
                             serves: outlook.serves,
+                            size: _size,
                           ),
                         );
                         setState(() => _built = true);

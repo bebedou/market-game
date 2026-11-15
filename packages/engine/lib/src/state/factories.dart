@@ -131,7 +131,7 @@ Factory? factoryFor(
         !world.companies[factory.company.index].isActive) {
       continue;
     }
-    final kind = factories.kinds[factory.kind.index];
+    final kind = factories.sized(factory.kind, factory.size);
     if (!kindMakes(kind, product)) continue;
     final left = factory.capacityLeft(kind, world.today);
     if (left > bestLeft) {

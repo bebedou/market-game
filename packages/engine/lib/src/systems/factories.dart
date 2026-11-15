@@ -18,9 +18,15 @@ final class FactorySystem implements TickSystem {
     final factories = context.content.factories;
     if (factories == null || world.factories.isEmpty) return;
     for (final factory in world.factories) {
+      // Works enlarging it end: it runs at its new size from today.
+      if (factory.enlargedOn case final done? when done <= context.day) {
+        factory
+          ..size += 1
+          ..enlargedOn = null;
+      }
       final company = world.companies[factory.company.index];
       if (!factory.runsOn(context.day) || !company.isActive) continue;
-      final kind = factories.kinds[factory.kind.index];
+      final kind = factories.sized(factory.kind, factory.size);
       final economy = world.macroOf(factory.country);
       final wages = kind.shiftWage
           .times(economy.wageIndex)

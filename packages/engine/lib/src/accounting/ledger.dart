@@ -237,6 +237,9 @@ enum EntryReason {
 
   /// A rival buying a software company whole.
   softwareSale,
+
+  /// What a factory pays a chain for a contract month it fell short of.
+  contractPenalty,
 }
 
 /// One double-entry posting in one party's books. [store], [product] and
