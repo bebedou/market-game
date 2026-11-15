@@ -43,19 +43,20 @@ FactoryView plant(Simulation game) => game
     .single;
 
 /// Plays [days] more and checks the books hold and a save of it reads back
-/// as the same game.
-void playOn(Simulation game, {int days = 60}) {
+/// as the same game, from [scenario], the content it was loaded with.
+void playOn(Simulation game, ContentDb scenario, {int days = 60}) {
   for (var day = 0; day < days; day++) {
     game.step();
   }
   expect(invariantViolations(game.world), isEmpty);
-  final again = Simulation.load(game.content, game.save());
+  final again = Simulation.load(scenario, game.save());
   expect(again.stateHash(), game.stateHash());
 }
 
 void main() {
   test('a save from before labs (format 31) loads and plays on', () {
-    final game = Simulation.load(content(), fixture('save_v31'));
+    final scenario = content();
+    final game = Simulation.load(scenario, fixture('save_v31'));
     expect(game.world.today, isNot(game.content.startDay));
     expect(game.national, isNotNull);
     expect(invariantViolations(game.world), isEmpty);
@@ -71,17 +72,18 @@ void main() {
         expect(store.qualityOf(product.id), Fx.zero);
       }
     }
-    playOn(game);
+    playOn(game, scenario);
   });
 
   test('a save with a lab (format 32) keeps it, and its people', () {
-    final game = Simulation.load(content(), fixture('save_v32'));
+    final scenario = content();
+    final game = Simulation.load(scenario, fixture('save_v32'));
     final lab = plant(game).lab!;
     expect(lab.budget, Money.parse('1500.00'));
     expect(lab.project, isNotNull);
     expect(lab.people, hasLength(1));
     expect(lab.work > Money.zero, isTrue);
-    playOn(game, days: 120);
+    playOn(game, scenario, days: 120);
     // Its work goes on: four months on, a generation has come or is nearer.
     final later = plant(game).lab!;
     expect(later.people, hasLength(1));
@@ -89,6 +91,43 @@ void main() {
       later.work != lab.work || later.lines.any((line) => line.lead > Fx.zero),
       isTrue,
     );
+  });
+
+  test('a save with a district and a city woken before clothing loads, '
+      'and the city has no clothing shops', () {
+    // 120 days, seed 12, the other cities asleep, row 0 woken on day 20 and
+    // the last row, Barcelona, on day 40; the scenario as it was.
+    final plain = loadScenario(
+      File('../../content/scenarios/prototype.json').readAsStringSync(),
+      national: loadCountryTable(
+        File('../../content/countries/euro.json').readAsStringSync(),
+        File('../../content/countries/calibration.json').readAsStringSync(),
+      ),
+    );
+    final game = Simulation.load(plain, fixture('save_v33_woken'));
+    expect(
+      [for (final wake in game.woken) wake.row],
+      [0, game.content.neighbourhoods.length - 1],
+    );
+    expect(invariantViolations(game.world), isEmpty);
+    final barcelona = game.content.markets.firstWhere(
+      (market) => market.name == 'Barcelona, Gràcia',
+    );
+    final clothing = game.content.formats.firstWhere(
+      (f) => f.key == 'clothing',
+    );
+    expect(
+      game.world.stores.where(
+        (store) => store.market == barcelona.id && store.format == clothing.id,
+      ),
+      isEmpty,
+    );
+    // The player's city gained the clothing sites, after the woken ones.
+    expect(
+      game.content.sites.where((site) => site.key.contains('_clothes_')),
+      hasLength(2),
+    );
+    playOn(game, plain);
   });
 
   test('a save made with other national figures is refused, not misread', () {

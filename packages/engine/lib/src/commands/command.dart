@@ -307,6 +307,12 @@ sealed class Command {
         actor,
         person: KeyPersonId(reader.readInt()),
       ),
+      ClearStock.tag => ClearStock(
+        actor,
+        store: StoreId(reader.readInt()),
+        product: ProductId(reader.readInt()),
+        days: reader.readInt(),
+      ),
       _ => throw FormatException('Unknown command tag $tag'),
     };
   }
@@ -1686,4 +1692,37 @@ final class DismissKeyPerson extends Command {
   @override
   String toString() =>
       'DismissKeyPerson(actor: ${actor.index}, person: ${person.index})';
+}
+
+/// Sells [store]'s stock of [product] that has been on hand [days] or more
+/// to a jobber, for the category's clearance share of what it cost: only
+/// goods that go out of fashion.
+final class ClearStock extends Command {
+  const ClearStock(
+    super.actor, {
+    required this.store,
+    required this.product,
+    required this.days,
+  });
+
+  static const int tag = 43;
+
+  final StoreId store;
+  final ProductId product;
+  final int days;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(store.index)
+      ..writeInt(product.index)
+      ..writeInt(days);
+  }
+
+  @override
+  String toString() =>
+      'ClearStock(actor: ${actor.index}, store: ${store.index}, '
+      'product: ${product.index}, days: $days)';
 }

@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
 import 'orders.dart';
+import 'rails.dart';
 
 /// Days of sales the store screen sums.
 const recentDays = 7;
@@ -92,6 +93,8 @@ class StoreScreen extends StatelessWidget {
               key: const PageStorageKey('shelves'),
               padding: const EdgeInsets.only(bottom: 12),
               children: [
+                if (sellsFashion(game.content, format))
+                  Rails(store: store, onOrder: () => onPart(ShopPart.supplies)),
                 // Only what the store's format sells.
                 for (final category in game.content.categories)
                   if (format.sells[category.id.index])

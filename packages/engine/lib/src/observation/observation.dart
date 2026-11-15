@@ -614,11 +614,26 @@ final class StoreView {
     this.buyer,
     this.recentMonths = (revenue: Money.zero, profit: Money.zero, days: 0),
     this.quality = const [],
+    this.fashion = const [],
+    this.lots = const [],
   });
 
   /// How far what is on hand of each product is over the market's
   /// standard, indexed by [ProductId]: empty if all are at it.
   final List<Fx> quality;
+
+  /// What each product on hand has kept of its appeal against new, indexed
+  /// by [ProductId]: empty if nothing it holds goes out of fashion.
+  final List<Fx> fashion;
+
+  /// What [product] on its shelves has kept of its appeal: 1 for new.
+  Fx fashionOf(ProductId product) =>
+      product.index < fashion.length ? fashion[product.index] : Fx.one;
+
+  /// Each product's lots on hand, oldest first, indexed by [ProductId]:
+  /// empty if nothing it holds goes out of fashion, and for goods that
+  /// don't.
+  final List<List<LotAge>> lots;
 
   /// How far [product] on its shelves is over the market's standard.
   Fx qualityOf(ProductId product) =>
@@ -1112,6 +1127,44 @@ Money _committed(WorldState world, CompanyId company) {
   return total;
 }
 
+/// A lot on hand: how many days it has been there, its units and what each
+/// cost.
+typedef LotAge = ({int days, int units, Money unitCost});
+
+/// What each product on [store]'s shelves has kept of its appeal by
+/// [today], by [ProductId]; empty if none goes out of fashion.
+List<Fx> _shelfFashion(Store store, ContentDb content, Day today) {
+  List<Fx>? worth;
+  for (final product in content.products) {
+    final fashion = content.categories[product.category.index].fashion;
+    if (fashion == null) continue;
+    final stock = store.stock[product.id.index];
+    if (stock.units == 0) continue;
+    (worth ??= List.filled(content.products.length, Fx.one))[product.id.index] =
+        stock.fashionOn(today, fashion, product.tier);
+  }
+  return worth == null ? const [] : List.unmodifiable(worth);
+}
+
+/// Each product's lots on [store]'s shelves by [today], oldest first, by
+/// [ProductId]; empty if none goes out of fashion.
+List<List<LotAge>> _shelfLots(Store store, ContentDb content, Day today) {
+  List<List<LotAge>>? lots;
+  for (final product in content.products) {
+    if (content.categories[product.category.index].fashion == null) continue;
+    final stock = store.stock[product.id.index];
+    if (stock.units == 0) continue;
+    (lots ??= List.filled(
+      content.products.length,
+      const [],
+    ))[product.id.index] = List.unmodifiable([
+      for (final lot in stock.lots)
+        (days: lot.ageOn(today), units: lot.quantity, unitCost: lot.unitCost),
+    ]);
+  }
+  return lots == null ? const [] : List.unmodifiable(lots);
+}
+
 /// How far each product on [store]'s shelves is over the market's
 /// standard, by [ProductId]; empty if all are at it.
 List<Fx> _shelfQuality(Store store) =>
@@ -1306,6 +1359,8 @@ StoreView _storeView(
     boughtFor: store.boughtFor,
     acquiredOn: store.acquiredOn,
     quality: _shelfQuality(store),
+    fashion: _shelfFashion(store, content, world.today),
+    lots: _shelfLots(store, content, world.today),
     recentMonths:
         months[store.id.index] ??
         (revenue: Money.zero, profit: Money.zero, days: 0),

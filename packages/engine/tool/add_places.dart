@@ -65,6 +65,7 @@ void main(List<String> args) {
             priceIndex: Fx.one,
             households: sleeper.households,
             shops: sleeper.shops,
+            edition: content.edition,
           );
         }(),
   ];

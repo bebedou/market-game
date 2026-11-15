@@ -4,20 +4,33 @@ import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
 import '../persistence/state_io.dart';
+import '../content/content_db.dart';
 import 'history.dart';
 
 /// The save version from which factories have labs, shelves a quality and
 /// the world its key people.
 const labsVersion = 32;
 
+/// The save version from which a lot keeps the day it arrived, for goods
+/// that go out of fashion.
+const fashionVersion = 34;
+
 /// One delivery's worth of a product on hand.
 final class Lot {
-  Lot({required this.quantity, required this.unitCost, required this.expiry});
+  Lot({
+    required this.quantity,
+    required this.unitCost,
+    required this.expiry,
+    this.arrived,
+  });
 
   Lot.read(StateReader reader)
     : quantity = reader.readInt(),
       unitCost = Money(reader.readInt()),
-      expiry = reader.readBool() ? Day(reader.readInt()) : null;
+      expiry = reader.readBool() ? Day(reader.readInt()) : null,
+      arrived = reader.version >= fashionVersion && reader.readBool()
+          ? Day(reader.readInt())
+          : null;
 
   int quantity;
   final Money unitCost;
@@ -25,12 +38,21 @@ final class Lot {
   /// The first day the lot can no longer be sold; null if it never expires.
   final Day? expiry;
 
+  /// The day it arrived; null for lots saved before lots kept it, which
+  /// count as new.
+  final Day? arrived;
+
+  /// How many days it has been on hand by [today].
+  int ageOn(Day today) => arrived == null ? 0 : today.number - arrived!.number;
+
   void write(StateWriter writer) {
     writer
       ..writeInt(quantity)
       ..writeInt(unitCost.cents)
       ..writeBool(expiry != null);
     if (expiry case final day?) writer.writeInt(day.number);
+    writer.writeBool(arrived != null);
+    if (arrived case final day?) writer.writeInt(day.number);
   }
 }
 
@@ -70,6 +92,7 @@ final class Stock {
     Money unitCost,
     Day? expiry, {
     Fx quality = Fx.zero,
+    Day? arrived,
   }) {
     assert(quantity > 0, 'Received $quantity units');
     if (quality != this.quality) {
@@ -82,7 +105,36 @@ final class Stock {
         ),
       );
     }
-    _lots.add(Lot(quantity: quantity, unitCost: unitCost, expiry: expiry));
+    _lots.add(
+      Lot(
+        quantity: quantity,
+        unitCost: unitCost,
+        expiry: expiry,
+        arrived: arrived,
+      ),
+    );
+  }
+
+  /// What the stock on hand is worth against new by [today], lot by lot, as
+  /// goods of [tier] that go out of [fashion]: 1 with nothing on hand.
+  Fx fashionOn(Day today, Fashion fashion, ProductTier tier) {
+    var units = 0;
+    var worth = 0;
+    for (final lot in _lots) {
+      units += lot.quantity;
+      worth += fashion.worthAt(lot.ageOn(today), tier).raw * lot.quantity;
+    }
+    return units == 0 ? Fx.one : Fx.raw(worth ~/ units);
+  }
+
+  /// Removes the lots at least [days] old by [today].
+  Withdrawal clearAged(Day today, int days) {
+    final old = [
+      for (final lot in _lots)
+        if (lot.ageOn(today) >= days) lot,
+    ];
+    _lots.removeWhere(old.contains);
+    return _total(old);
   }
 
   /// Takes up to [wanted] units, oldest lots first.

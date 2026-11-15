@@ -1,4 +1,5 @@
 import '../content/content_db.dart';
+import '../core/calendar.dart';
 import '../core/exp_neg.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
@@ -97,6 +98,7 @@ final class _ShoppingDay {
                     .content
                     .references[context.content.countryOf(store.market).index],
                 quality: _qualityOf(store),
+                fashion: _fashionOf(store, context.content, context.day),
               ),
           ],
       ],
@@ -258,6 +260,32 @@ final class _ShoppingDay {
     if (store.stock.every((stock) => stock.quality == Fx.zero)) return null;
     return [for (final stock in store.stock) stock.quality];
   }
+
+  /// What the goods on [store]'s shelves have kept of their appeal by
+  /// [today], by [ProductId]; null if none go out of fashion.
+  static List<Fx>? _fashionOf(Store store, ContentDb content, Day today) {
+    List<Fx>? worth;
+    for (final product in content.products) {
+      final fashion = content.categories[product.category.index].fashion;
+      if (fashion == null) continue;
+      final stock = store.stock[product.id.index];
+      if (stock.units == 0) continue;
+      (worth ??= List.filled(
+        content.products.length,
+        Fx.one,
+      ))[product.id.index] = stock.fashionOn(
+        today,
+        fashion,
+        product.tier,
+      );
+    }
+    return worth;
+  }
+
+  /// [_fashionOf] each store, by [StoreId], worked out once a day.
+  late final List<List<Fx>?> fashion = [
+    for (final store in world.stores) _fashionOf(store, content, context.day),
+  ];
 
   static Fx _withConfidence(Fx units, Fx? confidence) =>
       confidence == null ? units : units * confidence;
@@ -721,7 +749,12 @@ final class _Trip {
     if (store.stock[product.index].units == 0) {
       return (bought: 0, reason: MissReason.outOfStock);
     }
-    if (!_accepts(price, product, store.stock[product.index].quality)) {
+    if (!_accepts(
+      price,
+      product,
+      store.stock[product.index].quality,
+      day.fashion[store.id.index]?[product.index] ?? Fx.one,
+    )) {
       return (bought: 0, reason: MissReason.overpriced);
     }
     final bought = sellUnits(
@@ -741,8 +774,12 @@ final class _Trip {
   /// the market's standard. Within the segment's tolerance of the reference
   /// price, raised by what it thinks the quality worth, it always does;
   /// beyond it, the chance falls off exponentially with the excess.
-  bool _accepts(Money price, ProductId product, Fx quality) {
-    final reference = segment.worthWith(_references[product.index], quality);
+  bool _accepts(Money price, ProductId product, Fx quality, Fx fashion) {
+    final reference = segment.worthWith(
+      _references[product.index],
+      quality,
+      fashion,
+    );
     final ratio = Fx.raw(mulDivRound(price.cents, Fx.scale, reference.cents));
     final excess = ratio - Fx.one - priceTolerance;
     return excess <= Fx.zero || rng.chance(expNeg(priceSensitivity * excess));

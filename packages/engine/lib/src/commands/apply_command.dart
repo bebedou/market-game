@@ -80,6 +80,7 @@ Refusal? applyCommand(
     SetLab() => _setLab(world, content, command),
     HireKeyPerson() => _hireKeyPerson(world, content, command),
     DismissKeyPerson() => _dismissKeyPerson(world, command),
+    ClearStock() => _clearStock(world, content, ledger, command),
     OpenNational() => _openNational(world, content, ledger, command),
     BuyNationalChain() => _buyNationalChain(world, content, ledger, command),
     SellNational() => _sellNational(world, content, ledger, command),
@@ -1046,6 +1047,55 @@ Refusal? _listProduct(
   }
   if (command.price <= Money.zero) return const Refusal('priceNotPositive');
   store.prices[command.product.index] = command.price;
+  return null;
+}
+
+Refusal? _clearStock(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  ClearStock command,
+) {
+  final (store, error) = _ownedStore(world, command.actor, command.store);
+  if (store == null) return error;
+  if (!_inRange(command.product.index, content.products.length)) {
+    return const Refusal('unknownProduct');
+  }
+  final product = content.products[command.product.index];
+  final fashion = content.categories[product.category.index].fashion;
+  if (fashion == null) return const Refusal('notFashion');
+  if (command.days < 0) return const Refusal('clearanceAge');
+  final cleared = store.stock[product.id.index].clearAged(
+    world.today,
+    command.days,
+  );
+  if (cleared.units == 0) return null;
+  final company = world.companies[store.company.index];
+  ledger.post(
+    company,
+    debit: AccountKind.writeOffs,
+    credit: AccountKind.inventory,
+    amount: cleared.cost,
+    reason: EntryReason.clearance,
+    store: store.id,
+    product: product.id,
+    units: cleared.units,
+  );
+  // The jobber, from beyond the districts played, takes back part of what
+  // was lost.
+  final paid = cleared.cost.times(fashion.clearance);
+  if (paid > Money.zero) {
+    ledger.pay(
+      payer: world.elsewhere,
+      payerAccount: AccountKind.spending,
+      payee: company,
+      payeeAccount: AccountKind.writeOffs,
+      amount: paid,
+      reason: EntryReason.clearance,
+      store: store.id,
+      product: product.id,
+    );
+  }
   return null;
 }
 

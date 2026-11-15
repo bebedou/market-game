@@ -18,7 +18,7 @@ import 'dart:math' as math;
 import 'package:engine/countries.dart';
 import 'package:engine/engine.dart';
 
-const trades = ['grocery', 'restaurants', 'electronics'];
+const trades = ['grocery', 'restaurants', 'electronics', 'clothing'];
 
 /// One trade's figures over the fitted years of one run.
 final class TradeFigures {

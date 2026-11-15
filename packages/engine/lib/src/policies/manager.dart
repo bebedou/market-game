@@ -79,6 +79,7 @@ List<Command> manage(
       }
       if (does(ManagerDuty.staffing)) commands.addAll(plan.staffing());
       if (does(ManagerDuty.ordering)) {
+        commands.addAll(plan.clearance());
         final (orders, spent) = plan.orders(
           budget - cushion,
           essentials: essentials,

@@ -75,7 +75,25 @@ Neighbourhood rows and the national table are not in this list (see
 [tech-debt.md](tech-debt.md)).
 
 [content/countries/insert_places.py](../content/countries/insert_places.py)
-follows this rule: it appends new places at the end of each list.
+and [add_clothing.py](../content/countries/add_clothing.py) follow this
+rule: they append new entries at the end of each list.
+
+Entries the scenario appends land before those of districts a save woke
+since. On load, if a save's lists don't line up, `_inSavedOrder` in
+[save_file.dart](../packages/engine/lib/src/persistence/save_file.dart)
+puts the entries it knew first, in its order, and the new ones after.
+
+## Editions: a trade added to places already described
+
+A format's `edition` (0 by default; clothing is 1) marks a trade added
+after places were described. Its market figure doesn't count in how many
+households a place has (`placeSize`), so every place keeps its households
+and every district the sites and shops they make: the figure only scales
+what households buy of it. Each woken district keeps the edition it woke in
+(`WokenNeighbourhood.edition`, saved from format 34), and is rebuilt
+without the sites and shops of later editions, so saves with districts
+woken before stay valid. The generator adds a later edition's sites last.
+`ContentDb.edition` is the latest.
 
 ## The scenario's words
 

@@ -210,6 +210,7 @@ final class Simulation {
         .priceIndex,
     households: sleeper.households,
     shops: sleeper.shops,
+    edition: content.edition,
   );
 
   /// The neighbourhoods still asleep, as they stand and would wake today:

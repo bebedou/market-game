@@ -13,7 +13,11 @@
     "finedining": "Gastronomie",
     "gadgets": "Accessoires",
     "phones": "Smartphones",
-    "smarthome": "Maison connectée"
+    "smarthome": "Maison connectée",
+    "womenswear": "Mode femme",
+    "menswear": "Mode homme",
+    "kidswear": "Mode enfant",
+    "shoes": "Chaussures"
   },
   "formats": {
     "grocery": {
@@ -45,6 +49,11 @@
       "name": "Magasin d’électronique",
       "a": "un magasin d’électronique",
       "blurb": "Gadgets, téléphones et maison connectée : un stock cher, des ventes rares mais grosses, et des nouveautés qui s’imposent au fil des ans."
+    },
+    "clothing": {
+      "name": "Boutique de vêtements",
+      "a": "une boutique de vêtements",
+      "blurb": "Vêtements et chaussures : de fortes marges et des loyers chers, des collections commandées à l’avance, et un stock qui se démode s’il traîne."
     }
   },
   "products": {
@@ -71,7 +80,15 @@
     "phones_budget": "Smartphone économique",
     "phones_premium": "Smartphone haut de gamme",
     "smarthome_budget": "Prise connectée",
-    "smarthome_premium": "Enceinte connectée"
+    "smarthome_premium": "Enceinte connectée",
+    "womenswear_budget": "Basiques femme",
+    "womenswear_premium": "Pièces de créateur femme",
+    "menswear_budget": "Basiques homme",
+    "menswear_premium": "Costumes homme",
+    "kidswear_budget": "Vêtements enfant",
+    "kidswear_premium": "Manteaux enfant",
+    "shoes_budget": "Baskets",
+    "shoes_premium": "Chaussures en cuir"
   },
   "segments": {
     "families": "Familles modestes",
@@ -105,7 +122,10 @@
     "fastfood": "Service rapide",
     "steakhouse": "Grill",
     "finedining": "Gastronomie",
-    "electronics": "Commerce d’électronique"
+    "electronics": "Commerce d’électronique",
+    "fastfashion": "Mode rapide",
+    "clothing": "Commerce de vêtements",
+    "boutique": "Boutique"
   },
   "managers": {
     "grades": {

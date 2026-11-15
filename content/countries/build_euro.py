@@ -28,30 +28,38 @@ SPENDING = {
     'grocery': ['CP01', 'CP02', 'CP056'],
     'restaurants': ['CP111'],
     'electronics': ['CP091', 'CP082'],
+    'clothing': ['CP031', 'CP032'],
 }
 TRADES = {
     'grocery': ('Groceries', 'Food, drink, tobacco and household goods'),
     'restaurants': ('Restaurants', 'Restaurants, cafes and takeaways'),
     'electronics': ('Electronics', 'Computers, TVs, audio and phones'),
+    'clothing': ('Clothing', 'Clothes and shoes'),
 }
 # The business statistics that report the same trades from the sellers' side.
 TURNOVER = {
     'grocery': ['G4711', 'G472'],
     'restaurants': ['I56'],
     'electronics': ['G474', 'G4754'],
+    'clothing': ['G4771', 'G4772'],
 }
 STORE_COUNTS = {
     'grocery': ['G471', 'G472'],
     'restaurants': ['I56'],
     'electronics': ['G474'],
+    'clothing': ['G4771', 'G4772'],
 }
+# Trades whose shops the census of local units doesn't count on their own:
+# their businesses, times the shops per business of the wider group the
+# census does count.
+COUNTED_BY_GROUP = {'clothing': 'G477'}
 # Spending includes VAT and sellers' turnover doesn't. Rates in force in 2022;
 # Italian and Spanish food mixes the 4% and 10% bands.
 VAT = {
-    'DE': {'CP01': .07, 'CP02': .19, 'CP056': .19, 'CP111': .07, 'CP091': .19, 'CP082': .19},
-    'FR': {'CP01': .055, 'CP02': .20, 'CP056': .20, 'CP111': .10, 'CP091': .20, 'CP082': .20},
-    'IT': {'CP01': .08, 'CP02': .22, 'CP056': .22, 'CP111': .10, 'CP091': .22, 'CP082': .22},
-    'ES': {'CP01': .08, 'CP02': .21, 'CP056': .21, 'CP111': .10, 'CP091': .21, 'CP082': .21},
+    'DE': {'CP01': .07, 'CP02': .19, 'CP056': .19, 'CP111': .07, 'CP091': .19, 'CP082': .19, 'CP031': .19, 'CP032': .19},
+    'FR': {'CP01': .055, 'CP02': .20, 'CP056': .20, 'CP111': .10, 'CP091': .20, 'CP082': .20, 'CP031': .20, 'CP032': .20},
+    'IT': {'CP01': .08, 'CP02': .22, 'CP056': .22, 'CP111': .10, 'CP091': .22, 'CP082': .22, 'CP031': .22, 'CP032': .22},
+    'ES': {'CP01': .08, 'CP02': .21, 'CP056': .21, 'CP111': .10, 'CP091': .21, 'CP082': .21, 'CP031': .21, 'CP032': .21},
 }
 # Combined statutory corporate tax (OECD Tax Database).
 CORPORATE_TAX = {'DE': '0.2990', 'FR': '0.2583', 'IT': '0.2781', 'ES': '0.2500'}
@@ -62,9 +70,10 @@ RESTAURANT_GOODS = 0.30
 # Fictional chains. Grocery shares follow published estimates for the real
 # market's structure: Germany's top four 76% (Lebensmittelpraxis, 2022), France
 # from Kantar periods of 2022, Italy from Mediobanca (2021), Spain from Kantar
-# (December 2022). Store counts, restaurant and electronics shares and every
-# price position are rough estimates. What's left of each trade is its
-# independents.
+# (December 2022). Store counts, restaurant, electronics and clothing shares
+# and every price position are rough estimates; clothing's largest chains
+# each hold a few percent of a fragmented market, more in Spain. What's left
+# of each trade is its independents.
 CHAINS = {
     'DE': {
         'grocery': [
@@ -75,6 +84,7 @@ CHAINS = {
         ],
         'restaurants': [('Burger Eck', 1400, '0.05', '0.95'), ('Kaffeehaus Krone', 2500, '0.02', '1.05')],
         'electronics': [('Technohalle', 450, '0.30', '0.98'), ('Bitladen', 300, '0.05', '1.00')],
+        'clothing': [('Kleiderwerk', 450, '0.06', '0.95'), ('Modehaus Brandt', 300, '0.05', '1.02'), ('Stoffkönig', 40, '0.03', '0.85')],
     },
     'FR': {
         'grocery': [
@@ -87,6 +97,7 @@ CHAINS = {
         ],
         'restaurants': [('Le Burger', 1500, '0.07', '0.95'), ('Brasserie Dumas', 800, '0.02', '1.05')],
         'electronics': [('Numéra', 500, '0.30', '1.00'), ('Maison Volt', 200, '0.08', '0.98')],
+        'clothing': [('Maison Lune', 550, '0.05', '0.94'), ('Atelier Rive', 450, '0.04', '1.05'), ('Prix Mode', 30, '0.03', '0.85')],
     },
     'IT': {
         'grocery': [
@@ -100,6 +111,7 @@ CHAINS = {
         ],
         'restaurants': [('Panino Veloce', 700, '0.02', '0.95'), ('Trattoria Roma', 300, '0.01', '1.05')],
         'electronics': [('Elettrocasa', 500, '0.15', '0.98'), ('Tecnomondo', 150, '0.12', '1.00')],
+        'clothing': [('Moda Aurelia', 1000, '0.07', '0.97'), ('Sartoria Bellini', 300, '0.03', '1.10')],
     },
     'ES': {
         'grocery': [
@@ -111,6 +123,7 @@ CHAINS = {
         ],
         'restaurants': [('Burger Sol', 600, '0.02', '0.95'), ('Taberna Real', 300, '0.01', '1.05')],
         'electronics': [('Electromundo', 110, '0.25', '0.98'), ('Tecnoplaza', 200, '0.08', '1.00')],
+        'clothing': [('Grupo Hilvana', 1200, '0.16', '1.00'), ('Moda Sol', 400, '0.05', '0.92')],
     },
 }
 
@@ -169,17 +182,24 @@ def main():
     spent = table('nama_10_co3_p3', f'{GEO}&unit=CP_MEUR&time={YEAR}&' + '&'.join(f'coicop={c}' for c in codes), 'geo', 'coicop')
     structure = table('hbs_str_t223', f'{GEO}&time=2020&unit=PM&' + '&'.join(f'quant_inc={q}' for q in QUINTILES) + '&' + '&'.join(f'coicop={c}' for c in codes), 'geo', 'coicop', 'quant_inc')
     budget = table('hbs_exp_t133', f'{GEO}&time=2020&unit=PPS_HH&' + '&'.join(f'quant_inc={q}' for q in QUINTILES), 'geo', 'quant_inc')
-    nace = sorted({n for group in TURNOVER.values() for n in group})
-    indicators = ['NETTUR_MEUR', 'GM_GD_RS_MEUR', 'WAGE_MEUR', 'SS_COST_MEUR', 'GOS_MEUR']
+    nace = sorted({n for group in TURNOVER.values() for n in group} | set(COUNTED_BY_GROUP.values()))
+    indicators = ['NETTUR_MEUR', 'GM_GD_RS_MEUR', 'WAGE_MEUR', 'SS_COST_MEUR', 'GOS_MEUR', 'ENT_NR']
     business = table('sbs_ovw_act', f'{GEO}&time={YEAR}&' + '&'.join(f'nace_r2={n}' for n in nace) + '&' + '&'.join(f'indic_sbs={i}' for i in indicators), 'geo', 'nace_r2', 'indic_sbs')
     # The latest census of local units is 2020, or 2019 before the pandemic for
     # restaurants, and Germany's 2019 is missing for the rest.
     units = {}
-    for code in sorted({n for group in STORE_COUNTS.values() for n in group}):
+    counted = {n for trade, group in STORE_COUNTS.items() if trade not in COUNTED_BY_GROUP for n in group}
+    for code in sorted(counted | set(COUNTED_BY_GROUP.values())):
         for (geo, time), value in table('sbs_r_nuts06_r2', f'{GEO}&time=2019&time=2020&nace_r2={code}&indic_sb=V11210', 'geo', 'time').items():
             wanted = '2019' if code == 'I56' else '2020'
             if time == wanted:
                 units[(geo, code)] = value
+    # The 2020 census against 2022's businesses: close enough for a ratio.
+    for trade, group in COUNTED_BY_GROUP.items():
+        for geo in COUNTRIES:
+            per_business = units[(geo, group)] / business[(geo, group, 'ENT_NR')]
+            for n in STORE_COUNTS[trade]:
+                units[(geo, n)] = business[(geo, n, 'ENT_NR')] * per_business
 
     # How much each economy and trade moves with the euro area, 2000 to 2019.
     span = years(2000, 2019)
@@ -193,9 +213,9 @@ def main():
         betas[geo] = slope([area[t] - area_mean for t in area], [series[t] - mean for t in area])
         growth = (then_now[(geo, '2023')] / then_now[(geo, '2015')]) ** (1 / 8) - 1
         trends[geo] = (mean / 100 - growth, growth)
-    by_trade = table('nama_10_co3_p3', f'{GEO}&unit=CLV_PCH_PRE&{span}&coicop=CP01&coicop=CP111&coicop=CP091&coicop=TOTAL', 'geo', 'coicop', 'time')
+    by_trade = table('nama_10_co3_p3', f'{GEO}&unit=CLV_PCH_PRE&{span}&coicop=CP01&coicop=CP111&coicop=CP091&coicop=CP03&coicop=TOTAL', 'geo', 'coicop', 'time')
     trade_beta = {}
-    for trade, code in {'grocery': 'CP01', 'restaurants': 'CP111', 'electronics': 'CP091'}.items():
+    for trade, code in {'grocery': 'CP01', 'restaurants': 'CP111', 'electronics': 'CP091', 'clothing': 'CP03'}.items():
         xs, ys = [], []
         for geo in COUNTRIES:
             time = [t for (g, c, t) in by_trade if g == geo and c == code]
@@ -301,7 +321,7 @@ def main():
             'Income: disposable income of households, nasa_10_nf_tr (B6G, S14_S15), split by the survey shares in ilc_di01. It includes imputed rents, so it runs above what surveys report.',
             'Spending: national accounts, nama_10_co3_p3, less VAT, split between classes by the budget survey, hbs_str_t223 and hbs_exp_t133 (2020). Italy takes the average split of the others.',
             'Margins and turnover: structural business statistics, sbs_ovw_act. Restaurants\' goods are assumed at 30% of sales.',
-            'Stores: local units, sbs_r_nuts06_r2.',
+            'Stores: local units, sbs_r_nuts06_r2. Clothing and shoe shops are not counted on their own: their businesses in sbs_ovw_act, times the local units per business of all specialised shops (G477).',
             'Cycle: household consumption volumes, 2000 to 2019, nama_10_gdp and nama_10_co3_p3. Amplitude is the euro area\'s spread over the spread of the prototype\'s regimes.',
             'Chains are fictional. See build_euro.py for what their shares follow and which figures are rough estimates.',
         ],

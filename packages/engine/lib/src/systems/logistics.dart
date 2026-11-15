@@ -127,6 +127,11 @@ final class LogisticsSystem implements TickSystem {
       quality: lead == Fx.zero
           ? Fx.zero
           : Fx.raw(mulDivRound(lead.raw, fromFactory, accepted)),
+      // Only goods that go out of fashion need to know how old they are.
+      arrived:
+          context.content.categories[product.category.index].fashion == null
+          ? null
+          : context.day,
     );
     final cost = line.unitPrice.timesInt(accepted);
     context.ledger.post(

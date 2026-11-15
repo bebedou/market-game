@@ -126,7 +126,13 @@ List<bool> channelSells(
   ];
   var wanted = 0;
   var bySample = 0;
+  // Channels of trades added since places were described don't size them.
+  final sizing = List.filled(channelCount, false);
+  for (final format in formats) {
+    if (format.edition == 0) sizing[channels[format.id.index]] = true;
+  }
   for (final MapEntry(key: channel, value: amount) in market.entries) {
+    if (!sizing[channel]) continue;
     wanted += amount.cents;
     bySample += spent(sample, channel).cents;
   }

@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import '../commands/command.dart';
 import '../content/content_db.dart';
+import '../content/scenario_loader.dart';
 import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../countries/country_economy.dart';
@@ -30,6 +32,10 @@ const int _structureVersion = 9;
 /// The first format whose header says which neighbourhoods woke, so the
 /// content can be grown to match before anything else is read.
 const int _wokenVersion = 24;
+
+/// The save version from which each woken neighbourhood keeps the edition
+/// of the places it woke in.
+const int _editionVersion = 34;
 
 /// The first format that tells which cities slept from the start.
 const int _asleepVersion = 26;
@@ -106,6 +112,8 @@ final class SaveData {
             for (var s = 0, m = reader.readInt(); s < m; s++)
               SleepingShop.read(reader),
           ],
+          // Saves before editions woke everything in the first.
+          edition: version >= _editionVersion ? reader.readInt() : 0,
         ));
       }
       if (woken.isNotEmpty) {
@@ -121,7 +129,17 @@ final class SaveData {
     }
     String? problem;
     if (version >= _structureVersion) {
-      problem = _structureProblem(_readStructure(reader), content.structure);
+      final saved = _readStructure(reader);
+      problem = _structureProblem(saved, content.structure);
+      if (problem != null) {
+        // Entries the scenario gained since come before the districts woken
+        // since: put them after, where the save expects what it knew.
+        if (_inSavedOrder(content, saved) case final reordered?
+            when _structureProblem(saved, reordered.structure) == null) {
+          content = reordered;
+          problem = null;
+        }
+      }
     } else {
       // A fingerprint of all the content or of its structure, which growth
       // changes; the world itself is checked once read.
@@ -194,7 +212,8 @@ final class SaveData {
       start?.write(writer);
     }
     writer.writeInt(woken.length);
-    for (final (:row, :day, :priceIndex, :households, :shops) in woken) {
+    for (final (:row, :day, :priceIndex, :households, :shops, :edition)
+        in woken) {
       writer
         ..writeInt(row)
         ..writeInt(day.number)
@@ -205,6 +224,7 @@ final class SaveData {
       for (final shop in shops) {
         shop.write(writer);
       }
+      writer.writeInt(edition);
     }
     writer.writeInt(content.structure.length);
     for (final (:name, :keys) in content.structure) {
@@ -245,6 +265,35 @@ List<ContentList> _readStructure(StateReader reader) => [
 
 /// Why a world built on [saved] can't load into [current], or null if it
 /// can: the lists the world mirrors may only have grown at the end.
+/// [content] with the lists a save reads by position in the order [saved]
+/// knew them, the entries it didn't know after them; null if it lacks some
+/// of them, or nothing moves.
+ContentDb? _inSavedOrder(ContentDb content, List<ContentList> saved) {
+  final root = jsonDecode(content.source) as Map<String, dynamic>;
+  var moved = false;
+  for (final (:name, :keys) in saved) {
+    if (ListGrowth.of(name) == ListGrowth.free) continue;
+    if (root[name] case final List<dynamic> list) {
+      final byKey = {
+        for (final entry in list) (entry as Map<String, dynamic>)['id']: entry,
+      };
+      if (!keys.every(byKey.containsKey)) return null;
+      final known = keys.toSet();
+      final ordered = [
+        for (final key in keys) byKey[key],
+        for (final entry in list)
+          if (!known.contains((entry as Map<String, dynamic>)['id'])) entry,
+      ];
+      for (var i = 0; i < ordered.length; i++) {
+        if (!identical(ordered[i], list[i])) moved = true;
+      }
+      root[name] = ordered;
+    }
+  }
+  if (!moved) return null;
+  return loadScenario(jsonEncode(root), national: content.national);
+}
+
 String? _structureProblem(List<ContentList> saved, List<ContentList> current) {
   for (final (:name, :keys) in saved) {
     final growth = ListGrowth.of(name);

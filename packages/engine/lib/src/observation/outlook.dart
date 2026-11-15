@@ -87,6 +87,12 @@ ShopHabits habitsOf(FormatDef format) => switch (format.key) {
     goodsExtra: Fx.zero,
     peakStaff: Fx.raw(15000),
   ),
+  'clothing' => const ShopHabits(
+    capture: Fx.one,
+    draw: Fx.one,
+    goodsExtra: Fx.raw(300),
+    peakStaff: Fx.raw(15000),
+  ),
   _ => _grocer,
 };
 

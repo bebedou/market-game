@@ -7,7 +7,7 @@
   "Income: disposable income of households, nasa_10_nf_tr (B6G, S14_S15), split by the survey shares in ilc_di01. It includes imputed rents, so it runs above what surveys report.",
   "Spending: national accounts, nama_10_co3_p3, less VAT, split between classes by the budget survey, hbs_str_t223 and hbs_exp_t133 (2020). Italy takes the average split of the others.",
   "Margins and turnover: structural business statistics, sbs_ovw_act. Restaurants' goods are assumed at 30% of sales.",
-  "Stores: local units, sbs_r_nuts06_r2.",
+  "Stores: local units, sbs_r_nuts06_r2. Clothing and shoe shops are not counted on their own: their businesses in sbs_ovw_act, times the local units per business of all specialised shops (G477).",
   "Cycle: household consumption volumes, 2000 to 2019, nama_10_gdp and nama_10_co3_p3. Amplitude is the euro area's spread over the spread of the prototype's regimes.",
   "Chains are fictional. See build_euro.py for what their shares follow and which figures are rough estimates."
  ],
@@ -97,6 +97,13 @@
    "description": "Computers, TVs, audio and phones",
    "cycle": "1.9332",
    "incomeElasticity": "0.9202"
+  },
+  {
+   "id": "clothing",
+   "name": "Clothing",
+   "description": "Clothes and shoes",
+   "cycle": "1.3351",
+   "incomeElasticity": "0.8941"
   }
  ],
  "countries": [
@@ -116,7 +123,8 @@
      "spending": {
       "grocery": "3631.04",
       "restaurants": "602.22",
-      "electronics": "321.14"
+      "electronics": "321.14",
+      "clothing": "569.57"
      }
     },
     {
@@ -126,7 +134,8 @@
      "spending": {
       "grocery": "4948.16",
       "restaurants": "1082.49",
-      "electronics": "480.77"
+      "electronics": "480.77",
+      "clothing": "991.76"
      }
     },
     {
@@ -136,7 +145,8 @@
      "spending": {
       "grocery": "6352.48",
       "restaurants": "1512.59",
-      "electronics": "718.67"
+      "electronics": "718.67",
+      "clothing": "1352.01"
      }
     },
     {
@@ -146,7 +156,8 @@
      "spending": {
       "grocery": "8109.16",
       "restaurants": "2199.68",
-      "electronics": "952.22"
+      "electronics": "952.22",
+      "clothing": "1929.60"
      }
     },
     {
@@ -156,7 +167,8 @@
      "spending": {
       "grocery": "10292.56",
       "restaurants": "3403.42",
-      "electronics": "1624.39"
+      "electronics": "1624.39",
+      "clothing": "2999.43"
      }
     }
    ],
@@ -181,6 +193,13 @@
      "other": "0.0978",
      "stores": 19196,
      "turnover": "29613790000.00"
+    },
+    "clothing": {
+     "goods": "0.5190",
+     "staff": "0.1839",
+     "other": "0.2006",
+     "stores": 39151,
+     "turnover": "46836230000.00"
     }
    },
    "chains": [
@@ -265,6 +284,35 @@
      "trade": "electronics",
      "stores": 18446,
      "share": "0.6500",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Kleiderwerk",
+     "trade": "clothing",
+     "stores": 450,
+     "share": "0.06",
+     "price": "0.95"
+    },
+    {
+     "name": "Modehaus Brandt",
+     "trade": "clothing",
+     "stores": 300,
+     "share": "0.05",
+     "price": "1.02"
+    },
+    {
+     "name": "Stoffkönig",
+     "trade": "clothing",
+     "stores": 40,
+     "share": "0.03",
+     "price": "0.85"
+    },
+    {
+     "name": "Independent clothing",
+     "trade": "clothing",
+     "stores": 38361,
+     "share": "0.8600",
      "price": "1.00",
      "independent": true
     }
@@ -448,7 +496,8 @@
      "spending": {
       "grocery": "3858.81",
       "restaurants": "1015.43",
-      "electronics": "273.59"
+      "electronics": "273.59",
+      "clothing": "642.63"
      }
     },
     {
@@ -458,7 +507,8 @@
      "spending": {
       "grocery": "5328.70",
       "restaurants": "1386.63",
-      "electronics": "286.72"
+      "electronics": "286.72",
+      "clothing": "778.23"
      }
     },
     {
@@ -468,7 +518,8 @@
      "spending": {
       "grocery": "7088.26",
       "restaurants": "1932.69",
-      "electronics": "378.02"
+      "electronics": "378.02",
+      "clothing": "1051.14"
      }
     },
     {
@@ -478,7 +529,8 @@
      "spending": {
       "grocery": "8705.98",
       "restaurants": "2896.83",
-      "electronics": "653.45"
+      "electronics": "653.45",
+      "clothing": "1392.39"
      }
     },
     {
@@ -488,7 +540,8 @@
      "spending": {
       "grocery": "11212.24",
       "restaurants": "5326.04",
-      "electronics": "880.67"
+      "electronics": "880.67",
+      "clothing": "2139.62"
      }
     }
    ],
@@ -513,6 +566,13 @@
      "other": "0.0609",
      "stores": 13525,
      "turnover": "10814770000.00"
+    },
+    "clothing": {
+     "goods": "0.5526",
+     "staff": "0.1793",
+     "other": "0.2120",
+     "stores": 62858,
+     "turnover": "39379700000.00"
     }
    },
    "chains": [
@@ -612,6 +672,35 @@
      "trade": "electronics",
      "stores": 12825,
      "share": "0.6200",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Maison Lune",
+     "trade": "clothing",
+     "stores": 550,
+     "share": "0.05",
+     "price": "0.94"
+    },
+    {
+     "name": "Atelier Rive",
+     "trade": "clothing",
+     "stores": 450,
+     "share": "0.04",
+     "price": "1.05"
+    },
+    {
+     "name": "Prix Mode",
+     "trade": "clothing",
+     "stores": 30,
+     "share": "0.03",
+     "price": "0.85"
+    },
+    {
+     "name": "Independent clothing",
+     "trade": "clothing",
+     "stores": 61828,
+     "share": "0.8800",
      "price": "1.00",
      "independent": true
     }
@@ -765,7 +854,8 @@
      "spending": {
       "grocery": "4600.81",
       "restaurants": "1017.62",
-      "electronics": "305.55"
+      "electronics": "305.55",
+      "clothing": "926.72"
      }
     },
     {
@@ -775,7 +865,8 @@
      "spending": {
       "grocery": "6377.20",
       "restaurants": "1722.11",
-      "electronics": "423.33"
+      "electronics": "423.33",
+      "clothing": "1407.00"
      }
     },
     {
@@ -785,7 +876,8 @@
      "spending": {
       "grocery": "8058.39",
       "restaurants": "2377.38",
-      "electronics": "585.76"
+      "electronics": "585.76",
+      "clothing": "1872.29"
      }
     },
     {
@@ -795,7 +887,8 @@
      "spending": {
       "grocery": "9791.11",
       "restaurants": "3419.27",
-      "electronics": "876.06"
+      "electronics": "876.06",
+      "clothing": "2542.39"
      }
     },
     {
@@ -805,7 +898,8 @@
      "spending": {
       "grocery": "12876.70",
       "restaurants": "5698.15",
-      "electronics": "1246.04"
+      "electronics": "1246.04",
+      "clothing": "3811.92"
      }
     }
    ],
@@ -830,6 +924,13 @@
      "other": "0.0318",
      "stores": 13471,
      "turnover": "7252720000.00"
+    },
+    "clothing": {
+     "goods": "0.6122",
+     "staff": "0.1254",
+     "other": "0.1728",
+     "stores": 85363,
+     "turnover": "38098530000.00"
     }
    },
    "chains": [
@@ -938,6 +1039,31 @@
      "trade": "electronics",
      "stores": 12821,
      "share": "0.7300",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Moda Aurelia",
+     "trade": "clothing",
+     "stores": 1000,
+     "share": "0.07",
+     "price": "0.97"
+    },
+    {
+     "name": "Sartoria Bellini",
+     "trade": "clothing",
+     "stores": 300,
+     "share": "0.03",
+     "price": "1.10",
+     "home": [
+      "ITC4"
+     ]
+    },
+    {
+     "name": "Independent clothing",
+     "trade": "clothing",
+     "stores": 84063,
+     "share": "0.9000",
      "price": "1.00",
      "independent": true
     }
@@ -1161,7 +1287,8 @@
      "spending": {
       "grocery": "4185.08",
       "restaurants": "1567.79",
-      "electronics": "143.94"
+      "electronics": "143.94",
+      "clothing": "505.82"
      }
     },
     {
@@ -1171,7 +1298,8 @@
      "spending": {
       "grocery": "5881.90",
       "restaurants": "3115.52",
-      "electronics": "237.73"
+      "electronics": "237.73",
+      "clothing": "861.45"
      }
     },
     {
@@ -1181,7 +1309,8 @@
      "spending": {
       "grocery": "6937.64",
       "restaurants": "4215.87",
-      "electronics": "331.92"
+      "electronics": "331.92",
+      "clothing": "1108.40"
      }
     },
     {
@@ -1191,7 +1320,8 @@
      "spending": {
       "grocery": "7898.23",
       "restaurants": "5772.98",
-      "electronics": "471.81"
+      "electronics": "471.81",
+      "clothing": "1465.26"
      }
     },
     {
@@ -1201,7 +1331,8 @@
      "spending": {
       "grocery": "10349.24",
       "restaurants": "9382.55",
-      "electronics": "626.37"
+      "electronics": "626.37",
+      "clothing": "2052.13"
      }
     }
    ],
@@ -1226,6 +1357,13 @@
      "other": "0.0947",
      "stores": 13348,
      "turnover": "9209710000.00"
+    },
+    "clothing": {
+     "goods": "0.5690",
+     "staff": "0.1649",
+     "other": "0.1773",
+     "stores": 61791,
+     "turnover": "23274930000.00"
     }
    },
    "chains": [
@@ -1322,6 +1460,31 @@
      "trade": "electronics",
      "stores": 13038,
      "share": "0.6700",
+     "price": "1.00",
+     "independent": true
+    },
+    {
+     "name": "Grupo Hilvana",
+     "trade": "clothing",
+     "stores": 1200,
+     "share": "0.16",
+     "price": "1.00",
+     "home": [
+      "ES11"
+     ]
+    },
+    {
+     "name": "Moda Sol",
+     "trade": "clothing",
+     "stores": 400,
+     "share": "0.05",
+     "price": "0.92"
+    },
+    {
+     "name": "Independent clothing",
+     "trade": "clothing",
+     "stores": 60191,
+     "share": "0.7900",
      "price": "1.00",
      "independent": true
     }

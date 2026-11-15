@@ -13,7 +13,11 @@
     "finedining": "Alta cocina",
     "gadgets": "Accesorios",
     "phones": "Smartphones",
-    "smarthome": "Hogar inteligente"
+    "smarthome": "Hogar inteligente",
+    "womenswear": "Moda mujer",
+    "menswear": "Moda hombre",
+    "kidswear": "Moda infantil",
+    "shoes": "Calzado"
   },
   "formats": {
     "grocery": {
@@ -45,6 +49,11 @@
       "name": "Tienda de electrónica",
       "a": "una tienda de electrónica",
       "blurb": "Accesorios, móviles y hogar inteligente: stock caro, pocas ventas pero grandes, y productos nuevos que triunfan con los años."
+    },
+    "clothing": {
+      "name": "Tienda de ropa",
+      "a": "una tienda de ropa",
+      "blurb": "Ropa y calzado: márgenes altos y alquileres caros, colecciones pedidas con antelación, y un stock que pasa de moda si se queda."
     }
   },
   "products": {
@@ -71,7 +80,15 @@
     "phones_budget": "Smartphone económico",
     "phones_premium": "Smartphone de gama alta",
     "smarthome_budget": "Enchufe inteligente",
-    "smarthome_premium": "Altavoz inteligente"
+    "smarthome_premium": "Altavoz inteligente",
+    "womenswear_budget": "Básicos de mujer",
+    "womenswear_premium": "Piezas de diseño de mujer",
+    "menswear_budget": "Básicos de hombre",
+    "menswear_premium": "Sastrería de hombre",
+    "kidswear_budget": "Ropa infantil",
+    "kidswear_premium": "Abrigos infantiles",
+    "shoes_budget": "Zapatillas",
+    "shoes_premium": "Zapatos de piel"
   },
   "segments": {
     "families": "Familias modestas",
@@ -105,7 +122,10 @@
     "fastfood": "Servicio rápido",
     "steakhouse": "Parrilla",
     "finedining": "Gastronomía",
-    "electronics": "Comercio de electrónica"
+    "electronics": "Comercio de electrónica",
+    "fastfashion": "Moda rápida",
+    "clothing": "Comercio de ropa",
+    "boutique": "Boutique"
   },
   "managers": {
     "grades": {

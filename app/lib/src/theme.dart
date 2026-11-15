@@ -80,6 +80,7 @@ class Ledger extends ThemeExtension<Ledger> {
       'steakhouse' => (const Color(0xFF7A2E2A), const Color(0xFFC8716A)),
       'finedining' => (const Color(0xFF1F3A5F), const Color(0xFF94ADD8)),
       'electronics' => (const Color(0xFF2B6CB0), const Color(0xFF74A7E2)),
+      'clothing' => (const Color(0xFF8A3B6E), const Color(0xFFD08AB8)),
       _ => (const Color(0xFFC2412D), const Color(0xFFE36E58)),
     };
     return night ? dark : light;
@@ -376,6 +377,10 @@ IconData categoryIcon(CategoryDef category) => switch (category.key) {
   'drinks' => Icons.sports_bar_outlined,
   'produce' => Icons.eco_outlined,
   'household' => Icons.cleaning_services_outlined,
+  'womenswear' ||
+  'menswear' ||
+  'kidswear' ||
+  'shoes' => Icons.checkroom_outlined,
   _ => Icons.shopping_basket_outlined,
 };
 
@@ -385,6 +390,7 @@ IconData formatIcon(FormatDef format) => switch (format.key) {
   'finedining' => Icons.restaurant_outlined,
   'supermarket' => Icons.local_grocery_store_outlined,
   'electronics' => Icons.devices_outlined,
+  'clothing' => Icons.checkroom_outlined,
   _ => Icons.storefront_outlined,
 };
 

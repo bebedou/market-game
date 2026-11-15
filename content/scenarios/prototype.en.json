@@ -25,6 +25,10 @@
     "electronics": {
       "a": "an electronics shop",
       "blurb": "Gadgets, phones and smart home kit: dear stock, few but large sales, and new products catching on over the years."
+    },
+    "clothing": {
+      "a": "a clothing shop",
+      "blurb": "Clothes and shoes: high margins and dear rents, collections ordered ahead, and stock that goes out of fashion if it sits."
     }
   },
   "strategies": {

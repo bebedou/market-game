@@ -240,11 +240,22 @@ const _qualityVersion = 32;
 /// saved against.
 const _shapeVersion = 33;
 
+/// The save version from which it also keeps how many trades and chains it
+/// knew, so a table that has gained some since still reads it: the new ones
+/// start afresh.
+const _grownVersion = 34;
+
+/// The trades every table had before clothing, for saves that didn't say.
+const _tradesBeforeClothing = 3;
+
 /// What a save of the economy must agree with in [table], as its state is
-/// read in the table's order: its regimes, classes and trades, and each
-/// country's regions and chains, by key or name and in order. Figures may
-/// change; a row added, removed or moved may not.
-int tableShape(CountryTable table) {
+/// read in the table's order: its regimes, classes and countries, its first
+/// [trades] trades (all by default), and each country's regions and first
+/// [chains] chains (all by default), by key or name and in order. Figures
+/// may change, and trades and chains may be added at the end; a row
+/// removed or moved may not.
+int tableShape(CountryTable table, {int? trades, List<int>? chains}) {
+  final tradeCount = trades ?? table.trades.length;
   final hash = Hash32();
   void add(String text) => hash.addBytes(utf8.encode('$text\u0000'));
   void count(int n) => hash.addInt(n);
@@ -256,21 +267,22 @@ int tableShape(CountryTable table) {
   for (final income in table.classes) {
     add(income.key);
   }
-  count(table.trades.length);
-  for (final trade in table.trades) {
+  count(tradeCount);
+  for (final trade in table.trades.take(tradeCount)) {
     add(trade.key);
   }
   count(table.countries.length);
-  for (final country in table.countries) {
+  for (final (i, country) in table.countries.indexed) {
+    final chainCount = chains?[i] ?? country.chains.length;
     add(country.key);
     count(country.regions.length);
     for (final region in country.regions) {
       add(region.key);
     }
     count(country.classes.length);
-    count(country.trades.length);
-    count(country.chains.length);
-    for (final chain in country.chains) {
+    count(trades ?? country.trades.length);
+    count(chainCount);
+    for (final chain in country.chains.take(chainCount)) {
       add(chain.name);
     }
   }
@@ -1746,6 +1758,12 @@ final class CountryEconomy {
   /// own figures and the chains' pull are worked out again on reading.
   void write(StateWriter writer) {
     writer
+      ..writeInt(table.trades.length)
+      ..writeInt(countries.length);
+    for (final country in countries) {
+      writer.writeInt(country.chains.length);
+    }
+    writer
       ..writeInt(tableShape(table))
       ..writeInt(today.number)
       ..writeInt(regime)
@@ -1831,13 +1849,38 @@ final class CountryEconomy {
   /// Reads what [write] wrote over this economy, made afresh from the same
   /// table and seed.
   void read(StateReader reader) {
-    // Read by position against the table: one that has changed shape would
-    // misread it, or fail partway.
+    // Read by position against the table, as far as the trades and chains
+    // the save knew: a table that has changed shape otherwise would misread
+    // it, or fail partway.
+    const changed = FormatException(
+      'The save was made with different national figures',
+    );
+    final int trades;
+    final List<int> chains;
+    if (reader.version >= _grownVersion) {
+      trades = reader.readInt();
+      if (trades > table.trades.length) throw changed;
+      if (reader.readInt() != countries.length) throw changed;
+      chains = [for (final _ in countries) reader.readInt()];
+    } else {
+      // Older saves knew the trades before clothing, whose chains come first.
+      trades = table.trades.length < _tradesBeforeClothing
+          ? table.trades.length
+          : _tradesBeforeClothing;
+      chains = [
+        for (final country in countries)
+          country.chains.where((chain) => chain.def.trade < trades).length,
+      ];
+    }
+    for (final (i, country) in countries.indexed) {
+      if (chains[i] > country.chains.length ||
+          country.chains.take(chains[i]).any((c) => c.def.trade >= trades)) {
+        throw changed;
+      }
+    }
     if (reader.version >= _shapeVersion &&
-        reader.readInt() != tableShape(table)) {
-      throw const FormatException(
-        'The save was made with different national figures',
-      );
+        reader.readInt() != tableShape(table, trades: trades, chains: chains)) {
+      throw changed;
     }
     today = Day(reader.readInt());
     regime = reader.readInt();
@@ -1845,12 +1888,12 @@ final class CountryEconomy {
     countryRegimes = reader.readBool()
         ? [for (var i = 0, n = reader.readInt(); i < n; i++) reader.readInt()]
         : null;
-    for (final country in countries) {
+    for (final (i, country) in countries.indexed) {
       for (var c = 0; c < country.households.length; c++) {
         country.households[c] = reader.readInt();
       }
       for (final row in country.spendIndex) {
-        for (var t = 0; t < row.length; t++) {
+        for (var t = 0; t < trades; t++) {
           row[t] = Fx.raw(reader.readInt());
         }
       }
@@ -1858,7 +1901,7 @@ final class CountryEconomy {
         ..priceIndex = Fx.raw(reader.readInt())
         ..wageIndex = Fx.raw(reader.readInt())
         ..realGrowthThisYear = Fx.raw(reader.readInt());
-      for (final months in country.tradeMonths) {
+      for (final months in country.tradeMonths.take(trades)) {
         months.clear();
         for (var i = 0, n = reader.readInt(); i < n; i++) {
           months.add(
@@ -1872,14 +1915,14 @@ final class CountryEconomy {
           );
         }
       }
-      for (final trade in country.regionSpend) {
+      for (final trade in country.regionSpend.take(trades)) {
         for (final region in trade) {
           for (var c = 0; c < region.length; c++) {
             region[c] = Money(reader.readInt());
           }
         }
       }
-      for (final chain in country.chains) {
+      for (final chain in country.chains.take(chains[i])) {
         // Saves before chains placed their own shops kept only a count,
         // spread as at the start.
         final regional = reader.version >= _placedVersion

@@ -103,6 +103,8 @@ HOMES = {
     'Mercado Levante': ['ES52', 'ES62'],
     'Norte Cooperativa': ['ES21', 'ES22', 'ES13'],
     'Rheinkauf': ['DEA', 'DEB'],
+    'Sartoria Bellini': ['ITC4'],
+    'Grupo Hilvana': ['ES11'],
 }
 
 

@@ -219,6 +219,9 @@ enum EntryReason {
 
   /// A factory's lab developing a product's next generation.
   development,
+
+  /// Old stock sold to a jobber for part of what it cost.
+  clearance,
 }
 
 /// One double-entry posting in one party's books. [store], [product] and

@@ -49,6 +49,7 @@ to themselves. Run from `content/countries`.
 | [build_regions.py](../content/countries/build_regions.py) | Eurostat `demo_r_pjanaggr3` and `nama_10r_2hhinc` (2022) | adds regions and chains' home regions to `euro.json`; run after `build_euro.py` |
 | [build_places.py](../content/countries/build_places.py) | Eurostat; district figures written by hand | `places.json`: countries' taxes, cycles, suppliers, names, districts |
 | [insert_places.py](../content/countries/insert_places.py) | `places_built.json` | appends to `prototype.json`, keeping saved games valid; stops if the scenario already has countries |
+| [add_clothing.py](../content/countries/add_clothing.py) | `euro.json` (clothing against electronics per household) | appends clothing to `prototype.json` and its translations: categories with their fashion, goods, habits, the format (edition 1) with its national figures, strategies, suppliers, each place's clothing market, two rival shops a city; stops if clothing is there |
 | [build_outlines.py](../content/countries/build_outlines.py) | GISCO NUTS 2021 1:20M GeoJSON | `outlines.json` |
 
 ## The data pipelines

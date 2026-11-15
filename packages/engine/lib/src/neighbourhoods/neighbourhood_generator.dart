@@ -99,6 +99,27 @@ final _electronics = _ShopRule(
   spoiled: '0',
 );
 
+/// A clothing shop takes the best spot, on a dear street, and loses a few
+/// points of what it buys clearing what went out of fashion.
+final _clothesSite = _SiteRule(
+  slots: 8,
+  storage: 1500,
+  area: '1.10',
+  room: '0.90',
+  rent: '1.60',
+  opening: '1',
+);
+
+/// Where incomes run this high, a district's second clothing shop is a
+/// boutique.
+final _boutiqueIncome = Fx.parse('1.20');
+final _clothing = _ShopRule(
+  format: 'clothing',
+  site: _clothesSite,
+  settledStaff: 5,
+  spoiled: '0.03',
+);
+
 /// The staff a shop opens with, per slot, by strategy.
 const _openingStaff = {
   'discount': {'morning': 1, 'midday': 2, 'evening': 2},
@@ -108,6 +129,9 @@ const _openingStaff = {
   'steakhouse': {'midday': 2, 'evening': 3},
   'finedining': {'midday': 3, 'evening': 4},
   'electronics': {'morning': 1, 'midday': 1, 'evening': 1},
+  'fastfashion': {'morning': 1, 'midday': 2, 'evening': 1},
+  'clothing': {'morning': 1, 'midday': 2, 'evening': 1},
+  'boutique': {'morning': 1, 'midday': 1, 'evening': 1},
 };
 
 /// What generated places and people are called in a country whose scenario
@@ -128,6 +152,7 @@ const _engineNames = PlaceNames(
     'steakhouse': ['Le Grill', 'La Braise', 'Bœuf'],
     'finedining': ['Table', 'Maison', 'Le Comptoir'],
     'electronics': ['Tech', 'Hi-Fi', 'Mobile'],
+    'clothing': ['Mode', 'Boutique', 'Atelier'],
   },
   first: [
     'Nadia', 'Marc', 'Sophie', 'Karim', 'Julie', 'Antoine', 'Inès', 'Paul', //
@@ -210,12 +235,19 @@ List<NeighbourhoodRow> rowsFromScenario(ContentDb content) {
   final home = setup == null
       ? null
       : content.sites[content.stores[setup.store].site.index].market;
+  // Sites of trades added since places were described don't describe them.
+  final later = {
+    for (final store in content.stores)
+      if (content.formats[store.format.index].edition > 0) store.site,
+  };
   return [
     for (final market in content.markets)
       () {
         final sites = [
           for (final site in content.sites)
-            if (site.market == market.id && site.storageUnits > _smallStorage)
+            if (site.market == market.id &&
+                site.storageUnits > _smallStorage &&
+                !later.contains(site.id))
               site,
         ];
         var area = 0;
@@ -411,6 +443,10 @@ typedef WokenNeighbourhood = ({
   Fx priceIndex,
   List<int> households,
   List<SleepingShop> shops,
+
+  /// The edition of the places it woke in ([ContentDb.edition]), which it
+  /// is rebuilt in.
+  int edition,
 });
 
 /// [content] with the neighbourhoods of [woken] added at the end of its lists:
@@ -433,7 +469,8 @@ ContentDb withNeighbourhoods(
     ..withChains = withChains
     ..onChain = onChain;
   final rows = root['neighbourhoods'] as List;
-  for (final (:row, day: _, :priceIndex, :households, :shops) in woken) {
+  for (final (:row, day: _, :priceIndex, :households, :shops, :edition)
+      in woken) {
     (rows[row] as Map<String, dynamic>)['woken'] = true;
     world.add(
       row,
@@ -441,6 +478,7 @@ ContentDb withNeighbourhoods(
       prices: priceIndex,
       households: households,
       shops: shops,
+      edition: edition,
     );
   }
   return loadScenario(jsonEncode(world.scenario()), national: content.national);
@@ -555,6 +593,13 @@ final class _World {
 
   /// Where a neighbourhood's names come from, apart from its layout's draws.
   late Rng _names;
+
+  /// The edition of the places being laid out: formats of a later one have
+  /// no shops or sites here.
+  int _edition = 0;
+
+  bool _inEdition(String format) =>
+      content.formats.firstWhere((f) => f.key == format).edition <= _edition;
   late List<String> _unusedStreets;
 
   /// What the latest neighbourhood's country calls things.
@@ -606,7 +651,9 @@ final class _World {
     Fx? prices,
     List<int>? households,
     List<SleepingShop>? shops,
+    int? edition,
   }) {
+    _edition = edition ?? content.edition;
     _prices = prices ?? Fx.one;
     plannedSites.clear();
     planned.clear();
@@ -661,8 +708,18 @@ final class _World {
       if (_scaleJson(content, row.scale) case final scale when scale.isNotEmpty)
         'scale': scale,
     });
+    // Sites whose shops trade in a later edition weren't here then.
+    final later = {
+      for (final store in layout['stores']! as List)
+        if (!_inEdition(
+          ((store as Map<String, Object?>)['format'] as String?) ??
+              content.formats.first.key,
+        ))
+          store['site'],
+    };
     final own = [
-      for (final site in layout['sites']! as List) site as Map<String, Object?>,
+      for (final site in layout['sites']! as List)
+        if (!later.contains((site as Map<String, Object?>)['id'])) site,
     ];
     for (final (number, json) in own.indexed) {
       sites.add(json);
@@ -687,6 +744,7 @@ final class _World {
     }
     for (final store in layout['stores']! as List) {
       final json = store as Map<String, Object?>;
+      if (later.contains(json['site'])) continue;
       final site = own.indexWhere((site) => site['id'] == json['site']);
       final company = content.companies.indexWhere(
         (company) => company.key == json['company'],
@@ -901,6 +959,47 @@ final class _World {
         _strategy(_electronics.format),
       );
     }
+    // Last, so a district laid out before clothing keeps its sites and
+    // draws as they were. Two if two pay, as in the cities: fast fashion on
+    // the best spot, and a boutique where incomes run high.
+    if (_inEdition(_clothing.format)) {
+      final count = _pays(row, _clothing, shops: 2)
+          ? 2
+          : _pays(row, _clothing)
+          ? 1
+          : 0;
+      final first =
+          grocerSites + ladder.length + (_pays(row, _electronics) ? 1 : 0);
+      for (var n = 0; n < count; n++) {
+        final location = n == 0 ? _top : _top - _step;
+        final site = _addSite(
+          row,
+          first + n,
+          location,
+          _areaAt(row.typicalArea, location, _clothesSite.area, rng),
+          slots: _clothesSite.slots,
+          storage: _clothesSite.storage,
+          room: _clothesSite.room.timesInt(row.room).roundToInt(),
+          rent: _clothesSite.rent,
+          opening: _clothesSite.opening,
+          buildDays: 28,
+        );
+        _addShop(
+          row,
+          site,
+          _format(_clothing.format),
+          _strategy(
+            count == 1
+                ? _clothing.format
+                : n == 0
+                ? 'fastfashion'
+                : row.incomeLevel >= _boutiqueIncome
+                ? 'boutique'
+                : _clothing.format,
+          ),
+        );
+      }
+    }
   }
 
   /// [count] locations from [top] down to [bottom], best first. All but the
@@ -1110,6 +1209,7 @@ final class _World {
   Fx _siteRule(FormatDef format) => switch (format.key) {
     'grocery' || 'supermarket' => Fx.one,
     'electronics' => _techSite.opening,
+    'clothing' => _clothesSite.opening,
     _ => _foodSite.opening,
   };
 
@@ -1241,7 +1341,9 @@ final class _World {
 
   /// Whether a shop of [rule] alone here should clear the hurdle: what it
   /// would earn in a year against its staff and premises.
-  bool _pays(NeighbourhoodRow row, _ShopRule rule) {
+  /// Whether a shop of [rule] pays in [row], taking [shops] shops' even
+  /// share of what its households buy there.
+  bool _pays(NeighbourhoodRow row, _ShopRule rule, {int shops = 1}) {
     final format = _format(rule.format);
     final strategy = _strategy(rule.format);
     final area = rule.site.area.timesInt(row.typicalArea).roundToInt();
@@ -1268,6 +1370,10 @@ final class _World {
     final wages = content.operations.slotWage
         .times(row.wageLevel * format.wageFactor)
         .timesInt(rule.settledStaff * 365);
+    if (shops > 1) {
+      margin = Money(margin.cents ~/ shops);
+      goods = Money(goods.cents ~/ shops);
+    }
     final profit =
         margin - goods.times(rule.spoiled) - premises.timesInt(12) - wages;
     return profit >= (margin + goods).times(_hurdle);

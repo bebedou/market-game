@@ -114,6 +114,7 @@ NAMES = {
             'steakhouse': ['Le Grill', 'La Braise', 'Bœuf'],
             'finedining': ['Table', 'Maison', 'Le Comptoir'],
             'electronics': ['Tech', 'Hi-Fi', 'Mobile'],
+            'clothing': ['Mode', 'Boutique', 'Atelier'],
         },
     },
     'DE': {
@@ -128,6 +129,7 @@ NAMES = {
             'steakhouse': ['Steakhaus {}', '{}-Grill'],
             'finedining': ['Restaurant {}', 'Gasthaus {}', '{}stube'],
             'electronics': ['Elektro {}', '{}-Technik', 'Funkhaus {}'],
+            'clothing': ['Mode {}', 'Boutique {}', 'Modehaus {}'],
         },
     },
     'IT': {
@@ -142,6 +144,7 @@ NAMES = {
             'steakhouse': ['Braceria', 'Griglia'],
             'finedining': ['Ristorante', 'Osteria', 'Locanda'],
             'electronics': ['Elettronica', 'Tecno', 'Digitale'],
+            'clothing': ['Moda', 'Boutique', 'Atelier'],
         },
     },
     'ES': {
@@ -156,6 +159,7 @@ NAMES = {
             'steakhouse': ['Asador', 'Parrilla'],
             'finedining': ['Restaurante', 'Casa', 'Mesón'],
             'electronics': ['Electro', 'Tecno', 'Digital'],
+            'clothing': ['Moda', 'Boutique', 'Taller'],
         },
     },
 }
@@ -241,7 +245,7 @@ SEGMENTS = ['families', 'professionals', 'students', 'retirees', 'singles', 'com
 
 # Which household spending makes up each of the game's trades, in the
 # national table.
-TRADE_OF = {'grocery': 'grocery', 'fastfood': 'restaurants', 'steakhouse': 'restaurants', 'finedining': 'restaurants', 'electronics': 'electronics'}
+TRADE_OF = {'grocery': 'grocery', 'fastfood': 'restaurants', 'steakhouse': 'restaurants', 'finedining': 'restaurants', 'electronics': 'electronics', 'clothing': 'clothing'}
 
 
 def per_household(geo, trade):
@@ -254,7 +258,7 @@ def main():
     with open(os.path.join(HERE, '..', 'scenarios', 'prototype.json'), encoding='utf-8') as f:
         scenario = json.load(f)
     french = {m['id']: m for m in scenario['markets'] + scenario['neighbourhoods']}
-    spends = {g: {t: per_household(g, t) / per_household('FR', t) for t in ('grocery', 'restaurants', 'electronics')} for g in GEO}
+    spends = {g: {t: per_household(g, t) / per_household('FR', t) for t in ('grocery', 'restaurants', 'electronics', 'clothing')} for g in GEO}
 
     countries = []
     for geo in GEO:

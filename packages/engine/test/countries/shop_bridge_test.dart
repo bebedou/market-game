@@ -124,6 +124,9 @@ void main() {
     );
     expect(gaps, hasLength(french.length * 2));
     expect(gaps[gaps.length ~/ 2], lessThan(0.05));
-    expect(gaps.last, lessThan(0.1));
+    // A city of two clothing shops whose weaker one struggles or closes
+    // sells less than the formula, which can't know: Rezé by about 40% of its
+    // clothes, a seventh of all it sells.
+    expect(gaps.last, lessThan(0.15));
   });
 }

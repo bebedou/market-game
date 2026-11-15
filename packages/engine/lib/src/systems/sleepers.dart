@@ -97,6 +97,13 @@ _Settled _settled(FormatDef format) => switch (format.key) {
     goodsExtra: Fx.zero,
     peakStaff: Fx.raw(16800),
   ),
+  // What goes out of fashion is cleared for a quarter of its cost.
+  'clothing' => const (
+    capture: Fx.raw(9700),
+    draw: Fx.one,
+    goodsExtra: Fx.raw(300),
+    peakStaff: Fx.raw(16800),
+  ),
   _ => const (
     capture: Fx.raw(9500),
     draw: Fx.one,
@@ -272,16 +279,16 @@ final class SleeperSystem implements TickSystem {
           // Less the buying terms its company has earned by its size.
           final terms = Fx.one - buyingDiscount(content, chain);
           final profit = _book(
-              world,
-              ledger,
-              chain,
-              sold: sold,
-              goods: (bought + bought.times(habits.goodsExtra)).times(terms),
-              marketing: sales.times(strategy.marketingShare),
-              wages: wages,
-              rent: site.rentFor(shop.area).times(macro.priceIndex),
-              overheads: format.overheadsFor(shop.area).times(macro.priceIndex),
-            );
+            world,
+            ledger,
+            chain,
+            sold: sold,
+            goods: (bought + bought.times(habits.goodsExtra)).times(terms),
+            marketing: sales.times(strategy.marketingShare),
+            wages: wages,
+            rent: site.rentFor(shop.area).times(macro.priceIndex),
+            overheads: format.overheadsFor(shop.area).times(macro.priceIndex),
+          );
           shop.remember(sold, profit);
           if (world.cycle != null) {
             recordDistrictMonth(

@@ -61,11 +61,11 @@ void main() {
       expect(rows, hasLength(12));
     });
 
-    test("gives every country its own four suppliers, and pays a shop's "
+    test("gives every country its own six suppliers, and pays a shop's "
         'margin at local wages', () {
       for (final country in _content.countries) {
         final own = _content.suppliers.where((s) => s.country == country.id);
-        expect(own, hasLength(4), reason: country.key);
+        expect(own, hasLength(6), reason: country.key);
         // Goods cost the same across the euro area.
         expect(_content.costLevel(country.id), Fx.one, reason: country.key);
       }

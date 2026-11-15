@@ -227,6 +227,10 @@ String describeCommand(Command command, ContentDb content, Observation view) {
     DismissKeyPerson(:final person) => tr('commands.dismissKeyPerson', {
       'person': _keyPersonName(view, person),
     }),
+    ClearStock(store: final s, product: final p) => tr('commands.clearStock', {
+      'product': product(p),
+      'store': store(s),
+    }),
     OrderFromFactory(store: final s, :final factory, :final lines) =>
       tr('commands.order', {
         'units': lines.fold<int>(0, (sum, line) => sum + line.quantity),

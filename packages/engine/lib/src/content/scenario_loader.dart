@@ -134,12 +134,24 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
       }
       bass.finish();
     }
+    Fashion? fashion;
+    if (node.optionalObject('fashion') case final style?) {
+      fashion = Fashion(
+        freshDays: style.nonNegativeInt('freshDays'),
+        fade: style.fraction('fade'),
+        premiumFade: style.fraction('premiumFade'),
+        floor: style.fraction('floor'),
+        clearance: style.fraction('clearance'),
+      );
+      style.finish();
+    }
     categories.add(
       CategoryDef(
         id: CategoryId(categoryKeys.add(key, node.pathOf('id'))),
         key: key,
         name: node.string('name'),
         diffusion: diffusion,
+        fashion: fashion,
       ),
     );
     node.finish();
@@ -232,6 +244,9 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
         qualityWeight: node.has('qualityWeight')
             ? node.nonNegativeFx('qualityWeight')
             : Fx.zero,
+        fashionWeight: node.has('fashionWeight')
+            ? node.fraction('fashionWeight')
+            : Fx.one,
       ),
     );
     node.finish();
@@ -465,6 +480,7 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
             ? node.nonNegativeInt('storageBonus')
             : 0,
         overheads: node.has('overheads') ? node.money('overheads') : Money.zero,
+        edition: node.has('edition') ? node.nonNegativeInt('edition') : 0,
         national: switch (node.optionalObject('national')) {
           final national? => () {
             final sales = national.object('sales');

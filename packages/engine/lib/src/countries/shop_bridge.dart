@@ -14,6 +14,7 @@ const formatTrades = {
   'steakhouse': 'restaurants',
   'finedining': 'restaurants',
   'electronics': 'electronics',
+  'clothing': 'clothing',
 };
 
 /// What the full simulation's shops turn into sales of what households want,

@@ -74,7 +74,8 @@ final class RetailPolicy implements Policy {
           ..addAll(plan.assortment())
           ..addAll(plan.prices())
           ..addAll(plan.staffing())
-          ..addAll(plan.marketing());
+          ..addAll(plan.marketing())
+          ..addAll(plan.clearance());
         final (orders, spent) = plan.orders(
           budget - cushion,
           essentials: essentials,
@@ -312,7 +313,10 @@ final class StorePlan {
           supplier,
     ];
     if (carriers.isEmpty) return null;
-    final life = product.shelfLifeDays;
+    // A minimum order must sell before it spoils, or goes out of fashion.
+    final life =
+        product.shelfLifeDays ??
+        content.categories[product.category.index].fashion?.freshDays;
     final sellable = [
       for (final supplier in carriers)
         if (life == null ||
@@ -410,15 +414,54 @@ final class StorePlan {
   /// [price] raised for goods better than the market's standard, by
   /// [qualityInPrice] of what shoppers think them worth, the average
   /// segment's: the rest is left them as better value, which draws them.
+  /// Goods gone out of fashion are marked down by all that shoppers think
+  /// they have lost, or they wouldn't sell.
   Money _forQuality(ProductDef product, Money price) {
     final quality = store.qualityOf(product.id);
-    if (quality <= Fx.zero) return price;
-    var weight = Fx.zero;
-    for (final segment in content.segments) {
-      weight += segment.qualityWeight;
+    final fashion = store.fashionOf(product.id);
+    if (quality <= Fx.zero && fashion >= Fx.one) return price;
+    Fx average(Fx Function(SegmentDef) weight) {
+      var sum = Fx.zero;
+      for (final segment in content.segments) {
+        sum += weight(segment);
+      }
+      return Fx.raw(sum.raw ~/ content.segments.length);
     }
-    weight = Fx.raw(weight.raw ~/ content.segments.length);
-    return price.times(Fx.one + qualityInPrice * weight * quality);
+
+    var marked = price;
+    if (quality > Fx.zero) {
+      final weight = average((segment) => segment.qualityWeight);
+      marked = marked.times(Fx.one + qualityInPrice * weight * quality);
+    }
+    if (fashion < Fx.one) {
+      final weight = average((segment) => segment.fashionWeight);
+      marked = marked.times(Fx.one - weight * (Fx.one - fashion));
+    }
+    return marked;
+  }
+
+  /// Old stock sold to a jobber once it has lost all it will of its appeal:
+  /// it hardly sells at a price worth having, holds room, and on the same
+  /// rail as new goods drags down what they fetch.
+  List<Command> clearance() {
+    final commands = <Command>[];
+    for (final product in content.products) {
+      final fashion = content.categories[product.category.index].fashion;
+      if (fashion == null || product.id.index >= store.lots.length) continue;
+      final lots = store.lots[product.id.index];
+      if (lots.isEmpty) continue;
+      final spent = fashion.ageAt(fashion.floor, product.tier);
+      if (lots.first.days < spent) continue;
+      commands.add(
+        ClearStock(
+          view.actor,
+          store: store.id,
+          product: product.id,
+          days: spent,
+        ),
+      );
+    }
+    return commands;
   }
 
   /// Expected daily gross margin, weighted by the taste for premium.
@@ -851,8 +894,12 @@ final class StorePlan {
       final demand = _demand[i];
       var safetyDays = strategy.safetyDays;
       var cycleDays = strategy.orderCycleDays;
-      if (product.shelfLifeDays case final life?) {
-        // Stock beyond this many days of demand spoils before it sells.
+      // Stock beyond this many days of demand spoils, or goes out of
+      // fashion, before it sells.
+      final life =
+          product.shelfLifeDays ??
+          content.categories[product.category.index].fashion?.freshDays;
+      if (life != null) {
         if (safetyDays > life - 1) safetyDays = life - 1;
         if (cycleDays > life - safetyDays) cycleDays = life - safetyDays;
       }

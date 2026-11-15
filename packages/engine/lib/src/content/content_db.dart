@@ -130,6 +130,12 @@ final class ContentDb {
   /// their first format.
   late final List<int> formatChannels = _channels();
 
+  /// The latest edition of the places: see [FormatDef.edition].
+  late final int edition = formats.fold(
+    0,
+    (latest, format) => format.edition > latest ? format.edition : latest,
+  );
+
   /// The categories each channel sells, indexed by channel.
   late final List<List<CategoryId>> channelCategories = [
     for (var channel = 0; channel < channelCount; channel++)
@@ -764,6 +770,7 @@ final class CategoryDef {
     required this.key,
     required this.name,
     this.diffusion,
+    this.fashion,
   });
 
   final CategoryId id;
@@ -773,6 +780,48 @@ final class CategoryDef {
   /// How the category spreads among households, if it is still new; null
   /// for one everybody already buys.
   final Diffusion? diffusion;
+
+  /// How its goods go out of fashion as they sit on the shelf; null for
+  /// goods that don't.
+  final Fashion? fashion;
+}
+
+/// How a category's goods lose their appeal with age: a lot keeps its full
+/// worth for [freshDays] after it arrives, then loses [fade] of it every 30
+/// days ([premiumFade] for the premium tier, classics that last), down to
+/// [floor]. A jobber takes old stock off a shop's hands for [clearance] of
+/// what it cost.
+final class Fashion {
+  const Fashion({
+    required this.freshDays,
+    required this.fade,
+    required this.premiumFade,
+    required this.floor,
+    required this.clearance,
+  });
+
+  final int freshDays;
+  final Fx fade;
+  final Fx premiumFade;
+  final Fx floor;
+  final Fx clearance;
+
+  /// What goods of [tier] [age] days old are worth against new.
+  Fx worthAt(int age, ProductTier tier) {
+    if (age <= freshDays) return Fx.one;
+    final rate = tier == ProductTier.premium ? premiumFade : fade;
+    final lost = Fx.raw(mulDivRound(rate.raw, age - freshDays, 30));
+    final worth = Fx.one - lost;
+    return worth < floor ? floor : worth;
+  }
+
+  /// How many days old goods of [tier] are when they fall to [worth].
+  int ageAt(Fx worth, ProductTier tier) {
+    if (worth >= Fx.one) return freshDays;
+    final rate = tier == ProductTier.premium ? premiumFade : fade;
+    if (rate <= Fx.zero) return 1 << 30;
+    return freshDays + mulDivRound((Fx.one - worth).raw, 30, rate.raw);
+  }
 }
 
 /// The Bass model of how a new product spreads (F. Bass, "A new product
@@ -824,6 +873,7 @@ final class FormatDef {
     this.storageBonus = 0,
     this.overheads = Money.zero,
     this.national,
+    this.edition = 0,
   });
 
   final FormatId id;
@@ -858,6 +908,14 @@ final class FormatDef {
 
   /// The month's overheads for [area] square metres, at a price index of 1.
   Money overheadsFor(int area) => overheads.timesInt(area);
+
+  /// The edition of the places from which the format trades there: 0 for
+  /// the trades places were first described with. A trade added later
+  /// doesn't count in how many households live in a place, so that places
+  /// keep their households, and districts the sites and shops those make:
+  /// its figure only scales what they buy of it. And a district woken in an
+  /// older edition is rebuilt without its shops and sites.
+  final int edition;
 
   /// What its shops run by formula across a country are sized on; null if
   /// it has none.
@@ -944,6 +1002,7 @@ final class SegmentDef {
     required this.sizeWeight,
     required this.incomeSpread,
     this.qualityWeight = Fx.zero,
+    this.fashionWeight = Fx.one,
   });
 
   final SegmentId id;
@@ -1004,6 +1063,11 @@ final class SegmentDef {
   /// dearer.
   final Fx qualityWeight;
 
+  /// How much the segment minds goods going out of fashion: at 1 it thinks
+  /// them worth what they have kept of their appeal; at 0.5, half as far
+  /// down.
+  final Fx fashionWeight;
+
   /// The income, against the segment's average, of a household at [rank]
   /// from 0 (poorest) to 1 (richest).
   Fx relativeIncome(Fx rank) =>
@@ -1014,7 +1078,8 @@ final class SegmentDef {
   /// reference prices times [priceLevel], counting listed products only.
   /// The reference prices are [references], a country's, if given, each
   /// raised by what the segment thinks the quality on the shelf worth:
-  /// [quality], each product's lead over the market's standard, if given.
+  /// [quality], each product's lead over the market's standard, if given,
+  /// and lowered by what the goods on hand have lost of their [fashion].
   /// Null if nothing is listed.
   Fx? priceIndex(
     List<ProductDef> products,
@@ -1022,6 +1087,7 @@ final class SegmentDef {
     Fx priceLevel = Fx.one,
     List<Money>? references,
     List<Fx>? quality,
+    List<Fx>? fashion,
   }) {
     var listed = false;
     var atShelf = 0;
@@ -1037,8 +1103,12 @@ final class SegmentDef {
       final weight = (dailyUnits[product.category.index] * tierShare).raw;
       atShelf = checkedSafe(atShelf + checkedSafe(price.cents * weight));
       var reference = references?[product.id.index] ?? product.referencePrice;
-      if (quality != null) {
-        reference = worthWith(reference, quality[product.id.index]);
+      if (quality != null || fashion != null) {
+        reference = worthWith(
+          reference,
+          quality?[product.id.index] ?? Fx.zero,
+          fashion?[product.id.index] ?? Fx.one,
+        );
       }
       atReference = checkedSafe(
         atReference + checkedSafe(reference.cents * weight),
@@ -1051,10 +1121,17 @@ final class SegmentDef {
   }
 
   /// What the segment thinks fair for goods whose normal price is
-  /// [reference], at [quality] over the market's standard.
-  Money worthWith(Money reference, Fx quality) => quality == Fx.zero
-      ? reference
-      : reference.times(Fx.one + qualityWeight * quality);
+  /// [reference], at [quality] over the market's standard, and keeping
+  /// [fashion] of their appeal (1 for new).
+  Money worthWith(Money reference, Fx quality, [Fx fashion = Fx.one]) {
+    var worth = quality == Fx.zero
+        ? reference
+        : reference.times(Fx.one + qualityWeight * quality);
+    if (fashion < Fx.one) {
+      worth = worth.times(Fx.one - fashionWeight * (Fx.one - fashion));
+    }
+    return worth;
+  }
 
   /// Whether households of the segment buy [category] less often than
   /// [DemandTuning.maxNeedDays] apart, so their need is floored at a unit.

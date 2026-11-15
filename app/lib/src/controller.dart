@@ -762,6 +762,8 @@ class SimulationController extends ChangeNotifier {
     SetLab(:final factory) => 'lab ${factory.index}',
     HireKeyPerson(:final person) ||
     DismissKeyPerson(:final person) => 'key person ${person.index}',
+    ClearStock(:final store, :final product) =>
+      'clear ${store.index} ${product.index}',
     _ => null,
   };
 
