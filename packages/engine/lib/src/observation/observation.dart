@@ -64,6 +64,7 @@ final class Observation {
     this.softwareMarket,
     this.softwareCandidates = const [],
     this.tenders = const [],
+    this.producers = const [],
     List<DistrictView> Function() districts = _noDistricts,
     List<NationalCountryView> Function() national = _noNational,
   }) : _districts = districts,
@@ -183,6 +184,9 @@ final class Observation {
 
   /// Chains' tenders, open and lately closed, in the order they opened.
   final List<TenderView> tenders;
+
+  /// The rival producers factories bid against.
+  final List<ProducerView> producers;
 
   /// The factories that sell to anyone's shops, with what each can spare
   /// this month: public, as a supplier's terms are.
@@ -1142,6 +1146,7 @@ Observation observe(
     softwareMarket: shared.softwareMarket,
     softwareCandidates: shared.softwareCandidates,
     tenders: tenderViews(world),
+    producers: producerViews(world),
     guaranteeRoom: guaranteeRoom(world, content, person),
     reports: List.unmodifiable([
       for (final report in world.reports)

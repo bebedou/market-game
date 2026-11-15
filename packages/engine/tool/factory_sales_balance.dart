@@ -144,6 +144,14 @@ void main(List<String> args) {
           );
         }
       }
+      // Chains' requests for a cut are taken.
+      for (final contract in game.world.contracts) {
+        if (contract.proposal != null && contract.factory == factory.id) {
+          game.submit(
+            AnswerContract(player, contract: contract.number, accept: true),
+          );
+        }
+      }
       final result = game.step();
       for (final rejection in result.rejections) {
         if (rejection.command is BidTender) continue;
@@ -204,7 +212,9 @@ void main(List<String> args) {
       }
       stdout.writeln(
         '    ${producer.name.padRight(24)} discount '
-        '${producer.discount.toDecimalString()} won ${producer.won}',
+        '${producer.discount.toDecimalString()} lead '
+        '${producer.lead.toDecimalString()} won ${producer.won} free '
+        '${_k(producer.freeOn(game.today))} of ${_k(producer.capacity)}',
       );
     }
   }

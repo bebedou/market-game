@@ -32,6 +32,8 @@ import 'command.dart';
 import 'refusal.dart';
 import 'transfers.dart';
 import '../state/factory_sales.dart';
+import '../systems/factory_sales.dart'
+    show breakContract, mostAccepted, retender;
 
 /// Validates and applies [command]. Returns null when it was applied, or the
 /// reason it was rejected. The rules are the same for every actor.
@@ -79,7 +81,7 @@ Refusal? applyCommand(
     BuildFactory() => _buildFactory(world, content, ledger, command),
     SetFactoryShifts() => _setFactoryShifts(world, content, command),
     SetFactoryTerms() => _setFactoryTerms(world, content, command),
-    CloseFactory() => _closeFactory(world, command),
+    CloseFactory() => _closeFactory(world, content, ledger, command),
     OrderFromFactory() => _orderFromFactory(world, content, command),
     SetLab() => _setLab(world, content, command),
     HireKeyPerson() => _hireKeyPerson(world, content, command),
@@ -93,6 +95,9 @@ Refusal? applyCommand(
     StartSoftware() => _startSoftware(world, content, ledger, command),
     EnlargeFactory() => _enlargeFactory(world, content, ledger, command),
     BidTender() => _bidTender(world, content, command),
+    BreakContract() => _breakContract(world, content, ledger, command),
+    AnswerContract() => _answerContract(world, content, command),
+    AskPrice() => _askPrice(world, content, command),
     SetSoftwarePrice() => _setSoftwarePrice(world, content, command),
     SetSoftwareMarketing() => _setSoftwareMarketing(world, content, command),
     HireSoftwarePerson() => _hireSoftwarePerson(world, content, command),
@@ -1593,9 +1598,24 @@ Refusal? _servesRefusal(
   return null;
 }
 
-Refusal? _closeFactory(WorldState world, CloseFactory command) {
+Refusal? _closeFactory(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  CloseFactory command,
+) {
   final (factory, error) = _ownedFactory(world, command.actor, command.factory);
   if (factory == null) return error;
+  // Its contracts are broken, each at its fee.
+  if (content.factories?.sales case final sales?) {
+    for (final contract in [...world.contracts]) {
+      if (contract.factory == factory.id &&
+          !contract.ended &&
+          world.today < contract.ends) {
+        breakContract(world, content, ledger, sales, contract);
+      }
+    }
+  }
   factory.status = FactoryStatus.closed;
   return null;
 }
@@ -2439,5 +2459,100 @@ Refusal? _bidTender(WorldState world, ContentDb content, BidTender command) {
   tender
     ..bidFactory = factory.id
     ..bidPrice = price;
+  return null;
+}
+
+/// The actor's running [number]ed contract, or why not.
+(Contract?, Refusal?) _ownedContract(
+  WorldState world,
+  PersonId actor,
+  int number,
+) {
+  final contract = world.contracts.where((c) => c.number == number).firstOrNull;
+  if (contract == null) return (null, const Refusal('unknownContract'));
+  final factory = world.factories[contract.factory.index];
+  if (world.companies[factory.company.index].owner != actor) {
+    return (null, const Refusal('notYourContract'));
+  }
+  if (contract.ended || contract.ends <= world.today) {
+    return (null, const Refusal('contractEnded'));
+  }
+  return (contract, null);
+}
+
+Refusal? _breakContract(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  BreakContract command,
+) {
+  final sales = content.factories?.sales;
+  if (sales == null) return const Refusal('unknownContract');
+  final (contract, error) = _ownedContract(
+    world,
+    command.actor,
+    command.contract,
+  );
+  if (contract == null) return error;
+  breakContract(world, content, ledger, sales, contract);
+  return null;
+}
+
+Refusal? _answerContract(
+  WorldState world,
+  ContentDb content,
+  AnswerContract command,
+) {
+  final sales = content.factories?.sales;
+  if (sales == null) return const Refusal('unknownContract');
+  final (contract, error) = _ownedContract(
+    world,
+    command.actor,
+    command.contract,
+  );
+  if (contract == null) return error;
+  final proposal = contract.proposal;
+  if (proposal == null) return const Refusal('noRequest');
+  if (command.accept) {
+    contract
+      ..price = proposal
+      ..priceIndex = world.macroOf(contract.country).priceIndex
+      ..proposal = null
+      ..answerBy = null;
+  } else {
+    retender(world, content, sales, contract, world.today);
+  }
+  return null;
+}
+
+Refusal? _askPrice(WorldState world, ContentDb content, AskPrice command) {
+  final factories = content.factories;
+  final sales = factories?.sales;
+  if (factories == null || sales == null) {
+    return const Refusal('unknownContract');
+  }
+  final (contract, error) = _ownedContract(
+    world,
+    command.actor,
+    command.contract,
+  );
+  if (contract == null) return error;
+  if (command.price <= Money.zero) return const Refusal('amountNotPositive');
+  final most = mostAccepted(
+    world,
+    content,
+    factories,
+    sales,
+    contract,
+    world.factories[contract.factory.index],
+  );
+  if (most != null && command.price > most) {
+    return Refusal('priceRefused', amount: most);
+  }
+  contract
+    ..price = command.price
+    ..priceIndex = world.macroOf(contract.country).priceIndex
+    ..proposal = null
+    ..answerBy = null;
   return null;
 }

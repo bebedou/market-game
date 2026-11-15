@@ -137,6 +137,10 @@ final class Chain {
 
   /// Its shops in each region.
   List<int> get regionalStores => regional;
+
+  /// What its own plants save it on all its goods, set from the world each
+  /// month before the month is run; not saved.
+  Fx ownSaving = Fx.zero;
 }
 
 /// A month of a company's shops in one trade of one country.
@@ -1163,7 +1167,10 @@ final class CountryEconomy {
     final storesFull = Money(
       mulDivRound(chain.perStore.cents, 1, 12),
     ).timesInt(chain.stores);
-    final goods = sales.times(row.goods).times(cheaper);
+    final goods = sales
+        .times(row.goods)
+        .times(cheaper)
+        .times(Fx.one - chain.ownSaving);
     final staff =
         storesFull
             .times(row.staff)

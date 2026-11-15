@@ -9,10 +9,22 @@ import '../persistence/state_io.dart';
 /// companies: rival producers, tenders and contracts.
 const factorySalesVersion = 36;
 
+/// The save version from which rival producers develop their goods and
+/// have a capacity, chains build plants, and contracts are indexed,
+/// renegotiated and broken.
+const contractsVersion = 37;
+
+/// What a rival producer has promised a chain a month, at producer prices,
+/// until [ends].
+typedef Commitment = ({Money value, Day ends});
+
 /// A rival producer, run by formula: it bids for chains' tenders for its
 /// kind of goods in its country at its [discount] on the producer price,
 /// raising the discount when it loses to the player and easing it when it
-/// wins.
+/// wins, and as far as its [capacity] goes. Its goods move toward the lead
+/// its development aims at, [aim], which it raises after losing to the
+/// player. A chain's own plant is one too, making first its [own] share of
+/// its chain's goods.
 final class Producer {
   Producer({
     required this.name,
@@ -21,7 +33,12 @@ final class Producer {
     required this.lead,
     required this.discount,
     this.won = 0,
-  });
+    Fx? aim,
+    this.capacity = Money.zero,
+    this.own = Money.zero,
+    this.chain,
+  }) : aim = aim ?? lead,
+       commitments = [];
 
   Producer.read(StateReader reader)
     : name = reader.readString(),
@@ -29,18 +46,59 @@ final class Producer {
       country = CountryId(reader.readInt()),
       lead = Fx.raw(reader.readInt()),
       discount = Fx.raw(reader.readInt()),
-      won = reader.readInt();
+      won = reader.readInt(),
+      aim = Fx.zero,
+      capacity = Money.zero,
+      own = Money.zero,
+      commitments = [] {
+    aim = lead;
+    if (reader.version < contractsVersion) return;
+    aim = Fx.raw(reader.readInt());
+    capacity = Money(reader.readInt());
+    own = Money(reader.readInt());
+    chain = reader.readBool() ? reader.readString() : null;
+    for (var i = 0, n = reader.readInt(); i < n; i++) {
+      commitments.add((
+        value: Money(reader.readInt()),
+        ends: Day(reader.readInt()),
+      ));
+    }
+  }
 
   final String name;
   final FactoryKindId kind;
   final CountryId country;
 
-  /// How far its goods are over the standard.
-  final Fx lead;
+  /// How far its goods are over the standard, and the lead its development
+  /// aims at.
+  Fx lead;
+  Fx aim;
   Fx discount;
 
   /// Tenders it has won.
   int won;
+
+  /// What it can make a month, at producer prices; zero until first sized.
+  Money capacity;
+
+  /// What its own chain takes of it a month, if it is a chain's plant.
+  Money own;
+
+  /// The chain that owns it, if any.
+  String? chain;
+
+  /// What it has promised chains, a month each.
+  final List<Commitment> commitments;
+
+  /// What it has free a month: its capacity less its chain's share and its
+  /// promises running on [day].
+  Money freeOn(Day day) {
+    var free = capacity - own;
+    for (final commitment in commitments) {
+      if (day < commitment.ends) free -= commitment.value;
+    }
+    return free;
+  }
 
   void write(StateWriter writer) {
     writer
@@ -49,7 +107,18 @@ final class Producer {
       ..writeInt(country.index)
       ..writeInt(lead.raw)
       ..writeInt(discount.raw)
-      ..writeInt(won);
+      ..writeInt(won)
+      ..writeInt(aim.raw)
+      ..writeInt(capacity.cents)
+      ..writeInt(own.cents)
+      ..writeBool(chain != null);
+    if (chain case final chain?) writer.writeString(chain);
+    writer.writeInt(commitments.length);
+    for (final commitment in commitments) {
+      writer
+        ..writeInt(commitment.value.cents)
+        ..writeInt(commitment.ends.number);
+    }
   }
 }
 
@@ -64,6 +133,47 @@ List<Producer> initialProducers(FactorySalesDef sales) => [
       discount: def.discount,
     ),
 ];
+
+/// A chain's own plant for a kind of goods in a country: it makes [share]
+/// of what the chain buys of them, which the chain then doesn't put out to
+/// tender, and sells the rest of its capacity as rival [producer].
+final class ChainPlant {
+  ChainPlant({
+    required this.country,
+    required this.chain,
+    required this.kind,
+    required this.share,
+    required this.producer,
+    required this.built,
+  });
+
+  ChainPlant.read(StateReader reader)
+    : country = CountryId(reader.readInt()),
+      chain = reader.readString(),
+      kind = FactoryKindId(reader.readInt()),
+      share = Fx.raw(reader.readInt()),
+      producer = reader.readInt(),
+      built = Day(reader.readInt());
+
+  final CountryId country;
+  final String chain;
+  final FactoryKindId kind;
+  final Fx share;
+
+  /// Its place in the world's producers.
+  final int producer;
+  final Day built;
+
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(country.index)
+      ..writeString(chain)
+      ..writeInt(kind.index)
+      ..writeInt(share.raw)
+      ..writeInt(producer)
+      ..writeInt(built.number);
+  }
+}
 
 /// Append only.
 enum TenderStatus {
@@ -193,6 +303,7 @@ final class Contract {
     required this.price,
     required this.starts,
     required this.ends,
+    required this.priceIndex,
     this.delivered = 0,
     this.short = 0,
     this.ended = false,
@@ -210,7 +321,22 @@ final class Contract {
       ends = Day(reader.readInt()),
       delivered = reader.readInt(),
       short = reader.readInt(),
-      ended = reader.readBool();
+      ended = reader.readBool(),
+      priceIndex = reader.version >= contractsVersion
+          ? Fx.raw(reader.readInt())
+          : Fx.zero,
+      proposal = reader.version >= contractsVersion
+          ? switch (reader.readNullableInt()) {
+              final cents? => Money(cents),
+              null => null,
+            }
+          : null,
+      answerBy = reader.version >= contractsVersion
+          ? switch (reader.readNullableInt()) {
+              final day? => Day(day),
+              null => null,
+            }
+          : null;
 
   /// The number of the tender it came from.
   final int number;
@@ -219,9 +345,20 @@ final class Contract {
   final String chain;
   final ProductId product;
   final int units;
-  final Money price;
+
+  /// What a unit sells for, indexed to its country's prices each year.
+  Money price;
   final Day starts;
   final Day ends;
+
+  /// Its country's price index when [price] was last set; zero for a
+  /// contract from an older save, set at its next month.
+  Fx priceIndex;
+
+  /// The price the chain asks it be cut to, and the day it puts the rest
+  /// out to tender unless agreed.
+  Money? proposal;
+  Day? answerBy;
 
   /// Units delivered so far, and short of what was due.
   int delivered;
@@ -246,6 +383,9 @@ final class Contract {
       ..writeInt(ends.number)
       ..writeInt(delivered)
       ..writeInt(short)
-      ..writeBool(ended);
+      ..writeBool(ended)
+      ..writeInt(priceIndex.raw)
+      ..writeNullableInt(proposal?.cents)
+      ..writeNullableInt(answerBy?.number);
   }
 }

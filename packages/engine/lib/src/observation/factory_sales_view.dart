@@ -3,6 +3,7 @@ import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
+import '../core/safe_int.dart';
 import '../state/factories.dart';
 import '../state/factory.dart';
 import '../state/factory_sales.dart';
@@ -23,7 +24,53 @@ typedef ContractView = ({
   int delivered,
   int short,
   bool ended,
+
+  /// The price its chain asks it be cut to, and until when; null if none.
+  Money? proposal,
+  Day? answerBy,
+
+  /// The day its price next follows its country's prices.
+  Day nextIndexation,
 });
+
+/// A rival producer, as anyone sees it.
+typedef ProducerView = ({
+  String name,
+
+  /// The chain whose plant it is, if any.
+  String? chain,
+  FactoryKindId kind,
+  CountryId country,
+
+  /// How far its goods are over the standard.
+  Fx lead,
+
+  /// The share of its capacity in use.
+  Fx busy,
+  int won,
+});
+
+/// Every rival producer, as anyone sees it.
+List<ProducerView> producerViews(WorldState world) => List.unmodifiable([
+  for (final producer in world.producers)
+    (
+      name: producer.name,
+      chain: producer.chain,
+      kind: producer.kind,
+      country: producer.country,
+      lead: producer.lead,
+      busy: producer.capacity <= Money.zero
+          ? Fx.zero
+          : Fx.raw(
+              mulDivRound(
+                (producer.capacity - producer.freeOn(world.today)).cents,
+                Fx.scale,
+                producer.capacity.cents,
+              ),
+            ),
+      won: producer.won,
+    ),
+]);
 
 /// A chain's tender, open or lately closed, as anyone sees it, with the
 /// player's bid.
@@ -95,6 +142,15 @@ final class FactorySalesView {
   /// What shops in the countries it serves spend a month on goods it makes:
   /// every chain's and the independents'.
   final Money market;
+}
+
+/// The first anniversary of [starts] after [today].
+Day _nextAnniversary(Day starts, Day today) {
+  var month = monthOf(starts) + 12;
+  while (Day.fromDate(month ~/ 12, month % 12 + 1, 1) <= today) {
+    month += 12;
+  }
+  return Day.fromDate(month ~/ 12, month % 12 + 1, 1);
 }
 
 /// Every tender kept, as anyone sees it.
@@ -188,6 +244,9 @@ FactorySalesView? factorySalesView(
           delivered: contract.delivered,
           short: contract.short,
           ended: contract.ended,
+          proposal: contract.proposal,
+          answerBy: contract.answerBy,
+          nextIndexation: _nextAnniversary(contract.starts, world.today),
         ),
     ]),
     committed: contracts

@@ -164,6 +164,28 @@ final class TenderClosed extends TickEvent {
   final bool won;
 }
 
+/// A chain built a plant of its own, now [producer] in the world's list.
+final class ChainPlantBuilt extends TickEvent {
+  const ChainPlantBuilt({required this.producer});
+
+  final int producer;
+}
+
+/// A chain asked for a cut in a contract's price.
+final class ContractCutAsked extends TickEvent {
+  const ContractCutAsked({required this.number});
+
+  final int number;
+}
+
+/// A chain put the rest of a contract out to tender, its request for a
+/// cut unanswered or turned down.
+final class ContractRetendered extends TickEvent {
+  const ContractRetendered({required this.number});
+
+  final int number;
+}
+
 /// A rival that started up gave up, its customers gone elsewhere.
 final class RivalFolded extends TickEvent {
   const RivalFolded({required this.rival});

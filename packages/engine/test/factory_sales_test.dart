@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:engine/engine.dart';
 import 'package:engine/src/state/factory.dart';
 import 'package:engine/src/state/factory_sales.dart';
+import 'package:engine/src/core/safe_int.dart';
 import 'package:engine/src/state/invariants.dart';
 import 'package:test/test.dart';
 
@@ -229,6 +230,7 @@ void main() {
         price: Money.parse('0.50'),
         starts: game.today,
         ends: game.today + 400,
+        priceIndex: Fx.one,
       ),
     );
     _throughFirst(game);
@@ -332,5 +334,191 @@ void main() {
     expect(loaded.world.contracts, hasLength(game.world.contracts.length));
     expect(loaded.world.producers, hasLength(game.world.producers.length));
     expect(loaded.world.factories.single.size, 1);
+  });
+
+  /// A won contract on a fresh plant: a low bid on the first open tender.
+  (Simulation, Factory, Contract) withContract() {
+    final (game, factory) = _withPlant(1);
+    final tender = _openTender(game);
+    game.submit(
+      BidTender(
+        game.world.player,
+        tender: tender.number,
+        factory: factory.id,
+        price: tender.reference.times(Fx.parse('0.5')),
+      ),
+    );
+    while (tender.status == TenderStatus.open) {
+      game.step();
+    }
+    return (game, factory, game.world.contracts.single);
+  }
+
+  test('rival producers have a capacity, and bid only within it', () {
+    final (game, _) = _withPlant(1);
+    _throughFirst(game);
+    final producers = game.world.producers.where((p) => p.country == _france);
+    expect(producers.every((p) => p.capacity > Money.zero), isTrue);
+    final full = producers.first
+      ..commitments.add((
+        value: Money.parse('1000000000.00'),
+        ends: game.today + 900,
+      ));
+    expect(full.freeOn(game.today) < Money.zero, isTrue);
+    final tender = _openTender(game);
+    while (tender.status == TenderStatus.open) {
+      game.step();
+    }
+    expect(tender.winner, isNot(full.name));
+  });
+
+  test("a producer's goods move toward what its development aims at", () {
+    final (game, _) = _withPlant(1);
+    final producer = game.world.producers.first..aim = Fx.parse('0.10');
+    final before = producer.lead;
+    for (var month = 0; month < 6; month++) {
+      _throughFirst(game);
+    }
+    expect(producer.lead > before, isTrue);
+    expect(producer.lead < Fx.parse('0.10'), isTrue);
+  });
+
+  test('chains build plants of their own and buy less of what they make', () {
+    final content = loadScenario(
+      File('../../content/scenarios/prototype.json')
+          .readAsStringSync()
+          .replaceFirst('"plantChance": "0.004"', '"plantChance": "1"'),
+      national: _content.national,
+    );
+    final game = Simulation.newGame(
+      content,
+      seed: 1,
+      start: const GameStart.holding('Holding'),
+      citiesAsleep: true,
+    );
+    for (var month = 0; month < 3; month++) {
+      _throughFirst(game);
+    }
+    expect(game.world.chainPlants, isNotEmpty);
+    final plant = game.world.chainPlants.first;
+    final producer = game.world.producers[plant.producer];
+    expect(producer.chain, plant.chain);
+    expect(producer.own > Money.zero, isTrue);
+    expect(producer.capacity > producer.own, isTrue);
+    final chain = game.world.national!.countries
+        .expand((c) => c.chains)
+        .firstWhere((c) => c.def.name == plant.chain);
+    expect(chain.ownSaving > Fx.zero, isTrue);
+  });
+
+  test('breaking a contract costs its fee and puts the rest out to tender', () {
+    final (game, factory, contract) = withContract();
+    _throughFirst(game);
+    final company = game.world.companies[factory.company.index];
+    final bills = company.payables.length;
+    final tenders = game.world.tenders.length;
+    final reliability = factory.reliability;
+    game.submit(BreakContract(game.world.player, contract: contract.number));
+    expect(game.step().rejections, isEmpty);
+    expect(contract.ended, isTrue);
+    expect(factory.reliability < reliability, isTrue);
+    expect(company.payables.length >= bills, isTrue);
+    expect(game.world.tenders.length, tenders + 1);
+    expect(game.world.tenders.last.chain, contract.chain);
+  });
+
+  test("a chain's request for a cut is taken, or the rest is re-tendered", () {
+    final (game, _, contract) = withContract();
+    _throughFirst(game);
+    contract
+      ..proposal = Money.parse('0.10')
+      ..answerBy = game.today + 30;
+    game.submit(
+      AnswerContract(
+        game.world.player,
+        contract: contract.number,
+        accept: true,
+      ),
+    );
+    game.step();
+    expect(contract.price, Money.parse('0.10'));
+    expect(contract.proposal, isNull);
+    contract
+      ..proposal = Money.parse('0.05')
+      ..answerBy = game.today + 30;
+    game.submit(
+      AnswerContract(
+        game.world.player,
+        contract: contract.number,
+        accept: false,
+      ),
+    );
+    game.step();
+    expect(contract.ended, isTrue);
+  });
+
+  test('a chain pays more only while it still beats rivals', () {
+    final (game, _, contract) = withContract();
+    _throughFirst(game);
+    game.submit(
+      AskPrice(
+        game.world.player,
+        contract: contract.number,
+        price: contract.price.timesInt(10),
+      ),
+    );
+    final refusal = game.step().rejections.single.reason;
+    expect(refusal.key, 'priceRefused');
+    final most = refusal.amount!;
+    game.submit(
+      AskPrice(game.world.player, contract: contract.number, price: most),
+    );
+    expect(game.step().rejections, isEmpty);
+    expect(contract.price, most);
+  });
+
+  test('closing a factory breaks its contracts at their fee', () {
+    final (game, factory, contract) = withContract();
+    _throughFirst(game);
+    game.submit(CloseFactory(game.world.player, factory: factory.id));
+    game.step();
+    expect(contract.ended, isTrue);
+    expect(factory.status, FactoryStatus.closed);
+  });
+
+  test("a contract's price follows its country's prices each year", () {
+    final (game, factory) = _withPlant(1);
+    final product = _content.products.firstWhere(
+      (p) => p.category == _drinks.category,
+    );
+    final index = game.world.macroOf(_france).priceIndex;
+    final contract = Contract(
+      number: 998,
+      factory: factory.id,
+      country: _france,
+      chain: 'Test chain',
+      product: product.id,
+      units: 1000,
+      price: Money.parse('0.50'),
+      starts: game.today,
+      ends: game.today + 1100,
+      priceIndex: index,
+    );
+    game.world.contracts.add(contract);
+    while (monthOf(game.today) - monthOf(contract.starts) <= 12) {
+      _throughFirst(game);
+    }
+    final now = game.world.macroOf(_france).priceIndex;
+    expect(contract.ended, isFalse);
+    expect(contract.priceIndex, isNot(index));
+    expect(
+      contract.price.cents,
+      mulDivRound(
+        Money.parse('0.50').cents,
+        contract.priceIndex.raw,
+        index.raw,
+      ),
+    );
+    expect(now.raw >= contract.priceIndex.raw - 1000, isTrue);
   });
 }

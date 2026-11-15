@@ -104,7 +104,8 @@ is shared by commands and solvency. [events.dart](../packages/engine/lib/src/sys
 holds the sealed `TickEvent` family: `DeliveryRefused`, `PaymentOverdue`,
 `CensusTaken`, `CompanyLiquidated`, `StoreSold`, `GenerationLaunched`,
 `SoftwareLaunched`, `SoftwareOfferMade`, `RivalLaunched`, `RivalFolded`,
-`TenderOpened`, `TenderClosed`.
+`TenderOpened`, `TenderClosed`, `ChainPlantBuilt`, `ContractCutAsked`,
+`ContractRetendered`.
 
 Order matters: `BuyingTermsSystem` before `NationalSystem` (blocks need the
 month's discount), `SleeperSystem` before `SolvencySystem` and
@@ -113,7 +114,7 @@ month's discount), `SleeperSystem` before `SolvencySystem` and
 ## Commands and refusals
 
 - [commands/command.dart](../packages/engine/lib/src/commands/command.dart):
-  the sealed `Command` class and 53 subclasses (`SetPrice`, `PlaceOrder`,
+  the sealed `Command` class and 56 subclasses (`SetPrice`, `PlaceOrder`,
   `OpenStore`, `HireDirector`, `BuildFactory`, `OpenNational`,
   `BuyNationalChain`, …). Each has a `static const tag` and a `write`;
   `Command.read` switches on the tag and gates fields on `reader.version`.

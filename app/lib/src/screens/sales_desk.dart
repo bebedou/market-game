@@ -141,14 +141,19 @@ class SalesDeskPage extends StatelessWidget {
           children: [
             if (running.isEmpty) Hint(tr('sales.noContracts')),
             for (final contract in running)
-              Line(
-                [contract.chain, country(contract.country)].join(' · '),
-                money(contract.price),
-                hint: tr('sales.contractLine', {
+              IndexRow(
+                title: [contract.chain, country(contract.country)].join(' · '),
+                subtitle: tr('sales.contractLine', {
                   'units': _units(contract.units),
                   'product': product(contract.product),
                   'date': shortDate(contract.ends),
                 }),
+                value: money(contract.price),
+                stamp: contract.proposal != null ? tr('sales.asksCut') : null,
+                onTap: () => context.openPage(
+                  tr('sales.contract'),
+                  (_) => [ContractPage(factory: id, contract: contract.number)],
+                ),
               ),
           ],
         ),
@@ -229,6 +234,27 @@ class SalesDeskPage extends StatelessWidget {
                       'discount': percent(factory.rivalDiscount!, decimals: 0),
                     }),
             ),
+          ],
+        ),
+        Section(
+          title: tr('sales.rivals'),
+          children: [
+            for (final producer in game.view.producers)
+              if (producer.kind == factory.kind &&
+                  factory.serves[producer.country.index])
+                Line(
+                  producer.chain == null
+                      ? producer.name
+                      : tr('sales.ownPlant', {'chain': producer.chain!}),
+                  tr('sales.rivalLine', {
+                    'lead': points(producer.lead),
+                    'busy': percent(producer.busy, decimals: 0),
+                  }),
+                  hint: content.countries.length > 1
+                      ? country(producer.country)
+                      : null,
+                ),
+            Hint(tr('sales.rivalsHint')),
           ],
         ),
       ],
@@ -404,4 +430,217 @@ class _BidPageState extends State<BidPage> {
 
   static Fx _underOf(Money price, Money reference) =>
       _underShare(price, reference);
+}
+
+/// One of a factory's contracts, the owner's layout A: its terms, its
+/// chain's request for a cut if any, asking for a new price, and breaking
+/// it at its fee.
+class ContractPage extends StatefulWidget {
+  const ContractPage({
+    super.key,
+    required this.factory,
+    required this.contract,
+  });
+
+  final FactoryId factory;
+  final int contract;
+
+  @override
+  State<ContractPage> createState() => _ContractPageState();
+}
+
+class _ContractPageState extends State<ContractPage> {
+  /// The new price to ask, in points of the current one.
+  int _change = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final factory = game.factory(widget.factory);
+    final contract = factory?.sales?.contracts
+        .where((c) => c.number == widget.contract)
+        .firstOrNull;
+    if (factory == null ||
+        contract == null ||
+        contract.ended ||
+        !(game.today < contract.ends)) {
+      return Hint(tr('sales.contractGone'));
+    }
+    final content = game.content;
+    final sales = content.factories!.sales!;
+    final ledger = Ledger.of(context);
+    final product = content.products[contract.product.index].name;
+    final asked = contract.price.times(Fx.one + Fx.raw(_change * 100));
+    final fee = contract.price.timesInt(contract.units * sales.breakMonths);
+    final pending = game.pending.any(
+      (command) => switch (command) {
+        BreakContract(contract: final n) ||
+        AnswerContract(contract: final n) ||
+        AskPrice(contract: final n) => n == contract.number,
+        _ => false,
+      },
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Section(
+          title: tr('sales.contractTitle', {
+            'chain': contract.chain,
+            'product': product,
+          }),
+          mark: ledger.works,
+          children: [
+            Line(tr('sales.aMonth'), _units(contract.units)),
+            Line(tr('sales.bidPrice'), money(contract.price)),
+            Line(tr('sales.until'), shortDate(contract.ends)),
+            Line(
+              tr('sales.indexed'),
+              tr('sales.nextIndexed', {
+                'date': shortDate(contract.nextIndexation),
+              }),
+            ),
+            Line(
+              tr('sales.delivered'),
+              _units(contract.delivered),
+              hint: contract.short > 0
+                  ? tr('sales.short', {'units': _units(contract.short)})
+                  : null,
+            ),
+            if (pending) Hint(tr('sales.pendingTomorrow')),
+          ],
+        ),
+        if (contract.proposal case final proposal?)
+          Section(
+            title: tr('sales.request'),
+            mark: ledger.loss,
+            children: [
+              Hint(
+                tr('sales.requestBody', {
+                  'chain': contract.chain,
+                  'price': money(proposal),
+                  'date': shortDate(contract.answerBy!),
+                }),
+              ),
+              Row(
+                children: [
+                  FilledButton(
+                    onPressed: () => game.submit(
+                      AnswerContract(
+                        game.player,
+                        contract: contract.number,
+                        accept: true,
+                      ),
+                    ),
+                    child: Text(
+                      tr('sales.acceptCut', {'price': money(proposal)}),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => _confirm(
+                      context,
+                      tr('sales.refuseQuestion'),
+                      tr('sales.refuseBody', {'chain': contract.chain}),
+                      () => game.submit(
+                        AnswerContract(
+                          game.player,
+                          contract: contract.number,
+                          accept: false,
+                        ),
+                      ),
+                    ),
+                    child: Text(tr('sales.refuseCut')),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        Section(
+          title: tr('sales.askTitle'),
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(tr('sales.newPrice'))),
+                CountStepper(
+                  value: _change,
+                  min: -20,
+                  max: 20,
+                  label: money(asked),
+                  onChanged: (value) => setState(() => _change = value),
+                ),
+              ],
+            ),
+            Hint(tr('sales.askHint')),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(
+                onPressed: () => game.submit(
+                  AskPrice(
+                    game.player,
+                    contract: contract.number,
+                    price: asked,
+                  ),
+                ),
+                child: Text(tr('sales.ask')),
+              ),
+            ),
+          ],
+        ),
+        Section(
+          title: tr('sales.breakTitle'),
+          children: [
+            Line(
+              tr('sales.breakFee', {'months': sales.breakMonths}),
+              money(fee, cents: false),
+              color: ledger.loss,
+            ),
+            Hint(tr('sales.breakHint')),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(
+                onPressed: () => _confirm(
+                  context,
+                  tr('sales.breakQuestion'),
+                  tr('sales.breakBody', {
+                    'fee': money(fee, cents: false),
+                    'chain': contract.chain,
+                  }),
+                  () => game.submit(
+                    BreakContract(game.player, contract: contract.number),
+                  ),
+                ),
+                child: Text(tr('sales.breakIt')),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirm(
+    BuildContext context,
+    String title,
+    String body,
+    VoidCallback then,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(tr('common.cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(tr('common.ok')),
+          ),
+        ],
+      ),
+    );
+    if (ok ?? false) then();
+  }
 }

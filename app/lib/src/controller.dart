@@ -870,6 +870,9 @@ class SimulationController extends ChangeNotifier {
     CloseFactory(:final factory) => 'factory close ${factory.index}',
     SetLab(:final factory) => 'lab ${factory.index}',
     BidTender(:final tender) => 'bid $tender',
+    BreakContract(:final contract) ||
+    AnswerContract(:final contract) ||
+    AskPrice(:final contract) => 'contract $contract',
     EnlargeFactory(:final factory) => 'enlarge factory ${factory.index}',
     HireKeyPerson(:final person) ||
     HireSoftwarePerson(:final person) ||
@@ -1147,6 +1150,59 @@ class SimulationController extends ChangeNotifier {
                 'country': content.countries[tender.country.index].name,
                 'months': tender.months,
                 'date': shortDate(tender.closes),
+              }),
+            );
+          }
+        case ContractCutAsked(:final number):
+          final contract = after.companies
+              .expand((c) => c.factories)
+              .expand((f) => f.sales?.contracts ?? const <ContractView>[])
+              .where((c) => c.number == number)
+              .firstOrNull;
+          if (contract != null) {
+            add(
+              AlertKind.offer,
+              tr('alerts.contractCutAsked', {
+                'chain': contract.chain,
+                'product': productName(contract.product),
+                'price': money(contract.proposal ?? contract.price),
+                'date': shortDate(contract.answerBy ?? day),
+              }),
+            );
+          }
+        case ContractRetendered(:final number):
+          final contract = after.companies
+              .expand((c) => c.factories)
+              .expand((f) => f.sales?.contracts ?? const <ContractView>[])
+              .where((c) => c.number == number)
+              .firstOrNull;
+          if (contract != null) {
+            add(
+              AlertKind.stores,
+              tr('alerts.contractRetendered', {
+                'chain': contract.chain,
+                'product': productName(contract.product),
+              }),
+            );
+          }
+        case ChainPlantBuilt(:final producer):
+          final built = after.producers[producer];
+          final mine = after.companies
+              .expand((c) => c.factories)
+              .any(
+                (f) =>
+                    f.kind == built.kind &&
+                    f.serves[built.country.index] &&
+                    f.status != FactoryStatus.closed,
+              );
+          if (mine) {
+            add(
+              AlertKind.economy,
+              tr('alerts.chainPlantBuilt', {
+                'chain': built.chain ?? built.name,
+                'kind': content.factories!.kinds[built.kind.index].name
+                    .toLowerCase(),
+                'country': content.countries[built.country.index].name,
               }),
             );
           }

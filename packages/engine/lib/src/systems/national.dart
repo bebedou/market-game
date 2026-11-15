@@ -17,6 +17,7 @@ import '../state/taxation.dart';
 import '../state/world_state.dart';
 import 'sleepers.dart' show formulaGoodsExtra;
 import 'tick_system.dart';
+import 'factory_sales.dart' show kindShare;
 
 /// [world]'s countries by formula, made the first time they are needed and
 /// run up to this month, each country in the phase of the cycle the game had
@@ -51,6 +52,7 @@ CountryEconomy? currentNational(WorldState world, ContentDb content) {
   final months = 1 + world.regimeLog.length;
   while (economy.monthsRun < months) {
     _brief(world, content, economy);
+    _ownPlants(world, content, economy);
     final run = economy.monthsRun;
     final logged = run == 0 ? null : world.regimeLog[run - 1];
     economy.advanceMonth(
@@ -63,6 +65,31 @@ CountryEconomy? currentNational(WorldState world, ContentDb content) {
     );
   }
   return economy;
+}
+
+/// Sets what each chain's own plants save it on its goods this month: for
+/// each plant, its share of the chain's needs of its kind, times that
+/// kind's share of the chain's goods, times what making them saves.
+void _ownPlants(WorldState world, ContentDb content, CountryEconomy economy) {
+  final factories = content.factories;
+  final sales = factories?.sales;
+  for (final (n, country) in economy.countries.indexed) {
+    final game = gameCountry(content, n);
+    for (final chain in country.chains) {
+      var saving = Fx.zero;
+      if (factories != null && sales != null && game != null) {
+        final trade = economy.table.trades[chain.def.trade].key;
+        for (final plant in world.chainPlants) {
+          if (plant.country != game || plant.chain != chain.def.name) continue;
+          saving +=
+              plant.share *
+              kindShare(content, factories, trade, plant.kind) *
+              sales.plantSaving;
+        }
+      }
+      chain.ownSaving = saving;
+    }
+  }
 }
 
 /// The chance, each month, that a chain offers for a company's shops run

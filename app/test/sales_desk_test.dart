@@ -126,4 +126,38 @@ void main() {
       expect(game.bidOn(tender), isNotNull);
     }
   });
+
+  testWidgets('a contract page shows its terms, a new price and its fee', (
+    tester,
+  ) async {
+    final game = _withPlant();
+    var factory = game.myFactories.single.$2;
+    final tender = openTendersFor(game, factory).first;
+    game.submit(
+      BidTender(
+        game.player,
+        tender: tender.number,
+        factory: factory.id,
+        price: tender.reference.times(Fx.parse('0.5')),
+      ),
+    );
+    var days = 0;
+    while ((game.factory(factory.id)!.sales!.contracts.isEmpty) &&
+        days++ < 80) {
+      game.step();
+    }
+    factory = game.factory(factory.id)!;
+    final contract = factory.sales!.contracts.single;
+    await _pumpPage(
+      tester,
+      game,
+      ContractPage(factory: factory.id, contract: contract.number),
+    );
+    expect(find.text('Ask for a new price'), findsOneWidget);
+    expect(find.text('Break it'), findsOneWidget);
+    expect(find.textContaining('Fee: 3 months'), findsOneWidget);
+    await tester.tap(find.text('Ask'));
+    await tester.pumpAndSettle();
+    expect(game.pending.whereType<AskPrice>(), hasLength(1));
+  });
 }

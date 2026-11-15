@@ -236,6 +236,17 @@ String describeCommand(Command command, ContentDb content, Observation view) {
               'price': money(price),
               'number': tender,
             }),
+    BreakContract(:final contract) => tr('commands.breakContract', {
+      'number': contract,
+    }),
+    AnswerContract(:final contract, :final accept) => tr(
+      accept ? 'commands.acceptCut' : 'commands.refuseCut',
+      {'number': contract},
+    ),
+    AskPrice(:final contract, :final price) => tr('commands.askPrice', {
+      'number': contract,
+      'price': money(price),
+    }),
     EnlargeFactory(:final factory) => tr('commands.enlargeFactory', {
       'factory': _factoryName(view, factory),
     }),

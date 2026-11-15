@@ -360,6 +360,17 @@ sealed class Command {
         borrow: Money(reader.readInt()),
         termMonths: reader.readInt(),
       ),
+      BreakContract.tag => BreakContract(actor, contract: reader.readInt()),
+      AnswerContract.tag => AnswerContract(
+        actor,
+        contract: reader.readInt(),
+        accept: reader.readBool(),
+      ),
+      AskPrice.tag => AskPrice(
+        actor,
+        contract: reader.readInt(),
+        price: Money(reader.readInt()),
+      ),
       BidTender.tag => BidTender(
         actor,
         tender: reader.readInt(),
@@ -2067,4 +2078,81 @@ final class BidTender extends Command {
   String toString() =>
       'BidTender(actor: ${actor.index}, tender: $tender, '
       'factory: ${factory.index}, price: ${price?.toDecimalString()})';
+}
+
+/// Breaks [contract], numbered: the factory's company pays its fee and the
+/// chain puts the rest out to tender.
+final class BreakContract extends Command {
+  const BreakContract(super.actor, {required this.contract});
+
+  static const int tag = 54;
+
+  final int contract;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(contract);
+  }
+
+  @override
+  String toString() =>
+      'BreakContract(actor: ${actor.index}, contract: $contract)';
+}
+
+/// Answers a chain's request to cut [contract]'s price: [accept] takes the
+/// price it asked; turning it down ends the contract and the chain puts
+/// the rest out to tender.
+final class AnswerContract extends Command {
+  const AnswerContract(
+    super.actor, {
+    required this.contract,
+    required this.accept,
+  });
+
+  static const int tag = 55;
+
+  final int contract;
+  final bool accept;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(contract)
+      ..writeBool(accept);
+  }
+
+  @override
+  String toString() =>
+      'AnswerContract(actor: ${actor.index}, contract: $contract, '
+      'accept: $accept)';
+}
+
+/// Asks [contract]'s chain for a new [price] a unit: it agrees if the
+/// price still beats what rivals would bid, as it weighs bids.
+final class AskPrice extends Command {
+  const AskPrice(super.actor, {required this.contract, required this.price});
+
+  static const int tag = 56;
+
+  final int contract;
+  final Money price;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(contract)
+      ..writeInt(price.cents);
+  }
+
+  @override
+  String toString() =>
+      'AskPrice(actor: ${actor.index}, contract: $contract, '
+      'price: ${price.toDecimalString()})';
 }

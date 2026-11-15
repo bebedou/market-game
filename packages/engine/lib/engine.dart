@@ -18,7 +18,10 @@ export 'src/commands/command.dart'
     show
         AcceptNationalOffer,
         AcceptSoftwareOffer,
+        AnswerContract,
+        AskPrice,
         BidTender,
+        BreakContract,
         BuildFactory,
         BuyCompany,
         BuyStore,
@@ -124,7 +127,7 @@ export 'src/observation/observation.dart'
         ShelfView,
         StoreView;
 export 'src/observation/factory_sales_view.dart'
-    show ContractView, FactorySalesView, SalesLine, TenderView;
+    show ContractView, FactorySalesView, ProducerView, SalesLine, TenderView;
 export 'src/observation/software_view.dart'
     show RivalView, SoftwareMarketView, SoftwareOfferView, SoftwareView;
 export 'src/observation/factory_outlook.dart'

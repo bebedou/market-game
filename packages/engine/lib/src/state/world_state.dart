@@ -93,6 +93,9 @@ final class WorldState {
   /// The number the next tender takes.
   int nextTenderNumber = 1;
 
+  /// Chains' own plants, in the order built.
+  final chainPlants = <ChainPlant>[];
+
   /// The countries by formula, region by region, with companies' shops run
   /// there; null until first run, and for a world of one country or without
   /// a national table. Saved beside the world.
@@ -463,6 +466,11 @@ final class WorldState {
       world.contracts.addAll(_readList(reader, (_) => Contract.read(reader)));
       world.nextTenderNumber = reader.readInt();
     }
+    if (reader.version >= contractsVersion) {
+      world.chainPlants.addAll(
+        _readList(reader, (_) => ChainPlant.read(reader)),
+      );
+    }
     return world;
   }
 
@@ -688,6 +696,7 @@ final class WorldState {
     _writeList(writer, tenders, (tender) => tender.write(writer));
     _writeList(writer, contracts, (contract) => contract.write(writer));
     writer.writeInt(nextTenderNumber);
+    _writeList(writer, chainPlants, (plant) => plant.write(writer));
   }
 }
 

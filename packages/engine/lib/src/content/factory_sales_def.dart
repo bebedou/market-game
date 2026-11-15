@@ -1,5 +1,6 @@
 import '../core/fx.dart';
 import '../core/ids.dart';
+import '../core/money.dart';
 
 /// A size of factory against the smallest, a workshop: how many times as
 /// much it makes, what building up to it costs, what its shifts are paid
@@ -61,6 +62,24 @@ final class FactorySalesDef {
     required this.maxDiscount,
     required this.resultMonths,
     required this.producers,
+    required this.producerCapacity,
+    required this.capacityGrowth,
+    required this.capacityUse,
+    required this.aimPull,
+    required this.leadSpread,
+    required this.aimResponse,
+    required this.minAim,
+    required this.maxAim,
+    required this.plantChance,
+    required this.plantShares,
+    required this.plantSpare,
+    required this.plantSaving,
+    required this.plantDiscount,
+    required this.plantMinGoods,
+    required this.breakMonths,
+    required this.breakReliability,
+    required this.drift,
+    required this.answerDays,
   });
 
   /// What chains pay producers, as a share of what wholesalers charge
@@ -117,6 +136,46 @@ final class FactorySalesDef {
 
   /// The rival producers at the start.
   final List<ProducerDef> producers;
+
+  /// A rival producer's capacity when first sized, as a share of what the
+  /// chains of its country buy of its kind of goods a month; how much it
+  /// grows a month while used above [capacityUse].
+  final Fx producerCapacity;
+  final Fx capacityGrowth;
+  final Fx capacityUse;
+
+  /// How a producer's goods move: the share of the gap to the lead its
+  /// development aims at that closes each month, give or take
+  /// [leadSpread]; how far it raises its aim after losing to the player
+  /// (and lowers it by a quarter of that after beating them); and the
+  /// bounds of an aim.
+  final Fx aimPull;
+  final Fx leadSpread;
+  final Fx aimResponse;
+  final Fx minAim;
+  final Fx maxAim;
+
+  /// The chance each month that a chain buying at least [plantMinGoods] a
+  /// month of a kind of goods builds a plant for them; the share of its
+  /// needs such a plant makes, drawn from [plantShares]; the capacity
+  /// beyond that it sells to others, as a share of its needs; what making
+  /// them itself saves it on those goods; and its discount as a rival.
+  final Fx plantChance;
+  final List<Fx> plantShares;
+  final Fx plantSpare;
+  final Fx plantSaving;
+  final Fx plantDiscount;
+  final Money plantMinGoods;
+
+  /// Breaking a contract costs this many months of it, and this much
+  /// reliability.
+  final int breakMonths;
+  final Fx breakReliability;
+
+  /// How far over what rivals would bid a contract's price must drift
+  /// before its chain asks for a cut, and the days it gives for an answer.
+  final Fx drift;
+  final int answerDays;
 }
 
 /// A rival producer: the goods it makes, the country it sells in, how far

@@ -99,7 +99,7 @@ added since. Any problem is a `FormatException`.
 
 ## Version gating
 
-- `currentStateVersion` (36) in
+- `currentStateVersion` (37) in
   [state_io.dart](../packages/engine/lib/src/persistence/state_io.dart) is
   the layout written. Bump it whenever the layout or the rules change.
 - `oldestReadableVersion` (6) in
@@ -124,7 +124,9 @@ added since. Any problem is a `FormatException`.
   [factory_sales.dart](../packages/engine/lib/src/state/factory_sales.dart):
   factories' size, works, reliability and share of independents, rival
   producers, tenders and contracts, factory reports' penalties, and
-  `BuildFactory`'s size). The full history of what each version added is in
+  `BuildFactory`'s size), 37 (`contractsVersion`: producers' aim, capacity
+  and commitments, chains' plants, contracts' price index and request).
+  The full history of what each version added is in
   *Persistence* in [Engine Architecture.md](<../Engine Architecture.md>).
 
 Rule of thumb when adding state: write it in `write`, read it in `read`
