@@ -154,7 +154,7 @@ final class LabSystem implements TickSystem {
   void _market(WorldState world, TickContext context, LabsDef labs) {
     var waiting = 0;
     for (final person in world.keyPeople) {
-      if (person.status != KeyStatus.candidate) continue;
+      if (person.status != KeyStatus.candidate || person.forSoftware) continue;
       if (context.day.number - person.since.number >= labs.candidateDays) {
         person.status = KeyStatus.gone;
       } else {

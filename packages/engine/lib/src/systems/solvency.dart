@@ -10,6 +10,7 @@ import 'closure.dart';
 import 'events.dart';
 import 'settlement.dart';
 import 'tick_system.dart';
+import '../state/software_rules.dart' show payInvestors;
 
 /// The solvency phase: a company with a bill overdue for more than the grace
 /// period is liquidated.
@@ -151,6 +152,15 @@ void liquidate(WorldState world, TickContext context, Company company) {
   // What is left after the creditors goes back to the owner, as a return of
   // capital first; whatever capital isn't returned is lost.
   final owner = world.persons[company.owner.index];
+  // Outside investors in a software company take their share first.
+  payInvestors(
+    world,
+    ledger,
+    company.id,
+    company.accounts[AccountKind.cash],
+    AccountKind.dividends,
+    EntryReason.liquidation,
+  );
   final surplus = company.accounts[AccountKind.cash];
   final returned = surplus < company.injected ? surplus : company.injected;
   if (returned > Money.zero) {

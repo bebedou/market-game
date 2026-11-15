@@ -306,11 +306,93 @@ class SimulationController extends ChangeNotifier {
       for (final store in company.stores) (company, store),
   ]..sort((a, b) => a.$2.id.index.compareTo(b.$2.id.index));
 
-  /// The player's cash plus what their companies own less what they owe.
+  /// The player's cash plus what their companies own less what they owe;
+  /// a software company counts at their share of what it is worth, on
+  /// paper.
   Money get netWorth => _view.companies.fold(
     _view.cash,
-    (sum, company) => sum + company.netAssets,
+    (sum, company) => sum + _worthOf(company),
   );
+
+  /// What net worth counts on paper: the player's shares of their software
+  /// companies beyond what those companies hold.
+  Money get onPaper => _view.companies.fold(
+    Money.zero,
+    (sum, company) => sum + _worthOf(company) - company.netAssets,
+  );
+
+  static Money _worthOf(CompanyView company) => switch (company.software) {
+    final software? when software.running => software.yourWorth,
+    _ => company.netAssets,
+  };
+
+  /// Every software company of the player's, with its company, in the
+  /// order started.
+  List<(CompanyView, SoftwareView)> get mySoftware => [
+    for (final company in _view.companies)
+      if (company.software case final software?) (company, software),
+  ]..sort((a, b) => a.$2.id.index.compareTo(b.$2.id.index));
+
+  /// The player's software company [id] with its company, if it is theirs.
+  (CompanyView, SoftwareView)? softwareWith(SoftwareId id) {
+    for (final entry in mySoftware) {
+      if (entry.$2.id == id) return entry;
+    }
+    return null;
+  }
+
+  /// What [software]'s customers pay a month once pending changes apply.
+  Money softwarePriceOf(SoftwareView software) {
+    var price = software.price;
+    for (final command in _pending) {
+      if (command case SetSoftwarePrice(
+        software: final s,
+        price: final next,
+      ) when s == software.id) {
+        price = next;
+      }
+    }
+    return price;
+  }
+
+  /// What [software] spends on marketing a month once pending changes
+  /// apply.
+  Money softwareMarketingOf(SoftwareView software) {
+    var budget = software.marketing;
+    for (final command in _pending) {
+      if (command case SetSoftwareMarketing(
+        software: final s,
+        budget: final next,
+      ) when s == software.id) {
+        budget = next;
+      }
+    }
+    return budget;
+  }
+
+  /// Whether [person] is to join [software]'s team tomorrow.
+  bool hiringFor(SoftwareView software, KeyPersonId person) => _pending.any(
+    (command) =>
+        command is HireSoftwarePerson &&
+        command.person == person &&
+        command.software == software.id,
+  );
+
+  /// How many people [software]'s team has once pending changes apply.
+  int teamOf(SoftwareView software) {
+    var count = software.team.length;
+    for (final command in _pending) {
+      switch (command) {
+        case HireSoftwarePerson(software: final s) when s == software.id:
+          count++;
+        case DismissKeyPerson(:final person)
+            when software.team.any((p) => p.id == person):
+          count--;
+        default:
+      }
+    }
+    return count;
+  }
 
   /// All the player's companies' profit together, week by week or month by
   /// month, oldest first, as far back as reports are kept; the latest period
@@ -761,7 +843,15 @@ class SimulationController extends ChangeNotifier {
     CloseFactory(:final factory) => 'factory close ${factory.index}',
     SetLab(:final factory) => 'lab ${factory.index}',
     HireKeyPerson(:final person) ||
+    HireSoftwarePerson(:final person) ||
     DismissKeyPerson(:final person) => 'key person ${person.index}',
+    SetSoftwarePrice(:final software) => 'software price ${software.index}',
+    SetSoftwareMarketing(:final software) =>
+      'software marketing ${software.index}',
+    RaiseRound(:final software) => 'software round ${software.index}',
+    AcceptSoftwareOffer(:final software) ||
+    DeclineSoftwareOffer(:final software) => 'software offer ${software.index}',
+    ShutDownSoftware(:final software) => 'software shut ${software.index}',
     ClearStock(:final store, :final product) =>
       'clear ${store.index} ${product.index}',
     _ => null,
@@ -844,6 +934,10 @@ class SimulationController extends ChangeNotifier {
         final lab? => lab.budget == budget && lab.project == project,
         null => false,
       },
+      SetSoftwarePrice(:final software, :final price) =>
+        softwareWith(software)?.$2.price == price,
+      SetSoftwareMarketing(:final software, :final budget) =>
+        softwareWith(software)?.$2.marketing == budget,
       _ => false,
     };
   }
@@ -859,6 +953,16 @@ class SimulationController extends ChangeNotifier {
     void add(AlertKind kind, String message) =>
         news.add(GameAlert(day, kind, message));
     String productName(ProductId id) => content.products[id.index].name;
+    String softwareName(SoftwareId id) =>
+        after.companies
+            .map((c) => c.software)
+            .whereType<SoftwareView>()
+            .where((s) => s.id == id)
+            .firstOrNull
+            ?.name ??
+        '';
+    String rivalName(SoftwareRivalId id) =>
+        after.softwareMarket?.rival(id).name ?? '';
     String storeName(StoreId id) => after.shelves[id.index].name;
     final mine = {for (final company in after.companies) company.id};
     final myStores = {
@@ -971,7 +1075,79 @@ class SimulationController extends ChangeNotifier {
           (refused[(store, reason)] ??= []).add(
             '$units ${productName(product)}',
           );
+        case SoftwareLaunched(:final software, :final company)
+            when mine.contains(company):
+          add(
+            AlertKind.stores,
+            tr('alerts.softwareLaunched', {'name': softwareName(software)}),
+          );
+        case SoftwareOfferMade(
+              :final software,
+              :final company,
+              :final rival,
+              :final price,
+            )
+            when mine.contains(company):
+          final offer = after.companies
+              .map((c) => c.software)
+              .whereType<SoftwareView>()
+              .where((s) => s.id == software)
+              .firstOrNull
+              ?.offer;
+          add(
+            AlertKind.offer,
+            tr('alerts.softwareOffer', {
+              'rival': rivalName(rival),
+              'price': compactMoney(price),
+              'name': softwareName(software),
+              'yours': compactMoney(offer?.yours ?? price),
+              'date': shortDate(offer?.expires ?? day),
+            }),
+          );
+        case RivalLaunched(:final rival)
+            when after.companies.any((c) => c.software?.running ?? false):
+          add(
+            AlertKind.economy,
+            tr('alerts.rivalLaunched', {'rival': rivalName(rival)}),
+          );
+        case RivalFolded(:final rival)
+            when after.companies.any((c) => c.software?.running ?? false):
+          add(
+            AlertKind.economy,
+            tr('alerts.rivalFolded', {'rival': rivalName(rival)}),
+          );
         default:
+      }
+    }
+    for (final company in after.companies) {
+      final now = company.software;
+      final was = before.companies
+          .where((c) => c.id == company.id)
+          .firstOrNull
+          ?.software;
+      if (now == null || was == null) continue;
+      if (now.rounds.length > was.rounds.length) {
+        final round = now.rounds.last;
+        add(
+          AlertKind.stores,
+          tr('alerts.roundRaised', {
+            'money': compactMoney(round.money),
+            'name': now.name,
+            'share': percent(round.share, decimals: 0),
+            'stake': percent(now.stake, decimals: 0),
+          }),
+        );
+      }
+      if (now.status == SoftwareStatus.sold &&
+          was.status != SoftwareStatus.sold) {
+        add(
+          AlertKind.stores,
+          tr('alerts.softwareSold', {
+            'name': now.name,
+            'rival': was.offer?.rivalName ?? '',
+            'yours': compactMoney(was.offer?.yours ?? Money.zero),
+          }),
+        );
       }
     }
 

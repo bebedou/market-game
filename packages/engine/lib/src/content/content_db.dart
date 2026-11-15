@@ -5,6 +5,7 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
+import 'software_def.dart';
 
 /// Everything a scenario defines, loaded once and never changed: the
 /// definitions the simulation runs on, and the initial world.
@@ -32,6 +33,7 @@ final class ContentDb {
     this.buyingTerms,
     this.directors,
     this.factories,
+    this.software,
     required this.strategies,
     required this.startDay,
     required this.persons,
@@ -195,6 +197,9 @@ final class ContentDb {
 
   /// Factories companies may build; null if they can't.
   final FactoriesDef? factories;
+
+  /// The world market for software; null if companies can't make any.
+  final SoftwareDef? software;
   final List<StrategyDef> strategies;
 
   // Initial world.

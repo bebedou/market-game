@@ -562,6 +562,40 @@
       { "id": "household", "name": "Household goods plant", "category": "household", "buildCost": "150000.00", "buildDays": 90, "shiftUnits": 90, "shiftWage": "81.00", "site": "1850.00", "materials": "0.40", "leadTimeDays": 3, "minOrderUnits": 48, "freight": "0.03" }
     ]
   },
+  "software": {
+    "customers": 2900000000, "price": "22.00", "growth": "0.08", "cycle": "0.5",
+    "standard": "1.00", "rise": "0.01", "startGap": "0.25", "launchGap": "0.05",
+    "progress": "0.02", "designerBuild": "0.5", "decay": "0.75", "hardness": "35", "appeal": "0.024",
+    "draw": "20", "drawFloor": "-4", "drawCap": "2.5", "priceElasticity": 2,
+    "churn": "0.02", "churnSteepness": "5", "minChurn": "0.005", "maxChurn": "0.08",
+    "wordOfMouth": "2.50", "marketingScale": "5000.00", "serving": "0.25", "office": "800.00",
+    "maxPeople": 12, "candidates": 8, "candidateDays": 60, "revealMonths": 6,
+    "levels": [
+      { "share": "0.20", "power": "0.10", "salary": "2400.00" },
+      { "share": "0.40", "power": "0.25", "salary": "3000.00" },
+      { "share": "0.25", "power": "0.50", "salary": "4000.00" },
+      { "share": "0.11", "power": "1.00", "salary": "7000.00" },
+      { "share": "0.04", "power": "2.50", "salary": "16000.00" }
+    ],
+    "baseMultiple": "3", "growthMultiple": "10", "minMultiple": "1.5", "maxMultiple": "25",
+    "valuationCycle": "3", "teamMonths": 24, "teamPaceCap": "3", "maxRoundShare": "0.25", "roundMonths": 4,
+    "offerChance": "0.08", "offerRevenue": "50000.00", "minPremium": "1.2", "maxPremium": "1.6", "offerDays": 30,
+    "foundingChance": "0.12", "startupTeam": 4, "startupMarketing": "8000.00", "startupPrice": "0.9",
+    "foldMonths": 30, "foldCustomers": 3000,
+    "startupNames": ["Lumenfold", "Pocketgrain", "Driftwire", "Kestrel Nine", "Tallowbird", "Oarlock", "Figwort",
+      "Copperline", "Sundial Code", "Hollowpine", "Brambleware", "Ninefold", "Saltmarsh", "Kitebound",
+      "Pebblecast", "Wrenfield", "Larchmont Labs", "Glasswing", "Thimble", "Ashgrove"],
+    "paceSpread": "0.15", "response": "0.001",
+    "rivals": [
+      { "name": "Halvren Systems", "share": "0.25", "lead": "0.05", "price": "1.10", "marketing": "0.12" },
+      { "name": "Corvane", "share": "0.15", "lead": "0.03", "price": "1.00", "marketing": "0.12" },
+      { "name": "Talmont", "share": "0.08", "lead": "0.04", "price": "1.20", "marketing": "0.10" },
+      { "name": "Brisk Orchard", "share": "0.04", "lead": "0.06", "price": "0.90", "marketing": "0.15" },
+      { "name": "Quellmark", "share": "0.03", "lead": "0.02", "price": "1.00", "marketing": "0.10" },
+      { "name": "Nerith", "share": "0.01", "lead": "0.08", "price": "0.95", "marketing": "0.18" },
+      { "name": "Everyone else", "share": "0.44", "lead": "-0.02", "price": "0.90", "marketing": "0.08", "rest": true }
+    ]
+  },
   "suppliers": [
     {
       "id": "bulkway", "name": "BulkWay Cash & Carry",

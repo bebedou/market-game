@@ -8,6 +8,7 @@ import '../core/money.dart';
 import '../state/history.dart' show salesHistoryDays;
 import '../countries/country_table.dart';
 import 'content_db.dart';
+import 'software_def.dart';
 import 'household_demand.dart';
 
 /// A problem in a scenario file, with the JSON path where it was found.
@@ -745,6 +746,11 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
     node.finish();
   }
 
+  final software = switch (root.optionalObject('software')) {
+    final node? => _software(node, factories?.labs),
+    null => null,
+  };
+
   // Places are sized at their country's normal prices, which follow its
   // suppliers' prices.
   references = countryReferences(
@@ -1102,6 +1108,7 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
     buyingTerms: buyingTerms,
     directors: directors,
     factories: factories,
+    software: software,
     strategies: List.unmodifiable(strategies),
     startDay: startDay,
     persons: List.unmodifiable(persons),
@@ -1112,6 +1119,126 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
     national: national,
     source: jsonText,
   );
+}
+
+/// The software market, its people named from the labs' names if it lists
+/// none of its own.
+SoftwareDef _software(_Node node, LabsDef? labs) {
+  final levels = <TalentLevelDef>[];
+  var shares = Fx.zero;
+  for (final level in node.objects('levels')) {
+    final share = level.fraction('share');
+    shares += share;
+    levels.add(
+      TalentLevelDef(
+        share: share,
+        power: level.nonNegativeFx('power'),
+        salary: level.money('salary'),
+      ),
+    );
+    level.finish();
+  }
+  if (shares != Fx.one) node._fail('levels', 'shares must sum to 1');
+  final firstNames = node.has('firstNames')
+      ? node.strings('firstNames')
+      : labs?.firstNames ?? const <String>[];
+  final lastNames = node.has('lastNames')
+      ? node.strings('lastNames')
+      : labs?.lastNames ?? const <String>[];
+  if (firstNames.isEmpty) node._fail('firstNames', 'must not be empty');
+  if (lastNames.isEmpty) node._fail('lastNames', 'must not be empty');
+  final rivals = <SoftwareRivalDef>[];
+  var rivalShares = Fx.zero;
+  for (final rival in node.objects('rivals')) {
+    final share = rival.fraction('share');
+    rivalShares += share;
+    rivals.add(
+      SoftwareRivalDef(
+        name: rival.string('name'),
+        share: share,
+        lead: rival.fx('lead'),
+        price: rival.nonNegativeFx('price'),
+        marketing: rival.fraction('marketing'),
+        rest: rival.has('rest') && rival.flag('rest'),
+      ),
+    );
+    rival.finish();
+  }
+  if (rivalShares != Fx.one) node._fail('rivals', 'shares must sum to 1');
+  if (rivals.where((r) => r.rest).length != 1 || !rivals.last.rest) {
+    node._fail('rivals', 'the last, and only the last, must be the rest');
+  }
+  final startupNames = node.strings('startupNames');
+  if (startupNames.isEmpty) node._fail('startupNames', 'must not be empty');
+  final software = SoftwareDef(
+    customers: node.positiveInt('customers'),
+    price: node.positiveMoney('price'),
+    growth: node.fx('growth'),
+    cycle: node.nonNegativeFx('cycle'),
+    standard: node.nonNegativeFx('standard'),
+    rise: node.nonNegativeFx('rise'),
+    startGap: node.nonNegativeFx('startGap'),
+    launchGap: node.nonNegativeFx('launchGap'),
+    progress: node.nonNegativeFx('progress'),
+    designerBuild: node.fraction('designerBuild'),
+    decay: node.fraction('decay'),
+    hardness: node.nonNegativeFx('hardness'),
+    appeal: node.nonNegativeFx('appeal'),
+    draw: node.nonNegativeFx('draw'),
+    drawFloor: node.fx('drawFloor'),
+    drawCap: node.fx('drawCap'),
+    priceElasticity: node.nonNegativeInt('priceElasticity'),
+    churn: node.fraction('churn'),
+    churnSteepness: node.nonNegativeFx('churnSteepness'),
+    minChurn: node.fraction('minChurn'),
+    maxChurn: node.fraction('maxChurn'),
+    wordOfMouth: node.money('wordOfMouth'),
+    marketingScale: node.positiveMoney('marketingScale'),
+    serving: node.fraction('serving'),
+    office: node.money('office'),
+    maxPeople: node.positiveInt('maxPeople'),
+    candidates: node.positiveInt('candidates'),
+    candidateDays: node.positiveInt('candidateDays'),
+    revealMonths: node.positiveInt('revealMonths'),
+    levels: List.unmodifiable(levels),
+    firstNames: List.unmodifiable(firstNames),
+    lastNames: List.unmodifiable(lastNames),
+    baseMultiple: node.nonNegativeFx('baseMultiple'),
+    growthMultiple: node.nonNegativeFx('growthMultiple'),
+    minMultiple: node.nonNegativeFx('minMultiple'),
+    maxMultiple: node.nonNegativeFx('maxMultiple'),
+    valuationCycle: node.nonNegativeFx('valuationCycle'),
+    teamMonths: node.nonNegativeInt('teamMonths'),
+    teamPaceCap: node.nonNegativeFx('teamPaceCap'),
+    maxRoundShare: node.fraction('maxRoundShare'),
+    roundMonths: node.nonNegativeInt('roundMonths'),
+    offerChance: node.fraction('offerChance'),
+    offerRevenue: node.money('offerRevenue'),
+    minPremium: node.nonNegativeFx('minPremium'),
+    maxPremium: node.nonNegativeFx('maxPremium'),
+    offerDays: node.positiveInt('offerDays'),
+    foundingChance: node.fraction('foundingChance'),
+    startupTeam: node.positiveInt('startupTeam'),
+    startupMarketing: node.money('startupMarketing'),
+    startupPrice: node.nonNegativeFx('startupPrice'),
+    foldMonths: node.positiveInt('foldMonths'),
+    foldCustomers: node.nonNegativeInt('foldCustomers'),
+    startupNames: List.unmodifiable(startupNames),
+    paceSpread: node.fraction('paceSpread'),
+    response: node.nonNegativeFx('response'),
+    rivals: List.unmodifiable(rivals),
+  );
+  if (software.maxPremium < software.minPremium) {
+    node._fail('maxPremium', 'must not be under minPremium');
+  }
+  if (software.maxChurn < software.minChurn) {
+    node._fail('maxChurn', 'must not be under minChurn');
+  }
+  if (software.drawCap < software.drawFloor) {
+    node._fail('drawCap', 'must not be under drawFloor');
+  }
+  node.finish();
+  return software;
 }
 
 TaxDef _taxes(_Node node) {

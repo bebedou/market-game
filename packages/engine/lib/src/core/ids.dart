@@ -43,3 +43,7 @@ extension type const FactoryKindId(int index) {}
 extension type const FactoryId(int index) {}
 
 extension type const KeyPersonId(int index) {}
+
+extension type const SoftwareId(int index) {}
+
+extension type const SoftwareRivalId(int index) {}

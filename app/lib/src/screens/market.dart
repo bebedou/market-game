@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
 import 'national.dart';
+import 'software.dart' show StartSoftwarePage;
 
 /// The world outside: the country's economy on top, with its history a page
 /// away, the player's patch, where to open next, then the competitors and the
@@ -2388,6 +2389,17 @@ class _NewBusinessState extends State<NewBusiness> {
               ? tr('market.subsidiaryHint')
               : tr('market.businessHint'),
         ),
+        // A business with no shop at all.
+        if (!widget.subsidiary && content.software != null)
+          IndexRow(
+            icon: Icons.code,
+            title: tr('software.start'),
+            subtitle: tr('software.startPitch'),
+            onTap: () => context.openPage(
+              tr('software.start'),
+              (_) => [const StartSoftwarePage()],
+            ),
+          ),
         if (cities.isEmpty) Hint(tr('market.noVacant')),
         if (chosen != null && countries.length > 1) ...[
           Padding(

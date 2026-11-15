@@ -18,6 +18,9 @@ import '../countries/shop_bridge.dart' show formatTrades;
 import '../state/factory.dart';
 import '../state/labs.dart';
 import '../state/talent.dart';
+import '../state/software.dart';
+import '../state/software_rules.dart';
+import '../systems/software.dart' show closeSoftware;
 import '../state/national_value.dart';
 import '../state/orders.dart';
 import '../state/store.dart';
@@ -86,6 +89,19 @@ Refusal? applyCommand(
     SellNational() => _sellNational(world, content, ledger, command),
     AcceptNationalOffer() => _acceptOffer(world, content, ledger, command),
     DeclineNationalOffer() => _declineOffer(world, content, command),
+    StartSoftware() => _startSoftware(world, content, ledger, command),
+    SetSoftwarePrice() => _setSoftwarePrice(world, content, command),
+    SetSoftwareMarketing() => _setSoftwareMarketing(world, content, command),
+    HireSoftwarePerson() => _hireSoftwarePerson(world, content, command),
+    RaiseRound() => _raiseRound(world, content, ledger, command),
+    AcceptSoftwareOffer() => _acceptSoftwareOffer(
+      world,
+      content,
+      ledger,
+      command,
+    ),
+    DeclineSoftwareOffer() => _declineSoftwareOffer(world, content, command),
+    ShutDownSoftware() => _shutDownSoftware(world, content, command),
   };
 }
 
@@ -173,6 +189,7 @@ Refusal? _openInDistrict(
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
+  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
   final cost = site.openingCost
       .times(format.fitOut)
       .times(
@@ -267,6 +284,7 @@ Refusal? _buyInDistrict(
   if (shop == null) return const Refusal('unknownStore');
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
+  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
   final seller = switch (shop.company) {
     final id? => world.companies[id.index],
     null => null,
@@ -363,6 +381,7 @@ Refusal? _hireDirector(
 ) {
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
+  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
   final directors = content.directors;
   if (directors == null) return const Refusal('noDirectors');
   if (!_inRange(command.grade.index, directors.grades.length)) {
@@ -473,16 +492,25 @@ Refusal? _payDividend(
     return const Refusal('dividendsFromProfits');
   }
   final owner = world.persons[command.actor.index];
+  // Outside investors in a software company take their share.
+  final owners = payInvestors(
+    world,
+    ledger,
+    company.id,
+    command.amount,
+    AccountKind.dividends,
+    EntryReason.dividend,
+  );
   ledger.pay(
     payer: company,
     payerAccount: AccountKind.dividends,
     payee: owner,
     payeeAccount: AccountKind.dividends,
-    amount: command.amount,
+    amount: owners,
     reason: EntryReason.dividend,
   );
   if (content.taxesOf(world.residence(content, owner.id)) case final taxes?) {
-    final tax = command.amount.times(taxes.dividendRate);
+    final tax = owners.times(taxes.dividendRate);
     if (tax > Money.zero) {
       ledger.pay(
         payer: owner,
@@ -722,6 +750,7 @@ Refusal? _openStore(
   if (command.company case final id?) {
     final (owned, error) = _ownedCompany(world, command.actor, id);
     if (owned == null) return error;
+    if (holdsSoftware(world, owned.id)) return const Refusal('softwareOnly');
     company = owned;
   }
   final cash =
@@ -1238,6 +1267,7 @@ Refusal? _buyStore(
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
+  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
   final store = world.stores[command.store.index];
   if (!store.isTrading) return const Refusal('storeClosed');
   final owner = world.companies[store.company.index].owner;
@@ -1431,6 +1461,7 @@ Refusal? _buildFactory(
   if (command.company case final id?) {
     final (owned, error) = _ownedCompany(world, command.actor, id);
     if (owned == null) return error;
+    if (holdsSoftware(world, owned.id)) return const Refusal('softwareOnly');
     company = owned;
   }
   final cost = kind.buildCost.times(world.macroOf(command.country).priceIndex);
@@ -1722,7 +1753,7 @@ Refusal? _hireKeyPerson(
   final (factory, error) = _ownedFactory(world, command.actor, command.factory);
   if (factory == null) return error;
   final person = world.keyPeople[command.person.index];
-  if (person.status != KeyStatus.candidate) {
+  if (person.status != KeyStatus.candidate || person.forSoftware) {
     return const Refusal('keyPersonTaken');
   }
   if (labPeople(world, factory.id).length >= labs.maxPeople) {
@@ -1742,15 +1773,21 @@ Refusal? _dismissKeyPerson(WorldState world, DismissKeyPerson command) {
   }
   final person = world.keyPeople[command.person.index];
   final factory = person.factory;
+  final software = person.software;
+  final company = switch ((factory, software)) {
+    (final factory?, _) => world.factories[factory.index].company,
+    (_, final software?) => world.software[software.index].company,
+    _ => null,
+  };
   if (person.status != KeyStatus.employed ||
-      factory == null ||
-      world.companies[world.factories[factory.index].company.index].owner !=
-          command.actor) {
+      company == null ||
+      world.companies[company.index].owner != command.actor) {
     return const Refusal('notYourKeyPerson');
   }
   person
     ..status = KeyStatus.gone
-    ..factory = null;
+    ..factory = null
+    ..software = null;
   return null;
 }
 
@@ -1797,6 +1834,7 @@ Refusal? _openNational(
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
+  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
   final cost = nationalFitOut(
     national,
     country,
@@ -1884,6 +1922,7 @@ Refusal? _buyNationalChain(
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
+  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
   final price = value.price;
   if (company.accounts[AccountKind.cash] + command.borrow < price) {
     return Refusal('cannotPayPrice', amount: price);
@@ -2051,5 +2090,237 @@ Refusal? _declineOffer(
   );
   if (company == null) return error;
   economy.offers.remove(offer);
+  return null;
+}
+
+/// The most a software company may spend on marketing a month.
+const maxSoftwareMarketing = Money(100000000000);
+
+/// The furthest a software price may stray from the market's: this many
+/// times it at most.
+const maxSoftwarePriceTimes = 4;
+
+(Software?, Refusal?) _ownedSoftware(
+  WorldState world,
+  PersonId actor,
+  SoftwareId id,
+) {
+  if (!_inRange(id.index, world.software.length)) {
+    return (null, const Refusal('unknownSoftware'));
+  }
+  final software = world.software[id.index];
+  final company = world.companies[software.company.index];
+  if (company.owner != actor) return (null, const Refusal('notYourSoftware'));
+  if (!software.running || !company.isActive) {
+    return (null, const Refusal('softwareClosed'));
+  }
+  return (software, null);
+}
+
+Refusal? _startSoftware(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  StartSoftware command,
+) {
+  final def = content.software;
+  final market = world.softwareMarket;
+  if (def == null || market == null) return const Refusal('noSoftware');
+  if (!_inRange(command.country.index, content.countries.length)) {
+    return const Refusal('unknownCountry');
+  }
+  final problem = _nameProblem(command.name);
+  if (problem != null) return problem;
+  if (command.capital.isNegative) return const Refusal('capitalNegative');
+  final person = world.persons[command.actor.index];
+  if (person.accounts[AccountKind.cash] < command.capital) {
+    return const Refusal('notEnoughPersonalCash');
+  }
+  final company = world.addCompany(command.name, person.id);
+  if (command.capital > Money.zero) {
+    injectCapital(ledger, person, company, command.capital);
+  }
+  world.software.add(
+    Software(
+      id: SoftwareId(world.software.length),
+      company: company.id,
+      country: command.country,
+      name: command.name,
+      founded: world.today,
+      level: market.standard - def.startGap,
+      price: softwareReferencePrice(world, def),
+    ),
+  );
+  return null;
+}
+
+Refusal? _setSoftwarePrice(
+  WorldState world,
+  ContentDb content,
+  SetSoftwarePrice command,
+) {
+  final (software, error) = _ownedSoftware(
+    world,
+    command.actor,
+    command.software,
+  );
+  if (software == null) return error;
+  final most = softwareReferencePrice(
+    world,
+    content.software!,
+  ).timesInt(maxSoftwarePriceTimes);
+  if (command.price <= Money.zero || command.price > most) {
+    return Refusal('softwarePriceRange', amount: most);
+  }
+  software.price = command.price;
+  return null;
+}
+
+Refusal? _setSoftwareMarketing(
+  WorldState world,
+  ContentDb content,
+  SetSoftwareMarketing command,
+) {
+  final (software, error) = _ownedSoftware(
+    world,
+    command.actor,
+    command.software,
+  );
+  if (software == null) return error;
+  if (command.budget.isNegative || command.budget > maxSoftwareMarketing) {
+    return const Refusal(
+      'softwareMarketingRange',
+      amount: maxSoftwareMarketing,
+    );
+  }
+  software.marketing = command.budget;
+  return null;
+}
+
+Refusal? _hireSoftwarePerson(
+  WorldState world,
+  ContentDb content,
+  HireSoftwarePerson command,
+) {
+  final (software, error) = _ownedSoftware(
+    world,
+    command.actor,
+    command.software,
+  );
+  if (software == null) return error;
+  if (!_inRange(command.person.index, world.keyPeople.length)) {
+    return const Refusal('unknownKeyPerson');
+  }
+  final person = world.keyPeople[command.person.index];
+  if (person.status != KeyStatus.candidate || !person.forSoftware) {
+    return const Refusal('keyPersonTaken');
+  }
+  final def = content.software!;
+  if (softwarePeople(world, software.id).length >= def.maxPeople) {
+    return Refusal('teamFull', count: def.maxPeople);
+  }
+  person
+    ..status = KeyStatus.employed
+    ..software = software.id
+    ..since = world.today
+    ..monthsWorked = 0;
+  return null;
+}
+
+Refusal? _raiseRound(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  RaiseRound command,
+) {
+  final (software, error) = _ownedSoftware(
+    world,
+    command.actor,
+    command.software,
+  );
+  if (software == null) return error;
+  final def = content.software!;
+  if (command.share <= Fx.zero || command.share > def.maxRoundShare) {
+    return Refusal(
+      'roundShareRange',
+      count: def.maxRoundShare.timesInt(100).roundToInt(),
+    );
+  }
+  if (software.rounds.lastOrNull case final last?
+      when monthOf(world.today) - monthOf(last.day) < def.roundMonths) {
+    return Refusal('roundTooSoon', count: def.roundMonths);
+  }
+  final worth = softwareWorth(world, content, def, software).worth;
+  final money = roundMoney(worth, command.share);
+  if (money <= Money.zero) return const Refusal('nothingToRaise');
+  ledger.pay(
+    payer: world.elsewhere,
+    payerAccount: AccountKind.investments,
+    payee: world.companies[software.company.index],
+    payeeAccount: AccountKind.equity,
+    amount: money,
+    reason: EntryReason.fundingRound,
+  );
+  software
+    ..investors = Fx.one - software.stake * (Fx.one - command.share)
+    ..rounds.add(
+      FundingRound(
+        day: world.today,
+        money: money,
+        share: command.share,
+        value: worth,
+      ),
+    );
+  return null;
+}
+
+Refusal? _acceptSoftwareOffer(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  AcceptSoftwareOffer command,
+) {
+  final (software, error) = _ownedSoftware(
+    world,
+    command.actor,
+    command.software,
+  );
+  if (software == null) return error;
+  final offer = software.offer;
+  if (offer == null || offer.expires < world.today) {
+    return const Refusal('noSoftwareOffer');
+  }
+  sellSoftware(world, content, ledger, software, offer);
+  return null;
+}
+
+Refusal? _declineSoftwareOffer(
+  WorldState world,
+  ContentDb content,
+  DeclineSoftwareOffer command,
+) {
+  final (software, error) = _ownedSoftware(
+    world,
+    command.actor,
+    command.software,
+  );
+  if (software == null) return error;
+  if (software.offer == null) return const Refusal('noSoftwareOffer');
+  software.offer = null;
+  return null;
+}
+
+Refusal? _shutDownSoftware(
+  WorldState world,
+  ContentDb content,
+  ShutDownSoftware command,
+) {
+  final (software, error) = _ownedSoftware(
+    world,
+    command.actor,
+    command.software,
+  );
+  if (software == null) return error;
+  closeSoftware(world, world.softwareMarket!, software, SoftwareStatus.closed);
   return null;
 }

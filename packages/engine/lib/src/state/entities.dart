@@ -54,8 +54,9 @@ final class Person implements LedgerParty {
 }
 
 /// Append only. A company [dormant] never trades and no one sees it: the
-/// scenario's company for a player who starts with a holding alone.
-enum CompanyStatus { active, liquidated, dormant }
+/// scenario's company for a player who starts with a holding alone. A
+/// software company [sold] went to a rival, beyond the simulation.
+enum CompanyStatus { active, liquidated, dormant, sold }
 
 /// A company, wholly owned by one person.
 /// The days of wages a company's cash cushion holds unless its owner says

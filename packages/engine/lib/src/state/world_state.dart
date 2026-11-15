@@ -21,6 +21,7 @@ import 'orders.dart';
 import 'research.dart';
 import 'brands.dart';
 import 'sleepers.dart';
+import 'software.dart';
 import 'store.dart';
 import 'taxation.dart';
 
@@ -69,6 +70,14 @@ final class WorldState {
   /// Every key person who ever came onto the market, by [KeyPersonId];
   /// those gone stay.
   final keyPeople = <KeyPerson>[];
+
+  /// The world market for software, run by formula around the products of
+  /// software companies; null if the scenario has none.
+  SoftwareMarket? softwareMarket;
+
+  /// Every software company's product, by [SoftwareId]; those closed or
+  /// sold stay.
+  final software = <Software>[];
 
   /// The countries by formula, region by region, with companies' shops run
   /// there; null until first run, and for a world of one country or without
@@ -338,6 +347,9 @@ final class WorldState {
         added.reputation = content.demand.establishedReputation;
       }
     }
+    if (content.software case final software?) {
+      world.softwareMarket = initialSoftwareMarket(software, content.startDay);
+    }
     return world;
   }
 
@@ -420,6 +432,12 @@ final class WorldState {
     if (reader.version >= labsVersion) {
       world.keyPeople.addAll(
         _readList(reader, (i) => KeyPerson.read(KeyPersonId(i), reader)),
+      );
+    }
+    if (reader.version >= softwareVersion) {
+      if (reader.readBool()) world.softwareMarket = SoftwareMarket.read(reader);
+      world.software.addAll(
+        _readList(reader, (i) => Software.read(SoftwareId(i), reader)),
       );
     }
     return world;
@@ -640,6 +658,9 @@ final class WorldState {
     elsewhere.write(writer);
     _writeList(writer, factories, (factory) => factory.write(writer));
     _writeList(writer, keyPeople, (person) => person.write(writer));
+    writer.writeBool(softwareMarket != null);
+    softwareMarket?.write(writer);
+    _writeList(writer, software, (product) => product.write(writer));
   }
 }
 

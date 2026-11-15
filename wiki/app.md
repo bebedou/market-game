@@ -70,6 +70,11 @@ three slots, continue, new game, delete, language),
 [new_game.dart](../app/lib/src/screens/new_game.dart) (`NewGameScreen`: only
 the holding's name), [factory.dart](../app/lib/src/screens/factory.dart)
 (`FactoriesSection`, `FactoryPage`, `BuildFactoryPage`),
+[software.dart](../app/lib/src/screens/software.dart) (`SoftwareSection` on
+the holding, `StartSoftwarePage`, and a software company's page in the
+owner's layout B: `SoftwarePage` with its four figures and `RaceChart`, then
+`SoftwareProductPage`, `SoftwarePeoplePage`, `SoftwareCustomersPage`,
+`SoftwareMarketPage`, `SoftwareFundingPage`),
 [guide.dart](../app/lib/src/screens/guide.dart) (`HowToPlayScreen`).
 
 Layout pattern: each tab has a summary on top and index lines (`IndexRow`)

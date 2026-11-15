@@ -6,6 +6,7 @@ import '../core/rng.dart';
 import 'cohort.dart';
 import 'entities.dart';
 import 'market.dart';
+import 'software.dart' show initialSoftwareMarket;
 import 'store.dart';
 import 'world_state.dart';
 
@@ -19,6 +20,11 @@ import 'world_state.dart';
 void growWorld(WorldState world, ContentDb content) {
   final day = world.today;
   world.growEconomies(content);
+  // A save from before software, or of a scenario without it, opens its
+  // market as the scenario sets it out, from today.
+  if (content.software case final software? when world.softwareMarket == null) {
+    world.softwareMarket = initialSoftwareMarket(software, day);
+  }
   for (final factory in world.factories) {
     factory.growCountries(content.countries.length);
   }

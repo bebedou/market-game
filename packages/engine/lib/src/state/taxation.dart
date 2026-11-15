@@ -238,13 +238,16 @@ List<CountryTax> companyTaxes(
 }
 
 /// Where [company] is from: the country of its first store, or else of its
-/// first factory, or else where its owner lives.
+/// first factory, or else of its software, or else where its owner lives.
 CountryId homeOf(WorldState world, ContentDb content, Company company) {
   for (final store in world.stores) {
     if (store.company == company.id) return content.countryOf(store.market);
   }
   for (final factory in world.factories) {
     if (factory.company == company.id) return factory.country;
+  }
+  for (final software in world.software) {
+    if (software.company == company.id) return software.country;
   }
   return world.residence(content, company.owner);
 }

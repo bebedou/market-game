@@ -6,6 +6,9 @@ import '../state/entities.dart';
 import '../state/store.dart';
 import '../state/valuation.dart';
 import '../state/world_state.dart';
+import '../state/software.dart';
+import '../systems/settlement.dart' show billInstallment;
+import '../systems/software.dart' show closeSoftware;
 
 /// Puts [amount] of [person]'s cash into [company] as capital.
 void injectCapital(
@@ -190,4 +193,113 @@ void transferCompany(
   company
     ..owner = buyer.id
     ..injected = price - financed;
+}
+
+/// Sells [software]'s company whole to the rival making [offer], beyond the
+/// simulation: its loans and bills are settled, the buyer making up any
+/// shortfall, and its cash goes with it; its owner gets their share of the
+/// price and books the gain over what they put in, taxed as a dividend;
+/// outside investors get theirs beyond the simulation. Its customers go to
+/// the buyer, its people leave, and the company is [CompanyStatus.sold].
+void sellSoftware(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  Software software,
+  SoftwareOffer offer,
+) {
+  final company = world.companies[software.company.index];
+  final seller = world.persons[company.owner.index];
+  for (final loan in world.loans) {
+    if (loan.company == company.id && loan.outstanding > Money.zero) {
+      billInstallment(world, ledger, loan, all: true);
+    }
+  }
+  final owed = company.payables.fold(
+    Money.zero,
+    (sum, payable) => sum + payable.amount,
+  );
+  final short = owed - company.accounts[AccountKind.cash];
+  if (short > Money.zero) {
+    ledger.pay(
+      payer: world.elsewhere,
+      payerAccount: AccountKind.investments,
+      payee: company,
+      payeeAccount: AccountKind.equity,
+      amount: short,
+      reason: EntryReason.softwareSale,
+    );
+  }
+  for (final payable in company.payables) {
+    ledger.pay(
+      payer: company,
+      payerAccount: AccountKind.payables,
+      payee: world.party(payable.creditor),
+      payeeAccount: payable.creditorAccount,
+      amount: payable.amount,
+      reason: payable.reason,
+    );
+  }
+  company.payables.clear();
+  world.loans.removeWhere(
+    (loan) => loan.company == company.id && loan.outstanding == Money.zero,
+  );
+  final left = company.accounts[AccountKind.cash];
+  if (left > Money.zero) {
+    ledger.pay(
+      payer: company,
+      payerAccount: AccountKind.equity,
+      payee: world.elsewhere,
+      payeeAccount: AccountKind.investments,
+      amount: left,
+      reason: EntryReason.softwareSale,
+    );
+  }
+  final proceeds = offer.price.times(software.stake);
+  if (proceeds > Money.zero) {
+    ledger.pay(
+      payer: world.elsewhere,
+      payerAccount: AccountKind.investments,
+      payee: seller,
+      payeeAccount: AccountKind.disposals,
+      amount: proceeds,
+      reason: EntryReason.softwareSale,
+    );
+  }
+  if (company.injected > Money.zero) {
+    ledger.post(
+      seller,
+      debit: AccountKind.disposals,
+      credit: AccountKind.investments,
+      amount: company.injected,
+      reason: EntryReason.softwareSale,
+    );
+  }
+  final gain = proceeds - company.injected;
+  if (content.taxesOf(world.residence(content, seller.id)) case final taxes?
+      when gain > Money.zero) {
+    final tax = gain.times(taxes.dividendRate);
+    if (tax > Money.zero) {
+      ledger.pay(
+        payer: seller,
+        payerAccount: AccountKind.taxes,
+        payee: world.government,
+        payeeAccount: AccountKind.revenue,
+        amount: tax,
+        reason: EntryReason.capitalGainsTax,
+      );
+    }
+  }
+  final market = world.softwareMarket!;
+  closeSoftware(
+    world,
+    market,
+    software,
+    SoftwareStatus.sold,
+    to: market.rivals[offer.rival.index],
+  );
+  company
+    ..injected = Money.zero
+    ..director = null
+    ..status = CompanyStatus.sold;
 }

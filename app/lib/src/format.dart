@@ -230,3 +230,22 @@ Money? parseMoney(String text) {
     return null;
   }
 }
+
+/// [amount] as [money] has it below a million, and past it shortened to a
+/// tenth of a million or a billion: `2.4m`, `31bn`.
+String compactMoney(Money amount) {
+  final whole = amount.cents ~/ 100;
+  final size = whole.abs();
+  if (size < 1000000) return money(amount, cents: false);
+  final (scale, key) = size >= 1000000000
+      ? (1000000000, 'format.billions')
+      : (1000000, 'format.millions');
+  final tenths = (size * 10 + scale ~/ 2) ~/ scale;
+  final text = tenths % 10 == 0 || tenths >= 1000
+      ? '${tenths ~/ 10}'
+      : '${tenths ~/ 10}${tr('format.decimal')}${tenths % 10}';
+  return '${whole.isNegative ? '−' : ''}${tr(key, {'amount': text})}';
+}
+
+/// [count], shortened past a million as [compactMoney] is.
+String compactCount(int count) => compactMoney(Money(count * 100));

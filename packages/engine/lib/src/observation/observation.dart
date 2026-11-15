@@ -26,6 +26,8 @@ import '../state/store.dart';
 import '../state/taxation.dart';
 import '../state/valuation.dart';
 import '../state/world_state.dart';
+import 'software_view.dart';
+import '../state/software_rules.dart' show softwareOf;
 
 /// What one actor can see at the start of a day: the economy, its own
 /// companies and stores in full, every store's shelf and hours, each
@@ -58,6 +60,8 @@ final class Observation {
     this.brands = const [],
     this.offers = const [],
     this.candidates = const [],
+    this.softwareMarket,
+    this.softwareCandidates = const [],
     List<DistrictView> Function() districts = _noDistricts,
     List<NationalCountryView> Function() national = _noNational,
   }) : _districts = districts,
@@ -169,6 +173,11 @@ final class Observation {
   /// The key people on the market, for anyone to hire, as their track
   /// records show them.
   final List<KeyPersonView> candidates;
+
+  /// The world market for software, if there is one, and the people on
+  /// its market for software work.
+  final SoftwareMarketView? softwareMarket;
+  final List<KeyPersonView> softwareCandidates;
 
   /// The factories that sell to anyone's shops, with what each can spare
   /// this month: public, as a supplier's terms are.
@@ -515,9 +524,13 @@ final class CompanyView {
     this.factories = const [],
     this.goodsBought = Money.zero,
     this.buyingDiscount = Fx.zero,
+    this.software,
   });
 
   final CompanyId id;
+
+  /// Its software product, if it is a software company.
+  final SoftwareView? software;
 
   /// What it bought of goods over its latest twelve months, and what its
   /// suppliers take off them for it (see `buyingDiscount`).
@@ -865,6 +878,8 @@ final class PublicView {
           ),
       ]),
       candidates = _candidates(world, content),
+      softwareMarket = softwareMarketViewOf(world, content),
+      softwareCandidates = softwareCandidatesOf(world, content),
       vacantSites = _vacantSites(world, content),
       companyOwners = List.unmodifiable([
         for (final company in world.companies) company.owner,
@@ -918,6 +933,8 @@ final class PublicView {
   final List<Valuation?> valuations;
   final List<FactoryOffer> offers;
   final List<KeyPersonView> candidates;
+  final SoftwareMarketView? softwareMarket;
+  final List<KeyPersonView> softwareCandidates;
   final WorldState _world;
   final ContentDb _content;
 
@@ -1069,6 +1086,10 @@ Observation observe(
                 if (factory.company == company.id)
                   _factoryView(world, content, factory),
             ],
+            software: switch (softwareOf(world, company.id)) {
+              final software? => softwareViewOf(world, content, software),
+              null => null,
+            },
             lossCarried: company.lossCarried,
             cushionDays: company.cushionDays,
             director: company.director,
@@ -1105,6 +1126,8 @@ Observation observe(
     national: () => nationalViews(world, content, actor),
     offers: shared.offers,
     candidates: shared.candidates,
+    softwareMarket: shared.softwareMarket,
+    softwareCandidates: shared.softwareCandidates,
     guaranteeRoom: guaranteeRoom(world, content, person),
     reports: List.unmodifiable([
       for (final report in world.reports)
@@ -1177,7 +1200,7 @@ List<KeyPersonView> _candidates(WorldState world, ContentDb content) {
   if (labs == null) return const [];
   return List.unmodifiable([
     for (final person in world.keyPeople)
-      if (person.status == KeyStatus.candidate)
+      if (person.status == KeyStatus.candidate && !person.forSoftware)
         KeyPersonView(
           id: person.id,
           name: person.name,

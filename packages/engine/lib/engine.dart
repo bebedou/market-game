@@ -10,10 +10,13 @@ export 'src/commands/apply_command.dart'
         maxNameLength,
         maxNationalOpenings,
         maxNationalRate,
-        maxRivalDiscount;
+        maxRivalDiscount,
+        maxSoftwareMarketing,
+        maxSoftwarePriceTimes;
 export 'src/commands/command.dart'
     show
         AcceptNationalOffer,
+        AcceptSoftwareOffer,
         BuildFactory,
         BuyCompany,
         BuyStore,
@@ -25,6 +28,7 @@ export 'src/commands/command.dart'
         CreateBrand,
         BuyNationalChain,
         DeclineNationalOffer,
+        DeclineSoftwareOffer,
         DelistProduct,
         ClearStock,
         DismissKeyPerson,
@@ -34,6 +38,7 @@ export 'src/commands/command.dart'
         HireDirector,
         HireKeyPerson,
         HireManager,
+        HireSoftwarePerson,
         InjectCapital,
         ListProduct,
         LoggedCommand,
@@ -45,6 +50,7 @@ export 'src/commands/command.dart'
         PayDividend,
         PlaceOrder,
         BuyResearch,
+        RaiseRound,
         RenameCompany,
         RenameStore,
         RepayLoan,
@@ -56,7 +62,11 @@ export 'src/commands/command.dart'
         SetLab,
         SetMarketing,
         SetPrice,
+        SetSoftwareMarketing,
+        SetSoftwarePrice,
         SetStaffing,
+        ShutDownSoftware,
+        StartSoftware,
         WakeNeighbourhood,
         TakeLoan;
 export 'src/commands/refusal.dart' show Refusal;
@@ -110,6 +120,8 @@ export 'src/observation/observation.dart'
         StoreMonths,
         ShelfView,
         StoreView;
+export 'src/observation/software_view.dart'
+    show RivalView, SoftwareMarketView, SoftwareOfferView, SoftwareView;
 export 'src/observation/factory_outlook.dart'
     show FactoryOutlook, FactoryShiftPlan, factoryOutlook, outlookServes;
 export 'src/observation/national_view.dart'
@@ -174,6 +186,9 @@ export 'src/state/sleepers.dart' show SleepingNeighbourhood, SleepingShop;
 export 'src/state/store.dart' show ManagerDuty, StoreStatus, Works;
 export 'src/state/labs.dart'
     show generationGain, generationSaving, generationWork, labMonthlyWork;
+export 'src/state/software.dart'
+    show FundingRound, RivalStatus, SoftwareMonth, SoftwareStatus;
+export 'src/state/software_rules.dart' show SoftwareWorth, roundMoney;
 export 'src/state/talent.dart' show KeyRole;
 export 'src/state/taxation.dart' show CountryTax;
 export 'src/state/valuation.dart' show Valuation, symbolicPrice;

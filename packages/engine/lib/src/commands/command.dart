@@ -313,6 +313,44 @@ sealed class Command {
         product: ProductId(reader.readInt()),
         days: reader.readInt(),
       ),
+      StartSoftware.tag => StartSoftware(
+        actor,
+        name: reader.readString(),
+        country: CountryId(reader.readInt()),
+        capital: Money(reader.readInt()),
+      ),
+      SetSoftwarePrice.tag => SetSoftwarePrice(
+        actor,
+        software: SoftwareId(reader.readInt()),
+        price: Money(reader.readInt()),
+      ),
+      SetSoftwareMarketing.tag => SetSoftwareMarketing(
+        actor,
+        software: SoftwareId(reader.readInt()),
+        budget: Money(reader.readInt()),
+      ),
+      HireSoftwarePerson.tag => HireSoftwarePerson(
+        actor,
+        software: SoftwareId(reader.readInt()),
+        person: KeyPersonId(reader.readInt()),
+      ),
+      RaiseRound.tag => RaiseRound(
+        actor,
+        software: SoftwareId(reader.readInt()),
+        share: Fx.raw(reader.readInt()),
+      ),
+      AcceptSoftwareOffer.tag => AcceptSoftwareOffer(
+        actor,
+        software: SoftwareId(reader.readInt()),
+      ),
+      DeclineSoftwareOffer.tag => DeclineSoftwareOffer(
+        actor,
+        software: SoftwareId(reader.readInt()),
+      ),
+      ShutDownSoftware.tag => ShutDownSoftware(
+        actor,
+        software: SoftwareId(reader.readInt()),
+      ),
       _ => throw FormatException('Unknown command tag $tag'),
     };
   }
@@ -1725,4 +1763,215 @@ final class ClearStock extends Command {
   String toString() =>
       'ClearStock(actor: ${actor.index}, store: ${store.index}, '
       'product: ${product.index}, days: $days)';
+}
+
+/// Starts a software company named [name] in [country], with [capital] of
+/// the actor's own cash: a company of its own, which holds nothing else,
+/// its product to be built before it sells.
+final class StartSoftware extends Command {
+  const StartSoftware(
+    super.actor, {
+    required this.name,
+    required this.country,
+    this.capital = Money.zero,
+  });
+
+  static const int tag = 44;
+
+  final String name;
+  final CountryId country;
+  final Money capital;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeString(name)
+      ..writeInt(country.index)
+      ..writeInt(capital.cents);
+  }
+
+  @override
+  String toString() =>
+      'StartSoftware(actor: ${actor.index}, name: $name, '
+      'country: ${country.index}, capital: ${capital.toDecimalString()})';
+}
+
+/// Sets what [software]'s customers pay a month.
+final class SetSoftwarePrice extends Command {
+  const SetSoftwarePrice(
+    super.actor, {
+    required this.software,
+    required this.price,
+  });
+
+  static const int tag = 45;
+
+  final SoftwareId software;
+  final Money price;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(software.index)
+      ..writeInt(price.cents);
+  }
+
+  @override
+  String toString() =>
+      'SetSoftwarePrice(actor: ${actor.index}, software: ${software.index}, '
+      'price: ${price.toDecimalString()})';
+}
+
+/// Sets what [software] spends on marketing a month, from its first
+/// version on.
+final class SetSoftwareMarketing extends Command {
+  const SetSoftwareMarketing(
+    super.actor, {
+    required this.software,
+    required this.budget,
+  });
+
+  static const int tag = 46;
+
+  final SoftwareId software;
+  final Money budget;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(software.index)
+      ..writeInt(budget.cents);
+  }
+
+  @override
+  String toString() =>
+      'SetSoftwareMarketing(actor: ${actor.index}, '
+      'software: ${software.index}, budget: ${budget.toDecimalString()})';
+}
+
+/// Hires [person], a candidate on the market for software people, into
+/// [software]'s team, at what someone of their repute asks.
+final class HireSoftwarePerson extends Command {
+  const HireSoftwarePerson(
+    super.actor, {
+    required this.software,
+    required this.person,
+  });
+
+  static const int tag = 47;
+
+  final SoftwareId software;
+  final KeyPersonId person;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(software.index)
+      ..writeInt(person.index);
+  }
+
+  @override
+  String toString() =>
+      'HireSoftwarePerson(actor: ${actor.index}, '
+      'software: ${software.index}, person: ${person.index})';
+}
+
+/// Sells [share] of [software]'s company to investors, at what it is worth
+/// before the round: their money goes into the company.
+final class RaiseRound extends Command {
+  const RaiseRound(super.actor, {required this.software, required this.share});
+
+  static const int tag = 48;
+
+  final SoftwareId software;
+  final Fx share;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(software.index)
+      ..writeInt(share.raw);
+  }
+
+  @override
+  String toString() =>
+      'RaiseRound(actor: ${actor.index}, software: ${software.index}, '
+      'share: ${share.toDecimalString()})';
+}
+
+/// Sells [software]'s company whole to the rival whose offer stands, for
+/// its price: the actor's share of it comes to them.
+final class AcceptSoftwareOffer extends Command {
+  const AcceptSoftwareOffer(super.actor, {required this.software});
+
+  static const int tag = 49;
+
+  final SoftwareId software;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(software.index);
+  }
+
+  @override
+  String toString() =>
+      'AcceptSoftwareOffer(actor: ${actor.index}, '
+      'software: ${software.index})';
+}
+
+/// Turns down the offer standing for [software]'s company.
+final class DeclineSoftwareOffer extends Command {
+  const DeclineSoftwareOffer(super.actor, {required this.software});
+
+  static const int tag = 50;
+
+  final SoftwareId software;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(software.index);
+  }
+
+  @override
+  String toString() =>
+      'DeclineSoftwareOffer(actor: ${actor.index}, '
+      'software: ${software.index})';
+}
+
+/// Shuts [software] down: its people leave, its customers go elsewhere, and
+/// its company keeps its cash.
+final class ShutDownSoftware extends Command {
+  const ShutDownSoftware(super.actor, {required this.software});
+
+  static const int tag = 51;
+
+  final SoftwareId software;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(software.index);
+  }
+
+  @override
+  String toString() =>
+      'ShutDownSoftware(actor: ${actor.index}, software: ${software.index})';
 }

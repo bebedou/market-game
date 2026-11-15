@@ -13,6 +13,7 @@ import 'finance.dart';
 import 'market.dart';
 import 'reports.dart';
 import 'store.dart';
+import 'software.dart';
 
 /// The holding at a glance: net worth, what needs doing, how last week
 /// went, the companies and who runs them, the stores, the news and profit.
@@ -37,6 +38,7 @@ class DashboardScreen extends StatelessWidget {
         const _Brands(),
         _Stores(onOpen: onOpen),
         const FactoriesSection(),
+        const SoftwareSection(),
         const _Reading(),
       ],
     );
@@ -509,8 +511,11 @@ class _Companies extends StatelessWidget {
           IndexRow(
             title: game.companyName(company.id),
             subtitle: [
-              _storeCount(company),
-              if (directors != null)
+              if (company.software != null)
+                tr('software.kind')
+              else
+                _storeCount(company),
+              if (directors != null && company.software == null)
                 switch (game.directorOf(company)) {
                   final director? => tr('dashboard.runBy', {
                     'director': aDirector(
@@ -525,7 +530,7 @@ class _Companies extends StatelessWidget {
           ),
         if (directors != null)
           for (final company in companies)
-            if (game.directorOf(company) == null)
+            if (game.directorOf(company) == null && company.software == null)
               IndexRow(
                 icon: Icons.badge_outlined,
                 title: companies.length == 1

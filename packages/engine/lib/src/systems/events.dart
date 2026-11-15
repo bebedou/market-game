@@ -118,3 +118,40 @@ final class GenerationLaunched extends TickEvent {
   final Fx lead;
   final Fx saving;
 }
+
+/// A software company's first version went on sale.
+final class SoftwareLaunched extends TickEvent {
+  const SoftwareLaunched({required this.software, required this.company});
+
+  final SoftwareId software;
+  final CompanyId company;
+}
+
+/// A rival offered to buy a software company whole.
+final class SoftwareOfferMade extends TickEvent {
+  const SoftwareOfferMade({
+    required this.software,
+    required this.company,
+    required this.rival,
+    required this.price,
+  });
+
+  final SoftwareId software;
+  final CompanyId company;
+  final SoftwareRivalId rival;
+  final Money price;
+}
+
+/// A rival that started up put its first version on sale.
+final class RivalLaunched extends TickEvent {
+  const RivalLaunched({required this.rival});
+
+  final SoftwareRivalId rival;
+}
+
+/// A rival that started up gave up, its customers gone elsewhere.
+final class RivalFolded extends TickEvent {
+  const RivalFolded({required this.rival});
+
+  final SoftwareRivalId rival;
+}

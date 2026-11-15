@@ -222,6 +222,21 @@ enum EntryReason {
 
   /// Old stock sold to a jobber for part of what it cost.
   clearance,
+
+  /// A day of what a software company's customers pay a month.
+  subscription,
+
+  /// Serving a software company's customers: its servers and support.
+  serving,
+
+  /// A software company's offices.
+  office,
+
+  /// Investors buying part of a software company.
+  fundingRound,
+
+  /// A rival buying a software company whole.
+  softwareSale,
 }
 
 /// One double-entry posting in one party's books. [store], [product] and

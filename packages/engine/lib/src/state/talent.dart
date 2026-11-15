@@ -1,6 +1,7 @@
 import '../core/calendar.dart';
 import '../core/ids.dart';
 import '../persistence/state_io.dart';
+import 'software.dart' show softwareVersion;
 
 /// What a key person does in a lab. Append only.
 enum KeyRole {
@@ -18,7 +19,8 @@ enum KeyStatus {
   candidate,
   employed,
 
-  /// Taken by another company, let go, or left with a factory that closed.
+  /// Taken by another company, let go, or left with a factory or a
+  /// software company that closed.
   gone,
 }
 
@@ -36,6 +38,8 @@ final class KeyPerson {
     this.status = KeyStatus.candidate,
     this.factory,
     this.monthsWorked = 0,
+    this.forSoftware = false,
+    this.software,
   });
 
   KeyPerson.read(this.id, StateReader reader)
@@ -49,7 +53,14 @@ final class KeyPerson {
         final index? => FactoryId(index),
         null => null,
       },
-      monthsWorked = reader.readInt();
+      monthsWorked = reader.readInt(),
+      forSoftware = reader.version >= softwareVersion && reader.readBool(),
+      software = reader.version >= softwareVersion
+          ? switch (reader.readNullableInt()) {
+              final index? => SoftwareId(index),
+              null => null,
+            }
+          : null;
 
   final KeyPersonId id;
   final String name;
@@ -72,6 +83,13 @@ final class KeyPerson {
   /// Whole months worked for their employer.
   int monthsWorked;
 
+  /// Whether they are on the market for software people, on software pay,
+  /// rather than for labs.
+  final bool forSoftware;
+
+  /// The software company's product they build, if employed there.
+  SoftwareId? software;
+
   /// Whether their employer has seen enough to know their [level].
   bool knownAfter(int revealMonths) =>
       status == KeyStatus.employed && monthsWorked >= revealMonths;
@@ -88,6 +106,8 @@ final class KeyPerson {
       ..writeInt(since.number)
       ..writeInt(status.index)
       ..writeNullableInt(factory?.index)
-      ..writeInt(monthsWorked);
+      ..writeInt(monthsWorked)
+      ..writeBool(forSoftware)
+      ..writeNullableInt(software?.index);
   }
 }

@@ -227,6 +227,37 @@ String describeCommand(Command command, ContentDb content, Observation view) {
     DismissKeyPerson(:final person) => tr('commands.dismissKeyPerson', {
       'person': _keyPersonName(view, person),
     }),
+    StartSoftware(:final name) => tr('commands.startSoftware', {'name': name}),
+    SetSoftwarePrice(:final software, :final price) => tr(
+      'commands.setSoftwarePrice',
+      {'name': _softwareName(view, software), 'price': money(price)},
+    ),
+    SetSoftwareMarketing(:final software, :final budget) => tr(
+      'commands.setSoftwareMarketing',
+      {
+        'name': _softwareName(view, software),
+        'amount': money(budget, cents: false),
+      },
+    ),
+    HireSoftwarePerson(:final software, :final person) =>
+      tr('commands.hireSoftwarePerson', {
+        'person': _softwarePersonName(view, person),
+        'name': _softwareName(view, software),
+      }),
+    RaiseRound(:final software, :final share) => tr('commands.raiseRound', {
+      'name': _softwareName(view, software),
+      'share': percent(share, decimals: 0),
+    }),
+    AcceptSoftwareOffer(:final software) => tr('commands.acceptSoftwareOffer', {
+      'name': _softwareName(view, software),
+    }),
+    DeclineSoftwareOffer(:final software) => tr(
+      'commands.declineSoftwareOffer',
+      {'name': _softwareName(view, software)},
+    ),
+    ShutDownSoftware(:final software) => tr('commands.shutDownSoftware', {
+      'name': _softwareName(view, software),
+    }),
     ClearStock(store: final s, product: final p) => tr('commands.clearStock', {
       'product': product(p),
       'store': store(s),
@@ -316,7 +347,7 @@ String _keyPersonName(Observation view, KeyPersonId id) {
       }
     }
   }
-  return '';
+  return _softwarePersonName(view, id);
 }
 
 /// ", borrowing … over …", if anything is borrowed.
@@ -331,3 +362,27 @@ String _loan(Money borrow, int months) => borrow == Money.zero
 String _price(Money? price) => price == null
     ? ''
     : tr('commands.atAskingPrice', {'price': money(price, cents: false)});
+
+/// The name of the actor's software company [id], or nothing if it isn't
+/// theirs.
+String _softwareName(Observation view, SoftwareId id) {
+  for (final company in view.companies) {
+    if (company.software case final software? when software.id == id) {
+      return software.name;
+    }
+  }
+  return '';
+}
+
+/// The name of [id], a software person on the market or in a team.
+String _softwarePersonName(Observation view, KeyPersonId id) {
+  for (final person in view.softwareCandidates) {
+    if (person.id == id) return person.name;
+  }
+  for (final company in view.companies) {
+    for (final person in company.software?.team ?? const <KeyPersonView>[]) {
+      if (person.id == id) return person.name;
+    }
+  }
+  return '';
+}

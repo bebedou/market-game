@@ -51,6 +51,10 @@ abstract final class RngStream {
 
   /// How a product generation turns out when a lab launches it.
   static const labs = 15;
+
+  /// The software market's month: who comes onto its market for people,
+  /// how rivals' pace wanders, who starts up, and who offers to buy.
+  static const software = 16;
 }
 
 /// Deterministic random numbers (xoshiro128**).

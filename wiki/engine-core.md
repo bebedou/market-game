@@ -91,16 +91,18 @@ order that runs:
 | 9 | `DemandSystem` | [demand.dart](../packages/engine/lib/src/systems/demand.dart) (with [sales.dart](../packages/engine/lib/src/systems/sales.dart)) | Daily: households shop; about 60% of a day's time |
 | 10 | `FactorySystem` | [factories.dart](../packages/engine/lib/src/systems/factories.dart) | Daily wages, monthly site |
 | 11 | `LabSystem` | [labs.dart](../packages/engine/lib/src/systems/labs.dart) | Daily key people's pay; 1st of month: leads fade, the market for people turns, labs develop |
-| 12 | `SettlementSystem` | [settlement.dart](../packages/engine/lib/src/systems/settlement.dart) | Daily wages and salaries; monthly rent, overheads, loans; pays bills due |
-| 13 | `SleeperSystem` | [sleepers.dart](../packages/engine/lib/src/systems/sleepers.dart) | 1st of month: neighbourhoods asleep, by formula |
-| 14 | `SolvencySystem` | [solvency.dart](../packages/engine/lib/src/systems/solvency.dart) | Daily: liquidates companies overdue past the grace period |
-| 15 | `CloseSystem` | [close.dart](../packages/engine/lib/src/systems/close.dart) | Daily: sales history, reputation |
-| 16 | `ReportSystem` | [report.dart](../packages/engine/lib/src/systems/report.dart) | Daily: folds the day into week and month reports |
+| 12 | `SoftwareSystem` | [software.dart](../packages/engine/lib/src/systems/software.dart) | Daily: subscriptions paid, team, offices, marketing and serving billed; 1st of month: the software market turns (standard, products, rivals, startups, customers, offers) |
+| 13 | `SettlementSystem` | [settlement.dart](../packages/engine/lib/src/systems/settlement.dart) | Daily wages and salaries; monthly rent, overheads, loans; pays bills due |
+| 14 | `SleeperSystem` | [sleepers.dart](../packages/engine/lib/src/systems/sleepers.dart) | 1st of month: neighbourhoods asleep, by formula |
+| 15 | `SolvencySystem` | [solvency.dart](../packages/engine/lib/src/systems/solvency.dart) | Daily: liquidates companies overdue past the grace period |
+| 16 | `CloseSystem` | [close.dart](../packages/engine/lib/src/systems/close.dart) | Daily: sales history, reputation |
+| 17 | `ReportSystem` | [report.dart](../packages/engine/lib/src/systems/report.dart) | Daily: folds the day into week and month reports |
 
 [closure.dart](../packages/engine/lib/src/systems/closure.dart) (`closeStore`)
 is shared by commands and solvency. [events.dart](../packages/engine/lib/src/systems/events.dart)
 holds the sealed `TickEvent` family: `DeliveryRefused`, `PaymentOverdue`,
-`CensusTaken`, `CompanyLiquidated`, `StoreSold`, `GenerationLaunched`.
+`CensusTaken`, `CompanyLiquidated`, `StoreSold`, `GenerationLaunched`,
+`SoftwareLaunched`, `SoftwareOfferMade`, `RivalLaunched`, `RivalFolded`.
 
 Order matters: `BuyingTermsSystem` before `NationalSystem` (blocks need the
 month's discount), `SleeperSystem` before `SolvencySystem` and
@@ -109,7 +111,7 @@ month's discount), `SleeperSystem` before `SolvencySystem` and
 ## Commands and refusals
 
 - [commands/command.dart](../packages/engine/lib/src/commands/command.dart):
-  the sealed `Command` class and 42 subclasses (`SetPrice`, `PlaceOrder`,
+  the sealed `Command` class and 51 subclasses (`SetPrice`, `PlaceOrder`,
   `OpenStore`, `HireDirector`, `BuildFactory`, `OpenNational`,
   `BuyNationalChain`, …). Each has a `static const tag` and a `write`;
   `Command.read` switches on the tag and gates fields on `reader.version`.
