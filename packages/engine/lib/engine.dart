@@ -24,10 +24,12 @@ export 'src/commands/command.dart'
         BreakContract,
         BuildFactory,
         BuyCompany,
+        BuyShares,
         BuyStore,
         CloseFactory,
         CloseStore,
         Command,
+        SellShares,
         ConvertStore,
         BuyInDistrict,
         CreateBrand,
@@ -76,7 +78,9 @@ export 'src/commands/command.dart'
         WakeNeighbourhood,
         TakeLoan;
 export 'src/commands/refusal.dart' show Refusal;
+export 'src/commands/stock_trades.dart' show orderFee, orderImpact, orderValue;
 export 'src/content/content_db.dart';
+export 'src/content/stocks_def.dart';
 export 'src/content/scenario_loader.dart' show ContentException, loadScenario;
 export 'src/countries/country_economy.dart'
     show
@@ -201,5 +205,7 @@ export 'src/state/software_rules.dart' show SoftwareWorth, roundMoney;
 export 'src/state/talent.dart' show KeyRole;
 export 'src/state/taxation.dart' show CountryTax;
 export 'src/state/valuation.dart' show Valuation, symbolicPrice;
+export 'src/observation/stocks_view.dart'
+    show AnalystRating, ExchangeView, HoldingView, StockMarketView, StockView;
 export 'src/systems/events.dart';
 export 'src/systems/national.dart' show offerDays;

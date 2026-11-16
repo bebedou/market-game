@@ -19,6 +19,9 @@ const scenarioAsset = 'packages/market_content/scenarios/prototype.json';
 const nationalAsset = 'packages/market_content/countries/euro.json';
 const calibrationAsset = 'packages/market_content/countries/calibration.json';
 
+/// The stock market's table: its sectors, exchanges and listed companies.
+const stocksAsset = 'packages/market_content/stocks/companies.json';
+
 /// A seed for a new world.
 int newSeed() => DateTime.now().microsecondsSinceEpoch & 0x7fffffff;
 
@@ -39,6 +42,7 @@ Future<ContentDb> _loadScenario() async => loadScenario(
     await rootBundle.loadString(nationalAsset),
     await rootBundle.loadString(calibrationAsset),
   ),
+  stocks: await rootBundle.loadString(stocksAsset),
 );
 
 /// The game saved in [store], or null if there is none. A save that can't

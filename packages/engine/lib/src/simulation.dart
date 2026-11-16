@@ -24,6 +24,7 @@ import 'state/game_start.dart';
 import 'state/growth.dart';
 import 'state/invariants.dart';
 import 'systems/national.dart' show currentNational;
+import 'systems/stocks.dart' show currentStocks;
 import 'state/sleepers.dart';
 import 'state/world_state.dart';
 import 'systems/events.dart';
@@ -100,15 +101,18 @@ final class Simulation {
     var game = content;
     var begin = start;
     if (citiesAsleep) (game, begin) = withCitiesAsleep(content, start: start);
+    final world = WorldState.initial(game, seed: seed, start: begin)
+      ..sleepers.addAll([
+        for (var row = 0; row < game.neighbourhoods.length; row++)
+          newSleeper(game, row, seed: seed),
+      ]);
+    // The exchanges open with the game, so its first page shows them.
+    currentStocks(world, game);
     return Simulation._(
       game,
       systems,
       policies,
-      WorldState.initial(game, seed: seed, start: begin)
-        ..sleepers.addAll([
-          for (var row = 0; row < game.neighbourhoods.length; row++)
-            newSleeper(game, row, seed: seed),
-        ]),
+      world,
       [],
       [],
       [],
@@ -474,6 +478,7 @@ final class Simulation {
     }
     if (world.cycle != null) world.writeEconomies(writer);
     if (world.national != null) writeNational(writer, world);
+    if (world.stocks != null) writeStocks(writer, world);
     return (Hash32()..addBytes(writer.toBytes())).finish();
   }
 }

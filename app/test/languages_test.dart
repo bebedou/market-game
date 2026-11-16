@@ -38,6 +38,19 @@ ContentDb _nationalContent() => loadScenario(
   ),
 );
 
+/// Like [_nationalContent], with the stock market.
+ContentDb _stockContent() => loadScenario(
+  localizedScenario(
+    File('../content/scenarios/prototype.json').readAsStringSync(),
+    currentStrings!.scenario,
+  ),
+  national: loadCountryTable(
+    File('../content/countries/euro.json').readAsStringSync(),
+    File('../content/countries/calibration.json').readAsStringSync(),
+  ),
+  stocks: File('../content/stocks/companies.json').readAsStringSync(),
+);
+
 /// The name of the first region of [content]'s first country.
 String _firstRegion(ContentDb content) => content.national!.countries
     .firstWhere((c) => c.key == content.countries.first.national)
@@ -237,6 +250,7 @@ void main() {
 
         await tab(Icons.payments_outlined, 'finance');
         await tab(Icons.public_outlined, 'world');
+        await tab(Icons.candlestick_chart_outlined, 'market');
         await tab(Icons.menu_book_outlined, 'books');
 
         await tester.tap(find.byIcon(Icons.storefront_outlined));
@@ -261,6 +275,53 @@ void main() {
         await _settle(tester);
         _checkWords(tester, 'news');
         expect(game.alerts, isNotEmpty);
+      });
+
+      testWidgets('the market\'s pages fit', (tester) async {
+        _useNarrowPhone(tester);
+        final content = _stockContent();
+        final game = SimulationController.newGame(content, seed: 7);
+        game.submit(BuyShares(content.player, of: 0, units: 5, index: true));
+        for (var i = 0; i < 100; i++) {
+          game.step();
+        }
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => ScreenMargins(child: child!),
+            home: HomeScreen(controller: game),
+          ),
+        );
+        await _settle(tester);
+        await tester.tap(find.byIcon(Icons.candlestick_chart_outlined));
+        await _settle(tester);
+        _checkWords(tester, 'market');
+        await _visitRows(tester, 'market');
+
+        // A sector, one of its companies, and buying it.
+        final banks = tr('stocks.sectors.banks');
+        await tester.ensureVisible(find.widgetWithText(IndexRow, banks));
+        await _settle(tester);
+        await tester.tap(find.widgetWithText(IndexRow, banks));
+        await _settle(tester);
+        _checkWords(tester, 'banks');
+        await tester.ensureVisible(find.byType(IndexRow).first);
+        await _settle(tester);
+        await tester.tap(find.byType(IndexRow).first);
+        await _settle(tester);
+        _checkWords(tester, 'a bank');
+        final buy = find.widgetWithText(FilledButton, tr('stocks.buy'));
+        await tester.ensureVisible(buy);
+        await _settle(tester);
+        await tester.tap(buy);
+        await _settle(tester);
+        _checkWords(tester, 'buying');
+        await tester.enterText(find.byType(TextField), '1000');
+        await _settle(tester);
+        _checkWords(tester, 'an order');
+        await tester.tap(find.widgetWithText(FilledButton, tr('stocks.buy')));
+        await _settle(tester);
+        _checkWords(tester, 'sent');
+        expect(game.pending.whereType<BuyShares>(), hasLength(1));
       });
 
       testWidgets('the sheets and dialogs of a company fit', (tester) async {

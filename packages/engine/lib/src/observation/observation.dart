@@ -7,6 +7,7 @@ import '../core/money.dart';
 import '../reports/period_report.dart' show ReportPeriod;
 import '../state/districts.dart';
 import 'national_view.dart';
+import 'stocks_view.dart';
 import '../state/brands.dart';
 import '../state/buying_terms.dart';
 import '../state/credit.dart';
@@ -58,6 +59,7 @@ final class Observation {
     this.companyPrices = const [],
     this.companyCredits = const [],
     this.guaranteeRoom = Money.zero,
+    this.portfolio = Money.zero,
     this.brands = const [],
     this.offers = const [],
     this.candidates = const [],
@@ -67,8 +69,18 @@ final class Observation {
     this.producers = const [],
     List<DistrictView> Function() districts = _noDistricts,
     List<NationalCountryView> Function() national = _noNational,
+    StockMarketView? Function() stocks = _noStocks,
   }) : _districts = districts,
-       _national = national;
+       _national = national,
+       _stocks = stocks;
+
+  static StockMarketView? _noStocks() => null;
+
+  final StockMarketView? Function() _stocks;
+
+  /// The stock market as the actor sees it; null without one. Worked out
+  /// the first time anyone looks.
+  StockMarketView? get stocks => _stocks();
 
   static List<NationalCountryView> _noNational() => const [];
 
@@ -172,6 +184,9 @@ final class Observation {
 
   /// How much more the actor can guarantee (see `guaranteeRoom`).
   final Money guaranteeRoom;
+
+  /// What the actor's shares and index units are worth at today's prices.
+  final Money portfolio;
 
   /// The key people on the market, for anyone to hire, as their track
   /// records show them.
@@ -1141,6 +1156,7 @@ Observation observe(
     companyCredits: shared.companyCredits,
     districts: () => shared.districts,
     national: () => nationalViews(world, content, actor),
+    stocks: _once(() => stockMarketView(world, content)),
     offers: shared.offers,
     candidates: shared.candidates,
     softwareMarket: shared.softwareMarket,
@@ -1148,11 +1164,20 @@ Observation observe(
     tenders: tenderViews(world),
     producers: producerViews(world),
     guaranteeRoom: guaranteeRoom(world, content, person),
+    portfolio: actor == world.player
+        ? portfolioWorth(world.stocks)
+        : Money.zero,
     reports: List.unmodifiable([
       for (final report in world.reports)
         if (report.buyer == actor) report,
     ]),
   );
+}
+
+/// [work], done the first time it is asked for and remembered.
+T Function() _once<T>(T Function() work) {
+  late final T result = work();
+  return () => result;
 }
 
 Money _committed(WorldState world, CompanyId company) {

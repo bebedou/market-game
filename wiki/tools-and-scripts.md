@@ -19,6 +19,8 @@ Eurostat. Each file's header comment gives its options.
 | [national_balance.dart](../packages/engine/tool/national_balance.dart) | A rich player's director growing a chain by formula, year by year (`--rate auto` or a share, `--grade`, `--strategy`) | console |
 | [factories_balance.dart](../packages/engine/tool/factories_balance.dart) | A chain with and without its own plant | console |
 | [factory_sales_balance.dart](../packages/engine/tool/factory_sales_balance.dart) | A holding start's factory of a size (`--size`, `--kind`, `--serve`) selling to independents (`--discount`) and bidding on every tender that fits (`--bid` under the producer price), with shifts sized to what it sells; year by year, and the rival producers at the end | console |
+| [stock_caps.dart](../packages/engine/tool/stock_caps.dart) | Fills in `companies.json`'s caps and shares left null (the game's own companies) at what their books are worth when a game starts; `--all` sets them again | `content/stocks/companies.json` |
+| [stock_balance.dart](../packages/engine/tool/stock_balance.dart) | Each exchange's index year by year and its worst fall, and a year's return, dividends included, of ways to pick shares each January (every stock, the cheapest and dearest against their usual, strong buys and sells, managements) (`--seeds`, `--years`) | console |
 | [software_balance.dart](../packages/engine/tool/software_balance.dart) | A holding start that founds a software company, hires a team by people's true levels (`--team star`, `strong`, `middle`, `ordinary`, `big`), raises rounds when cash runs short and markets from launch; year by year | console |
 | [generate_neighbourhoods.dart](../packages/engine/tool/generate_neighbourhoods.dart) | Rebuilds today's cities from their figures, to compare with the hand-made ones | a scenario JSON |
 | [add_places.dart](../packages/engine/tool/add_places.dart) | Lays out the districts from `places.json` with the generator | `content/countries/places_built.json` |
@@ -43,7 +45,8 @@ pass by pass.
 ## Python build scripts
 
 All fetch Eurostat's public API (or GISCO for outlines) and write JSON next
-to themselves. Run from `content/countries`.
+to themselves. Run from `content/countries`, or `content/stocks` for the
+stock market's.
 
 | Script | Reads | Writes |
 |---|---|---|
@@ -53,6 +56,7 @@ to themselves. Run from `content/countries`.
 | [insert_places.py](../content/countries/insert_places.py) | `places_built.json` | appends to `prototype.json`, keeping saved games valid; stops if the scenario already has countries |
 | [add_clothing.py](../content/countries/add_clothing.py) | `euro.json` (clothing against electronics per household) | appends clothing to `prototype.json` and its translations: categories with their fashion, goods, habits, the format (edition 1) with its national figures, strategies, suppliers, each place's clothing market, two rival shops a city; stops if clothing is there |
 | [build_outlines.py](../content/countries/build_outlines.py) | GISCO NUTS 2021 1:20M GeoJSON | `outlines.json` |
+| [build_companies.py](../content/stocks/build_companies.py) | Eurostat `nama_10_a64` (output by industry, 2022); `prototype.json` and `euro.json` for the game's own companies; names, sectors' figures and rules written in the script | `companies.json`, from scratch: run `stock_caps.dart` after |
 
 ## The data pipelines
 

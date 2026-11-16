@@ -15,3 +15,4 @@ flutter:
     - countries/euro.json
     - countries/calibration.json
     - countries/outlines.json
+    - stocks/companies.json

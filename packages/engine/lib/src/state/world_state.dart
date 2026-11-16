@@ -23,6 +23,7 @@ import 'brands.dart';
 import 'sleepers.dart';
 import 'factory_sales.dart';
 import 'software.dart';
+import 'stocks.dart';
 import 'store.dart';
 import 'taxation.dart';
 
@@ -95,6 +96,10 @@ final class WorldState {
 
   /// Chains' own plants, in the order built.
   final chainPlants = <ChainPlant>[];
+
+  /// The stock market; null until first run, and without a table for one.
+  /// Kept beside the world, as the national economy is.
+  StockMarket? stocks;
 
   /// The countries by formula, region by region, with companies' shops run
   /// there; null until first run, and for a world of one country or without

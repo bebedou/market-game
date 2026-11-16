@@ -16,13 +16,14 @@ whatever could differ in someone else's world is data. Design detail:
 | [content/countries/euro.json](../content/countries/euro.json) | The national table: countries, regions, income classes, trades, chains, regimes, brand and regional tuning | `loadCountryTable` |
 | [content/countries/calibration.json](../content/countries/calibration.json) | Numbers the formula borrows from the full simulation: `capture`, `staffFixed`, `riseResponse`, `cutResponse` | `loadCountryTable` |
 | [content/countries/outlines.json](../content/countries/outlines.json) | Region outlines for the ink maps | the app only (`loadOutlines`) |
+| [content/stocks/companies.json](../content/stocks/companies.json) | The stock market: its rules, the four exchanges, 23 sectors (each formula sector's output by country, from Eurostat), and 822 listed companies with their ticker, name, country, sector, share, cap, shares, margin, debt, growth, payout and management, or the game's own chain, software rival or producer they are. Edit freely; a mod can ship its own | `loadScenario(stocks:)`, giving `ContentDb.stocks` (`StocksDef`) |
 | [content/countries/places.json](../content/countries/places.json), [places_built.json](../content/countries/places_built.json) | Intermediate files of the places pipeline, not bundled | the build scripts ([tools-and-scripts.md](tools-and-scripts.md)) |
 | [content/locales/](../content/locales) | Interface words; see [app.md](app.md) | the app |
 
 ## Loading: `loadScenario`
 
 [content/scenario_loader.dart](../packages/engine/lib/src/content/scenario_loader.dart),
-`loadScenario(jsonText, national:)`, returns a `ContentDb` or throws a
+`loadScenario(jsonText, national:, stocks:)`, returns a `ContentDb` or throws a
 `ContentException` with the JSON path at fault.
 
 - Strict: a private `_Node` wraps each object, every read is checked, and

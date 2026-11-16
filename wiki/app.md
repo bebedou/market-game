@@ -46,14 +46,14 @@ listen, `GameScope.read(context)` in `initState`).
   `TickResult.events`.
 - **Immediate actions.** `wake(row)` and `createBrand(name, format)` go to
   the engine at once, as the engine applies them on submit.
-- **Derived figures.** `netWorth`, `holdingProfits`, `cushion`, `myStores`,
+- **Derived figures.** `netWorth` (with shares at their price), `holdingProfits`, `cushion`, `myStores`,
   `myFactories`, `homeCountry`, `residence`, `economyAt`, `plan`,
   `national`.
 
-## The five tabs
+## The six tabs
 
 [home.dart](../app/lib/src/home.dart): `HomeScreen`, `HomeTab` (holding,
-shop, finance, world, books), the clock bar, the pending bar, `AlertTile`,
+shop, finance, world, market, books), the clock bar, the pending bar, `AlertTile`,
 and an `AppLifecycleListener` that saves when the app goes to the
 background. File names keep the tabs' older names:
 
@@ -63,6 +63,7 @@ background. File names keep the tabs' older names:
 | Shop | [screens/store.dart](../app/lib/src/screens/store.dart), [screens/orders.dart](../app/lib/src/screens/orders.dart) | `StoreScreen` (shelves, running, staff, manager, marketing, size, conversion); `OrdersScreen`, `OrderSheet` (supplies) |
 | Finance | [screens/finance.dart](../app/lib/src/screens/finance.dart), [screens/financials.dart](../app/lib/src/screens/financials.dart) | `FinanceScreen`: company pages, director sheet and letters, borrowing, cushion, taxes, bargains; `FinancialsSection`: key figures, P&L, balance sheet, years |
 | World | [screens/market.dart](../app/lib/src/screens/market.dart), [screens/national.dart](../app/lib/src/screens/national.dart) | `MarketScreen`: economy, countries, competitors, cities, `NewBusiness` (start a business on any vacant site, waking its city); `NationalMap`: the country page and its ink map |
+| Market | [screens/exchange.dart](../app/lib/src/screens/exchange.dart) | `ExchangeScreen` (the owner's layout A): exchanges today, the portfolio, sectors with their price to earnings; `SectorPage`, `StockPage` (price and chart, what it rests on, analysts and management, who holds it, buy and sell), `ExchangePage` (an index, bought whole), `TradePage`, `PortfolioPage` |
 | Books | [screens/reports.dart](../app/lib/src/screens/reports.dart) | `ReportsScreen`: periods, what changed, results, shoppers, products, research |
 
 Other screens: [menu.dart](../app/lib/src/screens/menu.dart) (`MainMenu`:

@@ -164,6 +164,48 @@ final class TenderClosed extends TickEvent {
   final bool won;
 }
 
+/// Listed company [stock] changed its management.
+final class ManagementChanged extends TickEvent {
+  const ManagementChanged({required this.stock});
+
+  final int stock;
+}
+
+/// Listed company [stock] left its exchange: bought whole, or [failed];
+/// [held] if the player had shares in it.
+final class StockDelisted extends TickEvent {
+  const StockDelisted({
+    required this.stock,
+    required this.failed,
+    required this.held,
+  });
+
+  final int stock;
+  final bool failed;
+  final bool held;
+}
+
+/// The player's stake in listed company [stock] crossed a multiple of 5%
+/// and was made public: it is now over [percent] if [up], else under it.
+final class StakeCrossed extends TickEvent {
+  const StakeCrossed({
+    required this.stock,
+    required this.percent,
+    required this.up,
+  });
+
+  final int stock;
+  final int percent;
+  final bool up;
+}
+
+/// The player received [amount] of dividends, before tax.
+final class DividendsReceived extends TickEvent {
+  const DividendsReceived({required this.amount});
+
+  final Money amount;
+}
+
 /// A chain built a plant of its own, now [producer] in the world's list.
 final class ChainPlantBuilt extends TickEvent {
   const ChainPlantBuilt({required this.producer});

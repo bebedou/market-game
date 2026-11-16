@@ -240,6 +240,16 @@ enum EntryReason {
 
   /// What a factory pays a chain for a contract month it fell short of.
   contractPenalty,
+
+  /// Shares of a listed company or an index bought, and sold.
+  sharesBought,
+  sharesSold,
+
+  /// A broker's fee on an order of shares.
+  brokerage,
+
+  /// A listed company's dividend to its shareholders.
+  stockDividend,
 }
 
 /// One double-entry posting in one party's books. [store], [product] and

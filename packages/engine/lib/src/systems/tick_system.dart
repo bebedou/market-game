@@ -20,6 +20,7 @@ import 'report.dart';
 import 'settlement.dart';
 import 'sleepers.dart';
 import 'software.dart';
+import 'stocks.dart';
 import 'solvency.dart';
 import 'spoilage.dart';
 import 'taxes.dart';
@@ -76,6 +77,9 @@ const List<TickSystem> standardSystems = [
   FactorySystem(),
   LabSystem(),
   SoftwareSystem(),
+  // After the countries by formula and the software market, whose
+  // companies it lists.
+  StockMarketSystem(),
   SettlementSystem(),
   // Before solvency and reports: chains' shops in districts book there.
   SleeperSystem(),

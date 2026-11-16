@@ -416,6 +416,7 @@ String generateScenario(
   final asleepContent = loadScenario(
     jsonEncode(root),
     national: content.national,
+    stocks: content.stocks?.source,
   );
   return (
     asleepContent,
@@ -481,7 +482,11 @@ ContentDb withNeighbourhoods(
       edition: edition,
     );
   }
-  return loadScenario(jsonEncode(world.scenario()), national: content.national);
+  return loadScenario(
+    jsonEncode(world.scenario()),
+    national: content.national,
+    stocks: content.stocks?.source,
+  );
 }
 
 /// What a chain's shop of a woken district takes up as a store: its site's

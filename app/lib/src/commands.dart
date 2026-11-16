@@ -247,6 +247,20 @@ String describeCommand(Command command, ContentDb content, Observation view) {
       'number': contract,
       'price': money(price),
     }),
+    BuyShares(:final of, :final units, :final index) => tr(
+      index ? 'commands.buyIndex' : 'commands.buyShares',
+      {
+        'units': compactCount(units),
+        'name': _listed(content, of, index: index),
+      },
+    ),
+    SellShares(:final of, :final units, :final index) => tr(
+      index ? 'commands.sellIndex' : 'commands.sellShares',
+      {
+        'units': compactCount(units),
+        'name': _listed(content, of, index: index),
+      },
+    ),
     EnlargeFactory(:final factory) => tr('commands.enlargeFactory', {
       'factory': _factoryName(view, factory),
     }),
@@ -326,6 +340,16 @@ String describeCommand(Command command, ContentDb content, Observation view) {
 }
 
 /// The name of [chain] of the game's [country] in the national table.
+/// A listed company's name, or an exchange's index's.
+String _listed(ContentDb content, int of, {required bool index}) {
+  final stocks = content.stocks;
+  if (stocks == null) return '';
+  if (index) {
+    return of < stocks.exchanges.length ? stocks.exchanges[of].index : '';
+  }
+  return of < stocks.listings.length ? stocks.listings[of].name : '';
+}
+
 String _chainName(Observation view, CountryId country, int chain) {
   for (final national in view.national) {
     if (national.country != country) continue;

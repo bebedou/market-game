@@ -7,6 +7,7 @@ import '../core/money.dart';
 import '../core/safe_int.dart';
 import 'factory_sales_def.dart';
 import 'software_def.dart';
+import 'stocks_def.dart';
 
 /// Everything a scenario defines, loaded once and never changed: the
 /// definitions the simulation runs on, and the initial world.
@@ -43,8 +44,12 @@ final class ContentDb {
     this.neighbourhoods = const [],
     this.countries = const [CountryDef.only],
     this.national,
+    this.stocks,
     this.source = '',
   });
+
+  /// The stock market, from its own table; null for none.
+  final StocksDef? stocks;
 
   /// The countries' national statistics, run by formula beside the game for
   /// the national view (see `Simulation.national`); null for none.

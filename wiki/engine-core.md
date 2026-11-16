@@ -18,7 +18,7 @@ and JavaScript give identical results.
 | `Fx` | [fx.dart](../packages/engine/lib/src/core/fx.dart) | Fixed point, scale 10,000 (`Fx.raw(400)` is 4%). `Fx.parse('0.15')` reads a decimal string |
 | `mulDivRound`, `isSafeInt`, `isqrt` | [safe_int.dart](../packages/engine/lib/src/core/safe_int.dart) | `a·b/d` without any intermediate above 2^53, rounding half away from zero |
 | `imul32`, `rotl32`, `mask32` | [bits32.dart](../packages/engine/lib/src/core/bits32.dart) | 32-bit operations that behave the same on the web |
-| `Rng.keyed`, `RngStream` | [rng.dart](../packages/engine/lib/src/core/rng.dart) | xoshiro128** seeded by hashing `(seed, stream, day, entity)`. Draws don't depend on iteration order. Streams 1 to 15 are listed in `RngStream`; add a new one rather than reuse one |
+| `Rng.keyed`, `RngStream` | [rng.dart](../packages/engine/lib/src/core/rng.dart) | xoshiro128** seeded by hashing `(seed, stream, day, entity)`. Draws don't depend on iteration order. Streams 1 to 18 are listed in `RngStream`; add a new one rather than reuse one |
 | `Hash32` | [hash32.dart](../packages/engine/lib/src/core/hash32.dart) | The state hash and content fingerprints |
 | `expNeg` | [exp_neg.dart](../packages/engine/lib/src/core/exp_neg.dart) over [exp_table.g.dart](../packages/engine/lib/src/core/exp_table.g.dart) | `exp(-x)` from a committed integer table, made by [tool/gen_exp_table.dart](../packages/engine/tool/gen_exp_table.dart) |
 | `Day`, `CivilDate` | [calendar.dart](../packages/engine/lib/src/core/calendar.dart) | Days since 1970-01-01, civil dates by integer maths |
@@ -93,11 +93,12 @@ order that runs:
 | 11 | `FactorySystem` | [factories.dart](../packages/engine/lib/src/systems/factories.dart) | Daily wages, monthly site |
 | 12 | `LabSystem` | [labs.dart](../packages/engine/lib/src/systems/labs.dart) | Daily key people's pay; 1st of month: leads fade, the market for people turns, labs develop |
 | 13 | `SoftwareSystem` | [software.dart](../packages/engine/lib/src/systems/software.dart) | Daily: subscriptions paid, team, offices, marketing and serving billed; 1st of month: the software market turns (standard, products, rivals, startups, customers, offers) |
-| 14 | `SettlementSystem` | [settlement.dart](../packages/engine/lib/src/systems/settlement.dart) | Daily wages and salaries; monthly rent, overheads, loans; pays bills due |
-| 15 | `SleeperSystem` | [sleepers.dart](../packages/engine/lib/src/systems/sleepers.dart) | 1st of month: neighbourhoods asleep, by formula |
-| 16 | `SolvencySystem` | [solvency.dart](../packages/engine/lib/src/systems/solvency.dart) | Daily: liquidates companies overdue past the grace period |
-| 17 | `CloseSystem` | [close.dart](../packages/engine/lib/src/systems/close.dart) | Daily: sales history, reputation |
-| 18 | `ReportSystem` | [report.dart](../packages/engine/lib/src/systems/report.dart) | Daily: folds the day into week and month reports |
+| 14 | `StockMarketSystem` | [stocks.dart](../packages/engine/lib/src/systems/stocks.dart) | 1st of month: listed companies' books, worth, analysts and managements; quarters: results and dividends; daily: moods and prices, indices |
+| 15 | `SettlementSystem` | [settlement.dart](../packages/engine/lib/src/systems/settlement.dart) | Daily wages and salaries; monthly rent, overheads, loans; pays bills due |
+| 16 | `SleeperSystem` | [sleepers.dart](../packages/engine/lib/src/systems/sleepers.dart) | 1st of month: neighbourhoods asleep, by formula |
+| 17 | `SolvencySystem` | [solvency.dart](../packages/engine/lib/src/systems/solvency.dart) | Daily: liquidates companies overdue past the grace period |
+| 18 | `CloseSystem` | [close.dart](../packages/engine/lib/src/systems/close.dart) | Daily: sales history, reputation |
+| 19 | `ReportSystem` | [report.dart](../packages/engine/lib/src/systems/report.dart) | Daily: folds the day into week and month reports |
 
 [closure.dart](../packages/engine/lib/src/systems/closure.dart) (`closeStore`)
 is shared by commands and solvency. [events.dart](../packages/engine/lib/src/systems/events.dart)
@@ -105,16 +106,19 @@ holds the sealed `TickEvent` family: `DeliveryRefused`, `PaymentOverdue`,
 `CensusTaken`, `CompanyLiquidated`, `StoreSold`, `GenerationLaunched`,
 `SoftwareLaunched`, `SoftwareOfferMade`, `RivalLaunched`, `RivalFolded`,
 `TenderOpened`, `TenderClosed`, `ChainPlantBuilt`, `ContractCutAsked`,
-`ContractRetendered`.
+`ContractRetendered`, `ManagementChanged`, `StockDelisted`,
+`DividendsReceived`, `StakeCrossed`.
 
 Order matters: `BuyingTermsSystem` before `NationalSystem` (blocks need the
 month's discount), `SleeperSystem` before `SolvencySystem` and
-`ReportSystem` (chains' district shops book into company accounts).
+`ReportSystem` (chains' district shops book into company accounts),
+`StockMarketSystem` after `NationalSystem` and `SoftwareSystem` (it lists
+their chains and rivals).
 
 ## Commands and refusals
 
 - [commands/command.dart](../packages/engine/lib/src/commands/command.dart):
-  the sealed `Command` class and 56 subclasses (`SetPrice`, `PlaceOrder`,
+  the sealed `Command` class and 58 subclasses (`SetPrice`, `PlaceOrder`,
   `OpenStore`, `HireDirector`, `BuildFactory`, `OpenNational`,
   `BuyNationalChain`, …). Each has a `static const tag` and a `write`;
   `Command.read` switches on the tag and gates fields on `reader.version`.

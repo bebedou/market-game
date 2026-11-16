@@ -11,6 +11,7 @@ import '../neighbourhoods/neighbourhood_generator.dart';
 import '../state/game_start.dart';
 import '../state/growth.dart';
 import '../state/sleepers.dart';
+import '../state/stocks.dart';
 import '../state/world_state.dart';
 import 'state_io.dart';
 
@@ -168,6 +169,7 @@ final class SaveData {
     }
     if (version >= _countriesVersion) world.readEconomies(reader);
     if (version >= _nationalVersion) readNational(reader, world, content);
+    if (version >= stocksVersion) readStocks(reader, world);
     reader.expectEnd();
     if (version < _structureVersion) {
       if (growthProblem(world, content) case final problem?) {
@@ -249,6 +251,7 @@ final class SaveData {
     }
     world.writeEconomies(writer);
     writeNational(writer, world);
+    writeStocks(writer, world);
     return SaveFile(writer.toBytes());
   }
 }
@@ -291,7 +294,11 @@ ContentDb? _inSavedOrder(ContentDb content, List<ContentList> saved) {
     }
   }
   if (!moved) return null;
-  return loadScenario(jsonEncode(root), national: content.national);
+  return loadScenario(
+    jsonEncode(root),
+    national: content.national,
+    stocks: content.stocks?.source,
+  );
 }
 
 String? _structureProblem(List<ContentList> saved, List<ContentList> current) {
@@ -316,6 +323,17 @@ void writeNational(StateWriter writer, WorldState world) {
   if (national == null) return;
   national.write(writer);
   writer.writeNullableInt(world.nationalPosted?.number);
+}
+
+/// Writes [world]'s stock market, if it keeps one.
+void writeStocks(StateWriter writer, WorldState world) {
+  writer.writeBool(world.stocks != null);
+  world.stocks?.write(writer);
+}
+
+/// Reads what [writeStocks] wrote into [world].
+void readStocks(StateReader reader, WorldState world) {
+  if (reader.readBool()) world.stocks = StockMarket.read(reader);
 }
 
 /// Reads what [writeNational] wrote into [world], made afresh from

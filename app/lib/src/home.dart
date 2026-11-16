@@ -4,6 +4,7 @@ import 'controller.dart';
 import 'format.dart';
 import 'l10n.dart';
 import 'screens/dashboard.dart';
+import 'screens/exchange.dart';
 import 'screens/finance.dart';
 import 'screens/guide.dart';
 import 'screens/market.dart';
@@ -15,7 +16,7 @@ import 'widgets.dart';
 
 /// The tabs, in order: the holding at a glance, the store picked, money
 /// and deals, the world outside, and the books.
-enum HomeTab { holding, shop, finance, world, books }
+enum HomeTab { holding, shop, finance, world, market, books }
 
 /// Switches to [tab], at [part] of the shop if given.
 typedef OpenTab = void Function(HomeTab tab, {ShopPart? part});
@@ -164,6 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 HomeTab.holding => game.holdingName ?? tr('home.yourHolding'),
                 HomeTab.finance => tr('home.tabs.finance'),
                 HomeTab.world => tr('home.theWorld'),
+                HomeTab.market => tr('home.tabs.market'),
                 HomeTab.shop || HomeTab.books =>
                   store != null
                       ? game.storeName(store.id)
@@ -268,6 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         HomeTab.finance => const FinanceScreen(),
                         HomeTab.world => const MarketScreen(),
+                        HomeTab.market => const ExchangeScreen(),
                         HomeTab.books => const ReportsScreen(),
                       },
                       [..., final page] => _PageFrame(page: page),
@@ -310,6 +313,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           NavigationDestination(
                             icon: Icon(Icons.public_outlined),
                             label: tr('home.tabs.world'),
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.candlestick_chart_outlined),
+                            label: tr('home.tabs.market'),
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.menu_book_outlined),

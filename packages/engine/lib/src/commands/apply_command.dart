@@ -30,6 +30,7 @@ import '../state/world_state.dart';
 import '../systems/closure.dart';
 import 'command.dart';
 import 'refusal.dart';
+import 'stock_trades.dart';
 import 'transfers.dart';
 import '../state/factory_sales.dart';
 import '../systems/factory_sales.dart'
@@ -98,6 +99,8 @@ Refusal? applyCommand(
     BreakContract() => _breakContract(world, content, ledger, command),
     AnswerContract() => _answerContract(world, content, command),
     AskPrice() => _askPrice(world, content, command),
+    BuyShares() => buyShares(world, content, ledger, command),
+    SellShares() => sellShares(world, content, ledger, command),
     SetSoftwarePrice() => _setSoftwarePrice(world, content, command),
     SetSoftwareMarketing() => _setSoftwareMarketing(world, content, command),
     HireSoftwarePerson() => _hireSoftwarePerson(world, content, command),

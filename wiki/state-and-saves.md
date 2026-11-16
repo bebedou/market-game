@@ -25,7 +25,9 @@ It has two parts, and the split matters for saves and the state hash:
     `regimeLog`, via `writeEconomies` / `readEconomies`, from format 27;
   - `national` and `nationalPosted`, via `writeNational` / `readNational` in
     [save_file.dart](../packages/engine/lib/src/persistence/save_file.dart),
-    from format 29.
+    from format 29;
+  - `stocks` (the stock market), via `writeStocks` / `readStocks` in the
+    same file, from format 38.
 
 Helpers on the world: `macroOf(country)`, `macroAt(content, market)`,
 `historyOf`, `economies`, `residence(content, person)`, `growEconomies`,
@@ -73,7 +75,8 @@ no code generation.
 The same bytes feed both the save and `Simulation.stateHash()`, so the two
 can't disagree. `stateHash` hashes `world.write`, then the sleepers, then the
 economies if there is a shared cycle, then the national economy if it
-exists.
+exists, then the stock market if it exists. A world without a stock market
+hashes as it did before one existed.
 
 ## The save file
 
@@ -99,7 +102,7 @@ added since. Any problem is a `FormatException`.
 
 ## Version gating
 
-- `currentStateVersion` (37) in
+- `currentStateVersion` (38) in
   [state_io.dart](../packages/engine/lib/src/persistence/state_io.dart) is
   the layout written. Bump it whenever the layout or the rules change.
 - `oldestReadableVersion` (6) in
@@ -125,7 +128,11 @@ added since. Any problem is a `FormatException`.
   factories' size, works, reliability and share of independents, rival
   producers, tenders and contracts, factory reports' penalties, and
   `BuildFactory`'s size), 37 (`contractsVersion`: producers' aim, capacity
-  and commitments, chains' plants, contracts' price index and request).
+  and commitments, chains' plants, contracts' price index and request), 38
+  (`stocksVersion` in
+  [stocks.dart](../packages/engine/lib/src/state/stocks.dart): the stock
+  market beside the world; an older save opens it on its next day, from
+  the table, in `currentStocks`).
   The full history of what each version added is in
   *Persistence* in [Engine Architecture.md](<../Engine Architecture.md>).
 

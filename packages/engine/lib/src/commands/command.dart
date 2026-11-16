@@ -380,6 +380,18 @@ sealed class Command {
           null => null,
         },
       ),
+      BuyShares.tag => BuyShares(
+        actor,
+        of: reader.readInt(),
+        units: reader.readInt(),
+        index: reader.readBool(),
+      ),
+      SellShares.tag => SellShares(
+        actor,
+        of: reader.readInt(),
+        units: reader.readInt(),
+        index: reader.readBool(),
+      ),
       _ => throw FormatException('Unknown command tag $tag'),
     };
   }
@@ -2155,4 +2167,68 @@ final class AskPrice extends Command {
   String toString() =>
       'AskPrice(actor: ${actor.index}, contract: $contract, '
       'price: ${price.toDecimalString()})';
+}
+
+/// Buys [units] shares of listed company [of] with the player's own money,
+/// or if [index], units of exchange [of]'s index.
+final class BuyShares extends Command {
+  const BuyShares(
+    super.actor, {
+    required this.of,
+    required this.units,
+    this.index = false,
+  });
+
+  static const int tag = 57;
+
+  final int of;
+  final int units;
+  final bool index;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(of)
+      ..writeInt(units)
+      ..writeBool(index);
+  }
+
+  @override
+  String toString() =>
+      'BuyShares(actor: ${actor.index}, of: $of, units: $units, '
+      'index: $index)';
+}
+
+/// Sells [units] of the player's shares of listed company [of], or if
+/// [index], of their units of exchange [of]'s index.
+final class SellShares extends Command {
+  const SellShares(
+    super.actor, {
+    required this.of,
+    required this.units,
+    this.index = false,
+  });
+
+  static const int tag = 58;
+
+  final int of;
+  final int units;
+  final bool index;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(of)
+      ..writeInt(units)
+      ..writeBool(index);
+  }
+
+  @override
+  String toString() =>
+      'SellShares(actor: ${actor.index}, of: $of, units: $units, '
+      'index: $index)';
 }

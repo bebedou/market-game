@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../core/calendar.dart';
+import '../core/decimal.dart';
 import '../core/fx.dart';
 import '../core/hash32.dart';
 import '../core/ids.dart';
@@ -10,6 +11,7 @@ import '../countries/country_table.dart';
 import 'content_db.dart';
 import 'factory_sales_def.dart';
 import 'software_def.dart';
+import 'stocks_def.dart';
 import 'household_demand.dart';
 
 /// A problem in a scenario file, with the JSON path where it was found.
@@ -34,7 +36,12 @@ final class ContentException implements Exception {
 ///
 /// [national] is the countries' national statistics, if the game runs them
 /// beside the scenario; a country's `national` must name one of them.
-ContentDb loadScenario(String jsonText, {CountryTable? national}) {
+/// [stocks] is the stock market's table (see [StocksDef]), if it has one.
+ContentDb loadScenario(
+  String jsonText, {
+  CountryTable? national,
+  String? stocks,
+}) {
   final Object? decoded;
   try {
     decoded = jsonDecode(jsonText);
@@ -1145,7 +1152,291 @@ ContentDb loadScenario(String jsonText, {CountryTable? national}) {
     neighbourhoods: List.unmodifiable(neighbourhoods),
     countries: List.unmodifiable(countries),
     national: national,
+    stocks: stocks == null
+        ? null
+        : _stocks(
+            stocks,
+            countries: countryKeys,
+            macro: macro,
+            national: national,
+            gameCountries: countries,
+            software: software,
+            producers: factories?.sales?.producers ?? const [],
+          ),
     source: jsonText,
+  );
+}
+
+/// The stock market's table: its rules, exchanges, sectors and listed
+/// companies, each country named as the scenario names it, and each of the
+/// game's own companies by its name in the game.
+StocksDef _stocks(
+  String text, {
+  required _Keys countries,
+  required MacroDef macro,
+  required CountryTable? national,
+  required List<CountryDef> gameCountries,
+  required SoftwareDef? software,
+  required List<ProducerDef> producers,
+}) {
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(text);
+  } on FormatException catch (e) {
+    throw ContentException('stocks', 'not valid JSON (${e.message})');
+  }
+  final root = _Node('stocks', decoded);
+  root.optionalString('about');
+  root.nonNegativeInt('year');
+  final rulesNode = root.object('rules');
+  final moodsNode = rulesNode.object('moods');
+  final moods = [
+    for (final regime in macro.regimes)
+      moodsNode.has(regime.key) ? moodsNode.fx(regime.key) : Fx.zero,
+  ];
+  moodsNode.finish();
+  final ratings = [
+    for (final step in rulesNode.strings('ratings')) Fx.parse(step),
+  ];
+  if (ratings.length != 4) rulesNode._fail('ratings', 'expected four steps');
+  for (var i = 1; i < ratings.length; i++) {
+    if (ratings[i] <= ratings[i - 1]) {
+      rulesNode._fail('ratings', 'must rise step by step');
+    }
+  }
+  final rules = StockRulesDef(
+    termPremium: rulesNode.fx('termPremium'),
+    equityPremium: rulesNode.nonNegativeFx('equityPremium'),
+    inflation: rulesNode.fx('inflation'),
+    minEarningsMultiple: rulesNode.nonNegativeFx('minEarningsMultiple'),
+    maxEarningsMultiple: rulesNode.nonNegativeFx('maxEarningsMultiple'),
+    moods: List.unmodifiable(moods),
+    euphoria: rulesNode.nonNegativeFx('euphoria'),
+    maxEuphoria: rulesNode.nonNegativeFx('maxEuphoria'),
+    marketHalfLife: rulesNode.positiveInt('marketHalfLife'),
+    marketSpread: rulesNode.nonNegativeFx('marketSpread'),
+    shared: rulesNode.fraction('shared'),
+    stockHalfLife: rulesNode.positiveInt('stockHalfLife'),
+    stockSpread: rulesNode.nonNegativeFx('stockSpread'),
+    reaction: rulesNode.nonNegativeFx('reaction'),
+    maxSurprise: rulesNode.nonNegativeFx('maxSurprise'),
+    maxMood: rulesNode.nonNegativeFx('maxMood'),
+    analystSpread: rulesNode.nonNegativeFx('analystSpread'),
+    analystHalfLife: rulesNode.positiveInt('analystHalfLife'),
+    analystsFollow: rulesNode.fraction('analystsFollow'),
+    ratings: List.unmodifiable(ratings),
+    fee: rulesNode.fraction('fee'),
+    indexFee: rulesNode.fraction('indexFee'),
+    impact: rulesNode.nonNegativeFx('impact'),
+    managementChange: rulesNode.fraction('managementChange'),
+    managementMargin: rulesNode.nonNegativeFx('managementMargin'),
+    managementGrowth: rulesNode.nonNegativeFx('managementGrowth'),
+    managementPull: rulesNode.fraction('managementPull'),
+    marginSpread: rulesNode.fraction('marginSpread'),
+    unprovenMonths: rulesNode.nonNegativeInt('unprovenMonths'),
+    chainReserveMonths: rulesNode.nonNegativeInt('chainReserveMonths'),
+    producerUse: rulesNode.fraction('producerUse'),
+    indexBase: rulesNode.nonNegativeFx('indexBase'),
+  );
+  if (rules.maxEarningsMultiple <= rules.minEarningsMultiple) {
+    rulesNode._fail('maxEarningsMultiple', 'must be above the least');
+  }
+  rulesNode.finish();
+
+  CountryId countryOf(_Node node) => CountryId(
+    countries.resolve(node.string('country'), node.pathOf('country')),
+  );
+
+  final exchanges = <ExchangeDef>[];
+  for (final node in root.objects('exchanges')) {
+    final country = countryOf(node);
+    if (exchanges.any((e) => e.country == country)) {
+      node._fail('country', 'already has an exchange');
+    }
+    exchanges.add(
+      ExchangeDef(
+        country: country,
+        name: node.string('name'),
+        index: node.string('index'),
+      ),
+    );
+    node.finish();
+  }
+
+  final sectorKeys = _Keys();
+  final sectors = <SectorDef>[];
+  for (final node in root.objects('sectors')) {
+    final key = node.string('id');
+    sectorKeys.add(key, node.pathOf('id'));
+    final name = node.string('name');
+    final growth = node.yearlyRate('growth');
+    final risk = node.nonNegativeFx('risk');
+    final payout = node.fraction('payout');
+    final floor = node.nonNegativeFx('floor');
+    if (node.optionalObject('output') case final outputNode?) {
+      final output = List.filled(gameCountries.length, Money.zero);
+      for (final country in outputNode.keys.toList()) {
+        final id = countries.resolve(country, outputNode.pathOf(country));
+        // Billions of euros a year.
+        output[id] = outputNode.money(country).timesInt(1000000000);
+      }
+      outputNode.finish();
+      sectors.add(
+        SectorDef(
+          key: key,
+          name: name,
+          margin: node.fx('margin'),
+          cycle: node.nonNegativeFx('cycle'),
+          leverage: node.nonNegativeFx('leverage'),
+          growth: growth,
+          risk: risk,
+          payout: payout,
+          debt: node.fx('debt'),
+          floor: floor,
+          output: List.unmodifiable(output),
+        ),
+      );
+    } else {
+      final trade = node.optionalString('trade');
+      final isSoftware = node.flag('software');
+      if ((trade == null) == !isSoftware) {
+        node._fail('id', 'needs an output, a trade, or software');
+      }
+      if (trade != null &&
+          national != null &&
+          !national.trades.any((t) => t.key == trade)) {
+        node._fail('trade', 'the national table has no trade "$trade"');
+      }
+      sectors.add(
+        SectorDef(
+          key: key,
+          name: name,
+          // For software: what its rivals keep of their sales before
+          // marketing.
+          margin: node.has('margin') ? node.fx('margin') : Fx.zero,
+          growth: growth,
+          risk: risk,
+          payout: payout,
+          floor: floor,
+          trade: trade,
+          software: isSoftware,
+        ),
+      );
+    }
+    node.finish();
+  }
+
+  final tickers = <String>{};
+  final listings = <ListingDef>[];
+  for (final node in root.objects('companies')) {
+    final ticker = node.string('ticker');
+    if (!tickers.add(ticker)) {
+      node._fail('ticker', 'duplicate ticker "$ticker"');
+    }
+    final country = countryOf(node);
+    if (!exchanges.any((e) => e.country == country)) {
+      node._fail('country', 'has no exchange');
+    }
+    final sector = sectorKeys.resolve(
+      node.string('sector'),
+      node.pathOf('sector'),
+    );
+    final def = sectors[sector];
+    var kind = ListingKind.formula;
+    var link = -1;
+    if (node.optionalString('chain') case final name?) {
+      kind = ListingKind.chain;
+      final key = gameCountries[country.index].national;
+      final table = national?.countries.where((c) => c.key == key).firstOrNull;
+      link = table?.chains.indexWhere((c) => c.name == name) ?? -1;
+      if (link < 0 || table!.chains[link].independent) {
+        node._fail('chain', "no chain \"$name\" in its country's table");
+      }
+      if (def.trade != national!.trades[table.chains[link].trade].key) {
+        node._fail('sector', "is not the chain's trade");
+      }
+    } else if (node.optionalString('software') case final name?) {
+      kind = ListingKind.software;
+      link =
+          software?.rivals.indexWhere((r) => r.name == name && !r.rest) ?? -1;
+      if (link < 0) node._fail('software', 'no software rival "$name"');
+      if (!def.software) node._fail('sector', 'is not software');
+    } else if (node.optionalString('producer') case final name?) {
+      kind = ListingKind.producer;
+      link = producers.indexWhere((p) => p.name == name);
+      if (link < 0) node._fail('producer', 'no producer "$name"');
+    } else if (!def.byFormula) {
+      node._fail('sector', "is played: name the game's company");
+    }
+    final formula = kind == ListingKind.formula;
+    final cap = switch (node.optionalString('cap')) {
+      final text? => Money.parse(text),
+      null => null,
+    };
+    if (cap != null && cap <= Money.zero) node._fail('cap', 'must be positive');
+    final shares = node.optionalPositiveInt('shares');
+    if (shares != null && shares > maxListedShares) {
+      node._fail('shares', 'must be at most $maxListedShares');
+    }
+    if (formula && (cap == null || shares == null)) {
+      node._fail('cap', 'a company by formula needs its cap and shares');
+    }
+    var management = averageManagement;
+    var share = 0;
+    var margin = Fx.zero;
+    var debt = Fx.zero;
+    var growth = Fx.zero;
+    if (formula) {
+      final grade = node.string('management');
+      management = managementGrades.indexOf(grade);
+      if (management < 0) {
+        node._fail(
+          'management',
+          'expected one of ${managementGrades.join(', ')}',
+        );
+      }
+      try {
+        share = parseDecimal(node.string('share'), 6);
+      } on FormatException catch (e) {
+        node._fail('share', e.message);
+      }
+      if (share < 0 || share > 1000000) {
+        node._fail('share', 'must be from 0 to 1');
+      }
+      margin = node.fx('margin');
+      debt = node.fx('debt');
+      growth = node.yearlyRate('growth');
+    }
+    final payout = node.optionalString('payout') == null
+        ? def.payout
+        : node.fraction('payout');
+    listings.add(
+      ListingDef(
+        ticker: ticker,
+        name: node.string('name'),
+        country: country,
+        sector: sector,
+        kind: kind,
+        link: link,
+        share: share,
+        cap: cap,
+        shares: shares,
+        margin: margin,
+        debt: debt,
+        growth: growth,
+        payout: payout,
+        management: management,
+      ),
+    );
+    node.finish();
+  }
+  root.finish();
+  return StocksDef(
+    source: text,
+    rules: rules,
+    exchanges: List.unmodifiable(exchanges),
+    sectors: List.unmodifiable(sectors),
+    listings: List.unmodifiable(listings),
   );
 }
 

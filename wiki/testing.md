@@ -79,6 +79,13 @@ prototype with the national figures: sizes, enlarging, tenders opening,
 bids won and lost, a shortfall's penalty, independents, rivals' capacity
 and development, chains' own plants, breaking, answering and repricing
 contracts, indexation, and a save.
+`stocks_test` plays the prototype with the national figures and the
+stock market: the table and its errors, a company added later, opening at
+the table's caps, buying with its fee and impact, refusals, a stake made
+public at each 5% either way, a gain taxed
+after a carried loss, an index, dividends, a chain bought whole leaving its
+exchange, a recession's gloom, ratings and managements, saves, replays and
+an older save gaining the market.
 `software_test` runs the software market on the test
 town with a million customers and round figures: a team's pace, launching,
 customers conserved, rounds, investors' dividends, a sale and a save.
@@ -105,6 +112,9 @@ flutter test
 - [factory_test.dart](../app/test/factory_test.dart): the factory pages.
 - [sales_desk_test.dart](../app/test/sales_desk_test.dart): a factory's
   size and enlarging, its sales desk, a bid and a contract's page.
+- [languages_test.dart](../app/test/languages_test.dart) also walks the
+  Market tab in each language: the exchanges, the portfolio, every sector,
+  a bank's page and an order.
 - [software_test.dart](../app/test/software_test.dart): the software pages,
   net worth on paper, and money shortened to millions and billions.
 - [saves_test.dart](../app/test/saves_test.dart): file slots.

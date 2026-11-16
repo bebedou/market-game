@@ -59,6 +59,10 @@ abstract final class RngStream {
   /// Which chains seek suppliers each month, on what terms, and how rival
   /// producers bid.
   static const factorySales = 17;
+
+  /// The stock market's day: how its moods wander, and each month how
+  /// analysts' views drift and which companies change their management.
+  static const stocks = 18;
 }
 
 /// Deterministic random numbers (xoshiro128**).

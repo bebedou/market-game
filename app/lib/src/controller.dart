@@ -306,11 +306,11 @@ class SimulationController extends ChangeNotifier {
       for (final store in company.stores) (company, store),
   ]..sort((a, b) => a.$2.id.index.compareTo(b.$2.id.index));
 
-  /// The player's cash plus what their companies own less what they owe;
-  /// a software company counts at their share of what it is worth, on
-  /// paper.
+  /// The player's cash and shares at their price, plus what their companies
+  /// own less what they owe; a software company counts at their share of
+  /// what it is worth, on paper.
   Money get netWorth => _view.companies.fold(
-    _view.cash,
+    _view.cash + _view.portfolio,
     (sum, company) => sum + _worthOf(company),
   );
 
@@ -870,6 +870,8 @@ class SimulationController extends ChangeNotifier {
     CloseFactory(:final factory) => 'factory close ${factory.index}',
     SetLab(:final factory) => 'lab ${factory.index}',
     BidTender(:final tender) => 'bid $tender',
+    BuyShares(:final of, :final index) ||
+    SellShares(:final of, :final index) => 'shares $of $index',
     BreakContract(:final contract) ||
     AnswerContract(:final contract) ||
     AskPrice(:final contract) => 'contract $contract',
@@ -1032,6 +1034,17 @@ class SimulationController extends ChangeNotifier {
           }),
         );
       }
+    }
+    // A quarter's dividends, all holdings together.
+    final dividends = result.events.whereType<DividendsReceived>().fold(
+      Money.zero,
+      (sum, event) => sum + event.amount,
+    );
+    if (dividends > Money.zero) {
+      add(
+        AlertKind.monthEnd,
+        tr('alerts.dividends', {'amount': money(dividends, cents: false)}),
+      );
     }
     for (final event in result.events) {
       switch (event) {
@@ -1206,6 +1219,31 @@ class SimulationController extends ChangeNotifier {
               }),
             );
           }
+        case StockDelisted(:final stock, :final failed, :final held) when held:
+          final name = content.stocks!.listings[stock].name;
+          add(
+            AlertKind.economy,
+            failed
+                ? tr('alerts.stockFailed', {'name': name})
+                : tr('alerts.stockBought', {'name': name}),
+          );
+        case StakeCrossed(:final stock, :final percent, :final up):
+          add(
+            AlertKind.economy,
+            tr(up ? 'alerts.stakeOver' : 'alerts.stakeUnder', {
+              'name': content.stocks!.listings[stock].name,
+              'percent': percent,
+            }),
+          );
+        case ManagementChanged(:final stock)
+            when after.stocks?.holdings.any((h) => !h.index && h.of == stock) ??
+                false:
+          add(
+            AlertKind.economy,
+            tr('alerts.managementChanged', {
+              'name': content.stocks!.listings[stock].name,
+            }),
+          );
         case TenderClosed(:final number, :final won):
           final tender = after.tenders
               .where((t) => t.number == number)

@@ -30,5 +30,8 @@ extension type const Money(int cents) {
 
   bool get isNegative => cents < 0;
 
+  /// How much, either way.
+  Money get magnitude => Money(cents.abs());
+
   String toDecimalString() => formatDecimal(cents, decimals);
 }
