@@ -14,8 +14,8 @@ import 'software.dart' show StartSoftwarePage;
 /// The world outside: the country's economy on top, with its history a page
 /// away, the player's patch, where to open next, then the competitors and the
 /// cities, each a page of its own.
-class MarketScreen extends StatelessWidget {
-  const MarketScreen({super.key});
+class WorldScreen extends StatelessWidget {
+  const WorldScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -242,24 +242,14 @@ class _PlannedCity extends StatelessWidget {
 /// so the player's shops there are run in full, then wakes it.
 Future<void> _takeInHand(BuildContext context, int row, String name) async {
   final game = context.game;
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(tr('market.takeInHandTitle', {'district': name})),
-      content: Text(tr('market.takeInHandBody')),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(tr('common.notNow')),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(tr('market.wakeIt')),
-        ),
-      ],
-    ),
+  final confirmed = await confirm(
+    context,
+    title: tr('market.takeInHandTitle', {'district': name}),
+    body: tr('market.takeInHandBody'),
+    action: tr('market.wakeIt'),
+    keep: tr('common.notNow'),
   );
-  if (confirmed ?? false) game.wake(row);
+  if (confirmed) game.wake(row);
 }
 
 /// The player's own shops: what each earns, and what it sells against all that
@@ -641,7 +631,7 @@ class _Countries extends StatelessWidget {
           () {
             final macro = game.view.economy(country.id);
             final regime = content.macro.regimes[macro.regime.index];
-            final households = _nationalOf(game, country)?.totalHouseholds;
+            final households = _nationalState(game, country)?.totalHouseholds;
             return IndexRow(
               title: country.name,
               subtitle: [
@@ -670,11 +660,10 @@ class _Countries extends StatelessWidget {
 
 /// [country] as its national statistics have it, run by formula; null
 /// without them.
-CountryState? _nationalOf(SimulationController game, CountryDef country) => game
-    .national
-    ?.countries
-    .where((national) => national.def.key == country.national)
-    .firstOrNull;
+CountryState? _nationalState(SimulationController game, CountryDef country) =>
+    game.national?.countries
+        .where((national) => national.def.key == country.national)
+        .firstOrNull;
 
 /// A country's page: its economy and taxes, its regions with the player's
 /// shops run by formula there, its whole market by formula, and its places.
@@ -741,7 +730,7 @@ class _NationalMarket extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = context.game;
-    final national = _nationalOf(game, country);
+    final national = _nationalState(game, country);
     final economy = game.national;
     if (national == null || economy == null) return const SizedBox.shrink();
     final content = game.content;
@@ -768,7 +757,7 @@ class _NationalMarket extends StatelessWidget {
       children: [
         for (final (t, trade) in economy.table.trades.indexed)
           _NationalTrade(
-            name: trMaybe('market.nationalTrades.${trade.key}') ?? trade.name,
+            name: tradeName(trade.key, trade.name),
             months: national.tradeMonths[t],
             chains: [
               for (final chain in national.chains)
@@ -1613,19 +1602,9 @@ class _BuyStoreDialogState extends State<BuyStoreDialog> {
                 onChanged: (id) => setState(() => _brand = id),
               ),
             if (amount > Money.zero)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(tr('market.borrowFromBank')),
-                subtitle: borrow
-                    ? null
-                    : Text(
-                        short > Money.zero
-                            ? tr('market.needsMore', {
-                                'amount': money(short, cents: false),
-                              })
-                            : tr('market.keepCushion'),
-                      ),
+              BorrowSwitch(
                 value: borrow,
+                short: short,
                 onChanged: (on) => setState(() => _borrow = on),
               ),
             if (borrow) terms,
@@ -2565,34 +2544,14 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
     final capital = _capital.text.isEmpty
         ? Money.zero
         : parseMoney(_capital.text);
-    final view = game.view;
-    final finance = game.content.finance;
-    // What the company has beyond its bills, orders and cushion.
-    final spare =
-        (separate
-            ? Money.zero
-            : company.cash - company.committed - game.cushion(company)) +
-        (capital ?? Money.zero);
-    final short =
-        cost - (separate ? Money.zero : company.cash) - (capital ?? Money.zero);
-    final amount = roundedUp(cost - spare);
-    final borrow = amount > Money.zero && (_borrow ?? short > Money.zero);
-    final room = separate
-        ? Money.zero
-        : view.companyCredits[company.id.index] ?? Money.zero;
-    // The capital put in no longer backs a guarantee.
-    final guarantee =
-        view.guaranteeRoom -
-        (capital ?? Money.zero).times(finance.guaranteeMultiple);
-    final terms = LoanTerms(
-      view: view,
-      content: game.content,
-      amount: amount,
-      credit: room.isNegative ? Money.zero : room,
-      guarantee: guarantee.isNegative ? Money.zero : guarantee,
+    final (:short, :amount, :borrow, :terms) = newBusinessFunding(
+      game,
+      company: separate ? null : company,
+      cost: cost,
+      capital: capital ?? Money.zero,
+      borrow: _borrow,
       months: _months,
       onMonths: (months) => setState(() => _months = months),
-      note: separate ? tr('market.newCompanyNote') : null,
     );
     final ready = borrow ? terms.split != null : short <= Money.zero;
     // A site asleep is in the plan, not yet in the game's content.
@@ -2669,34 +2628,16 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
                 value: _newCompany,
                 onChanged: (on) => setState(() => _newCompany = on),
               ),
-            TextField(
+            CapitalField(
               controller: _capital,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                labelText: tr('market.capitalFromCash'),
-                helperText: tr('market.youHave', {
-                  'cash': money(game.view.cash),
-                }),
-                errorText: capital == null ? tr('common.notAnAmount') : null,
-              ),
-              onChanged: (_) => setState(() {}),
+              cash: game.view.cash,
+              valid: capital != null,
+              onChanged: () => setState(() {}),
             ),
             if (amount > Money.zero)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(tr('market.borrowFromBank')),
-                subtitle: borrow
-                    ? null
-                    : Text(
-                        short > Money.zero
-                            ? tr('market.needsMore', {
-                                'amount': money(short, cents: false),
-                              })
-                            : tr('market.keepCushion'),
-                      ),
+              BorrowSwitch(
                 value: borrow,
+                short: short,
                 onChanged: (on) => setState(() => _borrow = on),
               ),
             if (borrow) terms,

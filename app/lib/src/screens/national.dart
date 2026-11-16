@@ -256,12 +256,7 @@ final class _Ours {
       director != null &&
           content.strategies[director.strategy.index].format == format
       ? director.strategy
-      : strategies
-            .firstWhere(
-              (s) => s.marketPosition == Fx.zero,
-              orElse: () => strategies.first,
-            )
-            .id;
+      : balancedStrategy(strategies);
   // Without a company yet, as a newcomer's first shop would.
   return (
     company: company?.id ?? const CompanyId(-1),
@@ -686,7 +681,7 @@ class _BlockWorth extends StatelessWidget {
 
   Future<void> _sell(BuildContext context, String buyer, Money price) async {
     final game = context.game;
-    final confirmed = await _confirm(
+    final confirmed = await confirm(
       context,
       title: tr('market.sellTitle', {'chain': buyer}),
       body: tr('market.sellBody', {
@@ -694,6 +689,7 @@ class _BlockWorth extends StatelessWidget {
         'price': money(price, cents: false),
       }),
       action: tr('market.sellAction'),
+      keep: tr('common.notNow'),
     );
     if (!confirmed) return;
     game.submit(
@@ -762,7 +758,7 @@ class _OfferRow extends StatelessWidget {
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: () async {
-                  final confirmed = await _confirm(
+                  final confirmed = await confirm(
                     context,
                     title: tr('market.sellTitle', {'chain': offer.chain}),
                     body: tr('market.sellBody', {
@@ -770,6 +766,7 @@ class _OfferRow extends StatelessWidget {
                       'price': money(offer.price, cents: false),
                     }),
                     action: tr('market.sellAction'),
+                    keep: tr('common.notNow'),
                   );
                   if (confirmed) {
                     game.submit(
@@ -786,32 +783,6 @@ class _OfferRow extends StatelessWidget {
     );
   }
 }
-
-/// Asks [title] with [body], to go ahead with [action] or not.
-Future<bool> _confirm(
-  BuildContext context, {
-  required String title,
-  required String body,
-  required String action,
-}) async =>
-    await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(body),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(tr('common.notNow')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(action),
-          ),
-        ],
-      ),
-    ) ??
-    false;
 
 /// Opens the page of [chain], by its place among the chains of the game's
 /// [country] in the national table: what it sells and earns, where its
@@ -933,16 +904,11 @@ class _ChainFigures extends StatelessWidget {
         director != null &&
             content.strategies[director.strategy.index].format == format
         ? director.strategy
-        : strategies
-              .firstWhere(
-                (s) => s.marketPosition == Fx.zero,
-                orElse: () => strategies.first,
-              )
-              .id;
+        : balancedStrategy(strategies);
     final short = value.price - company.cash;
     final borrow = short > Money.zero ? short : Money.zero;
     final term = content.finance.maxTermMonths;
-    final confirmed = await _confirm(
+    final confirmed = await confirm(
       context,
       title: tr('market.buyChainTitle', {'chain': view.name}),
       body: [
@@ -958,6 +924,7 @@ class _ChainFigures extends StatelessWidget {
           }),
       ].join(' '),
       action: tr('market.buyAction'),
+      keep: tr('common.notNow'),
     );
     if (!confirmed) return;
     game.submit(

@@ -9,7 +9,7 @@ import '../l10n.dart';
 import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
-import 'lab.dart' show LevelDots, points;
+import 'lab.dart' show PersonRow, points;
 
 /// The shares a round may sell, as choices.
 final _roundShares = [
@@ -492,78 +492,6 @@ class _RacePainter extends CustomPainter {
       old.yours != yours || old.rival != rival || old.you != you;
 }
 
-/// A software person on a line: name, role and what it does here, how
-/// they stand, their level as dots, their pay, and an action.
-class _PersonLine extends StatelessWidget {
-  const _PersonLine({
-    required this.person,
-    required this.status,
-    required this.levels,
-    required this.pay,
-    this.action,
-  });
-
-  final KeyPersonView person;
-  final String status;
-  final int levels;
-
-  /// What they are paid a month where the company works.
-  final Money pay;
-  final Widget? action;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final role = switch (person.role) {
-      KeyRole.engineer => tr('lab.engineer'),
-      KeyRole.designer => tr('lab.designer'),
-    };
-    final does = switch (person.role) {
-      KeyRole.engineer => tr('software.engineerDoes'),
-      KeyRole.designer => tr('software.designerDoes'),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant,
-            width: 0.8,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(person.name, style: theme.textTheme.titleSmall),
-                Text(
-                  [role, does].join(' · '),
-                  style: theme.textTheme.bodySmall,
-                ),
-                Text(
-                  [
-                    status,
-                    tr('lab.pay', {'amount': money(pay, cents: false)}),
-                  ].join(' · '),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          LevelDots(level: person.level, of: levels),
-          ?action,
-        ],
-      ),
-    );
-  }
-}
-
 /// The product against the standard, what the team builds, and the team.
 class SoftwareProductPage extends StatelessWidget {
   const SoftwareProductPage({super.key, required this.id});
@@ -622,9 +550,9 @@ class SoftwareProductPage extends StatelessWidget {
             if (software.team.isEmpty && joining.isEmpty)
               Hint(tr('software.noTeam')),
             for (final person in software.team)
-              _PersonLine(
+              PersonRow(
+                software: true,
                 person: person,
-                levels: def.levels.length,
                 pay: person.salary,
                 status: game.dismissing(person.id)
                     ? tr('lab.leaving')
@@ -646,9 +574,9 @@ class SoftwareProductPage extends StatelessWidget {
                       ),
               ),
             for (final person in joining)
-              _PersonLine(
+              PersonRow(
+                software: true,
                 person: person,
-                levels: def.levels.length,
                 pay: person.salary.times(software.wageLevel),
                 status: tr('lab.joins'),
               ),
@@ -692,9 +620,9 @@ class SoftwarePeoplePage extends StatelessWidget {
         if (candidates.isEmpty) Hint(tr('lab.noCandidates')),
         if (full) Hint(tr('software.full')),
         for (final person in candidates)
-          _PersonLine(
+          PersonRow(
+            software: true,
             person: person,
-            levels: def.levels.length,
             pay: person.salary.times(software.wageLevel),
             status: game.hiringFor(software, person.id)
                 ? tr('lab.joins')
@@ -1071,31 +999,6 @@ class SoftwareFundingPage extends StatelessWidget {
     );
   }
 
-  Future<bool> _confirm(
-    BuildContext context,
-    String title,
-    String body,
-    String action,
-  ) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: Text(body),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(tr('common.cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(action),
-            ),
-          ],
-        ),
-      ) ??
-      false;
-
   Future<void> _raise(
     BuildContext context,
     SimulationController game,
@@ -1103,15 +1006,17 @@ class SoftwareFundingPage extends StatelessWidget {
     Fx share,
   ) async {
     final raised = roundMoney(software.worth.worth, share);
-    final ok = await _confirm(
+    final ok = await confirm(
       context,
-      tr('software.raiseQuestion', {'share': percent(share, decimals: 0)}),
-      tr('software.raiseBody', {
+      title: tr('software.raiseQuestion', {
+        'share': percent(share, decimals: 0),
+      }),
+      body: tr('software.raiseBody', {
         'money': compactMoney(raised),
         'worth': compactMoney(software.worth.worth),
         'stake': percent(software.stake * (Fx.one - share), decimals: 0),
       }),
-      tr('software.raiseConfirm'),
+      action: tr('software.raiseConfirm'),
     );
     if (ok) {
       game.submit(RaiseRound(game.player, software: software.id, share: share));
@@ -1124,17 +1029,17 @@ class SoftwareFundingPage extends StatelessWidget {
     SoftwareView software,
     SoftwareOfferView offer,
   ) async {
-    final ok = await _confirm(
+    final ok = await confirm(
       context,
-      tr('software.acceptQuestion', {
+      title: tr('software.acceptQuestion', {
         'name': software.name,
         'rival': offer.rivalName,
       }),
-      tr('software.acceptBody', {
+      body: tr('software.acceptBody', {
         'yours': compactMoney(offer.yours),
         'rival': offer.rivalName,
       }),
-      tr('software.accept'),
+      action: tr('software.accept'),
     );
     if (ok) {
       game.submit(AcceptSoftwareOffer(game.player, software: software.id));
@@ -1146,11 +1051,11 @@ class SoftwareFundingPage extends StatelessWidget {
     SimulationController game,
     SoftwareView software,
   ) async {
-    final ok = await _confirm(
+    final ok = await confirm(
       context,
-      tr('software.shutDownQuestion', {'name': software.name}),
-      tr('software.shutDownBody'),
-      tr('software.shutDown'),
+      title: tr('software.shutDownQuestion', {'name': software.name}),
+      body: tr('software.shutDownBody'),
+      action: tr('software.shutDown'),
     );
     if (ok) game.submit(ShutDownSoftware(game.player, software: software.id));
   }

@@ -376,3 +376,6 @@ final class Factory {
 
 /// [day]'s month as `year * 12 + month - 1`.
 int monthOf(Day day) => day.date.year * 12 + day.date.month - 1;
+
+/// The first day of [month], counted as [monthOf] counts it.
+Day firstOfMonth(int month) => Day.fromDate(month ~/ 12, month % 12 + 1, 1);

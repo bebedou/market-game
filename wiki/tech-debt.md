@@ -1,7 +1,7 @@
 # Technical debt register
 
 Known problems in the code, found by reading it at commit `5a03209`
-(2026-11-14). None of them is fixed here. Each row says where it is and why
+(2026-11-14), and since. None of them is fixed here. Each row says where it is and why
 it matters. "Read, not run" means the problem follows from the code but no
 test or run has shown it yet; confirm it before fixing.
 
@@ -13,6 +13,19 @@ and say so in the commit message. When you find one, add a row.
 Fixed 2026-11-15: D1 (the chain-offer news, now told by the offer's
 expiry), D4 (format 33 checks the national table's shape), D6 (any load
 failure sets the save aside) and D28 (fixtures of formats 31 and 32).
+
+Fixed 2026-11-16, in a pass over duplicated and misnamed code: D25 (the tab
+files now carry the tabs' names) and two of D23's misplaced comments
+(`Command`'s and `SaveData`'s). The same pass merged copies that had no row:
+factory billing (`billMaking`), purchase borrowing (`_borrowing`), the excess
+earnings price (`AcquisitionDef.askingPrice`), the tax on a sale's gain
+(`taxGain`), first-of-month dates (`Day.firstOfNextMonth`, `firstOfMonth`),
+and in the app every yes-or-no dialog (`confirm`), the bottom sheets
+(`showGameSheet`, `SheetFrame`, `ChoiceTile`), a new business's funding
+(`newBusinessFunding`, `CapitalField`, `BorrowSwitch`), the person rows
+(`PersonRow`), `ownerName` and `balancedStrategy`. Two pages that were both
+called `BidPage` are now `TakeoverBidPage` and `TenderBidPage`. What it left
+is in *Duplication* below.
 
 1. **D2, D5**: the observation's live closures, and neighbourhood rows
    matched by index.
@@ -75,15 +88,26 @@ failure sets the save aside) and D28 (fixtures of formats 31 and 32).
 |---|---|---|---|
 | D21 | Region tiles are dead but required: `loadCountryTable` fails without each region's `tile`, `NationalRegion.col` and `row` are read, and nothing uses them since the ink map replaced the tiles. `build_regions.py` still writes them. | [country_table.dart](../packages/engine/lib/src/countries/country_table.dart); [build_regions.py](../content/countries/build_regions.py) | Data and code kept alive for nothing; misleading for anyone editing regions. |
 | D22 | `ContentDb.fingerprint` is computed on every load and read only by a test; its comment says a save loads only with the content it was made with, which stopped being true at format 9. | [content_db.dart](../packages/engine/lib/src/content/content_db.dart); [scenario_loader.dart](../packages/engine/lib/src/content/scenario_loader.dart) | Wasted work (D15) and a wrong explanation of how saves match content. |
-| D23 | Stale or misplaced doc comments: [neighbourhoods.dart](../packages/engine/lib/neighbourhoods.dart) says the game doesn't use the generator yet; `SleeperSystem` says districts touch no account, but chains' shops there book against `elsewhere`; in [command.dart](../packages/engine/lib/src/commands/command.dart) the `Command` class's doc comment sits on `_readBrand`; in [save_file.dart](../packages/engine/lib/src/persistence/save_file.dart) `SaveData`'s doc comment is merged into `CitiesAsleep`'s. | those files | Comments are how this codebase explains itself; wrong ones mislead the next change. |
+| D23 | Stale or misplaced doc comments: [neighbourhoods.dart](../packages/engine/lib/neighbourhoods.dart) says the game doesn't use the generator yet; `SleeperSystem` says districts touch no account, but chains' shops there book against `elsewhere`. | those files | Comments are how this codebase explains itself; wrong ones mislead the next change. |
 | D24 | [Engine Architecture.md](<../Engine Architecture.md>) has drifted: its header still says version 0.1, October 2026; the daily tick table lists 11 phases while `standardSystems` runs 15 (no buying terms, national, tax, factory or sleeper phases); the repository layout lists four screens and three country scripts; the testing table says the goldens compare daily state hashes on VM and Node, while the code checks one hash after a year; *Decisions to confirm* still says taxes are stubbed and that unguaranteed credit needs a net-asset threshold. | that file | It is the main design reference; sessions trust it. |
-| D25 | Screen files keep the tabs' old names: World is `market.dart`, Holding `dashboard.dart`, Shop `store.dart`, Books `reports.dart`; tests and the design doc still say "Market tab". | [app/lib/src/screens](../app/lib/src/screens) | Small, but every newcomer has to learn the mapping ([app.md](app.md)). |
+
+## Duplication
+
+Left by the 2026-11-16 pass, because merging them would change behaviour or
+an error message, or needs a shared shape the code doesn't have yet.
+
+| Id | Issue | Where | Why it matters |
+|---|---|---|---|
+| D34 | Two JSON readers do the same job: `_Node` for the scenario and `_Reader` for the national table, each with its own `flag`, `fx`, `money`, `strings`, `object`, `objects` and `finish`, and slightly different error messages. | `_Node` in [scenario_loader.dart](../packages/engine/lib/src/content/scenario_loader.dart), `_Reader` in [country_table.dart](../packages/engine/lib/src/countries/country_table.dart) | A rule added to one (a range check, a clearer message) misses the other; one reader in `content/` would serve both. |
+| D35 | AI owners and directors look for a rival's struggling shop to buy with near-copies of one search, by hand and in the districts by formula: the director's weighs what it judges each place would earn and skips only its own owner, the entrepreneur's skips the player too. | `EntrepreneurPolicy._purchase` in [entrepreneur_policy.dart](../packages/engine/lib/src/policies/entrepreneur_policy.dart), `_growth` in [director.dart](../packages/engine/lib/src/policies/director.dart) | A change to how buyers weigh a shop has to be made twice, and the two already differ in ways nobody chose on purpose. |
+| D36 | Key people are built twice, for labs and for software: candidates (`_candidates` against `softwareCandidatesOf`) and new hires (`KeyPerson(` in the two systems) differ only in which levels and days they read. | [observation.dart](../packages/engine/lib/src/observation/observation.dart), [software_view.dart](../packages/engine/lib/src/observation/software_view.dart), [systems/labs.dart](../packages/engine/lib/src/systems/labs.dart), [systems/software.dart](../packages/engine/lib/src/systems/software.dart) | A shared market for people (see D30) would have to change both. |
+| D37 | The "as a new company" switch is written twice, in opening a shop and building a factory; the shop's names the company without its pending rename, the factory's with it. | `_OpenStoreDialog` in [screens/world.dart](../app/lib/src/screens/world.dart), `BuildFactoryPage` in [screens/factory.dart](../app/lib/src/screens/factory.dart) | Small; merging it means picking one of the two names. |
 
 ## Size
 
 | Id | Issue | Where | Why it matters |
 |---|---|---|---|
-| D26 | Very large files: [screens/market.dart](../app/lib/src/screens/market.dart) (2,731 lines: the World tab, starting a business, buying dialogs), [country_economy.dart](../packages/engine/lib/src/countries/country_economy.dart) (1,932), [apply_command.dart](../packages/engine/lib/src/commands/apply_command.dart) (1,922), [content_db.dart](../packages/engine/lib/src/content/content_db.dart) (1,744), [screens/store.dart](../app/lib/src/screens/store.dart) (1,641), [command.dart](../packages/engine/lib/src/commands/command.dart) and [screens/finance.dart](../app/lib/src/screens/finance.dart) (1,588 each). In [controller.dart](../app/lib/src/controller.dart), `_news` alone is about 430 lines. | those files | Hard to review and easy to conflict on; splitting by feature (national commands, factory commands, the new-business flow, news per kind) would help. |
+| D26 | Very large files (lines on 2026-11-16): [screens/world.dart](../app/lib/src/screens/world.dart) (2,688: the World tab, starting a business, buying dialogs), [apply_command.dart](../packages/engine/lib/src/commands/apply_command.dart) (2,596), [command.dart](../packages/engine/lib/src/commands/command.dart) (2,476), [country_economy.dart](../packages/engine/lib/src/countries/country_economy.dart) (2,046), [content_db.dart](../packages/engine/lib/src/content/content_db.dart) (2,009), [screens/shop.dart](../app/lib/src/screens/shop.dart) (1,579), [screens/finance.dart](../app/lib/src/screens/finance.dart) (1,506). In [controller.dart](../app/lib/src/controller.dart), `_news` alone is about 430 lines. | those files | Hard to review and easy to conflict on; splitting by feature (national commands, factory commands, the new-business flow, news per kind) would help. |
 
 ## To check
 

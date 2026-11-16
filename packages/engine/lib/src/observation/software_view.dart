@@ -4,7 +4,7 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
-import '../state/factory.dart' show monthOf;
+import '../state/factory.dart' show firstOfMonth, monthOf;
 import '../state/software.dart';
 import '../state/software_rules.dart';
 import '../state/talent.dart';
@@ -248,7 +248,7 @@ List<KeyPersonView> softwareCandidatesOf(WorldState world, ContentDb content) {
           salary: def.levels[person.repute].salary,
           since: person.since,
           monthsWorked: 0,
-          leaves: _firstOnOrAfter(person.since + def.candidateDays),
+          leaves: (person.since + def.candidateDays).firstOfMonthOnOrAfter,
         ),
   ]);
 }
@@ -364,14 +364,5 @@ SoftwareView softwareViewOf(
 Day _monthsAfter(Day day, int months, Day today) {
   final target = monthOf(day) + months;
   if (monthOf(today) >= target) return today;
-  return Day.fromDate(target ~/ 12, target % 12 + 1, 1);
-}
-
-/// [day] if it is the first of a month, else the first of the next.
-Day _firstOnOrAfter(Day day) {
-  if (day.isFirstOfMonth) return day;
-  final date = day.date;
-  return date.month == 12
-      ? Day.fromDate(date.year + 1, 1, 1)
-      : Day.fromDate(date.year, date.month + 1, 1);
+  return firstOfMonth(target);
 }

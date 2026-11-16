@@ -137,7 +137,7 @@ class ExchangeScreen extends StatelessWidget {
                   IndexRow(
                     title: view.stocks[bid.stock].name,
                     subtitle: tr('stocks.bidLine', {
-                      'bidder': ownerName(context, bid.bidder),
+                      'bidder': game.ownerName(bid.bidder),
                       'premium': change(bid.price, bid.reference),
                       'date': shortDate(bid.closes),
                     }),
@@ -408,7 +408,7 @@ class StockPage extends StatelessWidget {
             if (controller != null)
               Line(
                 tr('stocks.controlledBy'),
-                ownerName(context, controller),
+                game.ownerName(controller),
                 color: mine ? ledger.gain : null,
               ),
             if (stock.holders.isEmpty)
@@ -416,7 +416,7 @@ class StockPage extends StatelessWidget {
             else
               for (final holder in stock.holders)
                 Line(
-                  ownerName(context, holder.owner),
+                  game.ownerName(holder.owner),
                   share(holder.units, stock.shares),
                   hint: holder.owner == holdingOwner && holding != null
                       ? tr('stocks.youHold', {
@@ -456,7 +456,7 @@ class StockPage extends StatelessWidget {
                     OutlinedButton(
                       onPressed: () => context.openPage(
                         tr('stocks.bidForAll'),
-                        (_) => [BidPage(stock: stock.index)],
+                        (_) => [TakeoverBidPage(stock: stock.index)],
                       ),
                       child: Text(tr('stocks.bidForAll')),
                     ),
@@ -786,7 +786,7 @@ class PortfolioPage extends StatelessWidget {
                     'cost': money(holding.cost, cents: false),
                   }),
                   if (holding.owner != holdingOwner)
-                    ownerName(context, holding.owner),
+                    game.ownerName(holding.owner),
                 ].join(' · '),
                 value: money(holding.value, cents: false),
                 valueColor: holding.value < holding.cost
@@ -801,26 +801,6 @@ class PortfolioPage extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Who [owner] is, in words: the player's holding, one of their companies,
-/// a raider or a chain.
-String ownerName(BuildContext context, int owner) {
-  final game = context.game;
-  if (owner == holdingOwner) {
-    return game.holdingName ?? tr('stocks.yourHolding');
-  }
-  if (owner >= 0) return game.companyName(CompanyId(owner));
-  final content = game.content;
-  if (isRaider(owner)) {
-    final raiders = content.stocks!.raiders;
-    final r = raiderOf(owner);
-    return r < raiders.length ? raiders[r].name : '';
-  }
-  final code = -100000 - owner;
-  final country = content.national?.countries[code ~/ 1000];
-  final chains = country?.chains ?? const <ChainDef>[];
-  return code % 1000 < chains.length ? chains[code % 1000].name : '';
 }
 
 /// A bid open for a company, on its page: who bids, at what, until when, how
@@ -845,7 +825,7 @@ class BidSection extends StatelessWidget {
       title: tr('stocks.aBid'),
       mark: ours ? ledger.gain : ledger.loss,
       children: [
-        Line(tr('stocks.bidder'), ownerName(context, bid.bidder)),
+        Line(tr('stocks.bidder'), game.ownerName(bid.bidder)),
         Line(
           tr('stocks.bidPrice'),
           money(bid.price),
@@ -886,17 +866,17 @@ const _premiums = [20, 30, 40, 50];
 /// over its price, what the shares the bidder lacks cost, who pays and what
 /// they borrow, and how its shareholders are likely to answer. With [via],
 /// a company the player controls bids, with debt, to merge it in.
-class BidPage extends StatefulWidget {
-  const BidPage({super.key, required this.stock, this.via});
+class TakeoverBidPage extends StatefulWidget {
+  const TakeoverBidPage({super.key, required this.stock, this.via});
 
   final int stock;
   final int? via;
 
   @override
-  State<BidPage> createState() => _BidPageState();
+  State<TakeoverBidPage> createState() => _TakeoverBidPageState();
 }
 
-class _BidPageState extends State<BidPage> {
+class _TakeoverBidPageState extends State<TakeoverBidPage> {
   int _premium = 30;
   int? _bidder;
   final _borrow = TextEditingController();
@@ -995,7 +975,7 @@ class _BidPageState extends State<BidPage> {
               for (final bidder in bidders)
                 DropdownMenuItem(
                   value: bidder,
-                  child: Text(ownerName(context, bidder)),
+                  child: Text(game.ownerName(bidder)),
                 ),
             ],
             onChanged: (value) => setState(() => _bidder = value),
@@ -1128,7 +1108,7 @@ class _ControlPageState extends State<ControlPage> {
         Section(
           title: stock.name,
           children: [
-            Line(tr('stocks.controlledBy'), ownerName(context, controller)),
+            Line(tr('stocks.controlledBy'), game.ownerName(controller)),
             Line(tr('stocks.sales'), compactMoney(stock.yearRevenue)),
             Line(tr('stocks.profitYear'), compactMoney(stock.yearProfit)),
             Line(tr('stocks.cap'), compactMoney(stock.cap)),
@@ -1250,7 +1230,9 @@ class _ControlPageState extends State<ControlPage> {
                 value: compactMoney(rival.cap),
                 onTap: () => context.openPage(
                   tr('stocks.buyARival'),
-                  (_) => [BidPage(stock: rival.index, via: stock.index)],
+                  (_) => [
+                    TakeoverBidPage(stock: rival.index, via: stock.index),
+                  ],
                 ),
               ),
           ],

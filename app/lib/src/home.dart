@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'controller.dart';
 import 'format.dart';
 import 'l10n.dart';
-import 'screens/dashboard.dart';
+import 'screens/books.dart';
 import 'screens/exchange.dart';
 import 'screens/finance.dart';
 import 'screens/guide.dart';
-import 'screens/market.dart';
-import 'screens/reports.dart';
-import 'screens/store.dart';
+import 'screens/holding.dart';
+import 'screens/shop.dart';
+import 'screens/world.dart';
 import 'theme.dart';
 import 'visuals.dart';
 import 'widgets.dart';
@@ -263,15 +263,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     key: ValueKey('${_tab.name} ${_pages[_tab]!.length}'),
                     child: switch (_pages[_tab]!) {
                       [] => switch (_tab) {
-                        HomeTab.holding => DashboardScreen(onOpen: _open),
-                        HomeTab.shop => StoreScreen(
+                        HomeTab.holding => HoldingScreen(onOpen: _open),
+                        HomeTab.shop => ShopScreen(
                           part: _shopPart,
                           onPart: (part) => setState(() => _shopPart = part),
                         ),
                         HomeTab.finance => const FinanceScreen(),
-                        HomeTab.world => const MarketScreen(),
+                        HomeTab.world => const WorldScreen(),
                         HomeTab.market => const ExchangeScreen(),
-                        HomeTab.books => const ReportsScreen(),
+                        HomeTab.books => const BooksScreen(),
                       },
                       [..., final page] => _PageFrame(page: page),
                     },

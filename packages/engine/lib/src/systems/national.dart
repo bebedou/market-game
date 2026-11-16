@@ -17,7 +17,7 @@ import '../state/taxation.dart';
 import '../state/world_state.dart';
 import 'sleepers.dart' show formulaGoodsExtra;
 import 'tick_system.dart';
-import 'factory_sales.dart' show kindShare;
+import 'factory_sales.dart' show billMaking, kindShare;
 
 /// [world]'s countries by formula, made the first time they are needed and
 /// run up to this month, each country in the phase of the cycle the game had
@@ -440,41 +440,16 @@ final class NationalSystem implements TickSystem {
         units: units,
         factory: factory.id,
       );
-      final materials = materialsCost(
+      final (:materials, :freight) = billMaking(
+        world,
+        ledger,
         kind,
+        factory,
         product,
-        world.macroOf(factory.country).priceIndex,
-        saved: factorySaving(world, factory, product.id),
-      ).timesInt(units);
-      final freight = factory.country == country
-          ? Money.zero
-          : value.times(kind.freight);
-      void owe(AccountKind expense, EntryReason reason, Money amount) {
-        if (amount <= Money.zero) return;
-        ledger.post(
-          maker,
-          debit: expense,
-          credit: AccountKind.payables,
-          amount: amount,
-          reason: reason,
-          product: product.id,
-          units: units,
-          factory: factory.id,
-        );
-        maker.payables.add(
-          Payable(
-            creditor: world.elsewhere.partyRef,
-            creditorAccount: AccountKind.revenue,
-            reason: reason,
-            amount: amount,
-            due: context.day,
-            factory: factory.id,
-          ),
-        );
-      }
-
-      owe(AccountKind.costOfGoods, EntryReason.materials, materials);
-      owe(AccountKind.overheads, EntryReason.freight, freight);
+        units,
+        value,
+        abroad: factory.country != country,
+      );
       factory.recordMade(
         context.day,
         units,

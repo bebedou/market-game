@@ -708,24 +708,13 @@ class _SellsTo extends StatelessWidget {
   }
 
   Future<void> _close(BuildContext context, SimulationController game) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(tr('factory.close')),
-        content: Text(tr('factory.closeConfirm', {'factory': factory.name})),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(tr('common.cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(tr('factory.closeAction')),
-          ),
-        ],
-      ),
+    final confirmed = await confirm(
+      context,
+      title: tr('factory.close'),
+      body: tr('factory.closeConfirm', {'factory': factory.name}),
+      action: tr('factory.closeAction'),
     );
-    if (confirmed ?? false) {
+    if (confirmed) {
       game.submit(CloseFactory(game.player, factory: factory.id));
     }
   }
@@ -813,30 +802,14 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
         ? Money.zero
         : parseMoney(_capital.text);
     final view = game.view;
-    final spare =
-        (separate
-            ? Money.zero
-            : company.cash - company.committed - game.cushion(company)) +
-        (capital ?? Money.zero);
-    final short =
-        cost - (separate ? Money.zero : company.cash) - (capital ?? Money.zero);
-    final amount = roundedUp(cost - spare);
-    final borrow = amount > Money.zero && (_borrow ?? short > Money.zero);
-    final room = separate
-        ? Money.zero
-        : view.companyCredits[company.id.index] ?? Money.zero;
-    final guarantee =
-        view.guaranteeRoom -
-        (capital ?? Money.zero).times(content.finance.guaranteeMultiple);
-    final terms = LoanTerms(
-      view: view,
-      content: content,
-      amount: amount,
-      credit: room.isNegative ? Money.zero : room,
-      guarantee: guarantee.isNegative ? Money.zero : guarantee,
+    final (:short, :amount, :borrow, :terms) = newBusinessFunding(
+      game,
+      company: separate ? null : company,
+      cost: cost,
+      capital: capital ?? Money.zero,
+      borrow: _borrow,
       months: _months,
       onMonths: (months) => setState(() => _months = months),
-      note: separate ? tr('market.newCompanyNote') : null,
     );
     final ready =
         !_built &&
@@ -1026,32 +999,16 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
                 value: _newCompany,
                 onChanged: (on) => setState(() => _newCompany = on),
               ),
-            TextField(
+            CapitalField(
               controller: _capital,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                labelText: tr('market.capitalFromCash'),
-                helperText: tr('market.youHave', {'cash': money(view.cash)}),
-                errorText: capital == null ? tr('common.notAnAmount') : null,
-              ),
-              onChanged: (_) => setState(() {}),
+              cash: view.cash,
+              valid: capital != null,
+              onChanged: () => setState(() {}),
             ),
             if (amount > Money.zero)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(tr('market.borrowFromBank')),
-                subtitle: borrow
-                    ? null
-                    : Text(
-                        short > Money.zero
-                            ? tr('market.needsMore', {
-                                'amount': money(short, cents: false),
-                              })
-                            : tr('market.keepCushion'),
-                      ),
+              BorrowSwitch(
                 value: borrow,
+                short: short,
                 onChanged: (on) => setState(() => _borrow = on),
               ),
             if (borrow) terms,

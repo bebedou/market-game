@@ -30,10 +30,7 @@ enum ReportPeriod {
   /// The first day after the period that starts on [start].
   Day endOf(Day start) => switch (this) {
     week => start + 7,
-    month =>
-      start.date.month == 12
-          ? Day.fromDate(start.date.year + 1, 1, 1)
-          : Day.fromDate(start.date.year, start.date.month + 1, 1),
+    month => start.firstOfNextMonth,
   };
 
   /// How many reports of this period each company keeps.

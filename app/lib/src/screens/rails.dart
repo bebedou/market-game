@@ -172,30 +172,17 @@ class Rails extends StatelessWidget {
     Money paid,
   ) async {
     final game = context.game;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(tr('rails.clearQuestion')),
-        content: Text(
-          tr('rails.clearBody', {
-            'units': units,
-            'paid': money(paid, cents: false),
-            'cost': money(cost, cents: false),
-          }),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(tr('common.cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(tr('rails.clearConfirm')),
-          ),
-        ],
-      ),
+    final confirmed = await confirm(
+      context,
+      title: tr('rails.clearQuestion'),
+      body: tr('rails.clearBody', {
+        'units': units,
+        'paid': money(paid, cents: false),
+        'cost': money(cost, cents: false),
+      }),
+      action: tr('rails.clearConfirm'),
     );
-    if (!(confirmed ?? false)) return;
+    if (!confirmed) return;
     for (final product in _fashionGoods(game.content, store)) {
       if (_lotsOf(store, product.id).any((lot) => lot.days > oldDays)) {
         game.submit(

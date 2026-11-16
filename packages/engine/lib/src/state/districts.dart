@@ -3,7 +3,6 @@ import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
-import '../core/safe_int.dart';
 import '../neighbourhoods/neighbourhood_generator.dart';
 import 'brands.dart';
 import 'sleepers.dart';
@@ -163,17 +162,10 @@ Valuation? valueSleepingShop(
   final terms = content.acquisitions;
   if (terms == null) return null;
   final format = content.formats[shop.format.index];
-  final age = (month - shop.openedMonth) * 30;
-  final used = age <= 0
-      ? Fx.zero
-      : age >= terms.fittingsLifeDays
-      ? Fx.one
-      : Fx.raw(mulDivRound(age, Fx.scale, terms.fittingsLifeDays));
-  final wear = (Fx.one - terms.fittingsResidual) * used;
   final fittings = site.openingCost
       .times(format.fitOut)
       .times(world.macroOf(country).priceIndex)
-      .times(Fx.one - wear);
+      .times(terms.fittingsLeft((month - shop.openedMonth) * 30));
   if (shop.sales.length < sleepingMonthsKept) {
     return (
       stock: Money.zero,
@@ -183,16 +175,11 @@ Valuation? valueSleepingShop(
     );
   }
   final earnings = shop.yearProfit;
-  final excess = earnings - fittings.times(terms.tangibleReturn);
-  final price =
-      fittings +
-      Money(mulDivRound(excess.cents, Fx.scale, terms.capitalization.raw));
-  final floor = fittings.times(terms.distressFloor);
   return (
     stock: Money.zero,
     fittings: fittings,
     earnings: earnings,
-    price: price > floor ? price : floor,
+    price: terms.askingPrice(fittings, earnings),
   );
 }
 

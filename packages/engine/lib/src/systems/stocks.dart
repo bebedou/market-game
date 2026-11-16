@@ -12,6 +12,7 @@ import '../countries/country_table.dart';
 import '../state/credit.dart' show companyEarnings;
 import '../countries/shop_bridge.dart' show formatTrades;
 import '../state/entities.dart';
+import '../state/taxation.dart' show taxGain;
 import '../state/software.dart';
 import '../state/software_rules.dart';
 import '../state/stocks.dart';
@@ -834,20 +835,7 @@ void sellHolding(
   final setOff = gain < market.gainsLoss ? gain : market.gainsLoss;
   market.gainsLoss -= setOff;
   gain -= setOff;
-  if (content.taxesOf(world.residence(content, player.id)) case final taxes?
-      when gain > Money.zero) {
-    final tax = gain.times(taxes.dividendRate);
-    if (tax > Money.zero) {
-      ledger.pay(
-        payer: player,
-        payerAccount: AccountKind.taxes,
-        payee: world.government,
-        payeeAccount: AccountKind.revenue,
-        amount: tax,
-        reason: EntryReason.capitalGainsTax,
-      );
-    }
-  }
+  taxGain(world, content, ledger, player, gain);
 }
 
 /// What [units] of [whole] are of [amount], kept safe for share counts in

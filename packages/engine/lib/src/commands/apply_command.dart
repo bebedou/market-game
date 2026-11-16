@@ -624,6 +624,35 @@ Refusal? _loanRefusal(
         guarantee: guaranteeRoom(world, content, owner, spent: spent),
       );
 
+/// The loan of [borrow] over [termMonths] towards a purchase by [company],
+/// owned by [owner], as [_purchaseLoan] has the bank lend it, or why the
+/// bank won't. Borrowing nothing is no loan and no refusal.
+(({Money unsecured, Money guaranteed})?, Refusal?) _borrowing(
+  WorldState world,
+  ContentDb content,
+  Company? company,
+  Person owner,
+  Money borrow,
+  int termMonths, {
+  Money spent = Money.zero,
+  Money extra = Money.zero,
+}) {
+  if (borrow == Money.zero) return (null, null);
+  if (_loanRefusal(world, content, borrow, termMonths) case final refusal?) {
+    return (null, refusal);
+  }
+  final loan = _purchaseLoan(
+    world,
+    content,
+    company,
+    owner,
+    borrow,
+    spent: spent,
+    extra: extra,
+  );
+  return loan == null ? (null, const Refusal('bankWillNotLend')) : (loan, null);
+}
+
 /// Lends [company] [amount] over [termMonths] for a takeover, as for any
 /// purchase: on its earnings with the target's [earnings] added, then on
 /// its owner's guarantee. False if the bank won't.
@@ -829,26 +858,16 @@ Refusal? _openStore(
   if (cash < openingCost) {
     return Refusal('cannotPayOpening', amount: openingCost);
   }
-  if (command.borrow != Money.zero) {
-    final refusal = _loanRefusal(
-      world,
-      content,
-      command.borrow,
-      command.termMonths,
-    );
-    if (refusal != null) return refusal;
-  }
-  final loan = _purchaseLoan(
+  final (loan, loanError) = _borrowing(
     world,
     content,
     company,
     person,
     command.borrow,
+    command.termMonths,
     spent: command.capital,
   );
-  if (command.borrow != Money.zero && loan == null) {
-    return const Refusal('bankWillNotLend');
-  }
+  if (loanError != null) return loanError;
   company ??= world.addCompany(brand?.name ?? command.name, person.id);
   // An AI owner's shops all trade under its brand.
   if (brand == null && command.actor != world.player) {
@@ -1354,27 +1373,17 @@ Refusal? _buyStore(
   if (company.accounts[AccountKind.cash] + command.borrow < price) {
     return Refusal('cannotPayPrice', amount: price);
   }
-  if (command.borrow != Money.zero) {
-    final refusal = _loanRefusal(
-      world,
-      content,
-      command.borrow,
-      command.termMonths,
-    );
-    if (refusal != null) return refusal;
-  }
   final buyer = world.persons[command.actor.index];
-  final loan = _purchaseLoan(
+  final (loan, loanError) = _borrowing(
     world,
     content,
     company,
     buyer,
     command.borrow,
+    command.termMonths,
     extra: value.earnings,
   );
-  if (command.borrow != Money.zero && loan == null) {
-    return const Refusal('bankWillNotLend');
-  }
+  if (loanError != null) return loanError;
   if (loan != null) {
     _lendFor(world, content, ledger, company, buyer, loan, command.termMonths);
   }
@@ -1539,26 +1548,16 @@ Refusal? _buildFactory(
       command.capital +
       command.borrow;
   if (cash < cost) return Refusal('cannotPayFactory', amount: cost);
-  if (command.borrow != Money.zero) {
-    final refusal = _loanRefusal(
-      world,
-      content,
-      command.borrow,
-      command.termMonths,
-    );
-    if (refusal != null) return refusal;
-  }
-  final loan = _purchaseLoan(
+  final (loan, loanError) = _borrowing(
     world,
     content,
     company,
     person,
     command.borrow,
+    command.termMonths,
     spent: command.capital,
   );
-  if (command.borrow != Money.zero && loan == null) {
-    return const Refusal('bankWillNotLend');
-  }
+  if (loanError != null) return loanError;
   company ??= world.addCompany(command.name, person.id);
   if (command.capital > Money.zero) {
     injectCapital(ledger, person, company, command.capital);
@@ -1928,20 +1927,16 @@ Refusal? _openNational(
   if (company.accounts[AccountKind.cash] + command.borrow < cost) {
     return Refusal('cannotPayNational', amount: cost);
   }
-  if (command.borrow != Money.zero) {
-    final refusal = _loanRefusal(
-      world,
-      content,
-      command.borrow,
-      command.termMonths,
-    );
-    if (refusal != null) return refusal;
-  }
   final person = world.persons[command.actor.index];
-  final loan = _purchaseLoan(world, content, company, person, command.borrow);
-  if (command.borrow != Money.zero && loan == null) {
-    return const Refusal('bankWillNotLend');
-  }
+  final (loan, loanError) = _borrowing(
+    world,
+    content,
+    company,
+    person,
+    command.borrow,
+    command.termMonths,
+  );
+  if (loanError != null) return loanError;
   if (loan != null) {
     _lendFor(world, content, ledger, company, person, loan, command.termMonths);
   }
@@ -2011,27 +2006,17 @@ Refusal? _buyNationalChain(
   if (company.accounts[AccountKind.cash] + command.borrow < price) {
     return Refusal('cannotPayPrice', amount: price);
   }
-  if (command.borrow != Money.zero) {
-    final refusal = _loanRefusal(
-      world,
-      content,
-      command.borrow,
-      command.termMonths,
-    );
-    if (refusal != null) return refusal;
-  }
   final person = world.persons[command.actor.index];
-  final loan = _purchaseLoan(
+  final (loan, loanError) = _borrowing(
     world,
     content,
     company,
     person,
     command.borrow,
+    command.termMonths,
     extra: value.earnings,
   );
-  if (command.borrow != Money.zero && loan == null) {
-    return const Refusal('bankWillNotLend');
-  }
+  if (loanError != null) return loanError;
   if (loan != null) {
     _lendFor(world, content, ledger, company, person, loan, command.termMonths);
   }
@@ -2442,26 +2427,16 @@ Refusal? _enlargeFactory(
   final cash =
       company.accounts[AccountKind.cash] + command.capital + command.borrow;
   if (cash < cost) return Refusal('cannotPayFactory', amount: cost);
-  if (command.borrow != Money.zero) {
-    final refusal = _loanRefusal(
-      world,
-      content,
-      command.borrow,
-      command.termMonths,
-    );
-    if (refusal != null) return refusal;
-  }
-  final loan = _purchaseLoan(
+  final (loan, loanError) = _borrowing(
     world,
     content,
     company,
     person,
     command.borrow,
+    command.termMonths,
     spent: command.capital,
   );
-  if (command.borrow != Money.zero && loan == null) {
-    return const Refusal('bankWillNotLend');
-  }
+  if (loanError != null) return loanError;
   if (command.capital > Money.zero) {
     injectCapital(ledger, person, company, command.capital);
   }

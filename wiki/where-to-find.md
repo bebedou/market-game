@@ -15,9 +15,9 @@ Paths are relative to the repo root; search the named symbol in the file.
 | The cycle, inflation, the central bank, unemployment | [engine/systems/macro.dart](../packages/engine/lib/src/systems/macro.dart), [engine/state/macro.dart](../packages/engine/lib/src/state/macro.dart) | `MacroSystem`, `MacroState` |
 | Population growth, the census | [engine/systems/population.dart](../packages/engine/lib/src/systems/population.dart) | `PopulationSystem` |
 | A store's reputation | [engine/systems/close.dart](../packages/engine/lib/src/systems/close.dart) | `CloseSystem` |
-| Corporate and dividend tax | [engine/systems/taxes.dart](../packages/engine/lib/src/systems/taxes.dart), [engine/state/taxation.dart](../packages/engine/lib/src/state/taxation.dart) | `TaxSystem`, `companyTaxes` |
+| Corporate and dividend tax | [engine/systems/taxes.dart](../packages/engine/lib/src/systems/taxes.dart), [engine/state/taxation.dart](../packages/engine/lib/src/state/taxation.dart) | `TaxSystem`, `companyTaxes`; tax on a sale's gain: `taxGain` |
 | What the bank lends, and at what rate | [engine/state/credit.dart](../packages/engine/lib/src/state/credit.dart) | `companyEarnings`, `earningsRoom`, `guaranteeRoom`, `lendingRate`, `splitLoan` |
-| Asking prices of stores, companies, factories | [engine/state/valuation.dart](../packages/engine/lib/src/state/valuation.dart) | `valueStore`, `companyPrice`, `valueFactory` |
+| Asking prices of stores, companies, factories | [engine/state/valuation.dart](../packages/engine/lib/src/state/valuation.dart); the excess earnings formula itself in [engine/content/content_db.dart](../packages/engine/lib/src/content/content_db.dart) | `valueStore`, `companyPrice`, `valueFactory`; `AcquisitionDef.fittingsLeft`, `AcquisitionDef.askingPrice` |
 | Prices of national chains and blocks | [engine/state/national_value.dart](../packages/engine/lib/src/state/national_value.dart) | `valueChain`, `valueBlock` |
 | Buying terms | [engine/state/buying_terms.dart](../packages/engine/lib/src/state/buying_terms.dart) | `buyingDiscount` |
 | Districts asleep, by formula | [engine/systems/sleepers.dart](../packages/engine/lib/src/systems/sleepers.dart) | `SleeperSystem` |
@@ -73,15 +73,15 @@ Paths are relative to the repo root; search the named symbol in the file.
 | The news and what pauses the clock | [app/lib/src/controller.dart](../app/lib/src/controller.dart) | `_news`, `AlertKind`, `pauseOn` |
 | Clock speeds | [app/lib/src/controller.dart](../app/lib/src/controller.dart) | `Speed` |
 | Net worth, holding profit | [app/lib/src/controller.dart](../app/lib/src/controller.dart) | `netWorth`, `onPaper`, `holdingProfits` |
-| A factory's sales desk, bid and contract pages | [app/lib/src/screens/sales_desk.dart](../app/lib/src/screens/sales_desk.dart) | `SalesDeskEntry`, `SalesDeskPage`, `BidPage`, `ContractPage`, `openTendersFor` |
-| The Market tab, a sector, a stock, buying and selling, bids, control, listing | [app/lib/src/screens/exchange.dart](../app/lib/src/screens/exchange.dart) | `ExchangeScreen`, `SectorPage`, `StockPage`, `ExchangePage`, `TradePage`, `PortfolioPage`, `BidSection`, `BidPage`, `ControlPage`, `ExchangeEntry`, `ListCompanyPage`, `ownerName` |
+| A factory's sales desk, bid and contract pages | [app/lib/src/screens/sales_desk.dart](../app/lib/src/screens/sales_desk.dart) | `SalesDeskEntry`, `SalesDeskPage`, `TenderBidPage`, `ContractPage`, `openTendersFor` |
+| The Market tab, a sector, a stock, buying and selling, bids, control, listing | [app/lib/src/screens/exchange.dart](../app/lib/src/screens/exchange.dart) | `ExchangeScreen`, `SectorPage`, `StockPage`, `ExchangePage`, `TradePage`, `PortfolioPage`, `BidSection`, `TakeoverBidPage`, `ControlPage`, `ExchangeEntry`, `ListCompanyPage`; who holds shares in words: `SimulationController.ownerName` |
 | A software company's pages | [app/lib/src/screens/software.dart](../app/lib/src/screens/software.dart) | `SoftwareSection`, `StartSoftwarePage`, `SoftwarePage`, `RaceChart`, `SoftwareFundingPage` |
 | Company financials, ROIC | [app/lib/src/financials.dart](../app/lib/src/financials.dart), [app/lib/src/screens/financials.dart](../app/lib/src/screens/financials.dart) | `Financials`, `_fitOut`, `FinancialsSection` |
 | A director's letter | [app/lib/src/letters.dart](../app/lib/src/letters.dart) | `memoSentence` |
 | Colours, fonts, the ledger look | [app/lib/src/theme.dart](../app/lib/src/theme.dart) | `Ledger`, `gameTheme`, `Ledger.trade` |
 | Charts and stamps | [app/lib/src/visuals.dart](../app/lib/src/visuals.dart) | `BarChart`, `TrendChart`, `Stamp` |
 | The tab bar, clock bar, alerts | [app/lib/src/home.dart](../app/lib/src/home.dart) | `HomeScreen`, `HomeTab` |
-| Starting a first business | [app/lib/src/screens/market.dart](../app/lib/src/screens/market.dart) | `NewBusiness` |
+| Starting a first business | [app/lib/src/screens/world.dart](../app/lib/src/screens/world.dart) | `NewBusiness` |
 | The country page and its map | [app/lib/src/screens/national.dart](../app/lib/src/screens/national.dart), [app/lib/src/outlines.dart](../app/lib/src/outlines.dart) | `NationalMap`, `_InkMap`, `outlineOf` |
 | The main menu and save slots | [app/lib/src/screens/menu.dart](../app/lib/src/screens/menu.dart), [app/lib/src/saves_io.dart](../app/lib/src/saves_io.dart) | `MainMenu`, `FileSaveSlots` |
 | Loading the content at start-up | [app/lib/src/app.dart](../app/lib/src/app.dart) | `loadContent`, `openGame` |

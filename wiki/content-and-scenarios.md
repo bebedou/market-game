@@ -145,7 +145,7 @@ gives the player money and no business. The scenario's company for the
 player stays in the world as `CompanyStatus.dormant`, since content and world
 must have the same companies; observations hide it. The first business is
 opened from the dashboard (`NewBusiness` in
-[app/lib/src/screens/market.dart](../app/lib/src/screens/market.dart)), and
+[app/lib/src/screens/world.dart](../app/lib/src/screens/world.dart)), and
 opening on a site asleep wakes its city first.
 
 ## The national table

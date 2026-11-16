@@ -1265,19 +1265,10 @@ List<KeyPersonView> _candidates(WorldState world, ContentDb content) {
           salary: labs.levels[person.repute].salary,
           since: person.since,
           monthsWorked: 0,
-          leaves: _firstOnOrAfter(person.since + labs.candidateDays),
+          // The market for people turns over on the first.
+          leaves: (person.since + labs.candidateDays).firstOfMonthOnOrAfter,
         ),
   ]);
-}
-
-/// [day] if it is the first of a month, else the first of the next: the
-/// market for people turns over on the first.
-Day _firstOnOrAfter(Day day) {
-  if (day.isFirstOfMonth) return day;
-  final date = day.date;
-  return date.month == 12
-      ? Day.fromDate(date.year + 1, 1, 1)
-      : Day.fromDate(date.year, date.month + 1, 1);
 }
 
 LabView? _labView(WorldState world, ContentDb content, Factory factory) {

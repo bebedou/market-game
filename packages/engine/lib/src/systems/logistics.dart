@@ -9,6 +9,7 @@ import '../state/factory.dart';
 import '../state/orders.dart';
 import '../state/world_state.dart';
 import 'events.dart';
+import 'factory_sales.dart' show billMaking;
 import 'tick_system.dart';
 
 /// Delivers orders that arrive today. Each line becomes a stock lot, as far
@@ -242,47 +243,16 @@ final class LogisticsSystem implements TickSystem {
       units: units,
       factory: factory.id,
     );
-    void owe(AccountKind expense, EntryReason reason, Money amount) {
-      if (amount <= Money.zero) return;
-      ledger.post(
-        maker,
-        debit: expense,
-        credit: AccountKind.payables,
-        amount: amount,
-        reason: reason,
-        product: product.id,
-        units: units,
-        factory: factory.id,
-      );
-      maker.payables.add(
-        Payable(
-          creditor: world.elsewhere.partyRef,
-          creditorAccount: AccountKind.revenue,
-          reason: reason,
-          amount: amount,
-          due: context.day,
-          factory: factory.id,
-        ),
-      );
-    }
-
-    owe(
-      AccountKind.costOfGoods,
-      EntryReason.materials,
-      materialsCost(
-        kind,
-        product,
-        world.macroOf(factory.country).priceIndex,
-        saved: factorySaving(world, factory, product.id),
-      ).timesInt(units),
+    billMaking(
+      world,
+      ledger,
+      kind,
+      factory,
+      product,
+      units,
+      value,
+      abroad: content.countryOf(market) != factory.country,
     );
-    if (content.countryOf(market) != factory.country) {
-      owe(
-        AccountKind.overheads,
-        EntryReason.freight,
-        value.times(kind.freight),
-      );
-    }
   }
 }
 

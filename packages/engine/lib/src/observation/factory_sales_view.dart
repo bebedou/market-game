@@ -147,10 +147,10 @@ final class FactorySalesView {
 /// The first anniversary of [starts] after [today].
 Day _nextAnniversary(Day starts, Day today) {
   var month = monthOf(starts) + 12;
-  while (Day.fromDate(month ~/ 12, month % 12 + 1, 1) <= today) {
+  while (firstOfMonth(month) <= today) {
     month += 12;
   }
-  return Day.fromDate(month ~/ 12, month % 12 + 1, 1);
+  return firstOfMonth(month);
 }
 
 /// Every tender kept, as anyone sees it.

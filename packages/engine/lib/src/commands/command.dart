@@ -13,11 +13,6 @@ typedef LoggedCommand = ({Day day, Command command});
 /// A product and quantity on an order.
 typedef OrderQuantity = ({ProductId product, int quantity});
 
-/// The only way an actor changes the world. Commands are queued and applied
-/// at the start of the next step, under the same rules for every actor.
-///
-/// Each command type has a serialization tag. Never renumber one: saved
-/// command logs depend on it.
 /// A brand a command names, in a save that has them.
 BrandId? _readBrand(StateReader reader) => reader.version >= 25
     ? switch (reader.readNullableInt()) {
@@ -26,6 +21,11 @@ BrandId? _readBrand(StateReader reader) => reader.version >= 25
       }
     : null;
 
+/// The only way an actor changes the world. Commands are queued and applied
+/// at the start of the next step, under the same rules for every actor.
+///
+/// Each command type has a serialization tag. Never renumber one: saved
+/// command logs depend on it.
 sealed class Command {
   const Command(this.actor);
 

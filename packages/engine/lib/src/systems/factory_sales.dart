@@ -616,7 +616,7 @@ final class FactorySalesSystem implements TickSystem {
 /// The first of the month [months] months after [day]'s.
 Day _firstOfMonthAfter(Day day, int months) {
   final target = monthOf(day) + months;
-  return Day.fromDate(target ~/ 12, target % 12 + 1, 1);
+  return firstOfMonth(target);
 }
 
 /// What a bid of [price] for goods [lead] over the standard, from a
@@ -709,18 +709,47 @@ void sellGoods(
     units: units,
     factory: factory.id,
   );
+  final (:materials, :freight) = billMaking(
+    world,
+    context.ledger,
+    kind,
+    factory,
+    product,
+    units,
+    value,
+    abroad: factory.country != country,
+  );
+  factory.recordMade(
+    context.day,
+    units,
+    own: false,
+    margin: value - materials - freight,
+  );
+}
+
+/// Bills [factory] for the materials [units] of [product] took and, when
+/// they go [abroad], the freight on their [value], owed to everyone beyond
+/// the simulation today; returns what each came to.
+({Money materials, Money freight}) billMaking(
+  WorldState world,
+  Ledger ledger,
+  FactoryKindDef kind,
+  Factory factory,
+  ProductDef product,
+  int units,
+  Money value, {
+  required bool abroad,
+}) {
   final materials = materialsCost(
     kind,
     product,
     world.macroOf(factory.country).priceIndex,
     saved: factorySaving(world, factory, product.id),
   ).timesInt(units);
-  final freight = factory.country == country
-      ? Money.zero
-      : value.times(kind.freight);
+  final freight = abroad ? value.times(kind.freight) : Money.zero;
   billFactory(
     world,
-    context.ledger,
+    ledger,
     factory,
     AccountKind.costOfGoods,
     EntryReason.materials,
@@ -730,7 +759,7 @@ void sellGoods(
   );
   billFactory(
     world,
-    context.ledger,
+    ledger,
     factory,
     AccountKind.overheads,
     EntryReason.freight,
@@ -738,12 +767,7 @@ void sellGoods(
     product: product.id,
     units: units,
   );
-  factory.recordMade(
-    context.day,
-    units,
-    own: false,
-    margin: value - materials - freight,
-  );
+  return (materials: materials, freight: freight);
 }
 
 /// Bills [factory]'s company [amount] for [reason], owed to everyone

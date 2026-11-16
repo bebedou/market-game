@@ -8,18 +8,18 @@ import '../l10n.dart';
 import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
+import 'books.dart';
 import 'factory.dart';
 import 'finance.dart';
-import 'market.dart';
-import 'reports.dart';
-import 'store.dart';
+import 'shop.dart';
 import 'software.dart';
+import 'world.dart';
 
 /// The holding at a glance: net worth, what needs doing, how last week
 /// went, the companies and who runs them, the stores, the news and profit.
 /// Money and deals are in Finance.
-class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key, required this.onOpen});
+class HoldingScreen extends StatelessWidget {
+  const HoldingScreen({super.key, required this.onOpen});
 
   /// Switches to another tab.
   final OpenTab onOpen;

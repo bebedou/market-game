@@ -50,12 +50,12 @@ const int _nationalVersion = 29;
 
 const String _magic = 'market-game-save';
 
-/// What a save holds: a snapshot of the world, the full command log since the
-/// start (for replays), and commands queued for the next step.
 /// A game whose cities but the player's run by formula from the start, and
 /// the start the player chose: see [withCitiesAsleep].
 typedef CitiesAsleep = ({GameStart? start});
 
+/// What a save holds: a snapshot of the world, the full command log since the
+/// start (for replays), and commands queued for the next step.
 final class SaveData {
   SaveData({
     required this.content,

@@ -43,8 +43,8 @@ enum ShopPart { shelves, supplies, running }
 /// price, stock, sales and misses), its supplies (suppliers, orders and
 /// bills), and its running (the site and its size, the manager, staff and
 /// marketing).
-class StoreScreen extends StatelessWidget {
-  const StoreScreen({super.key, required this.part, required this.onPart});
+class ShopScreen extends StatelessWidget {
+  const ShopScreen({super.key, required this.part, required this.onPart});
 
   final ShopPart part;
   final ValueChanged<ShopPart> onPart;
@@ -305,31 +305,17 @@ class SaleSection extends StatelessWidget {
                   ? null
                   : () async {
                       final buyerName = view.companyNames[buyer.index];
-                      final yes = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text(
-                            tr('store.sellQuestion', {'store': name}),
-                          ),
-                          content: Text(
-                            tr('store.sellBody', {
-                              'buyer': buyerName,
-                              'price': money(value.price, cents: false),
-                            }),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: Text(tr('common.keepIt')),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: Text(tr('common.sell')),
-                            ),
-                          ],
-                        ),
+                      final yes = await confirm(
+                        context,
+                        title: tr('store.sellQuestion', {'store': name}),
+                        body: tr('store.sellBody', {
+                          'buyer': buyerName,
+                          'price': money(value.price, cents: false),
+                        }),
+                        action: tr('common.sell'),
+                        keep: tr('common.keepIt'),
                       );
-                      if (yes ?? false) {
+                      if (yes) {
                         game.submit(SellStore(game.player, store: store.id));
                       }
                     },
@@ -885,24 +871,14 @@ class _ProductTile extends StatelessWidget {
   Future<void> _delist(BuildContext context, SimulationController game) async {
     final stock = store.stock[product.id.index];
     if (stock > 0) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(tr('store.stopSelling', {'product': product.name})),
-          content: Text(tr('store.stopSellingBody', {'stock': stock})),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(tr('common.keepIt')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(tr('store.stopSellingAction')),
-            ),
-          ],
-        ),
+      final confirmed = await confirm(
+        context,
+        title: tr('store.stopSelling', {'product': product.name}),
+        body: tr('store.stopSellingBody', {'stock': stock}),
+        action: tr('store.stopSellingAction'),
+        keep: tr('common.keepIt'),
       );
-      if (!(confirmed ?? false)) return;
+      if (!confirmed) return;
     }
     game.submit(
       DelistProduct(game.player, store: store.id, product: product.id),
@@ -939,15 +915,7 @@ class _ManagerCard extends StatelessWidget {
           company.director != null &&
           company.stores.any((other) => other.id == store.id),
     );
-    void brief() => showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => GameScope(
-        controller: game,
-        child: ManagerSheet(store: store),
-      ),
-    );
+    void brief() => showGameSheet(context, game, ManagerSheet(store: store));
     if (manager == null) {
       return Section(
         title: tr('store.manager'),
@@ -1044,14 +1012,7 @@ class _ManagerSheetState extends State<ManagerSheet> {
         if (content.formatChannels[option.format.index] == channel) option,
     ];
     final strategy =
-        _strategy ??
-        current?.strategy ??
-        strategies
-            .firstWhere(
-              (s) => s.marketPosition == Fx.zero,
-              orElse: () => strategies.first,
-            )
-            .id;
+        _strategy ?? current?.strategy ?? balancedStrategy(strategies);
     final duties =
         _duties ??
         current?.duties ??
@@ -1060,114 +1021,78 @@ class _ManagerSheetState extends State<ManagerSheet> {
             duty == ManagerDuty.ordering || duty == ManagerDuty.pricing,
         ];
     final wageIndex = game.wageLevel(widget.store.market);
-    Widget choice({
-      required bool selected,
-      required String title,
-      required String subtitle,
-      required VoidCallback onTap,
-    }) => ListTile(
-      contentPadding: EdgeInsets.zero,
-      selected: selected,
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: Icon(
-        selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+    return SheetFrame(
+      footer: FilledButton(
+        onPressed: duties.contains(true)
+            ? () {
+                game.submit(
+                  HireManager(
+                    game.player,
+                    store: widget.store.id,
+                    grade: grade,
+                    strategy: strategy,
+                    duties: duties,
+                  ),
+                );
+                Navigator.pop(context);
+              }
+            : null,
+        child: Text(
+          current == null
+              ? tr('common.hire')
+              : current.grade == grade
+              ? tr('common.updateBrief')
+              : tr('store.replaceManager'),
+        ),
       ),
-      onTap: onTap,
-    );
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.85,
-      maxChildSize: 0.95,
-      builder: (context, scroll) => Column(
-        children: [
-          Expanded(
-            child: ListView(
-              controller: scroll,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: [
-                Text(
-                  current == null
-                      ? tr('store.hireManager')
-                      : tr('store.briefManager'),
-                  style: theme.textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(tr('common.who'), style: theme.textTheme.titleSmall),
-                for (final option in grades)
-                  choice(
-                    selected: option.id == grade,
-                    title: tr('store.gradeLine', {
-                      'grade': option.name,
-                      'salary': money(option.salary.times(wageIndex)),
-                    }),
-                    subtitle: _misjudges(content, option),
-                    onTap: () => setState(() => _grade = option.id),
-                  ),
-                const SizedBox(height: 8),
-                Text(tr('store.strategy'), style: theme.textTheme.titleSmall),
-                for (final option in strategies)
-                  choice(
-                    selected: option.id == strategy,
-                    title: option.name,
-                    subtitle: _stance(option),
-                    onTap: () => setState(() => _strategy = option.id),
-                  ),
-                const SizedBox(height: 8),
-                Text(tr('store.duties'), style: theme.textTheme.titleSmall),
-                for (final duty in ManagerDuty.values)
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: duties[duty.index],
-                    title: Text(capitalized(dutyName(duty))),
-                    subtitle: Text(switch (duty) {
-                      ManagerDuty.ordering => tr('store.dutyHints.ordering'),
-                      ManagerDuty.pricing => tr('store.dutyHints.pricing'),
-                      ManagerDuty.assortment => tr(
-                        'store.dutyHints.assortment',
-                      ),
-                      ManagerDuty.staffing => tr('store.dutyHints.staffing'),
-                      ManagerDuty.investing => tr('store.dutyHints.investing'),
-                    }),
-                    onChanged: (on) => setState(
-                      () => _duties = [
-                        for (final d in ManagerDuty.values)
-                          d == duty ? on! : duties[d.index],
-                      ],
-                    ),
-                  ),
+      children: [
+        Text(
+          current == null ? tr('store.hireManager') : tr('store.briefManager'),
+          style: theme.textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        Text(tr('common.who'), style: theme.textTheme.titleSmall),
+        for (final option in grades)
+          ChoiceTile(
+            selected: option.id == grade,
+            title: tr('store.gradeLine', {
+              'grade': option.name,
+              'salary': money(option.salary.times(wageIndex)),
+            }),
+            subtitle: _misjudges(content, option),
+            onTap: () => setState(() => _grade = option.id),
+          ),
+        const SizedBox(height: 8),
+        Text(tr('store.strategy'), style: theme.textTheme.titleSmall),
+        for (final option in strategies)
+          ChoiceTile(
+            selected: option.id == strategy,
+            title: option.name,
+            subtitle: _stance(option),
+            onTap: () => setState(() => _strategy = option.id),
+          ),
+        const SizedBox(height: 8),
+        Text(tr('store.duties'), style: theme.textTheme.titleSmall),
+        for (final duty in ManagerDuty.values)
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: duties[duty.index],
+            title: Text(capitalized(dutyName(duty))),
+            subtitle: Text(switch (duty) {
+              ManagerDuty.ordering => tr('store.dutyHints.ordering'),
+              ManagerDuty.pricing => tr('store.dutyHints.pricing'),
+              ManagerDuty.assortment => tr('store.dutyHints.assortment'),
+              ManagerDuty.staffing => tr('store.dutyHints.staffing'),
+              ManagerDuty.investing => tr('store.dutyHints.investing'),
+            }),
+            onChanged: (on) => setState(
+              () => _duties = [
+                for (final d in ManagerDuty.values)
+                  d == duty ? on! : duties[d.index],
               ],
             ),
           ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-            child: FilledButton(
-              onPressed: duties.contains(true)
-                  ? () {
-                      game.submit(
-                        HireManager(
-                          game.player,
-                          store: widget.store.id,
-                          grade: grade,
-                          strategy: strategy,
-                          duties: duties,
-                        ),
-                      );
-                      Navigator.pop(context);
-                    }
-                  : null,
-              child: Text(
-                current == null
-                    ? tr('common.hire')
-                    : current.grade == grade
-                    ? tr('common.updateBrief')
-                    : tr('store.replaceManager'),
-              ),
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -1256,14 +1181,17 @@ class _Size extends StatelessWidget {
         ),
         if (canEnlarge)
           TextButton(
-            onPressed: () => _confirm(context, game),
+            onPressed: () => _confirmEnlarge(context, game),
             child: Text(tr('store.enlarge')),
           ),
       ],
     );
   }
 
-  Future<void> _confirm(BuildContext context, SimulationController game) async {
+  Future<void> _confirmEnlarge(
+    BuildContext context,
+    SimulationController game,
+  ) async {
     final content = game.content;
     final expansion = content.expansion;
     final site = content.sites[store.site.index];

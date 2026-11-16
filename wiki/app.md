@@ -55,16 +55,16 @@ listen, `GameScope.read(context)` in `initState`).
 [home.dart](../app/lib/src/home.dart): `HomeScreen`, `HomeTab` (holding,
 shop, finance, world, market, books), the clock bar, the pending bar, `AlertTile`,
 and an `AppLifecycleListener` that saves when the app goes to the
-background. File names keep the tabs' older names:
+background.
 
 | Tab | File | Main widgets |
 |---|---|---|
-| Holding | [screens/dashboard.dart](../app/lib/src/screens/dashboard.dart) | `DashboardScreen`: masthead, to-dos, last week, companies, brands, stores, news, profit bars |
-| Shop | [screens/store.dart](../app/lib/src/screens/store.dart), [screens/orders.dart](../app/lib/src/screens/orders.dart) | `StoreScreen` (shelves, running, staff, manager, marketing, size, conversion); `OrdersScreen`, `OrderSheet` (supplies) |
+| Holding | [screens/holding.dart](../app/lib/src/screens/holding.dart) | `HoldingScreen`: masthead, to-dos, last week, companies, brands, stores, news, profit bars |
+| Shop | [screens/shop.dart](../app/lib/src/screens/shop.dart), [screens/orders.dart](../app/lib/src/screens/orders.dart) | `ShopScreen` (shelves, running, staff, manager, marketing, size, conversion); `OrdersScreen`, `OrderSheet` (supplies) |
 | Finance | [screens/finance.dart](../app/lib/src/screens/finance.dart), [screens/financials.dart](../app/lib/src/screens/financials.dart) | `FinanceScreen`: company pages, director sheet and letters, borrowing, cushion, taxes, bargains; `FinancialsSection`: key figures, P&L, balance sheet, years |
-| World | [screens/market.dart](../app/lib/src/screens/market.dart), [screens/national.dart](../app/lib/src/screens/national.dart) | `MarketScreen`: economy, countries, competitors, cities, `NewBusiness` (start a business on any vacant site, waking its city); `NationalMap`: the country page and its ink map |
-| Market | [screens/exchange.dart](../app/lib/src/screens/exchange.dart) | `ExchangeScreen` (the owner's layout A): exchanges today, the portfolio, sectors with their price to earnings; `SectorPage`, `StockPage` (price and chart, what it rests on, analysts and management, who holds it, buy and sell), `ExchangePage` (an index, bought whole), `TradePage`, `PortfolioPage` (with the holding's loans); phase 2: `BidSection` on a stock's page, `BidPage` (mockup 1), `ControlPage` (mockup 2), `ExchangeEntry` on a company's page in Finance and `ListCompanyPage` (mockup 3), raiders and bids open on the tab (mockup 4) |
-| Books | [screens/reports.dart](../app/lib/src/screens/reports.dart) | `ReportsScreen`: periods, what changed, results, shoppers, products, research |
+| World | [screens/world.dart](../app/lib/src/screens/world.dart), [screens/national.dart](../app/lib/src/screens/national.dart) | `WorldScreen`: economy, countries, competitors, cities, `NewBusiness` (start a business on any vacant site, waking its city); `NationalMap`: the country page and its ink map |
+| Market | [screens/exchange.dart](../app/lib/src/screens/exchange.dart) | `ExchangeScreen` (the owner's layout A): exchanges today, the portfolio, sectors with their price to earnings; `SectorPage`, `StockPage` (price and chart, what it rests on, analysts and management, who holds it, buy and sell), `ExchangePage` (an index, bought whole), `TradePage`, `PortfolioPage` (with the holding's loans); phase 2: `BidSection` on a stock's page, `TakeoverBidPage` (mockup 1), `ControlPage` (mockup 2), `ExchangeEntry` on a company's page in Finance and `ListCompanyPage` (mockup 3), raiders and bids open on the tab (mockup 4) |
+| Books | [screens/books.dart](../app/lib/src/screens/books.dart) | `BooksScreen`: periods, what changed, results, shoppers, products, research |
 
 Other screens: [menu.dart](../app/lib/src/screens/menu.dart) (`MainMenu`:
 three slots, continue, new game, delete, language),
@@ -74,7 +74,7 @@ the holding's name), [factory.dart](../app/lib/src/screens/factory.dart)
 [sales_desk.dart](../app/lib/src/screens/sales_desk.dart) (a factory's
 sales desk in the owner's layout B: `SalesDeskEntry` on the factory page,
 `SalesDeskPage` with its market, contracts, open tenders, what lately won,
-independents and rival producers, `BidPage`, and `ContractPage` in the
+independents and rival producers, `TenderBidPage`, and `ContractPage` in the
 owner's layout A: terms, a chain's request, asking a new price, breaking),
 [software.dart](../app/lib/src/screens/software.dart) (`SoftwareSection` on
 the holding, `StartSoftwarePage`, and a software company's page in the
@@ -97,9 +97,9 @@ a closing dialog trips Flutter's semantics.
 | [financials.dart](../app/lib/src/financials.dart) | Company financials worked out in the app from month reports and balances: `Financials`, margins, ROIC, money tied up (`_tiedUp`, `_fitOut`) |
 | [commands.dart](../app/lib/src/commands.dart) | `describeCommand`: a pending command in words |
 | [letters.dart](../app/lib/src/letters.dart) | `directorLetters`, `memoSentence`: the director's monthly letter from memos |
-| [loans.dart](../app/lib/src/loans.dart) | `loanTerms` (12 to 84 months), `firstPayment`, the `LoanTerms` widget |
-| [format.dart](../app/lib/src/format.dart) | `money`, `percent`, dates, `refusalText`, `parseMoney`, names with articles (`aFormat`, `aManager`, …) |
-| [widgets.dart](../app/lib/src/widgets.dart) | `GameScope`, `Section`, `SubPages`, `IndexRow`, `TradeMark`, `Line`, `Hint`, `CountStepper` |
+| [loans.dart](../app/lib/src/loans.dart) | `loanTerms` (12 to 84 months), `firstPayment`, `newBusinessFunding` (what a new shop or factory borrows), and the widgets of a purchase: `LoanTerms`, `CapitalField`, `BorrowSwitch` |
+| [format.dart](../app/lib/src/format.dart) | `money`, `percent`, dates, `refusalText`, `parseMoney`, names with articles (`aFormat`, `aManager`, …), `stanceAdvice`, `balancedStrategy` (the strategy a brief starts on) |
+| [widgets.dart](../app/lib/src/widgets.dart) | `GameScope`, `Section`, `SubPages`, `IndexRow`, `TradeMark`, `Line`, `Hint`, `CountStepper`; `confirm` (every yes-or-no question), `askAmount`; `showGameSheet`, `SheetFrame` and `ChoiceTile` for the director's, manager's and order sheets |
 | [visuals.dart](../app/lib/src/visuals.dart) | `AnimatedMoney`, `Pill`, `Stamp`, `Sparkline`, `BarChart`, `SplitBar`, `TrendChart`, `FadeSlideIn` |
 | [outlines.dart](../app/lib/src/outlines.dart) | `parseOutlines`, `loadOutlines`, `outlineOf`, `CountryOutline`, `RegionOutline` |
 | [saves.dart](../app/lib/src/saves.dart) | Save slots; see [state-and-saves.md](state-and-saves.md) |

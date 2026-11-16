@@ -325,8 +325,9 @@ class SimulationController extends ChangeNotifier {
         : sum + _worthOf(company) - company.netAssets,
   );
 
-  /// Who [owner] is, in words, for the news.
-  String _ownerName(ContentDb content, int owner) {
+  /// Who [owner] of shares is, in words: the player's holding, one of their
+  /// companies, a raider or a chain.
+  String ownerName(int owner) {
     if (owner == holdingOwner) return holdingName ?? tr('stocks.yourHolding');
     if (owner >= 0) return companyName(CompanyId(owner));
     if (isRaider(owner)) {
@@ -1269,7 +1270,7 @@ class SimulationController extends ChangeNotifier {
               add(
                 AlertKind.offer,
                 tr('alerts.bidOpened', {
-                  'bidder': _ownerName(content, bid.bidder),
+                  'bidder': ownerName(bid.bidder),
                   'name': target.name,
                   'premium': percent(
                     Fx.raw(
@@ -1297,7 +1298,7 @@ class SimulationController extends ChangeNotifier {
               add(
                 AlertKind.economy,
                 tr(won ? 'alerts.bidWon' : 'alerts.bidFailed', {
-                  'bidder': _ownerName(content, bid.bidder),
+                  'bidder': ownerName(bid.bidder),
                   'name': target.name,
                 }),
               );

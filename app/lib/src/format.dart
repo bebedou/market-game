@@ -169,6 +169,15 @@ String aStudy(ResearchTierDef tier) =>
 String? stanceAdvice(StrategyDef strategy) =>
     trMaybe('scenario.strategies.${strategy.key}.advice');
 
+/// The one of [strategies] that prices with the market, else the first:
+/// what a brief starts on.
+StrategyId balancedStrategy(List<StrategyDef> strategies) => strategies
+    .firstWhere(
+      (s) => s.marketPosition == Fx.zero,
+      orElse: () => strategies.first,
+    )
+    .id;
+
 /// How far a director may grow a company, as a short phrase.
 String growthName(Growth growth) => tr('terms.growth.${growth.name}');
 

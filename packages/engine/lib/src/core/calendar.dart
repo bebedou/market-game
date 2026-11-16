@@ -41,6 +41,17 @@ extension type const Day(int number) {
 
   bool get isFirstOfMonth => date.day == 1;
 
+  /// The first of the month after this day's.
+  Day get firstOfNextMonth {
+    final (:year, :month, day: _) = date;
+    return month == 12
+        ? Day.fromDate(year + 1, 1, 1)
+        : Day.fromDate(year, month + 1, 1);
+  }
+
+  /// This day if it is the first of a month, else the first of the next.
+  Day get firstOfMonthOnOrAfter => isFirstOfMonth ? this : firstOfNextMonth;
+
   CivilDate get date {
     final z = number + 719468;
     final era = (z >= 0 ? z : z - 146096) ~/ 146097;

@@ -11,8 +11,8 @@ import '../visuals.dart';
 import '../widgets.dart';
 import 'exchange.dart' show ExchangeEntry;
 import 'financials.dart';
-import 'market.dart';
-import 'store.dart';
+import 'shop.dart';
+import 'world.dart';
 
 /// Money and deals: each company's accounts, borrowing and paying
 /// yourself, the taxes, rival stores going cheap, and the player's stores
@@ -196,16 +196,7 @@ void openCompanyPage(BuildContext context, CompanyView company) =>
 
 /// Opens the sheet that hires [company]'s director or changes their brief.
 void showDirectorSheet(BuildContext context, CompanyView company) {
-  final game = context.game;
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (_) => GameScope(
-      controller: game,
-      child: _DirectorSheet(company: company),
-    ),
-  );
+  showGameSheet(context, context.game, _DirectorSheet(company: company));
 }
 
 /// Rival stores losing money, a month or more after opening, cheapest
@@ -381,14 +372,10 @@ class _CompanyCard extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () => showModalBottomSheet<void>(
-                  context: context,
-                  isScrollControlled: true,
-                  showDragHandle: true,
-                  builder: (_) => GameScope(
-                    controller: game,
-                    child: _CushionSheet(company: company),
-                  ),
+                onPressed: () => showGameSheet(
+                  context,
+                  game,
+                  _CushionSheet(company: company),
                 ),
                 child: Text(tr('finance.change')),
               ),
@@ -446,14 +433,10 @@ class _CompanyCard extends StatelessWidget {
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.account_balance, size: 18),
-                onPressed: () => showModalBottomSheet<void>(
-                  context: context,
-                  isScrollControlled: true,
-                  showDragHandle: true,
-                  builder: (_) => GameScope(
-                    controller: game,
-                    child: _BorrowSheet(company: company),
-                  ),
+                onPressed: () => showGameSheet(
+                  context,
+                  game,
+                  _BorrowSheet(company: company),
                 ),
                 label: Text(tr('finance.borrow')),
               ),
@@ -655,14 +638,7 @@ class _DirectorSheetState extends State<_DirectorSheet> {
     ];
     final strategies = fitting.isEmpty ? content.strategies : fitting;
     final strategy =
-        _strategy ??
-        current?.strategy ??
-        strategies
-            .firstWhere(
-              (s) => s.marketPosition == Fx.zero,
-              orElse: () => strategies.first,
-            )
-            .id;
+        _strategy ?? current?.strategy ?? balancedStrategy(strategies);
     final wageIndex = game.view
         .economy(game.countryOfCompany(widget.company))
         .wageIndex;
@@ -735,385 +711,324 @@ class _DirectorSheetState extends State<_DirectorSheet> {
     }
     Money monthly(DirectorGradeDef option) =>
         option.salary.times(wageIndex).timesInt(30);
-    Widget choice({
-      required bool selected,
-      required String title,
-      String? subtitle,
-      required VoidCallback onTap,
-    }) => ListTile(
-      contentPadding: EdgeInsets.zero,
-      selected: selected,
-      title: Text(title),
-      subtitle: subtitle == null ? null : Text(subtitle),
-      trailing: Icon(
-        selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-      ),
-      onTap: onTap,
-    );
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.85,
-      maxChildSize: 0.95,
-      builder: (context, scroll) => Column(
-        children: [
-          Expanded(
-            child: ListView(
-              controller: scroll,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: [
-                Text(
-                  current == null
-                      ? tr('common.hireDirector')
-                      : tr('finance.briefDirector'),
-                  style: theme.textTheme.titleLarge,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  tr('finance.runsFor', {
-                    'company': game.companyName(widget.company.id),
-                  }),
-                  style: theme.textTheme.bodySmall,
-                ),
-                const SizedBox(height: 8),
-                Text(tr('common.who'), style: theme.textTheme.titleSmall),
-                for (final option in grades)
-                  choice(
-                    selected: option.id == grade,
-                    title: tr('finance.gradeLine', {
-                      'grade': option.name,
-                      'salary': money(monthly(option), cents: false),
-                    }),
-                    subtitle: tr('finance.gradeHint', {
-                      'cuts': percent(
-                        Fx.one - content.directors!.kept(option.id),
-                        decimals: 0,
-                      ),
-                      'error': percent(
-                        content.directors!.judgmentError *
-                            (Fx.one - option.skill),
-                        decimals: 0,
-                      ),
-                    }),
-                    onTap: () => setState(() => _grade = option.id),
-                  ),
-                const SizedBox(height: 8),
-                Text(tr('finance.howFar'), style: theme.textTheme.titleSmall),
-                for (final option in Growth.values)
-                  choice(
-                    selected: option == growth,
-                    title: switch (option) {
-                      Growth.none => tr('finance.growth.none'),
-                      Growth.invest => tr('finance.growth.invest'),
-                      Growth.open => tr('finance.growth.open'),
-                      Growth.buy => tr('finance.growth.buy'),
-                    },
-                    subtitle: switch (option) {
-                      Growth.none => tr('finance.growthHints.none'),
-                      Growth.invest => tr('finance.growthHints.invest'),
-                      Growth.open => tr('finance.growthHints.open'),
-                      Growth.buy => tr('finance.growthHints.buy'),
-                    },
-                    onTap: () => setState(() => _growth = option),
-                  ),
-                if (growth != Growth.none) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    tr('finance.payingForIt'),
-                    style: theme.textTheme.titleSmall,
-                  ),
-                  choice(
-                    selected: !borrows,
-                    title: tr('finance.onlyEarnings'),
-                    onTap: () => setState(() => _borrows = false),
-                  ),
-                  choice(
-                    selected: borrows,
-                    title: tr('finance.borrowShort'),
-                    subtitle: growth == Growth.buy
-                        ? tr('finance.onEarningsBuy', {
-                            'years': buyoutPaybackMonths ~/ 12,
-                          })
-                        : tr('finance.onEarnings'),
-                    onTap: () => setState(() => _borrows = true),
-                  ),
-                ],
-                if (nationally) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    tr('finance.acrossCountry'),
-                    style: theme.textTheme.titleSmall,
-                  ),
-                  Text(tr('finance.growRate')),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      for (final option in _rates)
-                        ChoiceChip(
-                          label: Text(
-                            option == Fx.zero
-                                ? tr('finance.rateOff')
-                                : percent(option, decimals: 0),
-                          ),
-                          selected: !auto && rate == option,
-                          onSelected: (_) => setState(() {
-                            _auto = false;
-                            _rate = option;
-                          }),
-                        ),
-                      ChoiceChip(
-                        label: Text(tr('finance.rateAsJudged')),
-                        selected: auto,
-                        onSelected: (_) => setState(() => _auto = true),
-                      ),
-                    ],
-                  ),
-                  Hint(tr('finance.growRateHint')),
-                  if (growsAtAll)
-                    Line(
-                      tr('finance.thisMonth'),
-                      tr('finance.aboutShops', {
-                        'count': planned.opens,
-                        'total': planned.shops,
-                      }),
-                    ),
-                  Line(
-                    capitalized(
-                      tr('finance.runsWellUpTo', {
-                        'director': aDirector(gradeDef),
-                      }),
-                    ),
-                    tr('finance.aMonth', {
-                      'rate': percent(gradeDef.growth, decimals: 1),
-                    }),
-                  ),
-                  Line(
-                    tr('finance.slowsPast'),
-                    tr('finance.ofItsTrade', {
-                      'share': percent(
-                        content.directors!.criticalShare,
-                        decimals: 0,
-                      ),
-                    }),
-                  ),
-                  if (!auto && rate > gradeDef.growth) ...[
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Stamp(tr('finance.beyondPace')),
-                    ),
-                    Hint(tr('finance.beyondPaceHint')),
-                  ],
-                  Hint(
-                    tr('finance.nationalPaceHint', {
-                      'cost': money(
-                        national.fitOut.times(countries.first.priceIndex),
-                        cents: false,
-                      ),
-                    }),
-                  ),
-                  if (growsAtAll) ...[
-                    for (final country in countries) ...[
-                      if (countries.length > 1)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6, bottom: 2),
-                          child: Text(
-                            content.countries[country.country!.index].name,
-                            style: theme.textTheme.labelSmall,
-                          ),
-                        ),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          for (final region in country.def.regions)
-                            FilterChip(
-                              label: Text(region.name),
-                              selected: picked.contains(region.key),
-                              onSelected: (on) => setState(
-                                () => _regions = on
-                                    ? ({...picked, region.key})
-                                    : ({...picked}..remove(region.key)),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                    Hint(
-                      picked.isEmpty
-                          ? tr('finance.nationalAnywhere')
-                          : tr('finance.nationalOnly', {
-                              'count': picked.length,
-                            }),
-                    ),
-                  ],
-                  if (hasBlocks) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      tr('finance.nationalThisYear'),
-                      style: theme.textTheme.labelSmall,
-                    ),
-                    Line(
-                      tr('market.openedThisYear'),
-                      tr('market.openedAndClosed', {
-                        'opened': opened,
-                        'closed': closed,
-                      }),
-                    ),
-                    Line(
-                      tr('finance.fittingOut'),
-                      money(Money.zero - fittingOut, cents: false),
-                    ),
-                    Line(
-                      tr('finance.earnedByThem'),
-                      signedMoney(earned, cents: false),
-                      color: gainColor(context, earned.cents.sign),
-                    ),
-                  ],
-                ],
-                if (content.buyingTerms != null &&
-                    widget.company.goodsBought > Money.zero) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    tr('finance.whatSizeBuys'),
-                    style: theme.textTheme.titleSmall,
-                  ),
-                  Line(
-                    tr('finance.buyingTerms'),
-                    '−${percent(widget.company.buyingDiscount)}',
-                    color: Ledger.of(context).gain,
-                    hint: tr('finance.boughtThisYear', {
-                      'amount': money(widget.company.goodsBought, cents: false),
-                    }),
-                  ),
-                  Line(
-                    tr('finance.atTwice', {
-                      'amount': money(
-                        widget.company.goodsBought.timesInt(2),
-                        cents: false,
-                      ),
-                    }),
-                    '−${percent(buyingDiscountAt(content, widget.company.goodsBought.timesInt(2)))}',
-                  ),
-                  if (biggest != null) ...[
-                    Line(
-                      tr('finance.nationalMarketing'),
-                      percent(biggest.marketing),
-                      hint: current == null
-                          ? tr('finance.marketingStrategy')
-                          : tr('finance.marketingDirector'),
-                    ),
-                    Line(
-                      tr('finance.brandPull'),
-                      '+${percent(biggest.brandPull)}',
-                      color: Ledger.of(context).gain,
-                    ),
-                  ],
-                  Hint(tr('finance.whatSizeBuysHint')),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  tr('finance.theProfit'),
-                  style: theme.textTheme.titleSmall,
-                ),
-                choice(
-                  selected: !payout,
-                  title: tr('finance.keepInCompany'),
-                  onTap: () => setState(() => _payout = false),
-                ),
-                choice(
-                  selected: payout,
-                  title: tr('finance.sendMe'),
-                  subtitle: tr('finance.sendMeHint'),
-                  onTap: () => setState(() => _payout = true),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  tr('finance.managersHire'),
-                  style: theme.textTheme.titleSmall,
-                ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 6,
-                  children: [
-                    for (final option in managers)
-                      ChoiceChip(
-                        label: Text(
-                          tr('store.gradeLine', {
-                            'grade': option.name,
-                            'salary': money(option.salary.times(wageIndex)),
-                          }),
-                        ),
-                        selected: option.id == managerGrade,
-                        onSelected: (_) =>
-                            setState(() => _managerGrade = option.id),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  children: [
-                    for (final option in strategies)
-                      ChoiceChip(
-                        label: Text(option.name),
-                        selected: option.id == strategy,
-                        onSelected: (_) =>
-                            setState(() => _strategy = option.id),
-                      ),
-                  ],
-                ),
-                if (stanceAdvice(content.strategies[strategy.index])
-                    case final advice?)
-                  Hint(advice),
-                const SizedBox(height: 12),
+    return SheetFrame(
+      footer: FilledButton(
+        onPressed: () {
+          game.submit(
+            HireDirector(
+              game.player,
+              company: widget.company.id,
+              grade: grade,
+              strategy: strategy,
+              managerGrade: managerGrade,
+              growth: growth,
+              payout: payout,
+              borrows: borrows,
+              nationalRate: nationally && !auto ? rate : Fx.zero,
+              nationalAuto: nationally && auto,
+              nationalRegions: [
+                if (nationally && growsAtAll)
+                  for (final country in countries)
+                    for (final region in country.def.regions)
+                      if (picked.contains(region.key)) region.key,
               ],
             ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-            child: FilledButton(
-              onPressed: () {
-                game.submit(
-                  HireDirector(
-                    game.player,
-                    company: widget.company.id,
-                    grade: grade,
-                    strategy: strategy,
-                    managerGrade: managerGrade,
-                    growth: growth,
-                    payout: payout,
-                    borrows: borrows,
-                    nationalRate: nationally && !auto ? rate : Fx.zero,
-                    nationalAuto: nationally && auto,
-                    nationalRegions: [
-                      if (nationally && growsAtAll)
-                        for (final country in countries)
-                          for (final region in country.def.regions)
-                            if (picked.contains(region.key)) region.key,
-                    ],
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              child: Text(
-                current == null
-                    ? tr('finance.hireFor', {
-                        'amount': money(
-                          monthly(grades[grade.index]),
-                          cents: false,
-                        ),
-                      })
-                    : current.grade == grade
-                    ? tr('common.updateBrief')
-                    : tr('finance.replaceDirector'),
+          );
+          Navigator.pop(context);
+        },
+        child: Text(
+          current == null
+              ? tr('finance.hireFor', {
+                  'amount': money(monthly(grades[grade.index]), cents: false),
+                })
+              : current.grade == grade
+              ? tr('common.updateBrief')
+              : tr('finance.replaceDirector'),
+        ),
+      ),
+      children: [
+        Text(
+          current == null
+              ? tr('common.hireDirector')
+              : tr('finance.briefDirector'),
+          style: theme.textTheme.titleLarge,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          tr('finance.runsFor', {
+            'company': game.companyName(widget.company.id),
+          }),
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        Text(tr('common.who'), style: theme.textTheme.titleSmall),
+        for (final option in grades)
+          ChoiceTile(
+            selected: option.id == grade,
+            title: tr('finance.gradeLine', {
+              'grade': option.name,
+              'salary': money(monthly(option), cents: false),
+            }),
+            subtitle: tr('finance.gradeHint', {
+              'cuts': percent(
+                Fx.one - content.directors!.kept(option.id),
+                decimals: 0,
               ),
-            ),
+              'error': percent(
+                content.directors!.judgmentError * (Fx.one - option.skill),
+                decimals: 0,
+              ),
+            }),
+            onTap: () => setState(() => _grade = option.id),
+          ),
+        const SizedBox(height: 8),
+        Text(tr('finance.howFar'), style: theme.textTheme.titleSmall),
+        for (final option in Growth.values)
+          ChoiceTile(
+            selected: option == growth,
+            title: switch (option) {
+              Growth.none => tr('finance.growth.none'),
+              Growth.invest => tr('finance.growth.invest'),
+              Growth.open => tr('finance.growth.open'),
+              Growth.buy => tr('finance.growth.buy'),
+            },
+            subtitle: switch (option) {
+              Growth.none => tr('finance.growthHints.none'),
+              Growth.invest => tr('finance.growthHints.invest'),
+              Growth.open => tr('finance.growthHints.open'),
+              Growth.buy => tr('finance.growthHints.buy'),
+            },
+            onTap: () => setState(() => _growth = option),
+          ),
+        if (growth != Growth.none) ...[
+          const SizedBox(height: 8),
+          Text(tr('finance.payingForIt'), style: theme.textTheme.titleSmall),
+          ChoiceTile(
+            selected: !borrows,
+            title: tr('finance.onlyEarnings'),
+            onTap: () => setState(() => _borrows = false),
+          ),
+          ChoiceTile(
+            selected: borrows,
+            title: tr('finance.borrowShort'),
+            subtitle: growth == Growth.buy
+                ? tr('finance.onEarningsBuy', {
+                    'years': buyoutPaybackMonths ~/ 12,
+                  })
+                : tr('finance.onEarnings'),
+            onTap: () => setState(() => _borrows = true),
           ),
         ],
-      ),
+        if (nationally) ...[
+          const SizedBox(height: 8),
+          Text(tr('finance.acrossCountry'), style: theme.textTheme.titleSmall),
+          Text(tr('finance.growRate')),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final option in _rates)
+                ChoiceChip(
+                  label: Text(
+                    option == Fx.zero
+                        ? tr('finance.rateOff')
+                        : percent(option, decimals: 0),
+                  ),
+                  selected: !auto && rate == option,
+                  onSelected: (_) => setState(() {
+                    _auto = false;
+                    _rate = option;
+                  }),
+                ),
+              ChoiceChip(
+                label: Text(tr('finance.rateAsJudged')),
+                selected: auto,
+                onSelected: (_) => setState(() => _auto = true),
+              ),
+            ],
+          ),
+          Hint(tr('finance.growRateHint')),
+          if (growsAtAll)
+            Line(
+              tr('finance.thisMonth'),
+              tr('finance.aboutShops', {
+                'count': planned.opens,
+                'total': planned.shops,
+              }),
+            ),
+          Line(
+            capitalized(
+              tr('finance.runsWellUpTo', {'director': aDirector(gradeDef)}),
+            ),
+            tr('finance.aMonth', {
+              'rate': percent(gradeDef.growth, decimals: 1),
+            }),
+          ),
+          Line(
+            tr('finance.slowsPast'),
+            tr('finance.ofItsTrade', {
+              'share': percent(content.directors!.criticalShare, decimals: 0),
+            }),
+          ),
+          if (!auto && rate > gradeDef.growth) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Stamp(tr('finance.beyondPace')),
+            ),
+            Hint(tr('finance.beyondPaceHint')),
+          ],
+          Hint(
+            tr('finance.nationalPaceHint', {
+              'cost': money(
+                national.fitOut.times(countries.first.priceIndex),
+                cents: false,
+              ),
+            }),
+          ),
+          if (growsAtAll) ...[
+            for (final country in countries) ...[
+              if (countries.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, bottom: 2),
+                  child: Text(
+                    content.countries[country.country!.index].name,
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  for (final region in country.def.regions)
+                    FilterChip(
+                      label: Text(region.name),
+                      selected: picked.contains(region.key),
+                      onSelected: (on) => setState(
+                        () => _regions = on
+                            ? ({...picked, region.key})
+                            : ({...picked}..remove(region.key)),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+            Hint(
+              picked.isEmpty
+                  ? tr('finance.nationalAnywhere')
+                  : tr('finance.nationalOnly', {'count': picked.length}),
+            ),
+          ],
+          if (hasBlocks) ...[
+            const SizedBox(height: 6),
+            Text(
+              tr('finance.nationalThisYear'),
+              style: theme.textTheme.labelSmall,
+            ),
+            Line(
+              tr('market.openedThisYear'),
+              tr('market.openedAndClosed', {
+                'opened': opened,
+                'closed': closed,
+              }),
+            ),
+            Line(
+              tr('finance.fittingOut'),
+              money(Money.zero - fittingOut, cents: false),
+            ),
+            Line(
+              tr('finance.earnedByThem'),
+              signedMoney(earned, cents: false),
+              color: gainColor(context, earned.cents.sign),
+            ),
+          ],
+        ],
+        if (content.buyingTerms != null &&
+            widget.company.goodsBought > Money.zero) ...[
+          const SizedBox(height: 8),
+          Text(tr('finance.whatSizeBuys'), style: theme.textTheme.titleSmall),
+          Line(
+            tr('finance.buyingTerms'),
+            '−${percent(widget.company.buyingDiscount)}',
+            color: Ledger.of(context).gain,
+            hint: tr('finance.boughtThisYear', {
+              'amount': money(widget.company.goodsBought, cents: false),
+            }),
+          ),
+          Line(
+            tr('finance.atTwice', {
+              'amount': money(
+                widget.company.goodsBought.timesInt(2),
+                cents: false,
+              ),
+            }),
+            '−${percent(buyingDiscountAt(content, widget.company.goodsBought.timesInt(2)))}',
+          ),
+          if (biggest != null) ...[
+            Line(
+              tr('finance.nationalMarketing'),
+              percent(biggest.marketing),
+              hint: current == null
+                  ? tr('finance.marketingStrategy')
+                  : tr('finance.marketingDirector'),
+            ),
+            Line(
+              tr('finance.brandPull'),
+              '+${percent(biggest.brandPull)}',
+              color: Ledger.of(context).gain,
+            ),
+          ],
+          Hint(tr('finance.whatSizeBuysHint')),
+        ],
+        const SizedBox(height: 8),
+        Text(tr('finance.theProfit'), style: theme.textTheme.titleSmall),
+        ChoiceTile(
+          selected: !payout,
+          title: tr('finance.keepInCompany'),
+          onTap: () => setState(() => _payout = false),
+        ),
+        ChoiceTile(
+          selected: payout,
+          title: tr('finance.sendMe'),
+          subtitle: tr('finance.sendMeHint'),
+          onTap: () => setState(() => _payout = true),
+        ),
+        const SizedBox(height: 8),
+        Text(tr('finance.managersHire'), style: theme.textTheme.titleSmall),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          children: [
+            for (final option in managers)
+              ChoiceChip(
+                label: Text(
+                  tr('store.gradeLine', {
+                    'grade': option.name,
+                    'salary': money(option.salary.times(wageIndex)),
+                  }),
+                ),
+                selected: option.id == managerGrade,
+                onSelected: (_) => setState(() => _managerGrade = option.id),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          children: [
+            for (final option in strategies)
+              ChoiceChip(
+                label: Text(option.name),
+                selected: option.id == strategy,
+                onSelected: (_) => setState(() => _strategy = option.id),
+              ),
+          ],
+        ),
+        if (stanceAdvice(content.strategies[strategy.index]) case final advice?)
+          Hint(advice),
+        const SizedBox(height: 12),
+      ],
     );
   }
 }

@@ -1,7 +1,6 @@
 import '../accounting/ledger.dart';
 import '../content/content_db.dart';
 import '../core/calendar.dart';
-import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
@@ -45,17 +44,10 @@ Valuation? valueStore(WorldState world, ContentDb content, Store store) {
   for (final product in store.stock) {
     stock += product.value;
   }
-  final age = world.today.number - store.opensOn.number;
-  final used = age <= 0
-      ? Fx.zero
-      : age >= terms.fittingsLifeDays
-      ? Fx.one
-      : Fx.raw(mulDivRound(age, Fx.scale, terms.fittingsLifeDays));
-  final wear = (Fx.one - terms.fittingsResidual) * used;
   final fittings = site.openingCost
       .times(format.fitOut)
       .times(level)
-      .times(Fx.one - wear);
+      .times(terms.fittingsLeft(world.today.number - store.opensOn.number));
   final held = stock + fittings;
   final earnings = storeEarnings(world, content, store);
   if (earnings == null) {
@@ -66,16 +58,11 @@ Valuation? valueStore(WorldState world, ContentDb content, Store store) {
       price: held,
     );
   }
-  final excess = earnings - held.times(terms.tangibleReturn);
-  final price =
-      held +
-      Money(mulDivRound(excess.cents, Fx.scale, terms.capitalization.raw));
-  final floor = held.times(terms.distressFloor);
   return (
     stock: stock,
     fittings: fittings,
     earnings: earnings,
-    price: price > floor ? price : floor,
+    price: terms.askingPrice(held, earnings),
   );
 }
 
@@ -236,12 +223,9 @@ Company? bestBuyer(
 Valuation? valueFactory(WorldState world, ContentDb content, Factory factory) {
   final terms = content.acquisitions;
   if (terms == null || !factory.runsOn(world.today)) return null;
-  final age = world.today.number - factory.opensOn.number;
-  final used = age >= terms.fittingsLifeDays
-      ? Fx.one
-      : Fx.raw(mulDivRound(age, Fx.scale, terms.fittingsLifeDays));
-  final wear = (Fx.one - terms.fittingsResidual) * used;
-  final fittings = factory.builtFor.times(Fx.one - wear);
+  final fittings = factory.builtFor.times(
+    terms.fittingsLeft(world.today.number - factory.opensOn.number),
+  );
   final earnings = factoryEarnings(world, content, factory);
   if (earnings == null) {
     return (
@@ -251,16 +235,11 @@ Valuation? valueFactory(WorldState world, ContentDb content, Factory factory) {
       price: fittings,
     );
   }
-  final excess = earnings - fittings.times(terms.tangibleReturn);
-  final price =
-      fittings +
-      Money(mulDivRound(excess.cents, Fx.scale, terms.capitalization.raw));
-  final floor = fittings.times(terms.distressFloor);
   return (
     stock: Money.zero,
     fittings: fittings,
     earnings: earnings,
-    price: price > floor ? price : floor,
+    price: terms.askingPrice(fittings, earnings),
   );
 }
 

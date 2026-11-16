@@ -91,15 +91,10 @@ NationalValue? _value(
   final held = fittings.times(
     Fx.one - Fx.raw((Fx.one - terms.fittingsResidual).raw ~/ 2),
   );
-  final excess = earnings - held.times(terms.tangibleReturn);
-  final price =
-      held +
-      Money(mulDivRound(excess.cents, Fx.scale, terms.capitalization.raw));
-  final floor = held.times(terms.distressFloor);
   return (
     earnings: earnings,
     fittings: held,
-    price: price > floor ? price : floor,
+    price: terms.askingPrice(held, earnings),
   );
 }
 

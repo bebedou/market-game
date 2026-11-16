@@ -9,14 +9,14 @@ import '../visuals.dart';
 import '../widgets.dart';
 
 /// Weekly and monthly results, why they changed, and market research.
-class ReportsScreen extends StatefulWidget {
-  const ReportsScreen({super.key});
+class BooksScreen extends StatefulWidget {
+  const BooksScreen({super.key});
 
   @override
-  State<ReportsScreen> createState() => _ReportsScreenState();
+  State<BooksScreen> createState() => _BooksScreenState();
 }
 
-class _ReportsScreenState extends State<ReportsScreen> {
+class _BooksScreenState extends State<BooksScreen> {
   ReportPeriod _period = ReportPeriod.week;
 
   /// The start of the report picked; null for the latest complete one.

@@ -480,31 +480,21 @@ class _Team extends StatelessWidget {
     SimulationController game,
     KeyPersonView person,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(tr('lab.letGo')),
-        content: Text(tr('lab.letGoConfirm', {'person': person.name})),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(tr('common.cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(tr('lab.letGo')),
-          ),
-        ],
-      ),
+    final confirmed = await confirm(
+      context,
+      title: tr('lab.letGo'),
+      body: tr('lab.letGoConfirm', {'person': person.name}),
+      action: tr('lab.letGo'),
     );
-    if (confirmed ?? false) {
+    if (confirmed) {
       game.submit(DismissKeyPerson(game.player, person: person.id));
     }
   }
 }
 
-/// A key person on a line: their name, role and what it does, how they
-/// stand, their level as filled dots, their pay, and an action.
+/// A key person on a line: their name, role and what it does, in a lab or
+/// a [software] company, how they stand, their level as filled dots, their
+/// pay, and an action.
 class PersonRow extends StatelessWidget {
   const PersonRow({
     super.key,
@@ -512,24 +502,35 @@ class PersonRow extends StatelessWidget {
     required this.status,
     required this.pay,
     this.action,
+    this.software = false,
   });
 
   final KeyPersonView person;
   final String status;
+
+  /// What they are paid a month where they work.
   final Money pay;
   final Widget? action;
+
+  /// Whether they work for a software company, not a lab.
+  final bool software;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final levels = context.game.content.factories!.labs!.levels.length;
+    final content = context.game.content;
+    final levels = software
+        ? content.software!.levels.length
+        : content.factories!.labs!.levels.length;
     final role = switch (person.role) {
       KeyRole.engineer => tr('lab.engineer'),
       KeyRole.designer => tr('lab.designer'),
     };
-    final does = switch (person.role) {
-      KeyRole.engineer => tr('lab.engineerDoes'),
-      KeyRole.designer => tr('lab.designerDoes'),
+    final does = switch ((person.role, software)) {
+      (KeyRole.engineer, false) => tr('lab.engineerDoes'),
+      (KeyRole.designer, false) => tr('lab.designerDoes'),
+      (KeyRole.engineer, true) => tr('software.engineerDoes'),
+      (KeyRole.designer, true) => tr('software.designerDoes'),
     };
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),

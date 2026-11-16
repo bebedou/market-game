@@ -833,15 +833,12 @@ final class CountryEconomy {
       }
     }
     monthsRun++;
-    final date = start.date;
-    if (date.month == 12) {
+    if (start.date.month == 12) {
       for (final country in countries) {
         _newYear(country);
       }
     }
-    today = date.month == 12
-        ? Day.fromDate(date.year + 1, 1, 1)
-        : Day.fromDate(date.year, date.month + 1, 1);
+    today = start.firstOfNextMonth;
   }
 
   void _turnCycle(Day start) {

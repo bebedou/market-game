@@ -301,6 +301,110 @@ class Hint extends StatelessWidget {
 Color? gainColor(BuildContext context, int sign) =>
     sign == 0 ? null : gainTone(context, sign);
 
+/// Asks [title] with [body], to go ahead with [action] or not: true to go
+/// ahead. [keep] names the way out, "Cancel" unless given.
+Future<bool> confirm(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String action,
+  String? keep,
+}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(keep ?? tr('common.cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(action),
+          ),
+        ],
+      ),
+    ) ??
+    false;
+
+/// Opens [sheet] from the bottom of the screen, as tall as it needs, with
+/// [game] below it as on the page it was opened from.
+Future<void> showGameSheet(
+  BuildContext context,
+  SimulationController game,
+  Widget sheet,
+) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (_) => GameScope(controller: game, child: sheet),
+);
+
+/// A sheet of choices: [children] scroll, and [footer], such as the button
+/// that acts on them, stays below a rule.
+class SheetFrame extends StatelessWidget {
+  const SheetFrame({super.key, required this.children, required this.footer});
+
+  final List<Widget> children;
+  final Widget footer;
+
+  @override
+  Widget build(BuildContext context) => DraggableScrollableSheet(
+    expand: false,
+    initialChildSize: 0.85,
+    maxChildSize: 0.95,
+    builder: (context, scroll) => Column(
+      children: [
+        Expanded(
+          child: ListView(
+            controller: scroll,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            children: children,
+          ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          child: footer,
+        ),
+      ],
+    ),
+  );
+}
+
+/// One of a few options, picked with a radio mark.
+class ChoiceTile extends StatelessWidget {
+  const ChoiceTile({
+    super.key,
+    required this.selected,
+    required this.title,
+    this.subtitle,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    selected: selected,
+    title: Text(title),
+    subtitle: switch (subtitle) {
+      final subtitle? => Text(subtitle),
+      null => null,
+    },
+    trailing: Icon(
+      selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+    ),
+    onTap: onTap,
+  );
+}
+
 /// Asks for an amount of money. Null if cancelled.
 Future<Money?> askAmount(
   BuildContext context, {

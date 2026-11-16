@@ -730,6 +730,29 @@ final class AcquisitionDef {
 
   /// The least days between an AI owner's purchases or openings.
   final int intervalDays;
+
+  /// What is left of fittings' cost after [ageDays] of wear, as a share:
+  /// all of it new, down to [fittingsResidual] after [fittingsLifeDays].
+  Fx fittingsLeft(int ageDays) {
+    final used = ageDays <= 0
+        ? Fx.zero
+        : ageDays >= fittingsLifeDays
+        ? Fx.one
+        : Fx.raw(mulDivRound(ageDays, Fx.scale, fittingsLifeDays));
+    return Fx.one - (Fx.one - fittingsResidual) * used;
+  }
+
+  /// The asking price of [held], fittings and any stock, that earn
+  /// [earnings] a year: [held], plus what they earn beyond [tangibleReturn]
+  /// on it divided by [capitalization], and never under [distressFloor] of
+  /// it.
+  Money askingPrice(Money held, Money earnings) {
+    final excess = earnings - held.times(tangibleReturn);
+    final price =
+        held + Money(mulDivRound(excess.cents, Fx.scale, capitalization.raw));
+    final floor = held.times(distressFloor);
+    return price > floor ? price : floor;
+  }
 }
 
 /// The bank's terms and the rules of insolvency.

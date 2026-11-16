@@ -1,6 +1,7 @@
 import 'package:engine/engine.dart';
 import 'package:flutter/material.dart';
 
+import 'controller.dart';
 import 'format.dart';
 import 'l10n.dart';
 import 'widgets.dart';
@@ -36,6 +37,111 @@ Money roundedUp(Money amount) {
 /// its share of the principal and a month's interest.
 Money firstPayment(Money amount, Fx rate, int months) =>
     Money(amount.cents ~/ months) + Money(amount.times(rate).cents ~/ 12);
+
+/// How a new business costing [cost] is paid for: from [company]'s cash
+/// beyond its bills, orders and cushion (none for a new company), the
+/// [capital] the player puts in, and the rest borrowed if [borrow] says
+/// so, or, left unsaid, if those fall [short] of it. [amount] is the rest,
+/// rounded up, and [terms] the bank's for it.
+({Money short, Money amount, bool borrow, LoanTerms terms}) newBusinessFunding(
+  SimulationController game, {
+  required CompanyView? company,
+  required Money cost,
+  required Money capital,
+  required bool? borrow,
+  required int months,
+  required ValueChanged<int> onMonths,
+}) {
+  final view = game.view;
+  final spare =
+      (company == null
+          ? Money.zero
+          : company.cash - company.committed - game.cushion(company)) +
+      capital;
+  final short = cost - (company?.cash ?? Money.zero) - capital;
+  final amount = roundedUp(cost - spare);
+  final room = company == null
+      ? Money.zero
+      : view.companyCredits[company.id.index] ?? Money.zero;
+  // The capital put in no longer backs a guarantee.
+  final guarantee =
+      view.guaranteeRoom -
+      capital.times(game.content.finance.guaranteeMultiple);
+  return (
+    short: short,
+    amount: amount,
+    borrow: amount > Money.zero && (borrow ?? short > Money.zero),
+    terms: LoanTerms(
+      view: view,
+      content: game.content,
+      amount: amount,
+      credit: room.isNegative ? Money.zero : room,
+      guarantee: guarantee.isNegative ? Money.zero : guarantee,
+      months: months,
+      onMonths: onMonths,
+      note: company == null ? tr('market.newCompanyNote') : null,
+    ),
+  );
+}
+
+/// What the player puts into a new business from their own [cash]; marked
+/// wrong unless [valid].
+class CapitalField extends StatelessWidget {
+  const CapitalField({
+    super.key,
+    required this.controller,
+    required this.cash,
+    required this.valid,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final Money cash;
+  final bool valid;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: controller,
+    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    decoration: InputDecoration(
+      labelText: tr('market.capitalFromCash'),
+      helperText: tr('market.youHave', {'cash': money(cash)}),
+      errorText: valid ? null : tr('common.notAnAmount'),
+    ),
+    onChanged: (_) => onChanged(),
+  );
+}
+
+/// Whether to borrow the rest of a purchase from the bank. Off, it says
+/// how much the buyer is [short], or that borrowing keeps the cushion.
+class BorrowSwitch extends StatelessWidget {
+  const BorrowSwitch({
+    super.key,
+    required this.value,
+    required this.short,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final Money short;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+    contentPadding: EdgeInsets.zero,
+    title: Text(tr('market.borrowFromBank')),
+    subtitle: value
+        ? null
+        : Text(
+            short > Money.zero
+                ? tr('market.needsMore', {'amount': money(short, cents: false)})
+                : tr('market.keepCushion'),
+          ),
+    value: value,
+    onChanged: onChanged,
+  );
+}
 
 /// The bank's terms for borrowing [amount] towards a purchase: lent on the
 /// buyer's earnings as far as [credit] goes, then on the player's guarantee

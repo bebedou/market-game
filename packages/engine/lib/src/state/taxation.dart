@@ -270,3 +270,28 @@ Money _shareOf(Money amount, Money part, Money whole) {
   if (w <= 0) return Money.zero;
   return Money(mulDivRound(amount.cents, p, w));
 }
+
+/// Taxes [seller] on what they [gain] selling a company or shares, at
+/// their country's rate on dividends, paid at once; nothing on a loss.
+void taxGain(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  Person seller,
+  Money gain,
+) {
+  if (content.taxesOf(world.residence(content, seller.id)) case final taxes?
+      when gain > Money.zero) {
+    final tax = gain.times(taxes.dividendRate);
+    if (tax > Money.zero) {
+      ledger.pay(
+        payer: seller,
+        payerAccount: AccountKind.taxes,
+        payee: world.government,
+        payeeAccount: AccountKind.revenue,
+        amount: tax,
+        reason: EntryReason.capitalGainsTax,
+      );
+    }
+  }
+}

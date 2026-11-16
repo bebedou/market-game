@@ -187,15 +187,7 @@ class OrdersScreen extends StatelessWidget {
     SimulationController game,
     Seller seller,
     StoreView store,
-  ) => showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (_) => GameScope(
-      controller: game,
-      child: OrderSheet(seller: seller, store: store),
-    ),
-  );
+  ) => showGameSheet(context, game, OrderSheet(seller: seller, store: store));
 }
 
 /// What an order sheet buys from: a wholesaler of the store's country, or
@@ -515,107 +507,87 @@ class _OrderSheetState extends State<OrderSheet> {
     final overflow = stocked + units - _store.storageUnits;
     final company = game.company!;
     final free = company.cash - company.committed;
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.85,
-      maxChildSize: 0.95,
-      builder: (context, scroll) => Column(
+    return SheetFrame(
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: ListView(
-              controller: scroll,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: [
-                Text(
-                  tr('orders.orderFrom', {'supplier': _supplier.name}),
-                  style: theme.textTheme.titleLarge,
-                ),
-                Hint(
-                  tr('orders.arrives', {
-                    'date': shortDate(game.today + _supplier.leadTimeDays),
-                    'minimum': minimum,
-                  }),
-                ),
-                if (products.isNotEmpty)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      icon: const Icon(Icons.auto_fix_high),
-                      label: Text(tr('orders.suggest')),
-                      onPressed: () => _suggest(game, products),
-                    ),
-                  ),
-                if (products.isEmpty) Hint(tr('orders.nothingStocked')),
-                for (final product in products)
-                  _QuantityRow(
-                    product: product,
-                    store: _store,
-                    unitPrice: _supplier.unitPrice(
-                      product,
-                      _quantities[product.id] ?? minimum,
-                      level,
-                    ),
-                    quantity: _quantities[product.id] ?? 0,
-                    step: minimum,
-                    onChanged: (quantity) =>
-                        setState(() => _quantities[product.id] = quantity),
-                  ),
-              ],
-            ),
+          Line(
+            tr('orders.units', {'units': units}),
+            money(total),
+            strong: true,
           ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Line(
-                  tr('orders.units', {'units': units}),
-                  money(total),
-                  strong: true,
-                ),
-                Line(
-                  _supplier.paymentTermsDays == 0
-                      ? tr('orders.paidOnDelivery')
-                      : tr('orders.dueAfter', {
-                          'days': _supplier.paymentTermsDays,
-                        }),
-                  tr('orders.freeCash', {'amount': money(free - total)}),
-                  color: gainColor(context, (free - total).cents.sign),
-                ),
-                if (overflow > 0)
-                  Hint(
-                    tr('orders.overflow', {
-                      'storage': _store.storageUnits,
-                      'overflow': overflow,
-                    }),
-                  ),
-                if (tooSmall)
-                  Hint(tr('orders.needAtLeast', {'minimum': minimum})),
-                const SizedBox(height: 8),
-                FilledButton(
-                  onPressed: units == 0 || tooSmall
-                      ? null
-                      : () {
-                          game.submit(
-                            _supplier.order(game.player, _store.id, [
-                              for (final product in products)
-                                if ((_quantities[product.id] ?? 0) > 0)
-                                  (
-                                    product: product.id,
-                                    quantity: _quantities[product.id]!,
-                                  ),
-                            ]),
-                          );
-                          Navigator.pop(context);
-                        },
-                  child: Text(tr('orders.placeOrder')),
-                ),
-              ],
+          Line(
+            _supplier.paymentTermsDays == 0
+                ? tr('orders.paidOnDelivery')
+                : tr('orders.dueAfter', {'days': _supplier.paymentTermsDays}),
+            tr('orders.freeCash', {'amount': money(free - total)}),
+            color: gainColor(context, (free - total).cents.sign),
+          ),
+          if (overflow > 0)
+            Hint(
+              tr('orders.overflow', {
+                'storage': _store.storageUnits,
+                'overflow': overflow,
+              }),
             ),
+          if (tooSmall) Hint(tr('orders.needAtLeast', {'minimum': minimum})),
+          const SizedBox(height: 8),
+          FilledButton(
+            onPressed: units == 0 || tooSmall
+                ? null
+                : () {
+                    game.submit(
+                      _supplier.order(game.player, _store.id, [
+                        for (final product in products)
+                          if ((_quantities[product.id] ?? 0) > 0)
+                            (
+                              product: product.id,
+                              quantity: _quantities[product.id]!,
+                            ),
+                      ]),
+                    );
+                    Navigator.pop(context);
+                  },
+            child: Text(tr('orders.placeOrder')),
           ),
         ],
       ),
+      children: [
+        Text(
+          tr('orders.orderFrom', {'supplier': _supplier.name}),
+          style: theme.textTheme.titleLarge,
+        ),
+        Hint(
+          tr('orders.arrives', {
+            'date': shortDate(game.today + _supplier.leadTimeDays),
+            'minimum': minimum,
+          }),
+        ),
+        if (products.isNotEmpty)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              icon: const Icon(Icons.auto_fix_high),
+              label: Text(tr('orders.suggest')),
+              onPressed: () => _suggest(game, products),
+            ),
+          ),
+        if (products.isEmpty) Hint(tr('orders.nothingStocked')),
+        for (final product in products)
+          _QuantityRow(
+            product: product,
+            store: _store,
+            unitPrice: _supplier.unitPrice(
+              product,
+              _quantities[product.id] ?? minimum,
+              level,
+            ),
+            quantity: _quantities[product.id] ?? 0,
+            step: minimum,
+            onChanged: (quantity) =>
+                setState(() => _quantities[product.id] = quantity),
+          ),
+      ],
     );
   }
 }

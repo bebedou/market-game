@@ -140,6 +140,7 @@ order for its owner's shops and, if the owner says, for rivals at a discount.
 | `factoryFor`, `marketQuote`, `factoryPrice`, `materialsCost`, `factoryLeadTime` | [state/factories.dart](../packages/engine/lib/src/state/factories.dart) |
 | Daily wages, monthly site | `FactorySystem` in [systems/factories.dart](../packages/engine/lib/src/systems/factories.dart) |
 | Delivery, invoicing between companies | `LogisticsSystem` in [systems/logistics.dart](../packages/engine/lib/src/systems/logistics.dart) |
+| What a factory owes for what it made: `billMaking` (materials, and freight abroad), `billFactory` (any bill from beyond the simulation); used by deliveries, shops by formula and sales to other companies | [systems/factory_sales.dart](../packages/engine/lib/src/systems/factory_sales.dart) |
 | `BuildFactory`, `SetFactoryShifts`, `SetFactoryTerms`, `CloseFactory`, `OrderFromFactory`; `PlaceOrder` refuses what a factory makes (`madeInHouse`) | [apply_command.dart](../packages/engine/lib/src/commands/apply_command.dart) |
 | `factoryOutlook` (what a new plant would do) | [observation/factory_outlook.dart](../packages/engine/lib/src/observation/factory_outlook.dart) |
 | `FactoryReport` in period reports | [reports/period_report.dart](../packages/engine/lib/src/reports/period_report.dart) |
@@ -176,7 +177,7 @@ In the app, [screens/lab.dart](../app/lib/src/screens/lab.dart) holds
 `LabPage` (the lead chart `LeadChart` over `FactoryLine.history`, the lines,
 the bench, the team) and `PeopleMarketPage`, opened from the factory page's
 "The lab" row; the controller's `labOf`, `hiring`, `dismissing` and
-`peopleOf` read pending changes. Layout B of the 2026-11-14 mockups. A shop's shelf line says how far its goods are over the standard (`store.better` in [screens/store.dart](../app/lib/src/screens/store.dart)), and a rival's shop in the World tab how many of its goods are (`market.betterGoods`).
+`peopleOf` read pending changes. Layout B of the 2026-11-14 mockups. A shop's shelf line says how far its goods are over the standard (`store.better` in [screens/shop.dart](../app/lib/src/screens/shop.dart)), and a rival's shop in the World tab how many of its goods are (`market.betterGoods`).
 
 ## Not built yet
 

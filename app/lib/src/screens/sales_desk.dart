@@ -181,7 +181,7 @@ class SalesDeskPage extends StatelessWidget {
                     : null,
                 onTap: () => context.openPage(
                   tr('sales.bid'),
-                  (_) => [BidPage(factory: id, tender: tender.number)],
+                  (_) => [TenderBidPage(factory: id, tender: tender.number)],
                 ),
               ),
           ],
@@ -264,17 +264,17 @@ class SalesDeskPage extends StatelessWidget {
 
 /// Bidding on a tender: the prices, what the factory's goods cost it,
 /// what the bid earns and whether it fits.
-class BidPage extends StatefulWidget {
-  const BidPage({super.key, required this.factory, required this.tender});
+class TenderBidPage extends StatefulWidget {
+  const TenderBidPage({super.key, required this.factory, required this.tender});
 
   final FactoryId factory;
   final int tender;
 
   @override
-  State<BidPage> createState() => _BidPageState();
+  State<TenderBidPage> createState() => _TenderBidPageState();
 }
 
-class _BidPageState extends State<BidPage> {
+class _TenderBidPageState extends State<TenderBidPage> {
   int? _under;
 
   @override
@@ -537,18 +537,22 @@ class _ContractPageState extends State<ContractPage> {
                   ),
                   const SizedBox(width: 8),
                   TextButton(
-                    onPressed: () => _confirm(
-                      context,
-                      tr('sales.refuseQuestion'),
-                      tr('sales.refuseBody', {'chain': contract.chain}),
-                      () => game.submit(
-                        AnswerContract(
-                          game.player,
-                          contract: contract.number,
-                          accept: false,
-                        ),
-                      ),
-                    ),
+                    onPressed: () async {
+                      if (await confirm(
+                        context,
+                        title: tr('sales.refuseQuestion'),
+                        body: tr('sales.refuseBody', {'chain': contract.chain}),
+                        action: tr('common.ok'),
+                      )) {
+                        game.submit(
+                          AnswerContract(
+                            game.player,
+                            contract: contract.number,
+                            accept: false,
+                          ),
+                        );
+                      }
+                    },
                     child: Text(tr('sales.refuseCut')),
                   ),
                 ],
@@ -598,17 +602,21 @@ class _ContractPageState extends State<ContractPage> {
             Align(
               alignment: Alignment.centerLeft,
               child: OutlinedButton(
-                onPressed: () => _confirm(
-                  context,
-                  tr('sales.breakQuestion'),
-                  tr('sales.breakBody', {
-                    'fee': money(fee, cents: false),
-                    'chain': contract.chain,
-                  }),
-                  () => game.submit(
-                    BreakContract(game.player, contract: contract.number),
-                  ),
-                ),
+                onPressed: () async {
+                  if (await confirm(
+                    context,
+                    title: tr('sales.breakQuestion'),
+                    body: tr('sales.breakBody', {
+                      'fee': money(fee, cents: false),
+                      'chain': contract.chain,
+                    }),
+                    action: tr('common.ok'),
+                  )) {
+                    game.submit(
+                      BreakContract(game.player, contract: contract.number),
+                    );
+                  }
+                },
                 child: Text(tr('sales.breakIt')),
               ),
             ),
@@ -616,31 +624,5 @@ class _ContractPageState extends State<ContractPage> {
         ),
       ],
     );
-  }
-
-  Future<void> _confirm(
-    BuildContext context,
-    String title,
-    String body,
-    VoidCallback then,
-  ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(body),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(tr('common.cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(tr('common.ok')),
-          ),
-        ],
-      ),
-    );
-    if (ok ?? false) then();
   }
 }

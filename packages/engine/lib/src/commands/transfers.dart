@@ -3,6 +3,7 @@ import '../content/content_db.dart';
 import '../core/money.dart';
 import '../state/brands.dart';
 import '../state/entities.dart';
+import '../state/taxation.dart' show taxGain;
 import '../state/store.dart';
 import '../state/valuation.dart';
 import '../state/world_state.dart';
@@ -171,20 +172,7 @@ void transferCompany(
     );
   }
   final gain = price - company.injected;
-  if (content.taxesOf(world.residence(content, seller.id)) case final taxes?
-      when gain > Money.zero) {
-    final tax = gain.times(taxes.dividendRate);
-    if (tax > Money.zero) {
-      ledger.pay(
-        payer: seller,
-        payerAccount: AccountKind.taxes,
-        payee: world.government,
-        payeeAccount: AccountKind.revenue,
-        amount: tax,
-        reason: EntryReason.capitalGainsTax,
-      );
-    }
-  }
+  taxGain(world, content, ledger, seller, gain);
   for (final loan in world.loans) {
     if (loan.company == company.id && loan.guarantor == seller.id) {
       loan.guarantor = buyer.id;
@@ -276,20 +264,7 @@ void sellSoftware(
     );
   }
   final gain = proceeds - company.injected;
-  if (content.taxesOf(world.residence(content, seller.id)) case final taxes?
-      when gain > Money.zero) {
-    final tax = gain.times(taxes.dividendRate);
-    if (tax > Money.zero) {
-      ledger.pay(
-        payer: seller,
-        payerAccount: AccountKind.taxes,
-        payee: world.government,
-        payeeAccount: AccountKind.revenue,
-        amount: tax,
-        reason: EntryReason.capitalGainsTax,
-      );
-    }
-  }
+  taxGain(world, content, ledger, seller, gain);
   final market = world.softwareMarket!;
   closeSoftware(
     world,

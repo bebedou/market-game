@@ -109,7 +109,7 @@ void main() {
     await _pumpPage(
       tester,
       game,
-      BidPage(factory: factory.id, tender: tender.number),
+      TenderBidPage(factory: factory.id, tender: tender.number),
     );
     expect(find.text('Producer price'), findsOneWidget);
     expect(find.text('Earns a month if won'), findsOneWidget);
