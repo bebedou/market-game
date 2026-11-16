@@ -1440,6 +1440,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Director'), findsOneWidget);
     expect(find.text('Hire a director'), findsOneWidget);
+    // Its money is a tap away, on its page in Finance.
+    await scrollTo(tester, find.text('Cash, loans and books'));
+    await tester.tap(find.text('Cash, loans and books'));
+    await tester.pumpAndSettle();
     expect(find.text('Cash'), findsOneWidget);
   });
 

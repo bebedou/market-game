@@ -18,13 +18,21 @@ final _discounts = [
 /// The player's factories on the holding, each on a line, and the way to
 /// build one. Nothing if the scenario has none.
 class FactoriesSection extends StatelessWidget {
-  const FactoriesSection({super.key});
+  const FactoriesSection({super.key, this.company});
+
+  /// Only this company's factories, without the way to build one; nothing
+  /// if it has none.
+  final CompanyId? company;
 
   @override
   Widget build(BuildContext context) {
     final game = context.game;
     if (game.content.factories == null) return const SizedBox.shrink();
-    final mine = game.myFactories;
+    final mine = [
+      for (final entry in game.myFactories)
+        if (company == null || entry.$1.id == company) entry,
+    ];
+    if (company != null && mine.isEmpty) return const SizedBox.shrink();
     return Section(
       title: mine.length == 1
           ? tr('factory.yourFactory')
@@ -34,15 +42,16 @@ class FactoriesSection extends StatelessWidget {
       children: [
         for (final (company, factory) in mine)
           _FactoryEntry(company: company, factory: factory),
-        IndexRow(
-          icon: Icons.factory_outlined,
-          title: tr('factory.build'),
-          subtitle: tr('factory.buildPitch'),
-          onTap: () => context.openPage(
-            tr('factory.build'),
-            (_) => [const BuildFactoryPage()],
+        if (company == null)
+          IndexRow(
+            icon: Icons.factory_outlined,
+            title: tr('factory.build'),
+            subtitle: tr('factory.buildPitch'),
+            onTap: () => context.openPage(
+              tr('factory.build'),
+              (_) => [const BuildFactoryPage()],
+            ),
           ),
-        ),
       ],
     );
   }

@@ -289,6 +289,7 @@
     "atAskingPrice": " at today's asking price of {price}"
   },
   "alerts": {
+    "factoryWorks": "Works have started on {factory} in {country}: it opens on {date}.",
     "bidOpened": "{bidder} bids {premium} over the price for {name}, open until {date}.",
     "bidWon": "{bidder} won its bid for {name}.",
     "bidFailed": "{bidder}’s bid for {name} failed.",
@@ -514,6 +515,13 @@
     }
   },
   "dashboard": {
+    "beingBuilt": "Being built",
+    "worth": "Worth",
+    "companyWorthHint": "What it owns less what it owes",
+    "directorStoresHint": "Stores run by a director are on their company’s page.",
+    "companyMoney": "Money",
+    "companyMoneyLine": "Cash, loans and books",
+    "inFinance": "In Finance",
     "holdingBooks": "The holding’s books",
     "cash": "Cash",
     "shares": "Shares",

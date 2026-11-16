@@ -290,6 +290,7 @@
     "atAskingPrice": " au prix demandé aujourd’hui de {price}"
   },
   "alerts": {
+    "factoryWorks": "Les travaux de {factory} ont commencé en {country} : ouverture le {date}.",
     "bidOpened": "{bidder} offre {premium} de prime sur {name}, jusqu’au {date}.",
     "bidWon": "L’offre de {bidder} sur {name} a réussi.",
     "bidFailed": "L’offre de {bidder} sur {name} a échoué.",
@@ -515,6 +516,13 @@
     }
   },
   "dashboard": {
+    "beingBuilt": "En construction",
+    "worth": "Valeur",
+    "companyWorthHint": "Ce qu’elle possède moins ce qu’elle doit",
+    "directorStoresHint": "Les magasins confiés à un directeur sont sur la page de leur société.",
+    "companyMoney": "Argent",
+    "companyMoneyLine": "Trésorerie, prêts et comptes",
+    "inFinance": "Dans Finance",
     "holdingBooks": "Les comptes de la holding",
     "cash": "Trésorerie",
     "shares": "Actions",

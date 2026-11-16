@@ -17,10 +17,12 @@ import 'software.dart';
 import 'world.dart';
 
 /// The holding at a glance, the owner's layout A (its name is in the top
-/// bar): its net worth, what needs doing, its own books (cash, shares, companies, loans), its
-/// portfolio, how last week went, the companies and who runs them, the
-/// stores, the news and profit. The companies' money and deals are in
-/// Finance.
+/// bar): its net worth, what needs doing, what is being built, its own
+/// books (cash, shares, companies, loans), its portfolio, its companies,
+/// each opening its own dashboard, its brands, the stores the player runs
+/// by hand, the factories, software, the news and profit. Stores under a
+/// director are on their company's dashboard; the companies' money and
+/// deals are in Finance.
 class HoldingScreen extends StatelessWidget {
   const HoldingScreen({super.key, required this.onOpen});
 
@@ -35,11 +37,11 @@ class HoldingScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       children: [
         const _Masthead(),
-        ..._toDo(context, game),
+        ..._toDo(context, game, onOpen),
+        _BeingBuilt(onOpen: onOpen),
         const _HoldingBooks(),
         _Portfolio(onOpen: onOpen),
-        const _KeyFigures(),
-        const _Companies(),
+        _Companies(onOpen: onOpen),
         const _Brands(),
         _Stores(onOpen: onOpen),
         const FactoriesSection(),
@@ -49,13 +51,22 @@ class HoldingScreen extends StatelessWidget {
     );
   }
 
-  List<Widget> _toDo(BuildContext context, SimulationController game) {
-    final stores = game.myStores;
+  /// What needs doing, across the holding or at [only] company.
+  static List<Widget> _toDo(
+    BuildContext context,
+    SimulationController game,
+    OpenTab onOpen, {
+    CompanyId? only,
+  }) {
+    final stores = [
+      for (final entry in game.myStores)
+        if (only == null || entry.$1.id == only) entry,
+    ];
     final active = game.view.companies.any(
       (company) => company.status == CompanyStatus.active,
     );
     final items = <(String, String, StoreView?, VoidCallback?)>[
-      if (!active)
+      if (!active && only == null)
         (
           tr('dashboard.noCompany'),
           tr('dashboard.noCompanyDetail'),
@@ -66,7 +77,8 @@ class HoldingScreen extends StatelessWidget {
           ),
         ),
       for (final company in game.view.companies)
-        if (_belowCushion(game, company))
+        if ((only == null || company.id == only) &&
+            _belowCushion(game, company))
           (
             tr('dashboard.essentials'),
             tr('dashboard.essentialsDetail', {
@@ -185,14 +197,19 @@ class _News extends StatelessWidget {
 /// The top of the page: what the holding spans, its net worth with this and
 /// last week's profit, and net worth over the past weeks or months.
 class _Masthead extends StatelessWidget {
-  const _Masthead();
+  const _Masthead({this.company});
+
+  /// The company whose masthead it is, with its worth; the holding's, with
+  /// its net worth, if null.
+  final CompanyView? company;
 
   @override
   Widget build(BuildContext context) {
     final game = context.game;
     final theme = Theme.of(context);
     final view = game.view;
-    final weeks = game.holdingProfits(ReportPeriod.week);
+    final company = this.company;
+    final weeks = game.holdingProfits(ReportPeriod.week, company: company?.id);
     // Weeks that are over, the running one left out.
     final done = [
       for (final week in weeks)
@@ -214,8 +231,9 @@ class _Masthead extends StatelessWidget {
       (company) => company.status == CompanyStatus.active,
     );
     final trading = [
-      for (final (company, store) in game.myStores)
-        if (company.status == CompanyStatus.active &&
+      for (final (owner, store) in game.myStores)
+        if (owner.status == CompanyStatus.active &&
+            (company == null || owner.id == company.id) &&
             store.status != StoreStatus.closed)
           store,
     ];
@@ -227,7 +245,8 @@ class _Masthead extends StatelessWidget {
         children: [
           Text(
             [
-              tr('common.companies', {'count': active.length}),
+              if (company == null)
+                tr('common.companies', {'count': active.length}),
               tr('common.stores', {'count': trading.length}),
               if (game.content.markets.length > 1)
                 tr('common.cities', {'count': cities.length}),
@@ -243,11 +262,15 @@ class _Masthead extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      tr('common.netWorth'),
+                      company == null
+                          ? tr('common.netWorth')
+                          : tr('dashboard.worth'),
                       style: theme.textTheme.labelSmall,
                     ),
                     AnimatedMoney(
-                      game.netWorth,
+                      company == null
+                          ? game.netWorth
+                          : SimulationController.worthOf(company),
                       style: theme.textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
@@ -268,7 +291,12 @@ class _Masthead extends StatelessWidget {
                 ),
             ],
           ),
-          Text(tr('dashboard.netWorthHint'), style: theme.textTheme.bodySmall),
+          Text(
+            company == null
+                ? tr('dashboard.netWorthHint')
+                : tr('dashboard.companyWorthHint'),
+            style: theme.textTheme.bodySmall,
+          ),
           if (bars.length >= 2) ...[
             const SizedBox(height: 8),
             BarChart([for (final week in bars) week.trading.cents], height: 40),
@@ -462,20 +490,22 @@ class _Portfolio extends StatelessWidget {
   }
 }
 
-/// Shoppers and sales across every store, the companies' cash and the
-/// player's own, with how they moved.
+/// Shoppers and sales across [company]'s stores, and its cash, with how
+/// they moved.
 class _KeyFigures extends StatelessWidget {
-  const _KeyFigures();
+  const _KeyFigures({required this.company});
+
+  final CompanyView company;
 
   @override
   Widget build(BuildContext context) {
     final game = context.game;
-    final view = game.view;
     final scheme = Theme.of(context).colorScheme;
-    final stores = [for (final (_, store) in game.myStores) store];
-    final active = view.companies.where(
-      (company) => company.status == CompanyStatus.active,
-    );
+    final stores = [
+      for (final (owner, store) in game.myStores)
+        if (owner.id == company.id) store,
+    ];
+    final active = [if (company.status == CompanyStatus.active) company];
     final tiles = <Widget>[];
     if (stores.isNotEmpty) {
       final (shoppers, shoppersTrend) = recentAverage(
@@ -590,10 +620,13 @@ class _KeyFigures extends StatelessWidget {
 }
 
 /// The companies still trading: their stores, who runs them and their cash,
-/// a line each that opens the company. Then the offer of a director for each
-/// that has none, and of another company.
+/// a line each that opens the company's dashboard. Then the offer of a
+/// director for each that has none, and of another company.
 class _Companies extends StatelessWidget {
-  const _Companies();
+  const _Companies({required this.onOpen});
+
+  /// Switches to another tab, from a company's dashboard.
+  final OpenTab onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -625,7 +658,7 @@ class _Companies extends StatelessWidget {
                 },
             ].join(' · '),
             value: money(company.cash, cents: false),
-            onTap: () => openCompanyPage(context, company),
+            onTap: () => openCompanyDashboard(context, company, onOpen),
           ),
         if (directors != null)
           for (final company in companies)
@@ -782,22 +815,34 @@ class _CreateBrandDialogState extends State<_CreateBrandDialog> {
   }
 }
 
-/// Every store the player owns, by company once there are several, a line
-/// each that opens it, and the way to start another business.
+/// The stores the player runs by hand, those of companies without a
+/// director, by company once there are several, a line each that opens it,
+/// and the way to start another business; or, for [company]'s dashboard,
+/// all of its stores.
 class _Stores extends StatelessWidget {
-  const _Stores({required this.onOpen});
+  const _Stores({required this.onOpen, this.company});
 
   final OpenTab onOpen;
+  final CompanyView? company;
 
   @override
   Widget build(BuildContext context) {
     final game = context.game;
     final theme = Theme.of(context);
-    final stores = game.myStores;
+    final only = company;
+    // A director runs their company's stores: they are on its dashboard.
+    bool shown(CompanyView owner) =>
+        only == null ? game.directorOf(owner) == null : owner.id == only.id;
+    final stores = [
+      for (final entry in game.myStores)
+        if (shown(entry.$1)) entry,
+    ];
     final companies = [
       for (final company in game.view.companies)
-        if (company.stores.isNotEmpty) company,
+        if (company.stores.isNotEmpty && shown(company)) company,
     ];
+    final elsewhere = only == null && stores.length < game.myStores.length;
+    if (only != null && stores.isEmpty) return const SizedBox.shrink();
     return Section(
       title: stores.length == 1
           ? tr('dashboard.yourStore')
@@ -841,15 +886,17 @@ class _Stores extends StatelessWidget {
                 },
               ),
         ],
-        IndexRow(
-          icon: Icons.add,
-          title: tr('common.startBusiness'),
-          subtitle: tr('dashboard.startBusinessPitch'),
-          onTap: () => context.openPage(
-            tr('common.startBusiness'),
-            (_) => [const NewBusiness()],
+        if (elsewhere) Hint(tr('dashboard.directorStoresHint')),
+        if (only == null)
+          IndexRow(
+            icon: Icons.add,
+            title: tr('common.startBusiness'),
+            subtitle: tr('dashboard.startBusinessPitch'),
+            onTap: () => context.openPage(
+              tr('common.startBusiness'),
+              (_) => [const NewBusiness()],
+            ),
           ),
-        ),
       ],
     );
   }
@@ -926,6 +973,131 @@ class _StoreEntry extends StatelessWidget {
           ? null
           : money(sales, cents: false),
       onTap: onTap,
+    );
+  }
+}
+
+/// What the holding is building: its stores being fitted out and its
+/// factories under construction, with the day each opens, a line each that
+/// opens it. Nothing while nothing is.
+class _BeingBuilt extends StatelessWidget {
+  const _BeingBuilt({required this.onOpen});
+
+  final OpenTab onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final content = game.content;
+    final ledger = Ledger.of(context);
+    final stores = [
+      for (final (company, store) in game.myStores)
+        if (store.status == StoreStatus.building) (company, store),
+    ];
+    final factories = [
+      for (final (company, factory) in game.myFactories)
+        if (factory.building) (company, factory),
+    ];
+    if (stores.isEmpty && factories.isEmpty) return const SizedBox.shrink();
+    return Section(
+      title: tr('dashboard.beingBuilt'),
+      children: [
+        for (final (company, store) in stores)
+          IndexRow(
+            mark: ledger.trade(content.formats[store.format.index]),
+            title: game.storeName(store.id),
+            subtitle: [
+              tr('common.opensOn', {'date': shortDate(store.opensOn)}),
+              game.companyName(company.id),
+            ].join(' · '),
+            onTap: () {
+              game.selectStore(store.id);
+              onOpen(HomeTab.shop, part: ShopPart.running);
+            },
+          ),
+        for (final (company, factory) in factories)
+          IndexRow(
+            mark: ledger.works,
+            title: factory.name,
+            subtitle: [
+              tr('common.opensOn', {'date': shortDate(factory.opensOn)}),
+              game.companyName(company.id),
+            ].join(' · '),
+            onTap: () => openFactoryPage(context, factory),
+          ),
+      ],
+    );
+  }
+}
+
+/// Opens [company]'s dashboard within the current tab.
+void openCompanyDashboard(
+  BuildContext context,
+  CompanyView company,
+  OpenTab onOpen,
+) => context.openPage(
+  context.game.companyName(company.id),
+  (_) => [CompanyDashboard(id: company.id, onOpen: onOpen)],
+);
+
+/// A company at a glance, as the holding is: its worth and its weeks, what
+/// needs doing there, who runs it, how its stores are doing, its stores and
+/// factories, its software, and the way to its money in Finance.
+class CompanyDashboard extends StatelessWidget {
+  const CompanyDashboard({super.key, required this.id, required this.onOpen});
+
+  final CompanyId id;
+
+  /// Switches to another tab.
+  final OpenTab onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final company = game.view.companies
+        .where((company) => company.id == id)
+        .firstOrNull;
+    if (company == null) return Hint(tr('finance.noCompany'));
+    final active = company.status == CompanyStatus.active;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Masthead(company: company),
+        ...HoldingScreen._toDo(context, game, onOpen, only: id),
+        if (game.content.directors != null &&
+            active &&
+            company.software == null)
+          DirectorSection(company: company),
+        if (company.software == null) _KeyFigures(company: company),
+        _Stores(onOpen: onOpen, company: company),
+        FactoriesSection(company: id),
+        if (company.software case final software?)
+          Section(
+            title: tr('software.yourOne'),
+            children: [
+              IndexRow(
+                mark: Ledger.of(context).software,
+                title: software.name,
+                subtitle: softwareStatus(software),
+                value: software.running
+                    ? compactMoney(software.yourWorth)
+                    : null,
+                onTap: () => openSoftwarePage(context, software),
+              ),
+            ],
+          ),
+        Section(
+          title: tr('dashboard.companyMoney'),
+          children: [
+            IndexRow(
+              title: tr('dashboard.companyMoneyLine'),
+              subtitle: tr('dashboard.inFinance'),
+              value: money(company.cash, cents: false),
+              onTap: () => openCompanyPage(context, company),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

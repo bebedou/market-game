@@ -318,7 +318,7 @@ class SimulationController extends ChangeNotifier {
     Money.zero,
     (sum, company) => _view.listedCompanies.contains(company.id)
         ? sum
-        : sum + _worthOf(company),
+        : sum + worthOf(company),
   );
 
   /// What the holding still owes the bank on the shares it bought with a
@@ -337,7 +337,7 @@ class SimulationController extends ChangeNotifier {
     Money.zero,
     (sum, company) => _view.listedCompanies.contains(company.id)
         ? sum
-        : sum + _worthOf(company) - company.netAssets,
+        : sum + worthOf(company) - company.netAssets,
   );
 
   /// Who [owner] of shares is, in words: the player's holding, one of their
@@ -356,7 +356,10 @@ class SimulationController extends ChangeNotifier {
     return code % 1000 < chains.length ? chains[code % 1000].name : '';
   }
 
-  static Money _worthOf(CompanyView company) => switch (company.software) {
+  /// What [company] is worth to the holding: what it owns less what it
+  /// owes, or for a software company the holding's share of what it is
+  /// worth, on paper.
+  static Money worthOf(CompanyView company) => switch (company.software) {
     final software? when software.running => software.yourWorth,
     _ => company.netAssets,
   };
@@ -429,14 +432,20 @@ class SimulationController extends ChangeNotifier {
     return count;
   }
 
-  /// All the player's companies' profit together, week by week or month by
-  /// month, oldest first, as far back as reports are kept; the latest period
-  /// is still running.
-  List<HoldingPeriod> holdingProfits(ReportPeriod period) {
+  /// All the player's companies' profit together, or only [company]'s, week
+  /// by week or month by month, oldest first, as far back as reports are
+  /// kept; the latest period is still running.
+  List<HoldingPeriod> holdingProfits(
+    ReportPeriod period, {
+    CompanyId? company,
+  }) {
     final profits = <int, Money>{};
     final trading = <int, Money>{};
     final days = <int, int>{};
-    for (final company in _view.companies) {
+    for (final company in [
+      for (final other in _view.companies)
+        if (company == null || other.id == company) other,
+    ]) {
       for (final report in _simulation.reports(company.id, period)) {
         final start = report.start.number;
         profits[start] = (profits[start] ?? Money.zero) + report.profit;
@@ -1547,6 +1556,16 @@ class SimulationController extends ChangeNotifier {
             .expand((c) => c.factories)
             .where((f) => f.id == factory.id)
             .firstOrNull;
+        if (was == null && factory.building) {
+          add(
+            AlertKind.stores,
+            tr('alerts.factoryWorks', {
+              'factory': factory.name,
+              'country': content.countries[factory.country.index].name,
+              'date': shortDate(factory.opensOn),
+            }),
+          );
+        }
         if (factory.making && was != null && !was.making) {
           add(
             AlertKind.stores,

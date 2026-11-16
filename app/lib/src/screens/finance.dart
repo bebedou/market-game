@@ -183,7 +183,7 @@ void openCompanyPage(BuildContext context, CompanyView company) =>
           if (current.id == company.id) ...[
             if (context.game.content.directors != null &&
                 current.status == CompanyStatus.active)
-              _DirectorSection(company: current),
+              DirectorSection(company: current),
             FinancialsSection(company: current.id),
             if (current.status == CompanyStatus.active)
               ExchangeEntry(company: current),
@@ -504,8 +504,8 @@ class _CompanyCard extends StatelessWidget {
 }
 
 /// Who runs the company: its director and their brief, or the offer of one.
-class _DirectorSection extends StatelessWidget {
-  const _DirectorSection({required this.company});
+class DirectorSection extends StatelessWidget {
+  const DirectorSection({super.key, required this.company});
 
   final CompanyView company;
 
