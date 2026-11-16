@@ -1629,7 +1629,7 @@ final class FactoriesDef {
 /// own development raises: each month the market closes [catchUp] of every
 /// lead. A lab spends its budget on one line; its engineers multiply what
 /// the money gets done, and its designers what a generation gains.
-final class LabsDef {
+final class LabsDef implements TalentDef {
   const LabsDef({
     required this.generationWork,
     required this.leadHardness,
@@ -1682,6 +1682,7 @@ final class LabsDef {
   /// How many candidates the market offers at a time, and how many days
   /// one stays before another company takes them.
   final int candidates;
+  @override
   final int candidateDays;
 
   /// The months of work after which a key person's true level shows.
@@ -1692,10 +1693,24 @@ final class LabsDef {
   final Fx nationalPull;
 
   /// Key people's levels, the most ordinary first.
+  @override
   final List<TalentLevelDef> levels;
 
+  @override
   final List<String> firstNames;
+  @override
   final List<String> lastNames;
+}
+
+/// A market for key people, a lab's or software's: their levels, the
+/// names they are drawn from, and the days a candidate waits to be hired.
+abstract interface class TalentDef {
+  int get candidateDays;
+
+  /// The most ordinary first.
+  List<TalentLevelDef> get levels;
+  List<String> get firstNames;
+  List<String> get lastNames;
 }
 
 /// A level of key person: how common, what they add to a lab, and what

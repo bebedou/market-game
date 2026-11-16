@@ -109,6 +109,35 @@ void main() {
       expect(store.storageUnits, 400 + 100 + 300);
     });
 
+    test('joins its owner\'s brand of the new format, or leaves its own', () {
+      Simulation converted({required bool supermarkets}) {
+        final simulation =
+            Simulation.newGame(loadScenario(withSupermarkets()), seed: 1)
+              ..submit(CreateBrand(player, name: 'Kwik', format: convenience));
+        if (supermarkets) {
+          simulation.submit(
+            CreateBrand(player, name: 'MegaMart', format: supermarket),
+          );
+        }
+        simulation.submit(
+          ConvertStore(player, store: playerStore, format: supermarket),
+        );
+        advance(simulation, 8);
+        return simulation;
+      }
+
+      final world = converted(supermarkets: true).world;
+      final store = world.stores[playerStore.index];
+      final brand = world.brands.firstWhere((b) => b.name == 'MegaMart');
+      expect(store.format, supermarket);
+      expect(store.brand, brand.id);
+      expect(store.name, startsWith('MegaMart'));
+      // With no brand of supermarkets, it trades under no brand.
+      final alone = converted(supermarkets: false).world;
+      expect(alone.stores[playerStore.index].format, supermarket);
+      expect(alone.stores[playerStore.index].brand, isNull);
+    });
+
     test('is refused across channels, on a small site, or twice', () {
       final content = loadScenario(
         withSupermarkets().replaceFirst('"minArea": 120', '"minArea": 200'),

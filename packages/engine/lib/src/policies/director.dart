@@ -380,90 +380,42 @@ StrategyId _strategyFor(
   if (content.acquisitions case final terms?
       when director.allows(Growth.buy) && waited >= terms.intervalDays) {
     Money withReserve(Money price) => price + price.times(terms.buyerReserve);
-    ShelfView? best;
-    var bestPayback = 0;
-    var price = Money.zero;
+    // A struggling shop, run in full or in a district run by formula.
+    final struggling = owner.strugglingShop(
+      view,
+      content,
+      passOver: (owner) => owner == view.actor,
+      judged: judged,
+      judgedAt: judgedAt,
+    );
+    var best = struggling?.shelf;
+    var bestPayback = struggling?.paybackMonths ?? 0;
+    var price = struggling?.price ?? Money.zero;
+    // Else, borrowing, the profitable shop that repays soonest.
     ShelfView? profitable;
     var profitablePayback = buyoutPaybackMonths + 1;
     for (final shelf in view.shelves) {
+      if (!director.borrows) break;
       if (shelf.status == StoreStatus.closed ||
           shelf.format != strategy.format ||
           view.companyOwners[shelf.company.index] == view.actor) {
         continue;
       }
       final value = view.valuations[shelf.id.index];
-      if (value == null) continue;
+      if (value == null || value.earnings.isNegative) continue;
       final since = shelf.acquiredOn ?? shelf.opensOn;
       if (view.today.number - since.number < 365) continue;
-      if (!value.earnings.isNegative) {
-        if (!director.borrows) continue;
-        final expected = value.earnings.times(judged(shelf.site));
-        if (expected <= Money.zero) continue;
-        final payback = mulDivRound(value.price.cents, 12, expected.cents);
-        final cost = withReserve(value.price);
-        if (payback < profitablePayback &&
-            cost <= spare + borrowing(cost, earnings: value.earnings)) {
-          profitable = shelf;
-          profitablePayback = payback;
-        }
-        continue;
-      }
-      final payback = owner.paybackMonths(
-        view,
-        content,
-        content.sites[shelf.site.index],
-        cost: value.price,
-        existing: true,
-        judged: judged(shelf.site),
-      );
-      if (payback == null || payback > strategy.expansionPaybackMonths) {
-        continue;
-      }
-      if (best == null || payback < bestPayback) {
-        best = shelf;
-        bestPayback = payback;
-        price = value.price;
+      final expected = value.earnings.times(judged(shelf.site));
+      if (expected <= Money.zero) continue;
+      final payback = mulDivRound(value.price.cents, 12, expected.cents);
+      final cost = withReserve(value.price);
+      if (payback < profitablePayback &&
+          cost <= spare + borrowing(cost, earnings: value.earnings)) {
+        profitable = shelf;
+        profitablePayback = payback;
       }
     }
-    // Struggling shops in districts run by formula, weighed the same way.
-    (DistrictView, DistrictShop)? there;
-    for (final district in view.districts) {
-      for (final shop in district.shops) {
-        final value = shop.value;
-        if (shop.format != strategy.format ||
-            value == null ||
-            !value.earnings.isNegative ||
-            shop.company != null &&
-                view.companyOwners[shop.company!.index] == view.actor) {
-          continue;
-        }
-        if (view.today.number - shop.since.number < 365) continue;
-        final payback = owner.districtPaybackMonths(
-          view,
-          content,
-          district,
-          (
-            location: shop.location,
-            area: shop.area,
-            rent: shop.rent,
-            openingCost: Money.zero,
-          ),
-          cost: value.price,
-          existing: true,
-          judged: judgedAt(district.row, shop.site),
-        );
-        if (payback == null ||
-            payback > strategy.expansionPaybackMonths ||
-            (best != null || there != null) && payback >= bestPayback) {
-          continue;
-        }
-        best = null;
-        there = (district, shop);
-        bestPayback = payback;
-        price = value.price;
-      }
-    }
-    if (there case (final district, final shop)) {
+    if (struggling?.district case (final district, final shop)) {
       final cost = withReserve(price);
       final borrowed = borrowing(cost);
       return (

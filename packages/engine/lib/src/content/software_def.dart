@@ -1,13 +1,13 @@
 import '../core/fx.dart';
 import '../core/money.dart';
-import 'content_db.dart' show TalentLevelDef;
+import 'content_db.dart' show TalentDef, TalentLevelDef;
 
 /// The one world market for software, and how its products compete for it:
 /// see `SoftwareSystem`. A software company sells one product to customers
 /// who pay a month each. Its people build the product: the market's
 /// standard rises every month, and a product ahead of it draws far more of
 /// the customers who change products, and loses fewer.
-final class SoftwareDef {
+final class SoftwareDef implements TalentDef {
   const SoftwareDef({
     required this.customers,
     required this.price,
@@ -142,13 +142,17 @@ final class SoftwareDef {
   /// many days one stays, and the months of work after which a person's
   /// true level shows.
   final int candidates;
+  @override
   final int candidateDays;
   final int revealMonths;
 
   /// Software people's levels, the most ordinary first: their powers count
   /// for what they build, their salaries are software pay.
+  @override
   final List<TalentLevelDef> levels;
+  @override
   final List<String> firstNames;
+  @override
   final List<String> lastNames;
 
   /// What a company is worth: a year's revenue times [baseMultiple] plus

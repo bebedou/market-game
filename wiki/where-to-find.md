@@ -29,7 +29,7 @@ Paths are relative to the repo root; search the named symbol in the file.
 | I want to change… | Look in | Symbol |
 |---|---|---|
 | How AI owners run a store | [engine/policies/retail_policy.dart](../packages/engine/lib/src/policies/retail_policy.dart) | `RetailPolicy`, `StorePlan` |
-| Where entrepreneurs and chains open or buy | [engine/policies/entrepreneur_policy.dart](../packages/engine/lib/src/policies/entrepreneur_policy.dart) | `EntrepreneurPolicy` |
+| Where entrepreneurs and chains open or buy | [engine/policies/entrepreneur_policy.dart](../packages/engine/lib/src/policies/entrepreneur_policy.dart) | `EntrepreneurPolicy`; the struggling shop to buy, for owners and directors alike: `strugglingShop` |
 | Store managers | [engine/policies/manager.dart](../packages/engine/lib/src/policies/manager.dart) | `manage` |
 | Directors, national growth, strain | [engine/policies/director.dart](../packages/engine/lib/src/policies/director.dart), [engine/systems/national.dart](../packages/engine/lib/src/systems/national.dart) | `nationalBudget`, `nationalChainShops`, `_strain` |
 | The cash a company keeps aside | [engine/policies/cushion.dart](../packages/engine/lib/src/policies/cushion.dart) | `cashCushion` |
@@ -54,7 +54,7 @@ Paths are relative to the repo root; search the named symbol in the file.
 | Selling a software company, investors' share of payouts | [engine/commands/transfers.dart](../packages/engine/lib/src/commands/transfers.dart), [engine/state/software_rules.dart](../packages/engine/lib/src/state/software_rules.dart) | `sellSoftware`, `payInvestors` |
 | What the owner sees of software | [engine/observation/software_view.dart](../packages/engine/lib/src/observation/software_view.dart) | `SoftwareView`, `SoftwareMarketView`, `softwareCandidatesOf` |
 | Add saved state, bump the save format | [engine/persistence/state_io.dart](../packages/engine/lib/src/persistence/state_io.dart), [engine/persistence/save_file.dart](../packages/engine/lib/src/persistence/save_file.dart) | `currentStateVersion`, `SaveData` |
-| Change how a scenario is read | [engine/content/scenario_loader.dart](../packages/engine/lib/src/content/scenario_loader.dart) | `loadScenario`, `_Node` |
+| Change how a scenario is read | [engine/content/scenario_loader.dart](../packages/engine/lib/src/content/scenario_loader.dart), [engine/content/json_node.dart](../packages/engine/lib/src/content/json_node.dart) | `loadScenario`, `JsonNode`, `ContentException` |
 | Add a product, format, city, person | [prototype.json](../content/scenarios/prototype.json) (append at the end), the words in `prototype.<lang>.json` | see [content-and-scenarios.md](content-and-scenarios.md) |
 | Bring a grown scenario into an old save | [engine/state/growth.dart](../packages/engine/lib/src/state/growth.dart) | `growWorld` |
 | Generate or wake a neighbourhood | [engine/neighbourhoods/neighbourhood_generator.dart](../packages/engine/lib/src/neighbourhoods/neighbourhood_generator.dart), [engine/simulation.dart](../packages/engine/lib/src/simulation.dart) | `withNeighbourhoods`, `withCitiesAsleep`, `Simulation._wake` |
@@ -74,7 +74,7 @@ Paths are relative to the repo root; search the named symbol in the file.
 | Clock speeds | [app/lib/src/controller.dart](../app/lib/src/controller.dart) | `Speed` |
 | Net worth, holding profit | [app/lib/src/controller.dart](../app/lib/src/controller.dart) | `netWorth`, `onPaper`, `holdingProfits` |
 | A factory's sales desk, bid and contract pages | [app/lib/src/screens/sales_desk.dart](../app/lib/src/screens/sales_desk.dart) | `SalesDeskEntry`, `SalesDeskPage`, `TenderBidPage`, `ContractPage`, `openTendersFor` |
-| The Market tab, a sector, a stock, buying and selling, bids, control, listing | [app/lib/src/screens/exchange.dart](../app/lib/src/screens/exchange.dart) | `ExchangeScreen`, `SectorPage`, `StockPage`, `ExchangePage`, `TradePage`, `PortfolioPage`, `BidSection`, `TakeoverBidPage`, `ControlPage`, `ExchangeEntry`, `ListCompanyPage`; who holds shares in words: `SimulationController.ownerName` |
+| The Market tab, a sector, a stock, buying and selling, bids, control, listing | [app/lib/src/screens/exchange.dart](../app/lib/src/screens/exchange.dart) | `ExchangeScreen`, `SectorPage`, `StockPage`, `ExchangePage`, `TradePage`, `PortfolioPage`, `BidSection`, `TakeoverBidPage`, `ControlPage`, `ExchangeEntry`, `ListCompanyPage`, `HoldingRow` (also on Holding); who holds shares in words: `SimulationController.ownerName` |
 | A software company's pages | [app/lib/src/screens/software.dart](../app/lib/src/screens/software.dart) | `SoftwareSection`, `StartSoftwarePage`, `SoftwarePage`, `RaceChart`, `SoftwareFundingPage` |
 | Company financials, ROIC | [app/lib/src/financials.dart](../app/lib/src/financials.dart), [app/lib/src/screens/financials.dart](../app/lib/src/screens/financials.dart) | `Financials`, `_fitOut`, `FinancialsSection` |
 | A director's letter | [app/lib/src/letters.dart](../app/lib/src/letters.dart) | `memoSentence` |

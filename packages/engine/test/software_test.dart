@@ -153,7 +153,7 @@ void main() {
           country: softwareContent.countries.first.id,
           capital: Money.parse('200000.00'),
         ),
-        'notEnoughPersonalCash',
+        'notEnoughHoldingCash',
       ),
     ]) {
       game.submit(command);

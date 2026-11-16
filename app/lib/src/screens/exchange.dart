@@ -775,30 +775,43 @@ class PortfolioPage extends StatelessWidget {
         Section(
           title: tr('stocks.holdings'),
           children: [
-            for (final holding in view.holdings)
-              IndexRow(
-                title: holding.index
-                    ? view.exchanges[holding.of].indexName
-                    : view.stocks[holding.of].name,
-                subtitle: [
-                  tr('stocks.holdingLine', {
-                    'units': compactCount(holding.units),
-                    'cost': money(holding.cost, cents: false),
-                  }),
-                  if (holding.owner != holdingOwner)
-                    game.ownerName(holding.owner),
-                ].join(' · '),
-                value: money(holding.value, cents: false),
-                valueColor: holding.value < holding.cost
-                    ? ledger.loss
-                    : ledger.gain,
-                onTap: () => holding.index
-                    ? _openExchange(context, view.exchanges[holding.of])
-                    : _openStock(context, view.stocks[holding.of]),
-              ),
+            for (final holding in view.holdings) HoldingRow(holding: holding),
           ],
         ),
       ],
+    );
+  }
+}
+
+/// One holding of the player's, the holding's own or a company's: what it
+/// is, how many and what they cost, whose, and what it is worth today, in
+/// green above its cost and red below; it opens the stock or the index.
+class HoldingRow extends StatelessWidget {
+  const HoldingRow({super.key, required this.holding});
+
+  final HoldingView holding;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final ledger = Ledger.of(context);
+    final view = game.view.stocks!;
+    return IndexRow(
+      title: holding.index
+          ? view.exchanges[holding.of].indexName
+          : view.stocks[holding.of].name,
+      subtitle: [
+        tr('stocks.holdingLine', {
+          'units': compactCount(holding.units),
+          'cost': money(holding.cost, cents: false),
+        }),
+        if (holding.owner != holdingOwner) game.ownerName(holding.owner),
+      ].join(' · '),
+      value: money(holding.value, cents: false),
+      valueColor: holding.value < holding.cost ? ledger.loss : ledger.gain,
+      onTap: () => holding.index
+          ? _openExchange(context, view.exchanges[holding.of])
+          : _openStock(context, view.stocks[holding.of]),
     );
   }
 }

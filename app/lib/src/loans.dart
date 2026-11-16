@@ -113,6 +113,36 @@ class CapitalField extends StatelessWidget {
   );
 }
 
+/// Whether a new business is set up as a company of its own, with its own
+/// books, or under the player's [company], named as it will be tomorrow.
+class NewCompanySwitch extends StatelessWidget {
+  const NewCompanySwitch({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.company,
+    required this.onChanged,
+  });
+
+  final String title;
+  final bool value;
+  final String company;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+    contentPadding: EdgeInsets.zero,
+    title: Text(title),
+    subtitle: Text(
+      value
+          ? tr('market.ownBooks')
+          : tr('market.ownedBy', {'company': company}),
+    ),
+    value: value,
+    onChanged: onChanged,
+  );
+}
+
 /// Whether to borrow the rest of a purchase from the bank. Off, it says
 /// how much the buyer is [short], or that borrowing keeps the cushion.
 class BorrowSwitch extends StatelessWidget {

@@ -306,15 +306,30 @@ class SimulationController extends ChangeNotifier {
       for (final store in company.stores) (company, store),
   ]..sort((a, b) => a.$2.id.index.compareTo(b.$2.id.index));
 
-  /// The player's cash and shares at their price, plus what their companies
-  /// own less what they owe; a software company counts at their share of
-  /// what it is worth, on paper.
-  Money get netWorth => _view.companies.fold(
-    _view.cash + _view.portfolio,
+  /// The holding's cash and shares at their price, plus what its companies
+  /// are worth ([companiesWorth]), less what the holding owes on its shares.
+  Money get netWorth =>
+      _view.cash + _view.portfolio + companiesWorth - shareLoans;
+
+  /// What the holding's companies own less what they owe, those listed left
+  /// out as their shares count among the holding's; a software company
+  /// counts at the holding's share of what it is worth, on paper.
+  Money get companiesWorth => _view.companies.fold(
+    Money.zero,
     (sum, company) => _view.listedCompanies.contains(company.id)
         ? sum
         : sum + _worthOf(company),
   );
+
+  /// What the holding still owes the bank on the shares it bought with a
+  /// loan.
+  Money get shareLoans => switch (_view.stocks) {
+    final stocks? => stocks.loans.fold(
+      Money.zero,
+      (sum, loan) => sum + loan.outstanding,
+    ),
+    null => Money.zero,
+  };
 
   /// What net worth counts on paper: the player's shares of their software
   /// companies beyond what those companies hold.

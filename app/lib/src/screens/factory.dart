@@ -986,17 +986,10 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
               onChanged: (_) => setState(() => _named = true),
             ),
             if (hasCompany)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(tr('factory.asNewCompany')),
-                subtitle: Text(
-                  _newCompany
-                      ? tr('market.ownBooks')
-                      : tr('market.ownedBy', {
-                          'company': game.companyName(company.id),
-                        }),
-                ),
+              NewCompanySwitch(
+                title: tr('factory.asNewCompany'),
                 value: _newCompany,
+                company: game.companyName(company.id),
                 onChanged: (on) => setState(() => _newCompany = on),
               ),
             CapitalField(

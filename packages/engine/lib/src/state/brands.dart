@@ -157,6 +157,24 @@ void brandStore(WorldState world, ContentDb content, Store store, Brand brand) {
   if (known != null && known > store.reputation) store.reputation = known;
 }
 
+/// [owner]'s brand of [format] with the most shops trading, the oldest of
+/// equals; null if they have none of that type of business.
+Brand? ownBrandOf(WorldState world, PersonId owner, FormatId format) {
+  Brand? best;
+  var bestShops = -1;
+  for (final brand in world.brands) {
+    if (brand.owner != owner || brand.format != format) continue;
+    final shops = world.stores
+        .where((store) => store.brand == brand.id && store.isTrading)
+        .length;
+    if (shops > bestShops) {
+      best = brand;
+      bestShops = shops;
+    }
+  }
+  return best;
+}
+
 /// The brand an AI owner trades as for [format]: the one it has, or else a
 /// new one named after [companyName], under which its shops of that type of
 /// business then trade.

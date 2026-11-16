@@ -83,11 +83,12 @@ final class SoftwareSystem implements TickSystem {
     for (; waiting < def.candidates; waiting++) {
       final id = KeyPersonId(world.keyPeople.length);
       world.keyPeople.add(
-        _candidate(
+        newCandidate(
           def,
           id,
           context.day,
           context.rng(RngStream.software, id.index),
+          forSoftware: true,
         ),
       );
     }
@@ -227,7 +228,7 @@ final class SoftwareSystem implements TickSystem {
     final engineers = <Fx>[];
     final designers = <Fx>[];
     for (var i = 0; i < def.startupTeam; i++) {
-      final power = def.levels[_drawLevel(def, rng)].power;
+      final power = def.levels[drawLevel(def, rng)].power;
       (rng.nextInt(2) == 0 ? engineers : designers).add(power);
     }
     final taken = {for (final rival in market.rivals) rival.name};
@@ -511,36 +512,4 @@ void closeSoftware(
     ..customers = 0
     ..offer = null
     ..status = status;
-}
-
-/// A level drawn as common as [def] has them.
-int _drawLevel(SoftwareDef def, Rng rng) {
-  var draw = rng.nextFx();
-  var level = 0;
-  while (level < def.levels.length - 1 && draw >= def.levels[level].share) {
-    draw -= def.levels[level++].share;
-  }
-  return level;
-}
-
-/// A candidate for software work drawn from [rng], as a lab's are: a role, a
-/// level as common as [def] has it, and a repute that is right half the
-/// time, a level short a quarter and a level over a quarter.
-KeyPerson _candidate(SoftwareDef def, KeyPersonId id, Day day, Rng rng) {
-  final role = KeyRole.values[rng.nextInt(KeyRole.values.length)];
-  final level = _drawLevel(def, rng);
-  var repute = level + const [-1, 0, 0, 1][rng.nextInt(4)];
-  if (repute < 0) repute = 0;
-  if (repute >= def.levels.length) repute = def.levels.length - 1;
-  final first = def.firstNames[rng.nextInt(def.firstNames.length)];
-  final last = def.lastNames[rng.nextInt(def.lastNames.length)];
-  return KeyPerson(
-    id: id,
-    name: '$first $last',
-    role: role,
-    level: level,
-    repute: repute,
-    since: day,
-    forSoftware: true,
-  );
 }

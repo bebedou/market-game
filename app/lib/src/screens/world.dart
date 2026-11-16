@@ -1406,7 +1406,7 @@ class _BuyCompanyDialogState extends State<_BuyCompanyDialog> {
               color: gainColor(context, earnings.cents.sign),
               hint: tr('market.theirLastSales'),
             ),
-            Line(tr('common.ownCash'), money(view.cash, cents: false)),
+            Line(tr('common.holdingCash'), money(view.cash, cents: false)),
             if (credit > Money.zero)
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -2615,17 +2615,10 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
               ),
             ],
             if (hasCompany)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(tr('market.asNewCompany')),
-                subtitle: Text(
-                  _newCompany
-                      ? tr('market.ownBooks')
-                      : tr('market.ownedBy', {
-                          'company': game.view.companyNames[company.id.index],
-                        }),
-                ),
+              NewCompanySwitch(
+                title: tr('market.asNewCompany'),
                 value: _newCompany,
+                company: game.companyName(company.id),
                 onChanged: (on) => setState(() => _newCompany = on),
               ),
             CapitalField(

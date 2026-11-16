@@ -9,15 +9,18 @@ import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
 import 'books.dart';
+import 'exchange.dart' show HoldingRow, PortfolioPage;
 import 'factory.dart';
 import 'finance.dart';
 import 'shop.dart';
 import 'software.dart';
 import 'world.dart';
 
-/// The holding at a glance: net worth, what needs doing, how last week
-/// went, the companies and who runs them, the stores, the news and profit.
-/// Money and deals are in Finance.
+/// The holding at a glance, the owner's layout A (its name is in the top
+/// bar): its net worth, what needs doing, its own books (cash, shares, companies, loans), its
+/// portfolio, how last week went, the companies and who runs them, the
+/// stores, the news and profit. The companies' money and deals are in
+/// Finance.
 class HoldingScreen extends StatelessWidget {
   const HoldingScreen({super.key, required this.onOpen});
 
@@ -33,6 +36,8 @@ class HoldingScreen extends StatelessWidget {
       children: [
         const _Masthead(),
         ..._toDo(context, game),
+        const _HoldingBooks(),
+        _Portfolio(onOpen: onOpen),
         const _KeyFigures(),
         const _Companies(),
         const _Brands(),
@@ -348,6 +353,115 @@ class _LastWeek extends StatelessWidget {
   }
 }
 
+/// The holding's own books: its cash, its shares at their price, what its
+/// companies are worth, less what it owes on its shares, coming to its net
+/// worth.
+class _HoldingBooks extends StatelessWidget {
+  const _HoldingBooks();
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final view = game.view;
+    final ledger = Ledger.of(context);
+    final loans = game.shareLoans;
+    return Section(
+      title: tr('dashboard.holdingBooks'),
+      children: [
+        Line(
+          tr('dashboard.cash'),
+          money(view.cash, cents: false),
+          hint: switch (view.lastBankruptcy) {
+            final day? => tr('dashboard.bankruptOn', {
+              'date': shortDate(day),
+              'year': day.date.year,
+            }),
+            null => null,
+          },
+        ),
+        if (view.stocks != null)
+          Line(tr('dashboard.shares'), money(view.portfolio, cents: false)),
+        if (view.companies.isNotEmpty)
+          Line(
+            tr('dashboard.companiesWorth'),
+            money(game.companiesWorth, cents: false),
+            hint: view.listedCompanies.isEmpty
+                ? null
+                : tr('dashboard.companiesWorthHint'),
+          ),
+        if (loans > Money.zero)
+          Line(
+            tr('dashboard.shareLoans'),
+            money(-loans, cents: false),
+            color: ledger.loss,
+          ),
+        Line(
+          tr('common.netWorth'),
+          money(game.netWorth, cents: false),
+          strong: true,
+        ),
+      ],
+    );
+  }
+}
+
+/// The holding's portfolio, and its companies' shares: what they are worth
+/// against what they cost, the year's dividends, the biggest lines and the
+/// way to all of them; without shares, the way to the Market tab.
+class _Portfolio extends StatelessWidget {
+  const _Portfolio({required this.onOpen});
+
+  /// Switches to another tab.
+  final OpenTab onOpen;
+
+  /// How many of the biggest holdings it shows.
+  static const _shown = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final ledger = Ledger.of(context);
+    final view = game.view.stocks;
+    if (view == null) return const SizedBox.shrink();
+    final gain = view.worth - view.cost;
+    final biggest = [...view.holdings]
+      ..sort((a, b) => b.value.cents.compareTo(a.value.cents));
+    return Section(
+      title: tr('stocks.yourPortfolio'),
+      children: [
+        if (view.holdings.isEmpty) ...[
+          Hint(tr('stocks.noHoldings')),
+          IndexRow(
+            icon: Icons.candlestick_chart_outlined,
+            title: tr('dashboard.toMarket'),
+            onTap: () => onOpen(HomeTab.market),
+          ),
+        ] else ...[
+          Line(
+            tr('stocks.sinceBought'),
+            signedMoney(gain, cents: false),
+            color: gain.isNegative ? ledger.loss : ledger.gain,
+          ),
+          Line(tr('stocks.dividendsYear'), money(view.dividends, cents: false)),
+          for (final holding in biggest.take(_shown))
+            HoldingRow(holding: holding),
+          if (view.holdings.length > _shown)
+            IndexRow(
+              title: tr('stocks.holdings'),
+              subtitle: tr('stocks.holdingsCount', {
+                'count': view.holdings.length,
+              }),
+              onTap: () => context.openPage(
+                tr('stocks.holdings'),
+                (_) => [const PortfolioPage()],
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
 /// Shoppers and sales across every store, the companies' cash and the
 /// player's own, with how they moved.
 class _KeyFigures extends StatelessWidget {
@@ -411,21 +525,6 @@ class _KeyFigures extends StatelessWidget {
         ),
       );
     }
-    tiles.add(
-      StatTile(
-        icon: Icons.account_balance_wallet_outlined,
-        label: tr('common.ownCash'),
-        value: AnimatedMoney(view.cash, cents: false),
-        trend: switch (view.lastBankruptcy) {
-          final day? => tr('dashboard.bankruptOn', {
-            'date': shortDate(day),
-            'year': day.date.year,
-          }),
-          null => null,
-        },
-        trendSign: view.lastBankruptcy == null ? 0 : -1,
-      ),
-    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
       child: Column(

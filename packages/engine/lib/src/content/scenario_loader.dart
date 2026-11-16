@@ -13,20 +13,9 @@ import 'factory_sales_def.dart';
 import 'software_def.dart';
 import 'stocks_def.dart';
 import 'household_demand.dart';
+import 'json_node.dart';
 
-/// A problem in a scenario file, with the JSON path where it was found.
-final class ContentException implements Exception {
-  ContentException(this.path, this.message);
-
-  final String path;
-  final String message;
-
-  @override
-  String toString() {
-    final where = path.isEmpty ? 'the root' : path;
-    return 'Invalid scenario at $where: $message';
-  }
-}
+export 'json_node.dart' show ContentException;
 
 /// Parses and validates a scenario file.
 ///
@@ -48,7 +37,7 @@ ContentDb loadScenario(
   } on FormatException catch (e) {
     throw ContentException('', 'not valid JSON (${e.message})');
   }
-  final root = _Node('', decoded);
+  final root = JsonNode('', decoded);
   final marketKeys = _Keys();
   final siteKeys = _Keys();
   final categoryKeys = _Keys();
@@ -84,7 +73,7 @@ ContentDb loadScenario(
     var weight = Fx.one;
     if (node.has('weight')) {
       weight = node.fx('weight');
-      if (weight <= Fx.zero) node._fail('weight', 'must be positive');
+      if (weight <= Fx.zero) node.fail('weight', 'must be positive');
     }
     countries.add(
       CountryDef(
@@ -122,7 +111,7 @@ ContentDb loadScenario(
   }
 
   /// The country [node] names, or the first.
-  CountryId countryIn(_Node node) => node.has('country')
+  CountryId countryIn(JsonNode node) => node.has('country')
       ? CountryId(
           countryKeys.resolve(node.string('country'), node.pathOf('country')),
         )
@@ -139,7 +128,7 @@ ContentDb loadScenario(
         launched: bass.date('launched'),
       );
       if (diffusion.innovation == Fx.zero) {
-        bass._fail('innovation', 'must be above 0');
+        bass.fail('innovation', 'must be above 0');
       }
       bass.finish();
     }
@@ -174,7 +163,7 @@ ContentDb loadScenario(
     );
     final tier = node.choice('tier', ProductTier.values);
     if (products.any((p) => p.category == category && p.tier == tier)) {
-      node._fail('tier', 'another product has this category and tier');
+      node.fail('tier', 'another product has this category and tier');
     }
     products.add(
       ProductDef(
@@ -202,7 +191,7 @@ ContentDb loadScenario(
     ];
     responseNode.finish();
     if (missResponses.fold(Fx.zero, (sum, odds) => sum + odds) != Fx.one) {
-      node._fail('missResponses', 'the odds must add up to 1');
+      node.fail('missResponses', 'the odds must add up to 1');
     }
     final dailyUnits = List.filled(categories.length, Fx.zero);
     final premiumShare = List.filled(categories.length, Fx.zero);
@@ -217,18 +206,18 @@ ContentDb loadScenario(
     }
     for (final category in categories) {
       if (!categoryNode.keys.contains(category.key)) {
-        node._fail('categories', 'missing category "${category.key}"');
+        node.fail('categories', 'missing category "${category.key}"');
       }
     }
     categoryNode.finish();
     final slotNode = node.object('slots');
     final slotShares = _perSlot(slotNode, slotNode.fraction, Fx.zero);
     if (slotShares.fold(Fx.zero, (sum, share) => sum + share) != Fx.one) {
-      node._fail('slots', 'the shares must add up to 1');
+      node.fail('slots', 'the shares must add up to 1');
     }
     if (node.has('incomeSpread') &&
         node.fraction('incomeSpread') > Fx.parse('0.9')) {
-      node._fail('incomeSpread', 'must be at most 0.9');
+      node.fail('incomeSpread', 'must be at most 0.9');
     }
     segments.add(
       SegmentDef(
@@ -266,7 +255,7 @@ ContentDb loadScenario(
   final pendingMarkets =
       <
         ({
-          _Node node,
+          JsonNode node,
           MarketId id,
           String key,
           String name,
@@ -332,7 +321,7 @@ ContentDb loadScenario(
       ),
     );
     if (sites.last.maxArea < sites.last.area) {
-      node._fail('maxArea', 'must be at least the area');
+      node.fail('maxArea', 'must be at least the area');
     }
     node.finish();
   }
@@ -414,7 +403,7 @@ ContentDb loadScenario(
     );
     node.finish();
   }
-  if (regimes.isEmpty) macroNode._fail('regimes', 'needs at least one');
+  if (regimes.isEmpty) macroNode.fail('regimes', 'needs at least one');
   final macro = MacroDef(
     startRegime: RegimeId(
       regimeKeys.resolve(
@@ -458,7 +447,7 @@ ContentDb loadScenario(
     );
   }
   for (final node
-      in root.has('formats') ? root.objects('formats') : const <_Node>[]) {
+      in root.has('formats') ? root.objects('formats') : const <JsonNode>[]) {
     final key = node.string('id');
     final id = FormatId(formatKeys.add(key, node.pathOf('id')));
     final sells = List.filled(categories.length, false);
@@ -642,17 +631,17 @@ ContentDb loadScenario(
     for (final tier in node.objects('volumeDiscounts', optional: true)) {
       final minUnits = tier.positiveInt('minUnits');
       if (discounts.isNotEmpty && minUnits <= discounts.last.minUnits) {
-        tier._fail('minUnits', 'must be larger than the previous tier');
+        tier.fail('minUnits', 'must be larger than the previous tier');
       }
       final discount = tier.fx('discount');
       if (discount.isNegative || discount >= Fx.one) {
-        tier._fail('discount', 'must be at least 0 and below 1');
+        tier.fail('discount', 'must be at least 0 and below 1');
       }
       discounts.add(VolumeDiscount(minUnits: minUnits, discount: discount));
       tier.finish();
     }
     final priceFactor = node.fx('priceFactor');
-    if (priceFactor <= Fx.zero) node._fail('priceFactor', 'must be positive');
+    if (priceFactor <= Fx.zero) node.fail('priceFactor', 'must be positive');
     suppliers.add(
       SupplierDef(
         id: id,
@@ -718,11 +707,11 @@ ContentDb loadScenario(
         );
         level.finish();
       }
-      if (shares != Fx.one) lab._fail('levels', 'shares must sum to 1');
+      if (shares != Fx.one) lab.fail('levels', 'shares must sum to 1');
       final firstNames = lab.strings('firstNames');
       final lastNames = lab.strings('lastNames');
-      if (firstNames.isEmpty) lab._fail('firstNames', 'must not be empty');
-      if (lastNames.isEmpty) lab._fail('lastNames', 'must not be empty');
+      if (firstNames.isEmpty) lab.fail('firstNames', 'must not be empty');
+      if (lastNames.isEmpty) lab.fail('lastNames', 'must not be empty');
       labs = LabsDef(
         generationWork: lab.money('generationWork'),
         leadHardness: lab.fx('leadHardness'),
@@ -760,7 +749,7 @@ ContentDb loadScenario(
         }(),
     ];
     if (sizes.isNotEmpty && sizes.first.capacity != Fx.one) {
-      node._fail('sizes', 'the first must be a workshop, of capacity 1');
+      node.fail('sizes', 'the first must be a workshop, of capacity 1');
     }
     final sales = switch (node.optionalObject('sales')) {
       final sales? => _factorySales(sales, factoryKeys, countryIn),
@@ -803,7 +792,7 @@ ContentDb loadScenario(
     );
     final total = households.fold(0, (sum, count) => sum + count);
     if (pending.agents case final agents? when agents > total) {
-      pending.node._fail('agents', 'at most one cohort per household ($total)');
+      pending.node.fail('agents', 'at most one cohort per household ($total)');
     }
     markets.add(
       MarketDef(
@@ -836,7 +825,7 @@ ContentDb loadScenario(
   if (root.optionalObject('acquisitions') case final node?) {
     final capitalization = node.fraction('capitalization');
     if (capitalization == Fx.zero) {
-      node._fail('capitalization', 'must be more than 0');
+      node.fail('capitalization', 'must be more than 0');
     }
     acquisitions = AcquisitionDef(
       tangibleReturn: node.fraction('tangibleReturn'),
@@ -857,7 +846,7 @@ ContentDb loadScenario(
       half: node.money('half'),
     );
     if (buyingTerms.half <= Money.zero) {
-      node._fail('half', 'must be more than 0');
+      node.fail('half', 'must be more than 0');
     }
     node.finish();
   }
@@ -868,11 +857,11 @@ ContentDb loadScenario(
     final id = StrategyId(strategyKeys.add(key, node.pathOf('id')));
     final forecastDays = node.positiveInt('forecastDays');
     if (forecastDays > salesHistoryDays) {
-      node._fail('forecastDays', 'must be at most $salesHistoryDays');
+      node.fail('forecastDays', 'must be at most $salesHistoryDays');
     }
     final minMarkup = node.nonNegativeFx('minMarkup');
     final markup = node.nonNegativeFx('markup');
-    if (markup < minMarkup) node._fail('markup', 'must be at least minMarkup');
+    if (markup < minMarkup) node.fail('markup', 'must be at least minMarkup');
     final hours = List.filled(DaySlot.values.length, false);
     final hourNames = node.strings('hours');
     for (var i = 0; i < hourNames.length; i++) {
@@ -887,7 +876,7 @@ ContentDb loadScenario(
     }
     final marketPosition = node.fx('marketPosition');
     if (marketPosition <= -Fx.one) {
-      node._fail('marketPosition', 'must be above -1');
+      node.fail('marketPosition', 'must be above -1');
     }
     strategies.add(
       StrategyDef(
@@ -936,7 +925,7 @@ ContentDb loadScenario(
     final isPlayer = node.flag('player');
     final strategyKey = node.optionalString('strategy');
     if (isPlayer && strategyKey != null) {
-      node._fail('strategy', 'the player has no AI strategy');
+      node.fail('strategy', 'the player has no AI strategy');
     }
     persons.add(
       PersonSetup(
@@ -990,18 +979,18 @@ ContentDb loadScenario(
     final site =
         sites[siteKeys.resolve(node.string('site'), node.pathOf('site'))];
     if (stores.any((store) => store.site == site.id)) {
-      node._fail('site', 'another store already trades at "${site.key}"');
+      node.fail('site', 'another store already trades at "${site.key}"');
     }
     final shelfSlots = site.shelfSlots;
     final area = node.has('area') ? node.positiveInt('area') : null;
     if (area != null && (area < site.area || area > site.maxArea)) {
-      node._fail('area', 'must be within what "${site.key}" allows');
+      node.fail('area', 'must be within what "${site.key}" allows');
     }
     final staffNode = node.object('staff');
     final staff = _perSlot(staffNode, staffNode.nonNegativeInt, 0);
     for (final slot in DaySlot.values) {
       if (staff[slot.index] > operations.maxStaffPerSlot) {
-        staffNode._fail(
+        staffNode.fail(
           slot.name,
           'at most ${operations.maxStaffPerSlot} staff per slot',
         );
@@ -1020,14 +1009,14 @@ ContentDb loadScenario(
         priceNode.pathOf(productKey),
       );
       if (!format.sells[products[product].category.index]) {
-        priceNode._fail(productKey, 'a ${format.name} does not sell it');
+        priceNode.fail(productKey, 'a ${format.name} does not sell it');
       }
       prices[product] = priceNode.positiveMoney(productKey);
     }
     priceNode.finish();
     final listed = prices.where((price) => price != null).length;
     if (listed > shelfSlots) {
-      node._fail('prices', 'lists $listed products but has $shelfSlots slots');
+      node.fail('prices', 'lists $listed products but has $shelfSlots slots');
     }
     stores.add(
       StoreSetup(
@@ -1047,13 +1036,13 @@ ContentDb loadScenario(
   for (final node
       in root.has('neighbourhoods')
           ? root.objects('neighbourhoods')
-          : const <_Node>[]) {
+          : const <JsonNode>[]) {
     final key = node.string('id');
     // Once it has woken, it's among the markets too.
     final woken = node.has('woken') && node.flag('woken');
     if ((!woken && markets.any((market) => market.key == key)) ||
         neighbourhoods.any((row) => row.key == key)) {
-      node._fail('id', 'there is already a place called "$key"');
+      node.fail('id', 'there is already a place called "$key"');
     }
     final growth = List.filled(segments.length, Fx.zero);
     if (node.optionalObject('growth') case final growthNode?) {
@@ -1085,11 +1074,7 @@ ContentDb loadScenario(
         typicalArea: node.positiveInt('typicalArea'),
         largestArea: node.positiveInt('largestArea'),
         room: node.positiveInt('room'),
-        layout: switch (node._value('layout')) {
-          null => null,
-          final Map<String, Object?> layout => layout,
-          _ => node._fail('layout', 'expected an object'),
-        },
+        layout: node.optionalMap('layout'),
         country: countryIn(node),
       ),
     );
@@ -1185,7 +1170,7 @@ StocksDef _stocks(
   } on FormatException catch (e) {
     throw ContentException('stocks', 'not valid JSON (${e.message})');
   }
-  final root = _Node('stocks', decoded);
+  final root = JsonNode('stocks', decoded);
   root.optionalString('about');
   root.nonNegativeInt('year');
   final rulesNode = root.object('rules');
@@ -1198,10 +1183,10 @@ StocksDef _stocks(
   final ratings = [
     for (final step in rulesNode.strings('ratings')) Fx.parse(step),
   ];
-  if (ratings.length != 4) rulesNode._fail('ratings', 'expected four steps');
+  if (ratings.length != 4) rulesNode.fail('ratings', 'expected four steps');
   for (var i = 1; i < ratings.length; i++) {
     if (ratings[i] <= ratings[i - 1]) {
-      rulesNode._fail('ratings', 'must rise step by step');
+      rulesNode.fail('ratings', 'must rise step by step');
     }
   }
   final rules = StockRulesDef(
@@ -1251,14 +1236,14 @@ StocksDef _stocks(
     raiderSell: rulesNode.nonNegativeFx('raiderSell'),
   );
   if (rules.acceptSpan <= Fx.zero) {
-    rulesNode._fail('acceptSpan', 'must be above 0');
+    rulesNode.fail('acceptSpan', 'must be above 0');
   }
   if (rules.maxEarningsMultiple <= rules.minEarningsMultiple) {
-    rulesNode._fail('maxEarningsMultiple', 'must be above the least');
+    rulesNode.fail('maxEarningsMultiple', 'must be above the least');
   }
   rulesNode.finish();
 
-  CountryId countryOf(_Node node) => CountryId(
+  CountryId countryOf(JsonNode node) => CountryId(
     countries.resolve(node.string('country'), node.pathOf('country')),
   );
 
@@ -1266,7 +1251,7 @@ StocksDef _stocks(
   for (final node in root.objects('exchanges')) {
     final country = countryOf(node);
     if (exchanges.any((e) => e.country == country)) {
-      node._fail('country', 'already has an exchange');
+      node.fail('country', 'already has an exchange');
     }
     exchanges.add(
       ExchangeDef(
@@ -1315,12 +1300,12 @@ StocksDef _stocks(
       final trade = node.optionalString('trade');
       final isSoftware = node.flag('software');
       if ((trade == null) == !isSoftware) {
-        node._fail('id', 'needs an output, a trade, or software');
+        node.fail('id', 'needs an output, a trade, or software');
       }
       if (trade != null &&
           national != null &&
           !national.trades.any((t) => t.key == trade)) {
-        node._fail('trade', 'the national table has no trade "$trade"');
+        node.fail('trade', 'the national table has no trade "$trade"');
       }
       sectors.add(
         SectorDef(
@@ -1346,11 +1331,11 @@ StocksDef _stocks(
   for (final node in root.objects('companies')) {
     final ticker = node.string('ticker');
     if (!tickers.add(ticker)) {
-      node._fail('ticker', 'duplicate ticker "$ticker"');
+      node.fail('ticker', 'duplicate ticker "$ticker"');
     }
     final country = countryOf(node);
     if (!exchanges.any((e) => e.country == country)) {
-      node._fail('country', 'has no exchange');
+      node.fail('country', 'has no exchange');
     }
     final sector = sectorKeys.resolve(
       node.string('sector'),
@@ -1365,36 +1350,36 @@ StocksDef _stocks(
       final table = national?.countries.where((c) => c.key == key).firstOrNull;
       link = table?.chains.indexWhere((c) => c.name == name) ?? -1;
       if (link < 0 || table!.chains[link].independent) {
-        node._fail('chain', "no chain \"$name\" in its country's table");
+        node.fail('chain', "no chain \"$name\" in its country's table");
       }
       if (def.trade != national!.trades[table.chains[link].trade].key) {
-        node._fail('sector', "is not the chain's trade");
+        node.fail('sector', "is not the chain's trade");
       }
     } else if (node.optionalString('software') case final name?) {
       kind = ListingKind.software;
       link =
           software?.rivals.indexWhere((r) => r.name == name && !r.rest) ?? -1;
-      if (link < 0) node._fail('software', 'no software rival "$name"');
-      if (!def.software) node._fail('sector', 'is not software');
+      if (link < 0) node.fail('software', 'no software rival "$name"');
+      if (!def.software) node.fail('sector', 'is not software');
     } else if (node.optionalString('producer') case final name?) {
       kind = ListingKind.producer;
       link = producers.indexWhere((p) => p.name == name);
-      if (link < 0) node._fail('producer', 'no producer "$name"');
+      if (link < 0) node.fail('producer', 'no producer "$name"');
     } else if (!def.byFormula) {
-      node._fail('sector', "is played: name the game's company");
+      node.fail('sector', "is played: name the game's company");
     }
     final formula = kind == ListingKind.formula;
     final cap = switch (node.optionalString('cap')) {
       final text? => Money.parse(text),
       null => null,
     };
-    if (cap != null && cap <= Money.zero) node._fail('cap', 'must be positive');
+    if (cap != null && cap <= Money.zero) node.fail('cap', 'must be positive');
     final shares = node.optionalPositiveInt('shares');
     if (shares != null && shares > maxListedShares) {
-      node._fail('shares', 'must be at most $maxListedShares');
+      node.fail('shares', 'must be at most $maxListedShares');
     }
     if (formula && (cap == null || shares == null)) {
-      node._fail('cap', 'a company by formula needs its cap and shares');
+      node.fail('cap', 'a company by formula needs its cap and shares');
     }
     var management = averageManagement;
     var share = 0;
@@ -1405,7 +1390,7 @@ StocksDef _stocks(
       final grade = node.string('management');
       management = managementGrades.indexOf(grade);
       if (management < 0) {
-        node._fail(
+        node.fail(
           'management',
           'expected one of ${managementGrades.join(', ')}',
         );
@@ -1413,10 +1398,10 @@ StocksDef _stocks(
       try {
         share = parseDecimal(node.string('share'), 6);
       } on FormatException catch (e) {
-        node._fail('share', e.message);
+        node.fail('share', e.message);
       }
       if (share < 0 || share > 1000000) {
-        node._fail('share', 'must be from 0 to 1');
+        node.fail('share', 'must be from 0 to 1');
       }
       margin = node.fx('margin');
       debt = node.fx('debt');
@@ -1469,7 +1454,7 @@ StocksDef _stocks(
 
 /// The software market, its people named from the labs' names if it lists
 /// none of its own.
-SoftwareDef _software(_Node node, LabsDef? labs) {
+SoftwareDef _software(JsonNode node, LabsDef? labs) {
   final levels = <TalentLevelDef>[];
   var shares = Fx.zero;
   for (final level in node.objects('levels')) {
@@ -1484,15 +1469,15 @@ SoftwareDef _software(_Node node, LabsDef? labs) {
     );
     level.finish();
   }
-  if (shares != Fx.one) node._fail('levels', 'shares must sum to 1');
+  if (shares != Fx.one) node.fail('levels', 'shares must sum to 1');
   final firstNames = node.has('firstNames')
       ? node.strings('firstNames')
       : labs?.firstNames ?? const <String>[];
   final lastNames = node.has('lastNames')
       ? node.strings('lastNames')
       : labs?.lastNames ?? const <String>[];
-  if (firstNames.isEmpty) node._fail('firstNames', 'must not be empty');
-  if (lastNames.isEmpty) node._fail('lastNames', 'must not be empty');
+  if (firstNames.isEmpty) node.fail('firstNames', 'must not be empty');
+  if (lastNames.isEmpty) node.fail('lastNames', 'must not be empty');
   final rivals = <SoftwareRivalDef>[];
   var rivalShares = Fx.zero;
   for (final rival in node.objects('rivals')) {
@@ -1510,12 +1495,12 @@ SoftwareDef _software(_Node node, LabsDef? labs) {
     );
     rival.finish();
   }
-  if (rivalShares != Fx.one) node._fail('rivals', 'shares must sum to 1');
+  if (rivalShares != Fx.one) node.fail('rivals', 'shares must sum to 1');
   if (rivals.where((r) => r.rest).length != 1 || !rivals.last.rest) {
-    node._fail('rivals', 'the last, and only the last, must be the rest');
+    node.fail('rivals', 'the last, and only the last, must be the rest');
   }
   final startupNames = node.strings('startupNames');
-  if (startupNames.isEmpty) node._fail('startupNames', 'must not be empty');
+  if (startupNames.isEmpty) node.fail('startupNames', 'must not be empty');
   final software = SoftwareDef(
     customers: node.positiveInt('customers'),
     price: node.positiveMoney('price'),
@@ -1575,19 +1560,19 @@ SoftwareDef _software(_Node node, LabsDef? labs) {
     rivals: List.unmodifiable(rivals),
   );
   if (software.maxPremium < software.minPremium) {
-    node._fail('maxPremium', 'must not be under minPremium');
+    node.fail('maxPremium', 'must not be under minPremium');
   }
   if (software.maxChurn < software.minChurn) {
-    node._fail('maxChurn', 'must not be under minChurn');
+    node.fail('maxChurn', 'must not be under minChurn');
   }
   if (software.drawCap < software.drawFloor) {
-    node._fail('drawCap', 'must not be under drawFloor');
+    node.fail('drawCap', 'must not be under drawFloor');
   }
   node.finish();
   return software;
 }
 
-TaxDef _taxes(_Node node) {
+TaxDef _taxes(JsonNode node) {
   final taxes = TaxDef(
     reducedRate: node.fraction('reducedRate'),
     reducedLimit: node.money('reducedLimit'),
@@ -1598,10 +1583,10 @@ TaxDef _taxes(_Node node) {
   return taxes;
 }
 
-PlaceNames _placeNames(_Node node) {
-  List<String> words(_Node node, String key) {
+PlaceNames _placeNames(JsonNode node) {
+  List<String> words(JsonNode node, String key) {
     final list = node.strings(key);
-    if (list.isEmpty) node._fail(key, 'needs at least one');
+    if (list.isEmpty) node.fail(key, 'needs at least one');
     return List.unmodifiable(list);
   }
 
@@ -1610,7 +1595,7 @@ PlaceNames _placeNames(_Node node) {
     for (final format in shopsNode.keys.toList())
       format: words(shopsNode, format),
   };
-  if (shops.isEmpty) node._fail('shops', 'needs at least one format');
+  if (shops.isEmpty) node.fail('shops', 'needs at least one format');
   shopsNode.finish();
   final names = PlaceNames(
     first: words(node, 'first'),
@@ -1643,11 +1628,11 @@ String _canonicalJson(Object? value) {
 
 /// Values per [DaySlot] from an object keyed by slot name, [absent] for
 /// slots it leaves out.
-List<T> _perSlot<T>(_Node node, T Function(String key) read, T absent) {
+List<T> _perSlot<T>(JsonNode node, T Function(String key) read, T absent) {
   final values = List.filled(DaySlot.values.length, absent);
   for (final key in node.keys.toList()) {
     final slot = DaySlot.values.where((s) => s.name == key);
-    if (slot.isEmpty) node._fail(key, 'not a slot of the day');
+    if (slot.isEmpty) node.fail(key, 'not a slot of the day');
     values[slot.single.index] = read(key);
   }
   return values;
@@ -1668,202 +1653,22 @@ final class _Keys {
       _indexes[key] ?? (throw ContentException(path, 'unknown id "$key"'));
 }
 
-/// A JSON object being read, which remembers its path for error messages and
-/// which fields were read.
-final class _Node {
-  _Node(this.path, Object? value)
-    : _map = switch (value) {
-        final Map<String, Object?> map => map,
-        _ => throw ContentException(path, 'expected an object'),
-      };
-
-  final String path;
-  final Map<String, Object?> _map;
-  final _read = <String>{};
-
-  Iterable<String> get keys => _map.keys;
-
-  String pathOf(String key) => path.isEmpty ? key : '$path.$key';
-
-  Object? _value(String key) {
-    _read.add(key);
-    return _map[key];
-  }
-
-  Never _fail(String key, String message) =>
-      throw ContentException(pathOf(key), message);
-
-  String string(String key) => optionalString(key) ?? _fail(key, 'missing');
-
-  String? optionalString(String key) => switch (_value(key)) {
-    final String text => text,
-    null => null,
-    _ => _fail(key, 'expected a string'),
-  };
-
-  bool flag(String key) => switch (_value(key)) {
-    null => false,
-    final bool value => value,
-    _ => _fail(key, 'expected true or false'),
-  };
-
-  int? optionalPositiveInt(String key) => switch (_value(key)) {
-    null => null,
-    final int value when value > 0 => value,
-    _ => _fail(key, 'expected a positive whole number'),
-  };
-
-  int positiveInt(String key) =>
-      optionalPositiveInt(key) ?? _fail(key, 'missing');
-
-  int nonNegativeInt(String key) => switch (_value(key)) {
-    final int value when value >= 0 => value,
-    null => _fail(key, 'missing'),
-    _ => _fail(key, 'expected a whole number, 0 or more'),
-  };
-
-  Fx fx(String key) {
-    final text = switch (_value(key)) {
-      final String text => text,
-      null => _fail(key, 'missing'),
-      _ => _fail(key, 'expected a decimal string such as "0.05"'),
-    };
-    try {
-      return Fx.parse(text);
-    } on FormatException catch (e) {
-      _fail(key, e.message);
-    }
-  }
-
-  Fx nonNegativeFx(String key) {
-    final value = fx(key);
-    if (value.isNegative) _fail(key, 'must not be negative');
-    return value;
-  }
-
-  /// A share, rate or probability: a decimal from 0 to 1.
-  Fx fraction(String key) {
-    final value = fx(key);
-    if (value.isNegative || value > Fx.one) _fail(key, 'must be from 0 to 1');
-    return value;
-  }
-
-  List<String> strings(String key) => switch (_value(key)) {
-    final List<Object?> list => [
-      for (var i = 0; i < list.length; i++)
-        switch (list[i]) {
-          final String text => text,
-          _ => throw ContentException(
-            '${pathOf(key)}[$i]',
-            'expected a string',
-          ),
-        },
-    ],
-    null => _fail(key, 'missing'),
-    _ => _fail(key, 'expected a list'),
-  };
-
-  Money money(String key) {
-    final text = switch (_value(key)) {
-      final String text => text,
-      null => _fail(key, 'missing'),
-      _ => _fail(key, 'expected a decimal string such as "1.50"'),
-    };
-    try {
-      return Money.parse(text);
-    } on FormatException catch (e) {
-      _fail(key, e.message);
-    }
-  }
-
-  Money positiveMoney(String key) {
-    final value = money(key);
-    if (value <= Money.zero) _fail(key, 'must be positive');
-    return value;
-  }
-
-  Day date(String key) {
-    try {
-      return Day.parse(string(key));
-    } on FormatException catch (e) {
-      _fail(key, e.message);
-    }
-  }
-
-  T choice<T extends Enum>(String key, List<T> values) {
-    final text = string(key);
-    for (final value in values) {
-      if (value.name == text) return value;
-    }
-    final allowed = values.map((value) => value.name).join(', ');
-    _fail(key, 'expected one of: $allowed');
-  }
-
-  _Node object(String key) =>
-      _Node(pathOf(key), _value(key) ?? _fail(key, 'missing'));
-
-  _Node? optionalObject(String key) => switch (_value(key)) {
-    null => null,
-    final value => _Node(pathOf(key), value),
-  };
-
-  bool has(String key) => _map.containsKey(key);
-
-  /// A multiplier on the usual, from 0.3 to 3; 1 if missing.
-  Fx level(String key) {
-    if (!has(key)) return Fx.one;
-    final value = fx(key);
-    if (value < Fx.parse('0.3') || value > Fx.fromInt(3)) {
-      _fail(key, 'must be from 0.3 to 3');
-    }
-    return value;
-  }
-
-  /// A yearly rate of change, either way: a decimal from -0.5 to 0.5.
-  Fx yearlyRate(String key) {
-    final value = fx(key);
-    if (value < Fx.parse('-0.5') || value > Fx.parse('0.5')) {
-      _fail(key, 'must be from -0.5 to 0.5');
-    }
-    return value;
-  }
-
-  /// A list of objects. When [optional], a missing list is empty.
-  List<_Node> objects(String key, {bool optional = false}) =>
-      switch (_value(key)) {
-        final List<Object?> list => [
-          for (var i = 0; i < list.length; i++)
-            _Node('${pathOf(key)}[$i]', list[i]),
-        ],
-        null when optional => const [],
-        null => _fail(key, 'missing'),
-        _ => _fail(key, 'expected a list'),
-      };
-
-  /// Fails on any field that wasn't read.
-  void finish() {
-    for (final key in _map.keys) {
-      if (!_read.contains(key)) _fail(key, 'unknown field');
-    }
-  }
-}
-
 /// How a scenario sizes a place: by its market, what it spends a year on each
 /// trade's goods, and the mix of who lives there; or, as generated content
 /// writes it, by its households by segment and the scale of what they buy of
 /// each trade against their habits. Trades are named by any of their formats.
 typedef _Sizing = ({
-  _Node node,
+  JsonNode node,
   List<int>? households,
   Map<String, Fx>? scale,
   Map<String, Money>? market,
   List<Fx>? mix,
 });
 
-_Sizing _readSizing(_Node node, _Keys segmentKeys, int segmentCount) {
+_Sizing _readSizing(JsonNode node, _Keys segmentKeys, int segmentCount) {
   final byHouseholds = node.has('households');
   if (byHouseholds == node.has('market')) {
-    node._fail(
+    node.fail(
       'market',
       byHouseholds ? 'give a market or households, not both' : 'missing',
     );
@@ -1900,7 +1705,7 @@ _Sizing _readSizing(_Node node, _Keys segmentKeys, int segmentCount) {
   final market = <String, Money>{};
   for (final trade in marketNode.keys.toList()) {
     final amount = marketNode.money(trade);
-    if (amount.isNegative) marketNode._fail(trade, 'must not be negative');
+    if (amount.isNegative) marketNode.fail(trade, 'must not be negative');
     market[trade] = amount;
   }
   marketNode.finish();
@@ -1912,7 +1717,7 @@ _Sizing _readSizing(_Node node, _Keys segmentKeys, int segmentCount) {
   }
   mixNode.finish();
   if (mix.every((share) => share == Fx.zero)) {
-    node._fail('mix', 'someone must live here');
+    node.fail('mix', 'someone must live here');
   }
   return (node: node, households: null, scale: null, market: market, mix: mix);
 }
@@ -1976,12 +1781,12 @@ _Sizing _readSizing(_Node node, _Keys segmentKeys, int segmentCount) {
     final trade = sizing.market!.keys.firstWhere(
       (key) => channels[formatKeys.resolve(key, key)] == unbought.first,
     );
-    sizing.node._fail('market.$trade', 'nobody here buys from this trade');
+    sizing.node.fail('market.$trade', 'nobody here buys from this trade');
   }
   return (households: households, scale: scale);
 }
 
-LabourDef? _labour(_Node macro) {
+LabourDef? _labour(JsonNode macro) {
   final node = macro.optionalObject('labour');
   if (node == null) return null;
   final labour = LabourDef(
@@ -1992,7 +1797,7 @@ LabourDef? _labour(_Node macro) {
     confidence: node.nonNegativeFx('confidence'),
   );
   if (labour.okunCoefficient == Fx.zero) {
-    node._fail('okunCoefficient', 'must be above 0');
+    node.fail('okunCoefficient', 'must be above 0');
   }
   node.finish();
   return labour;
@@ -2001,9 +1806,9 @@ LabourDef? _labour(_Node macro) {
 /// How factories sell to other companies, their rival producers' kinds
 /// and countries by key.
 FactorySalesDef _factorySales(
-  _Node node,
+  JsonNode node,
   _Keys factoryKeys,
-  CountryId Function(_Node node) countryIn,
+  CountryId Function(JsonNode node) countryIn,
 ) {
   List<Fx> fxList(String key) => [
     for (final text in node.strings(key)) Fx.parse(text),
@@ -2013,10 +1818,10 @@ FactorySalesDef _factorySales(
   final terms = [
     for (final text in node.strings('termMonths')) int.parse(text),
   ];
-  if (lotShares.isEmpty) node._fail('lotShares', 'must not be empty');
-  if (floors.isEmpty) node._fail('qualityFloors', 'must not be empty');
+  if (lotShares.isEmpty) node.fail('lotShares', 'must not be empty');
+  if (floors.isEmpty) node.fail('qualityFloors', 'must not be empty');
   if (terms.isEmpty || terms.any((months) => months <= 0)) {
-    node._fail('termMonths', 'must be positive whole months');
+    node.fail('termMonths', 'must be positive whole months');
   }
   final producers = <ProducerDef>[];
   for (final producer in node.objects('producers')) {

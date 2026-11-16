@@ -51,7 +51,10 @@ void main() {
     expect(find.text('Drinks plant, France'), findsOneWidget);
     // Its shops sell nothing yet, so there's nothing to estimate.
     expect(find.text('None of your shops sells these goods yet.'), findsOne);
-    final capital = find.widgetWithText(TextField, 'Capital from your cash');
+    final capital = find.widgetWithText(
+      TextField,
+      'Capital from the holding’s cash',
+    );
     await scrollTo(tester, capital);
     await tester.enterText(capital, '150000');
     await tester.pumpAndSettle();

@@ -164,13 +164,14 @@ Design detail: *Labs, quality and key people* in
 | `factoryLead`, `factorySaving` (the owner's best of the kind) | [state/factories.dart](../packages/engine/lib/src/state/factories.dart) |
 | `KeyPerson`, `WorldState.keyPeople` | [state/talent.dart](../packages/engine/lib/src/state/talent.dart) |
 | Formulas: `labPower`, `generationWork`, `generationGain`, `generationSaving`, `keySalary` | [state/labs.dart](../packages/engine/lib/src/state/labs.dart) |
-| `LabSystem`, `newCandidate` | [systems/labs.dart](../packages/engine/lib/src/systems/labs.dart) |
+| `LabSystem` | [systems/labs.dart](../packages/engine/lib/src/systems/labs.dart) |
+| Drawing a candidate, a lab's or software's: `newCandidate`, `drawLevel` over `TalentDef` (`LabsDef` and `SoftwareDef`) | [state/talent.dart](../packages/engine/lib/src/state/talent.dart) |
 | `Stock.quality`, blended on delivery | [state/store.dart](../packages/engine/lib/src/state/store.dart), `LogisticsSystem._take` |
 | Shoppers: the price index and `_accepts` take quality | [systems/demand.dart](../packages/engine/lib/src/systems/demand.dart) |
 | Policy pricing (`qualityInPrice`, `_forQuality`) | [policies/retail_policy.dart](../packages/engine/lib/src/policies/retail_policy.dart) |
 | `CompanyBlock.quality`, set by `_quality` in `_brief` | [systems/national.dart](../packages/engine/lib/src/systems/national.dart) |
 | `SetLab`, `HireKeyPerson`, `DismissKeyPerson` | [apply_command.dart](../packages/engine/lib/src/commands/apply_command.dart) |
-| `LabView`, `KeyPersonView`, `Observation.candidates`, `quality` on shelves | [observation/observation.dart](../packages/engine/lib/src/observation/observation.dart) |
+| `LabView`, `KeyPersonView`, `Observation.candidates` (by `candidateViews`, which software's market uses too), `quality` on shelves | [observation/observation.dart](../packages/engine/lib/src/observation/observation.dart) |
 | Balance tool | [tool/labs_balance.dart](../packages/engine/tool/labs_balance.dart) |
 
 In the app, [screens/lab.dart](../app/lib/src/screens/lab.dart) holds

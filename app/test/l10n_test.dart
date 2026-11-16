@@ -571,7 +571,7 @@ void main() {
       final content = prototype;
       expect(
         refusalText(const Refusal('bankWantsGuarantee'), content),
-        'the bank wants a personal guarantee',
+        'the bank wants the holding’s guarantee',
       );
       expect(
         refusalText(

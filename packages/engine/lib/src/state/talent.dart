@@ -1,5 +1,7 @@
+import '../content/content_db.dart' show TalentDef;
 import '../core/calendar.dart';
 import '../core/ids.dart';
+import '../core/rng.dart';
 import '../persistence/state_io.dart';
 import 'software.dart' show softwareVersion;
 
@@ -110,4 +112,43 @@ final class KeyPerson {
       ..writeBool(forSoftware)
       ..writeNullableInt(software?.index);
   }
+}
+
+/// A level drawn from [rng], as common as [def] has them.
+int drawLevel(TalentDef def, Rng rng) {
+  var draw = rng.nextFx();
+  var level = 0;
+  while (level < def.levels.length - 1 && draw >= def.levels[level].share) {
+    draw -= def.levels[level++].share;
+  }
+  return level;
+}
+
+/// A candidate drawn from [rng] for a lab, or for software work if
+/// [forSoftware]: a role, a level as common as [def] has it, and a repute
+/// that is right half the time, a level short a quarter and a level over a
+/// quarter.
+KeyPerson newCandidate(
+  TalentDef def,
+  KeyPersonId id,
+  Day day,
+  Rng rng, {
+  bool forSoftware = false,
+}) {
+  final role = KeyRole.values[rng.nextInt(KeyRole.values.length)];
+  final level = drawLevel(def, rng);
+  var repute = level + const [-1, 0, 0, 1][rng.nextInt(4)];
+  if (repute < 0) repute = 0;
+  if (repute >= def.levels.length) repute = def.levels.length - 1;
+  final first = def.firstNames[rng.nextInt(def.firstNames.length)];
+  final last = def.lastNames[rng.nextInt(def.lastNames.length)];
+  return KeyPerson(
+    id: id,
+    name: '$first $last',
+    role: role,
+    level: level,
+    repute: repute,
+    since: day,
+    forSoftware: forSoftware,
+  );
 }

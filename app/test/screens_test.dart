@@ -692,7 +692,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Borrow when it is short'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('never on your guarantee'), findsOneWidget);
+    expect(
+      find.textContaining('never on the holding’s guarantee'),
+      findsOneWidget,
+    );
     expect(find.textContaining('buy profitable rivals'), findsOneWidget);
     await tester.tap(find.text('Borrow when it is short'));
     await tester.pump();
@@ -1056,7 +1059,10 @@ void main() {
     // The holding's name is all it asks.
     expect(find.byType(TextField), findsOneWidget);
     // 20,000 of their own, the company's 15,000, the corner's 30,000.
-    expect(find.textContaining('You start with 65,000'), findsOneWidget);
+    expect(
+      find.textContaining('The holding starts with 65,000'),
+      findsOneWidget,
+    );
     expect(
       tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
       isNull,
@@ -1104,7 +1110,7 @@ void main() {
     await tester.tap(open);
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.widgetWithText(TextField, 'Capital from your cash'),
+      find.widgetWithText(TextField, 'Capital from the holding’s cash'),
       '60000',
     );
     await tester.pump();
@@ -1201,7 +1207,10 @@ void main() {
     await tester.pumpAndSettle();
     // Its store loses money, so the company can't borrow on its earnings.
     expect(find.textContaining('borrowed on its own earnings'), findsNothing);
-    expect(find.textContaining('Paid from your own cash: you need'), findsOne);
+    expect(
+      find.textContaining('Paid from the holding’s cash: it needs'),
+      findsOne,
+    );
     await scrollTo(tester, find.widgetWithText(TextButton, 'Buy'));
     await tester.tap(find.widgetWithText(TextButton, 'Buy'));
     await tester.pumpAndSettle();
@@ -1239,7 +1248,10 @@ void main() {
     // The shelves are empty, so the store earns nothing to lend on.
     expect(find.text('The bank lends'), findsOneWidget);
     expect(find.text('up to 40,000'), findsOneWidget);
-    expect(find.textContaining('Only if you guarantee it'), findsOneWidget);
+    expect(
+      find.textContaining('Only if the holding guarantees it'),
+      findsOneWidget,
+    );
     await scrollTo(tester, find.text('Borrow'));
     await tester.tap(find.text('Borrow'));
     await tester.pumpAndSettle();
@@ -1456,7 +1468,7 @@ void main() {
     );
     expect(choice.value, isTrue);
     await tester.enterText(
-      find.widgetWithText(TextField, 'Capital from your cash'),
+      find.widgetWithText(TextField, 'Capital from the holding’s cash'),
       '20000',
     );
     await tester.pump();
@@ -1547,7 +1559,7 @@ void main() {
     // A fast food costs 1.6 times the site's fitting out.
     expect(find.textContaining('Fitting out costs 32,000'), findsOneWidget);
     await tester.enterText(
-      find.widgetWithText(TextField, 'Capital from your cash'),
+      find.widgetWithText(TextField, 'Capital from the holding’s cash'),
       '17000',
     );
     await tester.pump();

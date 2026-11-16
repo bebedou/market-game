@@ -67,8 +67,7 @@ class FinanceScreen extends StatelessWidget {
               ),
               if (owed > Money.zero) Line(tr('finance.owedBank'), money(owed)),
             ],
-            Line(tr('common.ownCash'), money(view.cash)),
-            if (companies.isEmpty) Hint(tr('finance.noCompany')),
+            if (active.isEmpty) Hint(tr('finance.noCompany')),
           ],
         ),
         if (companies.isNotEmpty)
@@ -1235,7 +1234,7 @@ class _BorrowSheetState extends State<_BorrowSheet> {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(tr('finance.guaranteePersonally')),
+            title: Text(tr('finance.holdingGuarantees')),
             subtitle: Text(
               guarantee
                   ? tr('finance.guaranteeOn', {

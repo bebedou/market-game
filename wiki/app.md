@@ -46,7 +46,7 @@ listen, `GameScope.read(context)` in `initState`).
   `TickResult.events`.
 - **Immediate actions.** `wake(row)` and `createBrand(name, format)` go to
   the engine at once, as the engine applies them on submit.
-- **Derived figures.** `netWorth` (with shares at their price), `holdingProfits`, `cushion`, `myStores`,
+- **Derived figures.** `netWorth` (the holding's cash and shares at their price, plus `companiesWorth`, less `shareLoans`), `holdingProfits`, `cushion`, `myStores`,
   `myFactories`, `homeCountry`, `residence`, `economyAt`, `plan`,
   `national`.
 
@@ -59,9 +59,9 @@ background.
 
 | Tab | File | Main widgets |
 |---|---|---|
-| Holding | [screens/holding.dart](../app/lib/src/screens/holding.dart) | `HoldingScreen`: masthead, to-dos, last week, companies, brands, stores, news, profit bars |
+| Holding | [screens/holding.dart](../app/lib/src/screens/holding.dart) | `HoldingScreen` (the owner's layout A, 2026-11-16): masthead with net worth (the holding's name is in the top bar), to-dos, `_HoldingBooks` (cash, shares, companies, loans on shares, net worth), `_Portfolio` (gain, dividends, the biggest `HoldingRow`s, all holdings), last week, companies, brands, stores, news, profit bars. The player and the holding are one: its cash is what the engine calls the player's own |
 | Shop | [screens/shop.dart](../app/lib/src/screens/shop.dart), [screens/orders.dart](../app/lib/src/screens/orders.dart) | `ShopScreen` (shelves, running, staff, manager, marketing, size, conversion); `OrdersScreen`, `OrderSheet` (supplies) |
-| Finance | [screens/finance.dart](../app/lib/src/screens/finance.dart), [screens/financials.dart](../app/lib/src/screens/financials.dart) | `FinanceScreen`: company pages, director sheet and letters, borrowing, cushion, taxes, bargains; `FinancialsSection`: key figures, P&L, balance sheet, years |
+| Finance | [screens/finance.dart](../app/lib/src/screens/finance.dart), [screens/financials.dart](../app/lib/src/screens/financials.dart) | `FinanceScreen`: the companies' money (the holding's is on Holding), company pages, director sheet and letters, borrowing, cushion, taxes, bargains; `FinancialsSection`: key figures, P&L, balance sheet, years |
 | World | [screens/world.dart](../app/lib/src/screens/world.dart), [screens/national.dart](../app/lib/src/screens/national.dart) | `WorldScreen`: economy, countries, competitors, cities, `NewBusiness` (start a business on any vacant site, waking its city); `NationalMap`: the country page and its ink map |
 | Market | [screens/exchange.dart](../app/lib/src/screens/exchange.dart) | `ExchangeScreen` (the owner's layout A): exchanges today, the portfolio, sectors with their price to earnings; `SectorPage`, `StockPage` (price and chart, what it rests on, analysts and management, who holds it, buy and sell), `ExchangePage` (an index, bought whole), `TradePage`, `PortfolioPage` (with the holding's loans); phase 2: `BidSection` on a stock's page, `TakeoverBidPage` (mockup 1), `ControlPage` (mockup 2), `ExchangeEntry` on a company's page in Finance and `ListCompanyPage` (mockup 3), raiders and bids open on the tab (mockup 4) |
 | Books | [screens/books.dart](../app/lib/src/screens/books.dart) | `BooksScreen`: periods, what changed, results, shoppers, products, research |
@@ -97,7 +97,7 @@ a closing dialog trips Flutter's semantics.
 | [financials.dart](../app/lib/src/financials.dart) | Company financials worked out in the app from month reports and balances: `Financials`, margins, ROIC, money tied up (`_tiedUp`, `_fitOut`) |
 | [commands.dart](../app/lib/src/commands.dart) | `describeCommand`: a pending command in words |
 | [letters.dart](../app/lib/src/letters.dart) | `directorLetters`, `memoSentence`: the director's monthly letter from memos |
-| [loans.dart](../app/lib/src/loans.dart) | `loanTerms` (12 to 84 months), `firstPayment`, `newBusinessFunding` (what a new shop or factory borrows), and the widgets of a purchase: `LoanTerms`, `CapitalField`, `BorrowSwitch` |
+| [loans.dart](../app/lib/src/loans.dart) | `loanTerms` (12 to 84 months), `firstPayment`, `newBusinessFunding` (what a new shop or factory borrows), and the widgets of a purchase: `LoanTerms`, `CapitalField`, `BorrowSwitch`, `NewCompanySwitch` |
 | [format.dart](../app/lib/src/format.dart) | `money`, `percent`, dates, `refusalText`, `parseMoney`, names with articles (`aFormat`, `aManager`, …), `stanceAdvice`, `balancedStrategy` (the strategy a brief starts on) |
 | [widgets.dart](../app/lib/src/widgets.dart) | `GameScope`, `Section`, `SubPages`, `IndexRow`, `TradeMark`, `Line`, `Hint`, `CountStepper`; `confirm` (every yes-or-no question), `askAmount`; `showGameSheet`, `SheetFrame` and `ChoiceTile` for the director's, manager's and order sheets |
 | [visuals.dart](../app/lib/src/visuals.dart) | `AnimatedMoney`, `Pill`, `Stamp`, `Sparkline`, `BarChart`, `SplitBar`, `TrendChart`, `FadeSlideIn` |

@@ -1,6 +1,5 @@
 import '../accounting/ledger.dart';
 import '../content/content_db.dart';
-import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
@@ -172,29 +171,4 @@ final class LabSystem implements TickSystem {
       );
     }
   }
-}
-
-/// A candidate drawn from [rng]: a role, a level as common as the scenario
-/// has it, and a repute that is right half the time, a level short a
-/// quarter and a level over a quarter.
-KeyPerson newCandidate(LabsDef labs, KeyPersonId id, Day day, Rng rng) {
-  final role = KeyRole.values[rng.nextInt(KeyRole.values.length)];
-  var draw = rng.nextFx();
-  var level = 0;
-  while (level < labs.levels.length - 1 && draw >= labs.levels[level].share) {
-    draw -= labs.levels[level++].share;
-  }
-  var repute = level + const [-1, 0, 0, 1][rng.nextInt(4)];
-  if (repute < 0) repute = 0;
-  if (repute >= labs.levels.length) repute = labs.levels.length - 1;
-  final first = labs.firstNames[rng.nextInt(labs.firstNames.length)];
-  final last = labs.lastNames[rng.nextInt(labs.lastNames.length)];
-  return KeyPerson(
-    id: id,
-    name: '$first $last',
-    role: role,
-    level: level,
-    repute: repute,
-    since: day,
-  );
 }

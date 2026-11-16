@@ -198,7 +198,7 @@ void main() {
       final shares = game.world.stocks!.stocks[i].shares;
       expect(
         refusal(BuyShares(player, of: i, units: shares - 1))?.key,
-        'notEnoughPersonalCash',
+        'notEnoughHoldingCash',
       );
       expect(
         refusal(BuyShares(player, of: i, units: shares + 1))?.key,

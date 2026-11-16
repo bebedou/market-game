@@ -121,7 +121,7 @@ Refusal? buyShares(
   }
   final fee = orderFee(content.stocks!.rules, value, index: command.index);
   if (player.accounts[AccountKind.cash] < value + fee) {
-    return const Refusal('notEnoughPersonalCash');
+    return const Refusal('notEnoughHoldingCash');
   }
   ledger.pay(
     payer: player,

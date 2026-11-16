@@ -11,6 +11,17 @@ import '../state/entities.dart';
 import '../state/store.dart';
 import 'policy.dart';
 
+/// A struggling shop a buyer would take on, as
+/// [EntrepreneurPolicy.strugglingShop] finds it: one run in full or one of
+/// a district run by formula, the months it would take to earn back its
+/// asking [price], and that price.
+typedef StrugglingShop = ({
+  ShelfView? shelf,
+  (DistrictView, DistrictShop)? district,
+  int paybackMonths,
+  Money price,
+});
+
 /// An AI owner's expansion. Once a month, on a day of its own, it estimates
 /// for each vacant site how soon a new store there would repay its opening
 /// cost, and opens one at the best site if that is within the strategy's
@@ -210,35 +221,32 @@ final class EntrepreneurPolicy implements Policy {
       .times(content.formats[strategy.format.index].wageFactor)
       .timesInt(strategy.hours.where((open) => open).length);
 
-  /// Commands buying the struggling store [EntrepreneurPolicy] looks for,
-  /// the owner first putting in personal cash; none if there is no such
-  /// store or the owner isn't ready.
-  List<Command> _purchase(
+  /// The struggling shop of the strategy's format that would earn back its
+  /// asking price soonest, within the strategy's payback period: losing
+  /// money, a year or more with its owner, and not one of an owner to
+  /// [passOver]; run in full ([StrugglingShop.shelf]) or in a district
+  /// run by formula ([StrugglingShop.district]), which wins ties. The buyer
+  /// expects [judged] times what a site in full would earn, and [judgedAt]
+  /// times what site `site` of district `row` would; exactly by default.
+  /// Null if there is none.
+  StrugglingShop? strugglingShop(
     Observation view,
-    ContentDb content,
-    AcquisitionDef terms,
-  ) {
-    final company = view.companies
-        .where((company) => company.status == CompanyStatus.active)
-        .firstOrNull;
-    if (company == null || !_trades(view, company)) return const [];
-    if (!_readyToGrow(view, terms.intervalDays)) return const [];
+    ContentDb content, {
+    required bool Function(PersonId owner) passOver,
+    Fx Function(SiteId site)? judged,
+    Fx Function(int row, int site)? judgedAt,
+  }) {
     ShelfView? best;
     var bestPayback = 0;
     var price = Money.zero;
     for (final shelf in view.shelves) {
       if (shelf.status == StoreStatus.closed ||
-          shelf.format != strategy.format) {
+          shelf.format != strategy.format ||
+          passOver(view.companyOwners[shelf.company.index])) {
         continue;
       }
       final value = view.valuations[shelf.id.index];
-      final owner = view.companyOwners[shelf.company.index];
-      if (value == null ||
-          !value.earnings.isNegative ||
-          owner == view.actor ||
-          owner == content.player) {
-        continue;
-      }
+      if (value == null || !value.earnings.isNegative) continue;
       final since = shelf.acquiredOn ?? shelf.opensOn;
       if (view.today.number - since.number < 365) continue;
       final payback = paybackMonths(
@@ -247,6 +255,7 @@ final class EntrepreneurPolicy implements Policy {
         content.sites[shelf.site.index],
         cost: value.price,
         existing: true,
+        judged: judged?.call(shelf.site) ?? Fx.one,
       );
       if (payback == null || payback > strategy.expansionPaybackMonths) {
         continue;
@@ -265,9 +274,7 @@ final class EntrepreneurPolicy implements Policy {
             value == null ||
             !value.earnings.isNegative ||
             shop.company != null &&
-                (view.companyOwners[shop.company!.index] == view.actor ||
-                    view.companyOwners[shop.company!.index] ==
-                        content.player)) {
+                passOver(view.companyOwners[shop.company!.index])) {
           continue;
         }
         if (view.today.number - shop.since.number < 365) continue;
@@ -283,18 +290,48 @@ final class EntrepreneurPolicy implements Policy {
           ),
           cost: value.price,
           existing: true,
+          judged: judgedAt?.call(district.row, shop.site) ?? Fx.one,
         );
         if (payback == null ||
             payback > strategy.expansionPaybackMonths ||
             (best != null || there != null) && payback >= bestPayback) {
           continue;
         }
+        best = null;
         there = (district, shop);
         bestPayback = payback;
         price = value.price;
       }
     }
-    if (best == null && there == null) return const [];
+    if (best == null && there == null) return null;
+    return (
+      shelf: best,
+      district: there,
+      paybackMonths: bestPayback,
+      price: price,
+    );
+  }
+
+  /// Commands buying the struggling store [EntrepreneurPolicy] looks for,
+  /// the owner first putting in personal cash; none if there is no such
+  /// store or the owner isn't ready.
+  List<Command> _purchase(
+    Observation view,
+    ContentDb content,
+    AcquisitionDef terms,
+  ) {
+    final company = view.companies
+        .where((company) => company.status == CompanyStatus.active)
+        .firstOrNull;
+    if (company == null || !_trades(view, company)) return const [];
+    if (!_readyToGrow(view, terms.intervalDays)) return const [];
+    final found = strugglingShop(
+      view,
+      content,
+      passOver: (owner) => owner == view.actor || owner == content.player,
+    );
+    if (found == null) return const [];
+    final price = found.price;
     final needed = price + price.times(terms.buyerReserve);
     if (company.cash + view.cash < needed) return const [];
     // What the company lacks; on the first, when its owner may take a
@@ -304,7 +341,7 @@ final class EntrepreneurPolicy implements Policy {
     return [
       if (capital > Money.zero)
         InjectCapital(view.actor, company: company.id, amount: capital),
-      if (there case (final district, final shop))
+      if (found.district case (final district, final shop))
         BuyInDistrict(
           view.actor,
           row: district.row,
@@ -312,7 +349,7 @@ final class EntrepreneurPolicy implements Policy {
           company: company.id,
         )
       else
-        BuyStore(view.actor, store: best!.id, company: company.id),
+        BuyStore(view.actor, store: found.shelf!.id, company: company.id),
     ];
   }
 

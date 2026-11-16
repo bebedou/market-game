@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import '../content/scenario_loader.dart' show ContentException;
+import '../content/json_node.dart';
 import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../core/money.dart';
@@ -342,8 +342,8 @@ final class CountryTable {
 /// simulation, [calibrationJson], which `tool/calibrate_countries.dart` writes.
 /// Unknown fields are errors, to catch typos, as in a scenario.
 CountryTable loadCountryTable(String tableJson, String calibrationJson) {
-  final root = _Reader('', jsonDecode(tableJson));
-  final calibration = _Reader('calibration', jsonDecode(calibrationJson));
+  final root = JsonNode('', jsonDecode(tableJson));
+  final calibration = JsonNode('calibration', jsonDecode(calibrationJson));
   final rises = calibration.object('riseResponse');
   final cuts = calibration.object('cutResponse');
   final fixed = calibration.object('staffFixed');
@@ -352,17 +352,17 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
   final classes = [
     for (final node in root.objects('classes'))
       IncomeClass(
-        key: node.text('id'),
-        name: node.text('name'),
+        key: node.string('id'),
+        name: node.string('name'),
         priceFactor: node.fx('priceFactor'),
       ),
   ];
   final trades = [
     for (final node in root.objects('trades'))
       Trade(
-        key: node.text('id'),
-        name: node.text('name'),
-        description: node.text('description'),
+        key: node.string('id'),
+        name: node.string('name'),
+        description: node.string('description'),
         cycle: node.fx('cycle'),
         incomeElasticity: node.fx('incomeElasticity'),
         riseResponse: rises.fx(node.peek('id')),
@@ -375,9 +375,9 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
   final regimes = [
     for (final node in root.objects('regimes'))
       CycleRegime(
-        key: node.text('id'),
-        name: node.text('name'),
-        meanMonths: node.whole('meanMonths'),
+        key: node.string('id'),
+        name: node.string('name'),
+        meanMonths: node.nonNegativeInt('meanMonths'),
         inflation: node.fx('inflation'),
         realWageGrowth: node.fx('realWageGrowth'),
         demand: node.fx('demand'),
@@ -396,12 +396,12 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
       if (index == null) row.fail('class', 'no such class');
       final spending = row.object('spending');
       rows[index] = ClassRow(
-        households: row.whole('households'),
+        households: row.nonNegativeInt('households'),
         income: row.money('income'),
         spending: [for (final t in trades) spending.money(t.key)],
       );
       row
-        ..text('class')
+        ..string('class')
         ..finish();
       spending.finish();
     }
@@ -421,9 +421,9 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
       shares[trade] += share;
       chains.add(
         ChainDef(
-          name: chain.text('name'),
+          name: chain.string('name'),
           trade: trade,
-          stores: chain.whole('stores'),
+          stores: chain.nonNegativeInt('stores'),
           share: share,
           price: chain.fx('price'),
           independent: chain.flag('independent'),
@@ -434,7 +434,7 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
         ),
       );
       chain
-        ..text('trade')
+        ..string('trade')
         ..finish();
     }
     for (final (i, total) in shares.indexed) {
@@ -444,9 +444,9 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
     }
     countries.add(
       NationalCountry(
-        key: node.text('id'),
-        name: node.text('name'),
-        population: node.whole('population'),
+        key: node.string('id'),
+        name: node.string('name'),
+        population: node.nonNegativeInt('population'),
         cycle: node.fx('cycle'),
         householdGrowth: node.fx('householdGrowth'),
         realGrowth: node.fx('realGrowth'),
@@ -463,9 +463,9 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
     node.finish();
   }
   final table = CountryTable(
-    key: root.text('id'),
-    asOf: root.whole('asOf'),
-    startDay: _day(root, 'startDate'),
+    key: root.string('id'),
+    asOf: root.nonNegativeInt('asOf'),
+    startDay: root.date('startDate'),
     amplitude: root.fx('amplitude'),
     storeResponse: root.fx('storeResponse'),
     fitOut: root.fx('fitOut'),
@@ -501,19 +501,19 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
     },
   );
   root
-    ..text('startRegime')
+    ..string('startRegime')
     ..strings('sources')
     ..finish();
   return table;
 }
 
-NationalRegion _region(_Reader node) {
-  final tile = node.wholes('tile');
+NationalRegion _region(JsonNode node) {
+  final tile = node.nonNegativeInts('tile');
   if (tile.length != 2) node.fail('tile', 'expected a column and a row');
   final region = NationalRegion(
-    key: node.text('id'),
-    name: node.text('name'),
-    population: node.whole('population'),
+    key: node.string('id'),
+    name: node.string('name'),
+    population: node.nonNegativeInt('population'),
     income: node.money('income'),
     col: tile[0],
     row: tile[1],
@@ -522,118 +522,14 @@ NationalRegion _region(_Reader node) {
   return region;
 }
 
-TradeRow _tradeRow(_Reader node) {
+TradeRow _tradeRow(JsonNode node) {
   final row = TradeRow(
     goods: node.fx('goods'),
     staff: node.fx('staff'),
     other: node.fx('other'),
-    stores: node.whole('stores'),
+    stores: node.nonNegativeInt('stores'),
     turnover: node.money('turnover'),
   );
   node.finish();
   return row;
-}
-
-Day _day(_Reader node, String key) {
-  try {
-    return Day.parse(node.text(key));
-  } on FormatException catch (e) {
-    node.fail(key, e.message);
-  }
-}
-
-/// One JSON object, read field by field. It remembers what was read, so that
-/// [finish] can reject what wasn't.
-final class _Reader {
-  _Reader(this.path, Object? value)
-    : _map = switch (value) {
-        final Map<String, Object?> map => map,
-        _ => throw ContentException(path, 'expected an object'),
-      };
-
-  final String path;
-  final Map<String, Object?> _map;
-  final List<String> _read = [];
-
-  Never fail(String key, String message) =>
-      throw ContentException(path.isEmpty ? key : '$path.$key', message);
-
-  Object? _value(String key) {
-    _read.add(key);
-    return _map[key];
-  }
-
-  /// A string field, not yet counted as read.
-  String peek(String key) => switch (_map[key]) {
-    final String text => text,
-    _ => fail(key, 'expected a string'),
-  };
-
-  String text(String key) {
-    _read.add(key);
-    return peek(key);
-  }
-
-  int whole(String key) => switch (_value(key)) {
-    final int value when value >= 0 => value,
-    _ => fail(key, 'expected a whole number'),
-  };
-
-  bool flag(String key) => switch (_value(key)) {
-    null => false,
-    final bool value => value,
-    _ => fail(key, 'expected true or false'),
-  };
-
-  Fx fx(String key) {
-    try {
-      return Fx.parse(text(key));
-    } on FormatException catch (e) {
-      fail(key, e.message);
-    }
-  }
-
-  Money money(String key) {
-    try {
-      return Money.parse(text(key));
-    } on FormatException catch (e) {
-      fail(key, e.message);
-    }
-  }
-
-  List<String> strings(String key, {bool optional = false}) =>
-      switch (_value(key)) {
-        final List<Object?> list => list.cast<String>(),
-        null when optional => const [],
-        _ => fail(key, 'expected a list'),
-      };
-
-  List<int> wholes(String key) => switch (_value(key)) {
-    final List<Object?> list => [
-      for (final item in list)
-        item is int && item >= 0 ? item : fail(key, 'expected whole numbers'),
-    ],
-    _ => fail(key, 'expected a list'),
-  };
-
-  _Reader object(String key) => _Reader('$path.$key', _value(key));
-
-  _Reader? optionalObject(String key) =>
-      _map.containsKey(key) ? object(key) : null;
-
-  List<_Reader> objects(String key, {bool optional = false}) =>
-      switch (_value(key)) {
-        final List<Object?> list => [
-          for (final (i, item) in list.indexed) _Reader('$path.$key[$i]', item),
-        ],
-        null when optional => const [],
-        _ => fail(key, 'expected a list'),
-      };
-
-  /// Fails on any field that wasn't read.
-  void finish() {
-    for (final key in _map.keys) {
-      if (!_read.contains(key)) fail(key, 'unknown field');
-    }
-  }
 }

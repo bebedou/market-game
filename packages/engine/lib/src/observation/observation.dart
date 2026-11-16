@@ -1250,26 +1250,36 @@ List<Fx> _shelfQuality(Store store) =>
     ? const []
     : List.unmodifiable([for (final stock in store.stock) stock.quality]);
 
-List<KeyPersonView> _candidates(WorldState world, ContentDb content) {
-  final labs = content.factories?.labs;
-  if (labs == null) return const [];
-  return List.unmodifiable([
-    for (final person in world.keyPeople)
-      if (person.status == KeyStatus.candidate && !person.forSoftware)
-        KeyPersonView(
-          id: person.id,
-          name: person.name,
-          role: person.role,
-          level: person.repute,
-          known: false,
-          salary: labs.levels[person.repute].salary,
-          since: person.since,
-          monthsWorked: 0,
-          // The market for people turns over on the first.
-          leaves: (person.since + labs.candidateDays).firstOfMonthOnOrAfter,
-        ),
-  ]);
-}
+List<KeyPersonView> _candidates(WorldState world, ContentDb content) =>
+    switch (content.factories?.labs) {
+      final labs? => candidateViews(world, labs, forSoftware: false),
+      null => const [],
+    };
+
+/// The candidates on [def]'s market for key people, for software work or
+/// for labs as [forSoftware] says, at its pay in the first country, as
+/// everyone sees them: by their repute.
+List<KeyPersonView> candidateViews(
+  WorldState world,
+  TalentDef def, {
+  required bool forSoftware,
+}) => List.unmodifiable([
+  for (final person in world.keyPeople)
+    if (person.status == KeyStatus.candidate &&
+        person.forSoftware == forSoftware)
+      KeyPersonView(
+        id: person.id,
+        name: person.name,
+        role: person.role,
+        level: person.repute,
+        known: false,
+        salary: def.levels[person.repute].salary,
+        since: person.since,
+        monthsWorked: 0,
+        // The market for people turns over on the first.
+        leaves: (person.since + def.candidateDays).firstOfMonthOnOrAfter,
+      ),
+]);
 
 LabView? _labView(WorldState world, ContentDb content, Factory factory) {
   final labs = content.factories?.labs;

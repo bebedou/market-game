@@ -203,7 +203,7 @@ Refusal? _openInDistrict(
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
   if (person.accounts[AccountKind.cash] < command.capital) {
-    return const Refusal('notEnoughPersonalCash');
+    return const Refusal('notEnoughHoldingCash');
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
@@ -488,7 +488,7 @@ Refusal? _injectCapital(
   if (command.amount <= Money.zero) return const Refusal('amountNotPositive');
   final person = world.persons[command.actor.index];
   if (person.accounts[AccountKind.cash] < command.amount) {
-    return const Refusal('notEnoughPersonalCash');
+    return const Refusal('notEnoughHoldingCash');
   }
   injectCapital(ledger, person, company, command.amount);
   return null;
@@ -839,7 +839,7 @@ Refusal? _openStore(
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
   if (person.accounts[AccountKind.cash] < command.capital) {
-    return const Refusal('notEnoughPersonalCash');
+    return const Refusal('notEnoughHoldingCash');
   }
   Company? company;
   if (command.company case final id?) {
@@ -1430,7 +1430,7 @@ Refusal? _buyCompany(
   final price = companyPrice(world, content, company)!;
   final buyer = world.persons[command.actor.index];
   if (buyer.accounts[AccountKind.cash] + command.borrow < price) {
-    return Refusal('personalCashShort', amount: price);
+    return Refusal('holdingCashShort', amount: price);
   }
   if (command.borrow != Money.zero) {
     final refusal = _loanRefusal(
@@ -1533,7 +1533,7 @@ Refusal? _buildFactory(
   }
   final person = world.persons[command.actor.index];
   if (person.accounts[AccountKind.cash] < command.capital) {
-    return const Refusal('notEnoughPersonalCash');
+    return const Refusal('notEnoughHoldingCash');
   }
   Company? company;
   if (command.company case final id?) {
@@ -2203,7 +2203,7 @@ Refusal? _startSoftware(
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
   if (person.accounts[AccountKind.cash] < command.capital) {
-    return const Refusal('notEnoughPersonalCash');
+    return const Refusal('notEnoughHoldingCash');
   }
   final company = world.addCompany(command.name, person.id);
   if (command.capital > Money.zero) {
@@ -2417,7 +2417,7 @@ Refusal? _enlargeFactory(
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
   if (person.accounts[AccountKind.cash] < command.capital) {
-    return const Refusal('notEnoughPersonalCash');
+    return const Refusal('notEnoughHoldingCash');
   }
   final company = world.companies[factory.company.index];
   final cost =

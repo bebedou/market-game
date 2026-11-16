@@ -1539,6 +1539,15 @@ class _Conversion extends StatelessWidget {
         : free < cost
         ? tr('store.needMoreCash', {'amount': money(cost - free, cents: false)})
         : null;
+    // The brand it will join, as the engine picks it: the player's of the
+    // format with the most shops, the oldest of equals.
+    BrandView? brand;
+    for (final option in game.myBrands) {
+      if (option.format == target.id &&
+          (brand == null || option.shops > brand.shops)) {
+        brand = option;
+      }
+    }
     return Section(
       title: tr('store.become', {'format': aFormat(target)}),
       icon: formatIcon(target),
@@ -1554,6 +1563,8 @@ class _Conversion extends StatelessWidget {
           }),
         ),
         Hint(reason ?? tr('store.conversionPitch')),
+        if (brand != null)
+          Hint(tr('store.convertBrand', {'brand': brand.name})),
         if (pending)
           Hint(tr('store.worksStartTomorrow'))
         else

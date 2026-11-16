@@ -26,8 +26,10 @@ whatever could differ in someone else's world is data. Design detail:
 `loadScenario(jsonText, national:, stocks:)`, returns a `ContentDb` or throws a
 `ContentException` with the JSON path at fault.
 
-- Strict: a private `_Node` wraps each object, every read is checked, and
-  `finish()` fails on any field left unread, so typos are caught.
+- Strict: a `JsonNode` ([json_node.dart](../packages/engine/lib/src/content/json_node.dart))
+  wraps each object, every read is checked, and `finish()` fails on any
+  field left unread, so typos are caught. The national table and its
+  calibration are read with it too.
 - Decimals are JSON strings (`"0.15"`) parsed straight to `Fx` or `Money`.
   JSON numbers with a fraction are refused, since they would be doubles.
 - String ids become dense integer ids in file order (`_Keys`). An id is a

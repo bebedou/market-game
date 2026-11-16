@@ -9,7 +9,7 @@ import '../state/software.dart';
 import '../state/software_rules.dart';
 import '../state/talent.dart';
 import '../state/world_state.dart';
-import 'observation.dart' show KeyPersonView;
+import 'observation.dart' show KeyPersonView, candidateViews;
 
 /// A rival in the software market, as anyone sees it.
 typedef RivalView = ({
@@ -233,25 +233,11 @@ SoftwareMarketView? softwareMarketViewOf(WorldState world, ContentDb content) {
 
 /// The candidates on the market for software people, at software pay in
 /// the first country.
-List<KeyPersonView> softwareCandidatesOf(WorldState world, ContentDb content) {
-  final def = content.software;
-  if (def == null) return const [];
-  return List.unmodifiable([
-    for (final person in world.keyPeople)
-      if (person.status == KeyStatus.candidate && person.forSoftware)
-        KeyPersonView(
-          id: person.id,
-          name: person.name,
-          role: person.role,
-          level: person.repute,
-          known: false,
-          salary: def.levels[person.repute].salary,
-          since: person.since,
-          monthsWorked: 0,
-          leaves: (person.since + def.candidateDays).firstOfMonthOnOrAfter,
-        ),
-  ]);
-}
+List<KeyPersonView> softwareCandidatesOf(WorldState world, ContentDb content) =>
+    switch (content.software) {
+      final def? => candidateViews(world, def, forSoftware: true),
+      null => const [],
+    };
 
 /// [software] as its owner sees it.
 SoftwareView softwareViewOf(

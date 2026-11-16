@@ -24,8 +24,12 @@ and in the app every yes-or-no dialog (`confirm`), the bottom sheets
 (`showGameSheet`, `SheetFrame`, `ChoiceTile`), a new business's funding
 (`newBusinessFunding`, `CapitalField`, `BorrowSwitch`), the person rows
 (`PersonRow`), `ownerName` and `balancedStrategy`. Two pages that were both
-called `BidPage` are now `TakeoverBidPage` and `TenderBidPage`. What it left
-is in *Duplication* below.
+called `BidPage` are now `TakeoverBidPage` and `TenderBidPage`. Then, the
+same day, what that pass had left: D34 (one JSON reader, `JsonNode`, for the
+scenario and the national table), D35 (one search for a struggling shop,
+`EntrepreneurPolicy.strugglingShop`, for AI owners and directors), D36 (one
+way to draw key people, `newCandidate` and `candidateViews` over
+`TalentDef`, for labs and software) and D37 (one `NewCompanySwitch`).
 
 1. **D2, D5**: the observation's live closures, and neighbourhood rows
    matched by index.
@@ -90,18 +94,6 @@ is in *Duplication* below.
 | D22 | `ContentDb.fingerprint` is computed on every load and read only by a test; its comment says a save loads only with the content it was made with, which stopped being true at format 9. | [content_db.dart](../packages/engine/lib/src/content/content_db.dart); [scenario_loader.dart](../packages/engine/lib/src/content/scenario_loader.dart) | Wasted work (D15) and a wrong explanation of how saves match content. |
 | D23 | Stale or misplaced doc comments: [neighbourhoods.dart](../packages/engine/lib/neighbourhoods.dart) says the game doesn't use the generator yet; `SleeperSystem` says districts touch no account, but chains' shops there book against `elsewhere`. | those files | Comments are how this codebase explains itself; wrong ones mislead the next change. |
 | D24 | [Engine Architecture.md](<../Engine Architecture.md>) has drifted: its header still says version 0.1, October 2026; the daily tick table lists 11 phases while `standardSystems` runs 15 (no buying terms, national, tax, factory or sleeper phases); the repository layout lists four screens and three country scripts; the testing table says the goldens compare daily state hashes on VM and Node, while the code checks one hash after a year; *Decisions to confirm* still says taxes are stubbed and that unguaranteed credit needs a net-asset threshold. | that file | It is the main design reference; sessions trust it. |
-
-## Duplication
-
-Left by the 2026-11-16 pass, because merging them would change behaviour or
-an error message, or needs a shared shape the code doesn't have yet.
-
-| Id | Issue | Where | Why it matters |
-|---|---|---|---|
-| D34 | Two JSON readers do the same job: `_Node` for the scenario and `_Reader` for the national table, each with its own `flag`, `fx`, `money`, `strings`, `object`, `objects` and `finish`, and slightly different error messages. | `_Node` in [scenario_loader.dart](../packages/engine/lib/src/content/scenario_loader.dart), `_Reader` in [country_table.dart](../packages/engine/lib/src/countries/country_table.dart) | A rule added to one (a range check, a clearer message) misses the other; one reader in `content/` would serve both. |
-| D35 | AI owners and directors look for a rival's struggling shop to buy with near-copies of one search, by hand and in the districts by formula: the director's weighs what it judges each place would earn and skips only its own owner, the entrepreneur's skips the player too. | `EntrepreneurPolicy._purchase` in [entrepreneur_policy.dart](../packages/engine/lib/src/policies/entrepreneur_policy.dart), `_growth` in [director.dart](../packages/engine/lib/src/policies/director.dart) | A change to how buyers weigh a shop has to be made twice, and the two already differ in ways nobody chose on purpose. |
-| D36 | Key people are built twice, for labs and for software: candidates (`_candidates` against `softwareCandidatesOf`) and new hires (`KeyPerson(` in the two systems) differ only in which levels and days they read. | [observation.dart](../packages/engine/lib/src/observation/observation.dart), [software_view.dart](../packages/engine/lib/src/observation/software_view.dart), [systems/labs.dart](../packages/engine/lib/src/systems/labs.dart), [systems/software.dart](../packages/engine/lib/src/systems/software.dart) | A shared market for people (see D30) would have to change both. |
-| D37 | The "as a new company" switch is written twice, in opening a shop and building a factory; the shop's names the company without its pending rename, the factory's with it. | `_OpenStoreDialog` in [screens/world.dart](../app/lib/src/screens/world.dart), `BuildFactoryPage` in [screens/factory.dart](../app/lib/src/screens/factory.dart) | Small; merging it means picking one of the two names. |
 
 ## Size
 

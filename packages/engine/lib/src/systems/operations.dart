@@ -38,15 +38,18 @@ final class OperationsSystem implements TickSystem {
             ..format = format
             ..shelfSlots += next.slotBonus
             ..storageUnits += next.storageBonus;
-          // A brand is for one type of business only.
-          if (store.brand case final id?
-              when world.brands[id.index].format != format) {
-            takeOverName(
-              world,
-              context.content,
-              store,
-              world.companies[store.company.index].owner,
-            );
+          // A brand is for one type of business only: the store joins its
+          // owner's brand of the new one, if they have one.
+          final fits =
+              store.brand != null &&
+              world.brands[store.brand!.index].format == format;
+          if (!fits) {
+            final owner = world.companies[store.company.index].owner;
+            if (ownBrandOf(world, owner, format) case final brand?) {
+              brandStore(world, context.content, store, brand);
+            } else if (store.brand != null) {
+              takeOverName(world, context.content, store, owner);
+            }
           }
         }
       }

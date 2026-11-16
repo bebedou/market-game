@@ -49,7 +49,7 @@ void main() {
           InjectCapital(player, company: playerCompany, amount: Money.zero),
         ]),
         [
-          'notEnoughPersonalCash',
+          'notEnoughHoldingCash',
           'notYourCompany',
           'amountNotPositive',
         ],
