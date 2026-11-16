@@ -107,7 +107,8 @@ holds the sealed `TickEvent` family: `DeliveryRefused`, `PaymentOverdue`,
 `SoftwareLaunched`, `SoftwareOfferMade`, `RivalLaunched`, `RivalFolded`,
 `TenderOpened`, `TenderClosed`, `ChainPlantBuilt`, `ContractCutAsked`,
 `ContractRetendered`, `ManagementChanged`, `StockDelisted`,
-`DividendsReceived`, `StakeCrossed`.
+`DividendsReceived`, `StakeCrossed`, `BidOpened`, `BidClosed`,
+`RaiderStake`, `ShareLoanCalled`.
 
 Order matters: `BuyingTermsSystem` before `NationalSystem` (blocks need the
 month's discount), `SleeperSystem` before `SolvencySystem` and
@@ -118,7 +119,7 @@ their chains and rivals).
 ## Commands and refusals
 
 - [commands/command.dart](../packages/engine/lib/src/commands/command.dart):
-  the sealed `Command` class and 58 subclasses (`SetPrice`, `PlaceOrder`,
+  the sealed `Command` class and 64 subclasses (`SetPrice`, `PlaceOrder`,
   `OpenStore`, `HireDirector`, `BuildFactory`, `OpenNational`,
   `BuyNationalChain`, …). Each has a `static const tag` and a `write`;
   `Command.read` switches on the tag and gates fields on `reader.version`.

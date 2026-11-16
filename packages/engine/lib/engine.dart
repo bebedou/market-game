@@ -18,10 +18,13 @@ export 'src/commands/command.dart'
     show
         AcceptNationalOffer,
         AcceptSoftwareOffer,
+        AnswerBid,
         AnswerContract,
         AskPrice,
+        BidForCompany,
         BidTender,
         BreakContract,
+        BuyRival,
         BuildFactory,
         BuyCompany,
         BuyShares,
@@ -29,6 +32,9 @@ export 'src/commands/command.dart'
         CloseFactory,
         CloseStore,
         Command,
+        ListCompany,
+        RunListed,
+        SellControlled,
         SellShares,
         ConvertStore,
         BuyInDistrict,
@@ -206,6 +212,18 @@ export 'src/state/talent.dart' show KeyRole;
 export 'src/state/taxation.dart' show CountryTax;
 export 'src/state/valuation.dart' show Valuation, symbolicPrice;
 export 'src/observation/stocks_view.dart'
-    show AnalystRating, ExchangeView, HoldingView, StockMarketView, StockView;
+    show
+        AnalystRating,
+        BidView,
+        ExchangeView,
+        HolderView,
+        HoldingView,
+        RaiderView,
+        ShareLoanView,
+        StockMarketView,
+        StockView;
+export 'src/state/stocks.dart'
+    show BidStatus, holdingOwner, isPlayers, isRaider, raiderOf, raiderOwner;
 export 'src/systems/events.dart';
+export 'src/systems/takeovers.dart' show freeFloatAccepting;
 export 'src/systems/national.dart' show offerDays;

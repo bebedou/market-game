@@ -43,7 +43,19 @@
   "unprovenMonths": 12,
   "chainReserveMonths": 3,
   "producerUse": "0.7",
-  "indexBase": "1000"
+  "indexBase": "1000",
+  "offerDays": 30,
+  "acceptFrom": "0.05",
+  "acceptSpan": "0.30",
+  "acceptMost": "0.95",
+  "squeezeOut": "0.90",
+  "raiderStakes": 8,
+  "raiderBuy": "0.02",
+  "raiderMaxStake": "0.15",
+  "raiderBidStake": "0.10",
+  "raiderPremium": "0.30",
+  "raiderLeverage": "1.5",
+  "raiderSell": "0.25"
  },
  "exchanges": [
   {
@@ -11539,6 +11551,38 @@
    "cap": "21200000",
    "shares": 1000000,
    "payout": null
+  }
+ ],
+ "raiders": [
+  {
+   "name": "Orsini Capital",
+   "style": "raider",
+   "funds": "8000000000"
+  },
+  {
+   "name": "Halden Partners",
+   "style": "value",
+   "funds": "5000000000"
+  },
+  {
+   "name": "Vela Growth",
+   "style": "growth",
+   "funds": "4000000000"
+  },
+  {
+   "name": "Marchetti & Roux",
+   "style": "raider",
+   "funds": "3000000000"
+  },
+  {
+   "name": "Brennwald Invest",
+   "style": "value",
+   "funds": "6000000000"
+  },
+  {
+   "name": "Solano Fund",
+   "style": "growth",
+   "funds": "2500000000"
   }
  ]
 }

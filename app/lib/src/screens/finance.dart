@@ -9,6 +9,7 @@ import '../loans.dart';
 import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
+import 'exchange.dart' show ExchangeEntry;
 import 'financials.dart';
 import 'market.dart';
 import 'store.dart';
@@ -185,6 +186,8 @@ void openCompanyPage(BuildContext context, CompanyView company) =>
                 current.status == CompanyStatus.active)
               _DirectorSection(company: current),
             FinancialsSection(company: current.id),
+            if (current.status == CompanyStatus.active)
+              ExchangeEntry(company: current),
             _CompanyCard(company: current),
             if (current.memos.isNotEmpty) _Letters(company: current),
           ],

@@ -7,6 +7,37 @@ import '../persistence/state_io.dart';
 /// The save version from which the world keeps a stock market.
 const stocksVersion = 38;
 
+/// The save version from which shares have owners other than the player,
+/// and the market keeps bids, raiders, share loans and companies under
+/// control.
+const controlVersion = 39;
+
+/// Who holds shares, bids or controls a company: the player's holding (the
+/// player in person), one of the player's companies by its index, or a
+/// raider.
+const holdingOwner = -1;
+
+/// The owner that stands for raider [raider].
+int raiderOwner(int raider) => -2 - raider;
+
+/// Whether [owner] is a raider, and which.
+bool isRaider(int owner) => owner <= -2 && owner > _chains;
+int raiderOf(int owner) => -2 - owner;
+
+const _chains = -100000;
+
+/// The bidder that stands for chain [chain] of the national table's country
+/// [country], which bids only for the player's listed companies.
+int chainBidder(int country, int chain) => _chains - country * 1000 - chain;
+
+/// Whether [owner] is a chain, and which.
+bool isChain(int owner) => owner <= _chains;
+({int country, int chain}) chainOfBidder(int owner) =>
+    (country: (_chains - owner) ~/ 1000, chain: (_chains - owner) % 1000);
+
+/// Whether [owner] is the player or one of the player's companies.
+bool isPlayers(int owner) => owner >= holdingOwner;
+
 /// [a] over [b], kept safe for amounts in the trillions: both are taken
 /// in coarser units until the division is.
 Fx moneyRatio(Money a, Money b) {
@@ -66,6 +97,7 @@ final class Results {
 /// one run by formula, its books.
 final class Listing {
   Listing({
+    required this.table,
     required this.since,
     required this.shares,
     required this.price,
@@ -81,8 +113,9 @@ final class Listing {
        multiples = [],
        results = [];
 
-  Listing.read(StateReader reader)
-    : since = Day(reader.readInt()),
+  Listing.read(StateReader reader, {required int position})
+    : table = reader.version >= controlVersion ? reader.readInt() : position,
+      since = Day(reader.readInt()),
       listed = reader.readBool(),
       shares = reader.readInt(),
       price = Money(reader.readInt()),
@@ -109,7 +142,38 @@ final class Listing {
       multiples = [
         for (var i = 0, n = reader.readInt(); i < n; i++)
           Fx.raw(reader.readInt()),
-      ];
+      ] {
+    if (reader.version < controlVersion) return;
+    if (reader.readBool()) own = OwnListing.read(reader);
+    controller = reader.readNullableInt();
+    if (reader.readBool()) payoutLever = Fx.raw(reader.readInt());
+    growthLever = reader.readInt();
+    if (reader.readBool()) debtLever = Fx.raw(reader.readInt());
+    director = reader.readNullableInt();
+  }
+
+  /// Its position in the table, or -1 for a company of the player's listed
+  /// during the game ([own]).
+  final int table;
+
+  /// For a company of the player's listed during the game: what the table
+  /// would say of it.
+  OwnListing? own;
+
+  /// Who controls it, if anyone has taken it over: see [holdingOwner].
+  int? controller;
+
+  /// What its controller has set, for a company by formula: the share of
+  /// profit paid out, how fast it invests to grow (-1 slow, 0 steady, 1
+  /// fast), the debt it aims for in years of profit, and the grade of the
+  /// director running it.
+  Fx? payoutLever;
+  int growthLever = 0;
+  Fx? debtLever;
+  int? director;
+
+  /// Whether it still trades, listed or held whole by whoever took it over.
+  bool get running => listed || controller != null;
 
   /// When it was listed.
   final Day since;
@@ -196,6 +260,7 @@ final class Listing {
 
   void write(StateWriter writer) {
     writer
+      ..writeInt(table)
       ..writeInt(since.number)
       ..writeBool(listed)
       ..writeInt(shares)
@@ -225,7 +290,206 @@ final class Listing {
     for (final multiple in multiples) {
       writer.writeInt(multiple.raw);
     }
+    writer.writeBool(own != null);
+    own?.write(writer);
+    writer
+      ..writeNullableInt(controller)
+      ..writeBool(payoutLever != null);
+    if (payoutLever case final payout?) writer.writeInt(payout.raw);
+    writer
+      ..writeInt(growthLever)
+      ..writeBool(debtLever != null);
+    if (debtLever case final debt?) writer.writeInt(debt.raw);
+    writer.writeNullableInt(director);
   }
+}
+
+/// A company of the player's listed during the game: what the table says
+/// of the companies it starts with.
+final class OwnListing {
+  OwnListing({
+    required this.company,
+    required this.ticker,
+    required this.name,
+    required this.country,
+    required this.sector,
+  });
+
+  OwnListing.read(StateReader reader)
+    : company = reader.readInt(),
+      ticker = reader.readString(),
+      name = reader.readString(),
+      country = reader.readInt(),
+      sector = reader.readInt(),
+      revenueMark = Money(reader.readInt());
+
+  /// The game's company, by its index.
+  final int company;
+  final String ticker;
+  final String name;
+
+  /// By [CountryId] index and position in the table's sectors.
+  final int country;
+  final int sector;
+
+  /// Its company's sales account when its last month was booked.
+  Money revenueMark = Money.zero;
+
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(company)
+      ..writeString(ticker)
+      ..writeString(name)
+      ..writeInt(country)
+      ..writeInt(sector)
+      ..writeInt(revenueMark.cents);
+  }
+}
+
+/// Append only.
+enum BidStatus { open, won, lost, lapsed }
+
+/// An offer for every share of a listed company, open for a month: won if
+/// shareholders holding more than half accept, and the bidder can pay.
+final class Bid {
+  Bid({
+    required this.number,
+    required this.stock,
+    required this.bidder,
+    required this.price,
+    required this.opened,
+    required this.closes,
+    required this.reference,
+    this.via = -1,
+    this.borrow = Money.zero,
+    this.termMonths = 0,
+    this.format = -1,
+    this.strategy = -1,
+  });
+
+  Bid.read(StateReader reader)
+    : number = reader.readInt(),
+      stock = reader.readInt(),
+      bidder = reader.readInt(),
+      via = reader.readInt(),
+      price = Money(reader.readInt()),
+      opened = Day(reader.readInt()),
+      closes = Day(reader.readInt()),
+      reference = Money(reader.readInt()),
+      borrow = Money(reader.readInt()),
+      termMonths = reader.readInt(),
+      format = reader.readInt(),
+      strategy = reader.readInt(),
+      status = BidStatus.values[reader.readInt()],
+      tender = reader.readBool(),
+      accepted = reader.readInt();
+
+  final int number;
+
+  /// The company bid for, by its position on the market.
+  final int stock;
+
+  /// Who bids: see [holdingOwner].
+  final int bidder;
+
+  /// A company the bidder controls that bids to merge [stock] into it, by
+  /// its position on the market; -1 if none.
+  final int via;
+
+  /// What it offers a share.
+  Money price;
+  final Day opened;
+  Day closes;
+
+  /// What a share was worth to its holders when it opened: the higher of
+  /// its price and what analysts thought it worth. Its premium is over this.
+  final Money reference;
+
+  /// What the bidder borrows for it, and over how long.
+  final Money borrow;
+  final int termMonths;
+
+  /// For a chain: the format and strategy its shops take in the bidder's
+  /// company.
+  final int format;
+  final int strategy;
+  BidStatus status = BidStatus.open;
+
+  /// Whether the player offers their own shares into someone else's bid.
+  bool tender = false;
+
+  /// The shares that accepted, once it closed.
+  int accepted = 0;
+
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(number)
+      ..writeInt(stock)
+      ..writeInt(bidder)
+      ..writeInt(via)
+      ..writeInt(price.cents)
+      ..writeInt(opened.number)
+      ..writeInt(closes.number)
+      ..writeInt(reference.cents)
+      ..writeInt(borrow.cents)
+      ..writeInt(termMonths)
+      ..writeInt(format)
+      ..writeInt(strategy)
+      ..writeInt(status.index)
+      ..writeBool(tender)
+      ..writeInt(accepted);
+  }
+}
+
+/// What the player's holding borrowed to take a company over, against the
+/// shares it bought, repaid monthly; if an instalment can't be paid, the
+/// bank sells the shares.
+final class ShareLoan {
+  ShareLoan({
+    required this.number,
+    required this.stock,
+    required this.outstanding,
+    required this.rate,
+    required this.installmentsLeft,
+  });
+
+  ShareLoan.read(StateReader reader)
+    : number = reader.readInt(),
+      stock = reader.readInt(),
+      outstanding = Money(reader.readInt()),
+      rate = Fx.raw(reader.readInt()),
+      installmentsLeft = reader.readInt();
+
+  final int number;
+
+  /// The company whose shares secure it.
+  final int stock;
+  Money outstanding;
+
+  /// Yearly interest.
+  final Fx rate;
+  int installmentsLeft;
+
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(number)
+      ..writeInt(stock)
+      ..writeInt(outstanding.cents)
+      ..writeInt(rate.raw)
+      ..writeInt(installmentsLeft);
+  }
+}
+
+/// A raider: a named investor by formula whose money grows with its returns.
+final class Raider {
+  Raider({required this.cash});
+
+  Raider.read(StateReader reader) : cash = Money(reader.readInt());
+
+  /// Its money not in shares.
+  Money cash;
+
+  void write(StateWriter writer) => writer.writeInt(cash.cents);
 }
 
 /// A country's exchange: its mood and its index.
@@ -275,18 +539,28 @@ final class Exchange {
   }
 }
 
-/// Shares a person holds, of a listed company or of an exchange's index,
-/// and what they paid for them.
+/// Shares held, of a listed company or of an exchange's index, and what
+/// they cost.
 final class Holding {
-  Holding({required this.index, required this.of, this.units = 0})
-    : cost = Money.zero;
+  Holding({
+    required this.index,
+    required this.of,
+    this.units = 0,
+    this.owner = holdingOwner,
+  }) : cost = Money.zero;
 
   Holding.read(StateReader reader)
     : index = reader.readBool(),
       of = reader.readInt(),
       units = reader.readInt(),
       cost = Money(reader.readInt()),
-      declared = reader.readInt();
+      declared = reader.readInt(),
+      owner = reader.version >= controlVersion
+          ? reader.readInt()
+          : holdingOwner;
+
+  /// Who holds it: see [holdingOwner].
+  final int owner;
 
   /// Whether it is of an exchange's index rather than a company.
   final bool index;
@@ -305,7 +579,8 @@ final class Holding {
       ..writeInt(of)
       ..writeInt(units)
       ..writeInt(cost.cents)
-      ..writeInt(declared);
+      ..writeInt(declared)
+      ..writeInt(owner);
   }
 }
 
@@ -317,7 +592,10 @@ final class StockMarket {
     required this.stocks,
     required this.trends,
     required this.longRate,
-  }) : holdings = [];
+  }) : holdings = [],
+       bids = [],
+       raiders = [],
+       loans = [];
 
   StockMarket.read(StateReader reader)
     : mood = reader.readInt(),
@@ -326,7 +604,8 @@ final class StockMarket {
         for (var i = 0, n = reader.readInt(); i < n; i++) Exchange.read(reader),
       ],
       stocks = [
-        for (var i = 0, n = reader.readInt(); i < n; i++) Listing.read(reader),
+        for (var i = 0, n = reader.readInt(); i < n; i++)
+          Listing.read(reader, position: i),
       ],
       trends = [
         for (var i = 0, n = reader.readInt(); i < n; i++)
@@ -337,7 +616,25 @@ final class StockMarket {
       ],
       gainsLoss = Money(reader.readInt()),
       dividendsYear = reader.readInt(),
-      dividends = Money(reader.readInt());
+      dividends = Money(reader.readInt()),
+      bids = [
+        if (reader.version >= controlVersion)
+          for (var i = 0, n = reader.readInt(); i < n; i++) Bid.read(reader),
+      ],
+      raiders = [
+        if (reader.version >= controlVersion)
+          for (var i = 0, n = reader.readInt(); i < n; i++) Raider.read(reader),
+      ],
+      loans = [
+        if (reader.version >= controlVersion)
+          for (var i = 0, n = reader.readInt(); i < n; i++)
+            ShareLoan.read(reader),
+      ] {
+    if (reader.version >= controlVersion) {
+      nextBid = reader.readInt();
+      nextLoan = reader.readInt();
+    }
+  }
 
   /// The whole market's mood, which every exchange shares in part.
   int mood = 0;
@@ -352,8 +649,19 @@ final class StockMarket {
   /// then sector, as a multiplier.
   final List<Fx> trends;
 
-  /// The player's.
+  /// Everyone's: the player's, their companies' and raiders'.
   final List<Holding> holdings;
+
+  /// Bids open, and lately closed.
+  final List<Bid> bids;
+
+  /// By position in the table's raiders.
+  final List<Raider> raiders;
+
+  /// The player's holding's loans for takeovers.
+  final List<ShareLoan> loans;
+  int nextBid = 1;
+  int nextLoan = 1;
 
   /// Public stakes sold whole today, still to be made public as gone; not
   /// saved, as the day's run empties it.
@@ -366,11 +674,37 @@ final class StockMarket {
   int dividendsYear = 0;
   Money dividends = Money.zero;
 
-  /// The player's holding of a company, or of an exchange's index if
-  /// [index]; null if none.
-  Holding? holding(int of, {bool index = false}) {
+  /// [owner]'s holding of a company, or of an exchange's index if [index];
+  /// null if none.
+  Holding? holding(int of, {bool index = false, int owner = holdingOwner}) {
     for (final holding in holdings) {
-      if (holding.index == index && holding.of == of) return holding;
+      if (holding.index == index &&
+          holding.of == of &&
+          holding.owner == owner) {
+        return holding;
+      }
+    }
+    return null;
+  }
+
+  /// The shares of company [of] that [owner] holds.
+  int unitsOf(int of, int owner) => holding(of, owner: owner)?.units ?? 0;
+
+  /// The shares of company [of] the player and their companies hold.
+  int playersUnits(int of) {
+    var units = 0;
+    for (final holding in holdings) {
+      if (!holding.index && holding.of == of && isPlayers(holding.owner)) {
+        units += holding.units;
+      }
+    }
+    return units;
+  }
+
+  /// The open bid for company [of], if any.
+  Bid? openBid(int of) {
+    for (final bid in bids) {
+      if (bid.stock == of && bid.status == BidStatus.open) return bid;
     }
     return null;
   }
@@ -398,6 +732,21 @@ final class StockMarket {
     writer
       ..writeInt(gainsLoss.cents)
       ..writeInt(dividendsYear)
-      ..writeInt(dividends.cents);
+      ..writeInt(dividends.cents)
+      ..writeInt(bids.length);
+    for (final bid in bids) {
+      bid.write(writer);
+    }
+    writer.writeInt(raiders.length);
+    for (final raider in raiders) {
+      raider.write(writer);
+    }
+    writer.writeInt(loans.length);
+    for (final loan in loans) {
+      loan.write(writer);
+    }
+    writer
+      ..writeInt(nextBid)
+      ..writeInt(nextLoan);
   }
 }

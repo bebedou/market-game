@@ -2,6 +2,7 @@ import '../accounting/ledger.dart';
 import '../core/fx.dart';
 import '../core/money.dart';
 import 'store.dart';
+import 'stocks.dart';
 import 'world_state.dart';
 
 /// Accounting, stock and household rules that must hold after every step.
@@ -103,6 +104,10 @@ List<String> invariantViolations(WorldState world) {
     for (final payable in company.payables) {
       if (payable.creditorAccount == AccountKind.loans) lent += payable.amount;
     }
+  }
+  // What the player's holding borrowed for takeovers.
+  for (final loan in world.stocks?.loans ?? const <ShareLoan>[]) {
+    lent += loan.outstanding;
   }
   if (world.bank.accounts[AccountKind.loans] != lent) {
     violations.add(

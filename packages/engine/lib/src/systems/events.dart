@@ -199,6 +199,45 @@ final class StakeCrossed extends TickEvent {
   final bool up;
 }
 
+/// Raider [raider]'s stake in listed company [stock] crossed a multiple of
+/// 5% and was made public: it is now over [percent] if [up], else under it.
+final class RaiderStake extends TickEvent {
+  const RaiderStake({
+    required this.raider,
+    required this.stock,
+    required this.percent,
+    required this.up,
+  });
+
+  final int raider;
+  final int stock;
+  final int percent;
+  final bool up;
+}
+
+/// Bid [number] for a listed company opened.
+final class BidOpened extends TickEvent {
+  const BidOpened({required this.number});
+
+  final int number;
+}
+
+/// Bid [number] closed: [won], or lost or lapsed.
+final class BidClosed extends TickEvent {
+  const BidClosed({required this.number, required this.won});
+
+  final int number;
+  final bool won;
+}
+
+/// The bank sold the shares of [stock] that secured a loan of the player's
+/// holding it couldn't pay.
+final class ShareLoanCalled extends TickEvent {
+  const ShareLoanCalled({required this.stock});
+
+  final int stock;
+}
+
 /// The player received [amount] of dividends, before tax.
 final class DividendsReceived extends TickEvent {
   const DividendsReceived({required this.amount});

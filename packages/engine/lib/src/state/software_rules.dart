@@ -6,6 +6,7 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
+import 'stocks.dart';
 import 'software.dart';
 import 'talent.dart';
 import 'world_state.dart';
@@ -294,8 +295,18 @@ Software? softwareOf(WorldState world, CompanyId company) {
 
 /// The share of [company]'s payouts its owner gets: all of it, but for a
 /// software company with outside investors.
-Fx ownerShare(WorldState world, CompanyId company) =>
-    softwareOf(world, company)?.stake ?? Fx.one;
+Fx ownerShare(WorldState world, CompanyId company) {
+  // Listed, the player's part is what their holding keeps.
+  final market = world.stocks;
+  if (market != null) {
+    for (final (i, stock) in market.stocks.indexed) {
+      if (stock.own?.company != company.index || !stock.running) continue;
+      final units = market.unitsOf(i, holdingOwner);
+      return Fx.raw(mulDivRound(units, Fx.scale, stock.shares));
+    }
+  }
+  return softwareOf(world, company)?.stake ?? Fx.one;
+}
 
 /// Splits [amount] paid out by [company] between its owner and outside
 /// investors, who are beyond the simulation: returns the owner's part,

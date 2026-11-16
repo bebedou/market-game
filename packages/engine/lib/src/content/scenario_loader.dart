@@ -1237,7 +1237,22 @@ StocksDef _stocks(
     chainReserveMonths: rulesNode.nonNegativeInt('chainReserveMonths'),
     producerUse: rulesNode.fraction('producerUse'),
     indexBase: rulesNode.nonNegativeFx('indexBase'),
+    offerDays: rulesNode.positiveInt('offerDays'),
+    acceptFrom: rulesNode.fx('acceptFrom'),
+    acceptSpan: rulesNode.nonNegativeFx('acceptSpan'),
+    acceptMost: rulesNode.fraction('acceptMost'),
+    squeezeOut: rulesNode.fraction('squeezeOut'),
+    raiderStakes: rulesNode.nonNegativeInt('raiderStakes'),
+    raiderBuy: rulesNode.fraction('raiderBuy'),
+    raiderMaxStake: rulesNode.fraction('raiderMaxStake'),
+    raiderBidStake: rulesNode.fraction('raiderBidStake'),
+    raiderPremium: rulesNode.nonNegativeFx('raiderPremium'),
+    raiderLeverage: rulesNode.nonNegativeFx('raiderLeverage'),
+    raiderSell: rulesNode.nonNegativeFx('raiderSell'),
   );
+  if (rules.acceptSpan <= Fx.zero) {
+    rulesNode._fail('acceptSpan', 'must be above 0');
+  }
   if (rules.maxEarningsMultiple <= rules.minEarningsMultiple) {
     rulesNode._fail('maxEarningsMultiple', 'must be above the least');
   }
@@ -1430,6 +1445,17 @@ StocksDef _stocks(
     );
     node.finish();
   }
+  final raiders = <RaiderDef>[];
+  for (final node in root.objects('raiders', optional: true)) {
+    raiders.add(
+      RaiderDef(
+        name: node.string('name'),
+        style: node.choice('style', RaiderStyle.values),
+        funds: node.positiveMoney('funds'),
+      ),
+    );
+    node.finish();
+  }
   root.finish();
   return StocksDef(
     source: text,
@@ -1437,6 +1463,7 @@ StocksDef _stocks(
     exchanges: List.unmodifiable(exchanges),
     sectors: List.unmodifiable(sectors),
     listings: List.unmodifiable(listings),
+    raiders: List.unmodifiable(raiders),
   );
 }
 

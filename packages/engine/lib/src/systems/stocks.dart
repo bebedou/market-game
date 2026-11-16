@@ -9,6 +9,9 @@ import '../core/rng.dart';
 import '../core/safe_int.dart';
 import '../countries/country_economy.dart';
 import '../countries/country_table.dart';
+import '../state/credit.dart' show companyEarnings;
+import '../countries/shop_bridge.dart' show formatTrades;
+import '../state/entities.dart';
 import '../state/software.dart';
 import '../state/software_rules.dart';
 import '../state/stocks.dart';
@@ -16,6 +19,7 @@ import '../state/world_state.dart';
 import 'events.dart';
 import 'factory_sales.dart' show kindMarket;
 import 'national.dart' show currentNational;
+import 'takeovers.dart';
 import 'tick_system.dart';
 
 /// Millionths, the scale moods are kept in.
@@ -55,11 +59,48 @@ StockMarket? currentStocks(WorldState world, ContentDb content) {
     // The rate in a normal year.
     longRate: content.macro.neutralRate + content.macro.inflationTarget,
   );
-  if (market.stocks.length < def.listings.length ||
-      market.exchanges.length < def.exchanges.length) {
-    _open(world, content, def, market);
+  var fromTable = 0;
+  for (final stock in market.stocks) {
+    if (stock.table >= 0) fromTable++;
+  }
+  if (fromTable < def.listings.length ||
+      market.exchanges.length < def.exchanges.length ||
+      market.raiders.length < def.raiders.length) {
+    _open(world, content, def, market, fromTable);
   }
   return market;
+}
+
+/// The table's row for company [i] on [market], or for a company of the
+/// player's listed during the game, one made from what it keeps.
+ListingDef listingOf(StocksDef def, StockMarket market, int i) {
+  final stock = market.stocks[i];
+  if (stock.table >= 0) return def.listings[stock.table];
+  final own = stock.own!;
+  return ListingDef(
+    ticker: own.ticker,
+    name: own.name,
+    country: CountryId(own.country),
+    sector: own.sector,
+    kind: ListingKind.company,
+    link: own.company,
+    share: 0,
+    cap: null,
+    shares: stock.shares,
+    margin: Fx.zero,
+    debt: Fx.zero,
+    growth: Fx.zero,
+    payout: Fx.zero,
+    management: averageManagement,
+  );
+}
+
+/// The exchange company [i] on [market] is listed on.
+int exchangeOfStock(StocksDef def, StockMarket market, int i) {
+  final stock = market.stocks[i];
+  return stock.table >= 0
+      ? def.listingExchange[stock.table]
+      : def.exchangeOf(CountryId(stock.own!.country))!;
 }
 
 /// Lists every company of the table [market] lacks, at what its books are
@@ -70,12 +111,15 @@ void _open(
   ContentDb content,
   StocksDef def,
   StockMarket market,
+  int fromTable,
 ) {
   final economy = currentNational(world, content);
   final rules = def.rules;
-  for (var i = market.stocks.length; i < def.listings.length; i++) {
-    final listing = def.listings[i];
+  for (var t = fromTable; t < def.listings.length; t++) {
+    final listing = def.listings[t];
+    final i = market.stocks.length;
     final stock = Listing(
+      table: t,
       since: world.today,
       shares: 1,
       price: const Money(1),
@@ -109,7 +153,8 @@ void _open(
         ),
       );
     }
-    stock.worth = stockWorth(world, content, def, i, stock, economy);
+    market.stocks.add(stock);
+    stock.worth = stockWorth(world, content, def, listing, stock, economy);
     final worth = stock.worth;
     var shares = worth.cents ~/ _sharePrice.cents;
     if (shares < _fewestShares) shares = _fewestShares;
@@ -123,7 +168,10 @@ void _open(
       ..clear()
       ..add(stock.price);
     stock.listed = _stillListed(world, content, listing, economy);
-    market.stocks.add(stock);
+    assert(market.stocks[i] == stock);
+  }
+  for (var r = market.raiders.length; r < def.raiders.length; r++) {
+    market.raiders.add(Raider(cash: def.raiders[r].funds));
   }
   for (var e = market.exchanges.length; e < def.exchanges.length; e++) {
     final total = _indexWorth(def, market, e);
@@ -161,12 +209,30 @@ final class StockMarketSystem implements TickSystem {
         _quarter(world, context, def, market, economy);
       }
       for (final (i, stock) in market.stocks.indexed) {
-        if (!stock.listed) continue;
-        stock.worth = stockWorth(world, content, def, i, stock, economy);
+        if (!stock.running) continue;
+        stock.worth = stockWorth(
+          world,
+          content,
+          def,
+          listingOf(def, market, i),
+          stock,
+          economy,
+        );
+        // One held whole is worth its books.
+        if (!stock.listed) {
+          stock
+            ..previous = stock.price
+            ..price = _price(stock, 0, def.rules);
+        }
       }
       _views(world, context, def, market);
+      moveRaiders(world, context, def, market);
+      bidForPlayers(world, context, def, market);
     }
     _day(world, context, def, market);
+    closeBids(world, context, def, market, economy);
+    loseControl(market);
+    if (first) payShareLoans(world, context, def, market);
     _stakes(context, market);
     if (first) {
       for (final stock in market.stocks) {
@@ -205,8 +271,8 @@ final class StockMarketSystem implements TickSystem {
     }
     for (final (i, stock) in market.stocks.indexed) {
       // Its first month is already in the results it was listed with.
-      if (!stock.listed || stock.since == world.today) continue;
-      final listing = def.listings[i];
+      if (!stock.running || stock.since == world.today) continue;
+      final listing = listingOf(def, market, i);
       if (!_stillListed(world, content, listing, economy)) {
         _delist(world, context, def, market, i);
         continue;
@@ -220,6 +286,7 @@ final class StockMarketSystem implements TickSystem {
         stock,
         economy,
         luck: context.rng(RngStream.stocks, 4000 + i),
+        director: _directorGrade(content, stock),
       );
       stock
         ..quarterRevenue = stock.quarterRevenue + month.revenue
@@ -251,14 +318,14 @@ final class StockMarketSystem implements TickSystem {
         _listedCap(def, market, e).times(_indexCap),
     ];
     for (final (i, stock) in market.stocks.indexed) {
-      if (!stock.listed || stock.quarterMonths == 0) continue;
-      final listing = def.listings[i];
+      if (!stock.running || stock.quarterMonths == 0) continue;
+      final listing = listingOf(def, market, i);
       // A quarter cut short by its listing counts as a whole one.
       final months = stock.quarterMonths;
       final revenue = Money(mulDivRound(stock.quarterRevenue.cents, 3, months));
       final profit = Money(mulDivRound(stock.quarterProfit.cents, 3, months));
       var dividends = profit > Money.zero
-          ? profit.times(listing.payout)
+          ? profit.times(stock.payoutLever ?? listing.payout)
           : Money.zero;
       if (listing.kind == ListingKind.chain) {
         final chain = chainOf(content, economy, listing)!;
@@ -274,11 +341,25 @@ final class StockMarketSystem implements TickSystem {
       }
       if (listing.kind == ListingKind.formula) {
         final kept = profit - dividends;
-        final target = (stock.yearProfit + profit).times(listing.debt);
+        final target = (stock.yearProfit + profit).times(
+          stock.debtLever ?? listing.debt,
+        );
         if (kept > Money.zero && stock.debt > target) {
           final over = stock.debt - target;
           stock.debt -= kept < over ? kept : over;
+        } else if (stock.debtLever != null && stock.debt < target) {
+          // Borrowing up to what its controller aims for pays out a quarter
+          // of the way at a time.
+          final more = Money((target - stock.debt).cents ~/ 4);
+          stock.debt += more;
+          dividends += more;
         }
+      }
+      if (listing.kind == ListingKind.company) {
+        // A company of the player's pays what its owner pays out; its
+        // shareholders' part is paid as the player pays it (see
+        // `ownerShare`).
+        dividends = Money.zero;
       }
       // What was expected: the same quarter a year before, grown as the
       // latest quarter grew on its own a year before.
@@ -308,19 +389,29 @@ final class StockMarketSystem implements TickSystem {
         ..quarterRevenue = Money.zero
         ..quarterProfit = Money.zero
         ..quarterMonths = 0;
-      final e = def.listingExchange[i];
-      final cap = stock.cap;
-      paid[e] += cap > limits[e]
-          ? dividends.times(moneyRatio(limits[e], cap))
-          : dividends;
-      if (market.holding(i) case final holding? when dividends > Money.zero) {
-        _payDividend(
-          world,
-          context,
-          market,
-          _portion(dividends, holding.units, stock.shares),
-          EntryReason.stockDividend,
-        );
+      if (stock.listed) {
+        final e = exchangeOfStock(def, market, i);
+        final cap = stock.cap;
+        paid[e] += cap > limits[e]
+            ? dividends.times(moneyRatio(limits[e], cap))
+            : dividends;
+      }
+      if (dividends > Money.zero) {
+        for (final holding in [...market.holdings]) {
+          if (holding.index || holding.of != i) continue;
+          final part = _portion(dividends, holding.units, stock.shares);
+          if (holding.owner == holdingOwner) {
+            _payDividend(
+              world,
+              context,
+              market,
+              part,
+              EntryReason.stockDividend,
+            );
+          } else {
+            payOwner(world, context.ledger, market, holding.owner, part);
+          }
+        }
       }
     }
     for (final (e, exchange) in market.exchanges.indexed) {
@@ -355,10 +446,13 @@ final class StockMarketSystem implements TickSystem {
     for (var e = 0; e < def.exchanges.length; e++) {
       final rng = context.rng(RngStream.stocks, 1000 + e);
       for (final (i, stock) in market.stocks.indexed) {
-        final listing = def.listings[i];
-        if (def.listingExchange[i] != e || !stock.listed) continue;
+        if (!stock.running || exchangeOfStock(def, market, i) != e) continue;
+        final listing = listingOf(def, market, i);
         stock.bias = _toward(stock.bias, 0, fade) + _scaled(spread, rng);
-        if (listing.kind == ListingKind.formula && rng.chance(change)) {
+        // One its controller has given a director is run as they run it.
+        if (listing.kind == ListingKind.formula &&
+            stock.director == null &&
+            rng.chance(change)) {
           stock
             ..management = _grade(rng)
             ..managementSince = context.day;
@@ -410,7 +504,7 @@ final class StockMarketSystem implements TickSystem {
           (market.mood * shared + exchange.mood * (Fx.scale - shared)) ~/
           Fx.scale;
       for (final (i, stock) in market.stocks.indexed) {
-        if (def.listingExchange[i] != e || !stock.listed) continue;
+        if (!stock.listed || exchangeOfStock(def, market, i) != e) continue;
         stock.mood = _clampMood(
           _toward(stock.mood, 0, stockFade) + _scaled(stockSpread, rng),
           rules,
@@ -443,12 +537,17 @@ void _stakes(TickContext context, StockMarket market) {
     final shares = market.stocks[holding.of].shares;
     final steps = holding.units * 100 ~/ (stakeStep * shares);
     if (steps == holding.declared) continue;
+    final percent = (steps > holding.declared ? steps : steps + 1) * stakeStep;
+    final up = steps > holding.declared;
     context.events.add(
-      StakeCrossed(
-        stock: holding.of,
-        percent: (steps > holding.declared ? steps : steps + 1) * stakeStep,
-        up: steps > holding.declared,
-      ),
+      isRaider(holding.owner)
+          ? RaiderStake(
+              raider: raiderOf(holding.owner),
+              stock: holding.of,
+              percent: percent,
+              up: up,
+            )
+          : StakeCrossed(stock: holding.of, percent: percent, up: up),
     );
     holding.declared = steps;
   }
@@ -465,30 +564,140 @@ void _delist(
   int i,
 ) {
   final stock = market.stocks[i];
-  final e = def.listingExchange[i];
+  final failed = _failed(world, context.content, listingOf(def, market, i));
+  final held = market.playersUnits(i) > 0;
+  leaveExchange(def, market, i);
+  stock.controller = null;
+  context.events.add(StockDelisted(stock: i, failed: failed, held: held));
+  for (final holding in [...market.holdings]) {
+    if (holding.index || holding.of != i) continue;
+    sellHolding(
+      world,
+      context.content,
+      context.ledger,
+      market,
+      holding,
+      holding.units,
+      failed ? Money.zero : stock.price.timesInt(holding.units),
+      fee: Money.zero,
+    );
+  }
+}
+
+/// Puts company [i] back on its exchange's index, which carries on from
+/// where it stood.
+void joinExchange(StocksDef def, StockMarket market, int i) {
+  final stock = market.stocks[i];
+  if (stock.listed) return;
+  final e = exchangeOfStock(def, market, i);
   final exchange = market.exchanges[e];
   final before = _indexWorth(def, market, e);
-  final failed = _failed(world, context.content, def.listings[i]);
+  stock.listed = true;
+  final after = _indexWorth(def, market, e);
+  if (before > Money.zero && after > Money.zero) {
+    exchange.divisor = exchange.divisor.times(moneyRatio(after, before));
+  }
+}
+
+/// Takes company [i] off its exchange's index, which carries on from where
+/// it stood.
+void leaveExchange(StocksDef def, StockMarket market, int i) {
+  final stock = market.stocks[i];
+  if (!stock.listed) return;
+  final e = exchangeOfStock(def, market, i);
+  final exchange = market.exchanges[e];
+  final before = _indexWorth(def, market, e);
   stock.listed = false;
   final after = _indexWorth(def, market, e);
   if (before > Money.zero && after > Money.zero) {
     exchange.divisor = exchange.divisor.times(moneyRatio(after, before));
   }
-  final holding = market.holding(i);
-  context.events.add(
-    StockDelisted(stock: i, failed: failed, held: holding != null),
+}
+
+/// Pays [owner] [amount] from beyond the simulation: the player in person
+/// or one of their companies through the books, a raider into its cash.
+void payOwner(
+  WorldState world,
+  Ledger ledger,
+  StockMarket market,
+  int owner,
+  Money amount, {
+  EntryReason reason = EntryReason.stockDividend,
+  AccountKind account = AccountKind.disposals,
+}) {
+  if (amount <= Money.zero) return;
+  if (isRaider(owner)) {
+    market.raiders[raiderOf(owner)].cash += amount;
+    return;
+  }
+  ledger.pay(
+    payer: world.elsewhere,
+    payerAccount: AccountKind.investments,
+    payee: owner == holdingOwner
+        ? world.persons[world.player.index]
+        : world.companies[owner],
+    payeeAccount: account,
+    amount: amount,
+    reason: reason,
   );
-  if (holding == null) return;
-  sellHolding(
-    world,
-    context.content,
-    context.ledger,
-    market,
-    holding,
-    holding.units,
-    failed ? Money.zero : stock.price.timesInt(holding.units),
-    fee: Money.zero,
-  );
+}
+
+/// The cash [owner] has to buy shares with.
+Money ownerCash(WorldState world, StockMarket market, int owner) =>
+    isRaider(owner)
+    ? market.raiders[raiderOf(owner)].cash
+    : owner == holdingOwner
+    ? world.persons[world.player.index].accounts[AccountKind.cash]
+    : world.companies[owner].accounts[AccountKind.cash];
+
+/// [owner] buys [units] of company [of] for [value] and [fee], from beyond
+/// the simulation; its holding grows and so does what it cost.
+void buyHolding(
+  WorldState world,
+  Ledger ledger,
+  StockMarket market,
+  int owner,
+  int of,
+  int units,
+  Money value, {
+  Money fee = Money.zero,
+  bool index = false,
+}) {
+  if (isRaider(owner)) {
+    market.raiders[raiderOf(owner)].cash -= value + fee;
+  } else {
+    final payer = owner == holdingOwner
+        ? world.persons[world.player.index]
+        : world.companies[owner];
+    if (value > Money.zero) {
+      ledger.pay(
+        payer: payer,
+        payerAccount: AccountKind.investments,
+        payee: world.elsewhere,
+        payeeAccount: AccountKind.investments,
+        amount: value,
+        reason: EntryReason.sharesBought,
+      );
+    }
+    if (fee > Money.zero) {
+      ledger.pay(
+        payer: payer,
+        payerAccount: AccountKind.investments,
+        payee: world.services,
+        payeeAccount: AccountKind.revenue,
+        amount: fee,
+        reason: EntryReason.brokerage,
+      );
+    }
+  }
+  var held = market.holding(of, index: index, owner: owner);
+  if (held == null) {
+    held = Holding(index: index, of: of, owner: owner);
+    market.holdings.add(held);
+  }
+  held
+    ..units += units
+    ..cost += value + fee;
 }
 
 /// Pays the player [amount] of dividends from beyond the simulation, taxed
@@ -534,9 +743,10 @@ void _payDividend(
   }
 }
 
-/// Sells [units] of [holding] for [proceeds] less [fee]: the gain over what
-/// they cost is taxed where the player lives, once past losses are set
-/// against it. Removes the holding once empty.
+/// Sells [units] of [holding] for [proceeds] less [fee]: the player's gain
+/// over what they cost is taxed where they live, once past losses are set
+/// against it; a company's counts in its profit; a raider's goes to its
+/// cash. Removes the holding once empty.
 void sellHolding(
   WorldState world,
   ContentDb content,
@@ -551,6 +761,35 @@ void sellHolding(
   final cost = holding.units == units
       ? holding.cost
       : _portion(holding.cost, units, holding.units);
+  if (holding.owner != holdingOwner) {
+    if (isRaider(holding.owner)) {
+      market.raiders[raiderOf(holding.owner)].cash += proceeds - fee;
+    } else {
+      final company = world.companies[holding.owner];
+      payOwner(
+        world,
+        ledger,
+        market,
+        holding.owner,
+        proceeds,
+        reason: EntryReason.sharesSold,
+      );
+      if (cost > Money.zero) {
+        ledger.post(
+          company,
+          debit: AccountKind.disposals,
+          credit: AccountKind.investments,
+          amount: cost,
+          reason: EntryReason.sharesSold,
+        );
+      }
+    }
+    holding
+      ..units -= units
+      ..cost -= cost;
+    if (holding.units == 0) market.holdings.remove(holding);
+    return;
+  }
   if (proceeds > Money.zero) {
     ledger.pay(
       payer: world.elsewhere,
@@ -646,6 +885,7 @@ bool _stillListed(
   ListingKind.software =>
     world.softwareMarket?.rivals[listing.link].status != RivalStatus.folded,
   ListingKind.producer => listing.link < world.producers.length,
+  ListingKind.company => world.companies[listing.link].isActive,
 };
 
 bool _failed(WorldState world, ContentDb content, ListingDef listing) =>
@@ -655,6 +895,8 @@ bool _failed(WorldState world, ContentDb content, ListingDef listing) =>
         null => true,
       },
       ListingKind.software => true,
+      ListingKind.company =>
+        world.companies[listing.link].status == CompanyStatus.liquidated,
       _ => false,
     };
 
@@ -662,7 +904,9 @@ bool _failed(WorldState world, ContentDb content, ListingDef listing) =>
 Money _listedCap(StocksDef def, StockMarket market, int e) {
   var total = Money.zero;
   for (final (i, stock) in market.stocks.indexed) {
-    if (stock.listed && def.listingExchange[i] == e) total += stock.cap;
+    if (stock.listed && exchangeOfStock(def, market, i) == e) {
+      total += stock.cap;
+    }
   }
   return total;
 }
@@ -674,7 +918,7 @@ Money _indexWorth(StocksDef def, StockMarket market, int e) {
   final limit = total.times(_indexCap);
   var counted = Money.zero;
   for (final (i, stock) in market.stocks.indexed) {
-    if (!stock.listed || def.listingExchange[i] != e) continue;
+    if (!stock.listed || exchangeOfStock(def, market, i) != e) continue;
     final cap = stock.cap;
     counted += cap > limit ? limit : cap;
   }
@@ -693,6 +937,7 @@ Money _indexWorth(StocksDef def, StockMarket market, int e) {
   Listing stock,
   CountryEconomy? economy, {
   Rng? luck,
+  int? director,
 }) {
   final sector = def.sectors[listing.sector];
   final rate = content.taxesOf(listing.country)?.corporateRate ?? Fx.zero;
@@ -703,19 +948,28 @@ Money _indexWorth(StocksDef def, StockMarket market, int e) {
       final rules = def.rules;
       final macro = world.macroOf(listing.country);
       if (luck != null) {
+        if (director != null && stock.management != director) {
+          stock
+            ..management = director
+            ..managementSince = world.today;
+        }
         stock.cycle +=
             (_cycleTarget(world, content, sector, listing.country) -
                 stock.cycle) *
             _cycleSmoothing;
         final grade = stock.management - averageManagement;
-        final growth = listing.growth + rules.managementGrowth.timesInt(grade);
+        final growth =
+            listing.growth +
+            rules.managementGrowth.timesInt(grade) +
+            _growthOf(stock.growthLever);
         stock.share += mulDivRound(stock.share, growth.raw, 12 * Fx.scale);
         if (stock.share > _micro) stock.share = _micro;
         final aim =
             listing.margin +
             rules.managementMargin.timesInt(
               stock.management - listing.management,
-            );
+            ) +
+            _marginOf(stock.growthLever);
         stock.margin +=
             (aim - stock.margin) * rules.managementPull +
             Fx.raw(
@@ -797,7 +1051,44 @@ Money _indexWorth(StocksDef def, StockMarket market, int e) {
           producer.lead * const Fx.raw(5000) -
           producer.discount;
       return (revenue: used, profit: afterTax(used.times(margin)));
+    case ListingKind.company:
+      final company = world.companies[listing.link];
+      final own = stock.own!;
+      // Its sales account is a credit, so its sales are what it fell by.
+      final sales = -company.accounts[AccountKind.revenue];
+      final revenue = luck == null
+          ? Money.zero
+          : (sales - own.revenueMark) > Money.zero
+          ? sales - own.revenueMark
+          : Money.zero;
+      if (luck != null) own.revenueMark = sales;
+      final year = companyEarnings(world, content, company.id);
+      return (revenue: revenue, profit: afterTax(Money(year.cents ~/ 12)));
   }
+}
+
+/// What a controller's pace of investing adds to a company's yearly growth,
+/// and to the margin it aims for.
+Fx _growthOf(int lever) => switch (lever) {
+  < 0 => const Fx.raw(-100),
+  > 0 => const Fx.raw(300),
+  _ => Fx.zero,
+};
+Fx _marginOf(int lever) => switch (lever) {
+  < 0 => const Fx.raw(50),
+  > 0 => const Fx.raw(-100),
+  _ => Fx.zero,
+};
+
+/// The management grade [stock]'s director runs it as, if it has one: a
+/// promoted manager as average, a seasoned director as good, a star as
+/// excellent.
+int? _directorGrade(ContentDb content, Listing stock) {
+  final grade = stock.director;
+  final grades = content.directors?.grades.length ?? 0;
+  if (grade == null || grades == 0) return null;
+  final best = managementGrades.length - 1;
+  return best - (grades - 1 - grade);
 }
 
 /// What company [i] of [def] is worth by its books: a year's profit times
@@ -808,11 +1099,10 @@ Money stockWorth(
   WorldState world,
   ContentDb content,
   StocksDef def,
-  int i,
+  ListingDef listing,
   Listing stock,
   CountryEconomy? economy,
 ) {
-  final listing = def.listings[i];
   final sector = def.sectors[listing.sector];
   final revenue = stock.yearRevenue;
   // Investors look ahead: half its last year's profit, half a year at its
@@ -830,6 +1120,11 @@ Money stockWorth(
     );
   }
   var business = Money.zero;
+  if (listing.kind == ListingKind.company && content.software != null) {
+    if (softwareOf(world, CompanyId(listing.link)) case final software?) {
+      return softwareWorth(world, content, content.software!, software).worth;
+    }
+  }
   if (listing.kind == ListingKind.software && content.software != null) {
     business = revenue.times(_softwareMultiple(world, content, stock));
   } else if (profit > Money.zero) {
@@ -840,6 +1135,12 @@ Money stockWorth(
   final cash = switch (listing.kind) {
     ListingKind.formula => -stock.debt,
     ListingKind.chain => chainOf(content, economy, listing)?.cash ?? Money.zero,
+    ListingKind.company => () {
+      final accounts = world.companies[listing.link].accounts;
+      return accounts[AccountKind.cash] +
+          accounts[AccountKind.payables] +
+          accounts[AccountKind.loans];
+    }(),
     _ => Money.zero,
   };
   final worth = business + cash;
@@ -1015,6 +1316,32 @@ Money _price(Listing stock, int market, StockRulesDef rules) {
   return price > Money.zero ? price : const Money(1);
 }
 
+/// What analysts think a share of company [i] is worth: its worth a share,
+/// seen through their own view and as much of the moods as they follow.
+Money analystPrice(StocksDef def, StockMarket market, int i) {
+  final rules = def.rules;
+  final stock = market.stocks[i];
+  final e = exchangeOfStock(def, market, i);
+  final shared = rules.shared.raw;
+  final marketMood =
+      (market.mood * shared + market.exchanges[e].mood * (Fx.scale - shared)) ~/
+      Fx.scale;
+  final mood =
+      stock.bias +
+      (marketMood + stock.mood) * rules.analystsFollow.raw ~/ Fx.scale;
+  final factor = expSigned(
+    Fx.raw(_clampMood(mood, rules) ~/ 100),
+    rules.maxMood,
+  );
+  return Money(
+    mulDivRound(stock.worth.cents, factor.raw, Fx.scale) ~/ stock.shares,
+  );
+}
+
+/// The log of [a] over [b] in millionths: how far a mood must move for a
+/// price of [b] to become [a].
+int moodRatio(Money a, Money b) => _lnRatio(a, b);
+
 /// The natural log of [a] over [b] in millionths, found by halving.
 int _lnRatio(Money a, Money b) {
   if (a <= Money.zero || b <= Money.zero) return 0;
@@ -1044,4 +1371,186 @@ int _grade(Rng rng) {
       : draw < 90
       ? 3
       : 4;
+}
+
+/// Where [company] would be listed, and in which sector: the country and
+/// trade of its first shop, or its software's; null if the table has no
+/// sector for its business.
+({CountryId country, int sector})? listingPlace(
+  WorldState world,
+  ContentDb content,
+  StocksDef def,
+  Company company,
+) {
+  int? sectorWhere(bool Function(SectorDef) test) {
+    for (final (s, sector) in def.sectors.indexed) {
+      if (test(sector)) return s;
+    }
+    return null;
+  }
+
+  if (softwareOf(world, company.id) case final software?) {
+    final sector = sectorWhere((s) => s.software);
+    if (sector == null) return null;
+    return (country: software.country, sector: sector);
+  }
+  for (final store in world.stores) {
+    if (store.company != company.id || !store.isTrading) continue;
+    final format = content.formats[store.format.index];
+    final trade = formatTrades[format.key];
+    final sector = sectorWhere((s) => s.trade != null && s.trade == trade);
+    if (sector == null) return null;
+    final market = content.sites[store.site.index].market;
+    return (country: content.countryOf(market), sector: sector);
+  }
+  for (final country in world.national?.countries ?? const <CountryState>[]) {
+    for (final block in country.blocks) {
+      if (block.company != company.id.index || block.stores == 0) continue;
+      final trade = world.national!.table.trades[block.trade].key;
+      final sector = sectorWhere((s) => s.trade == trade);
+      final game = content.countries.indexWhere(
+        (c) => c.national == country.def.key,
+      );
+      if (sector == null || game < 0) return null;
+      return (country: CountryId(game), sector: sector);
+    }
+  }
+  return null;
+}
+
+/// Lists [company], one of the player's, at what its books are worth: the
+/// player's holding takes every share, and [sold] of them go to the market,
+/// new ones if [newShares]. Returns its position on the market.
+int listOwnCompany(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  StocksDef def,
+  StockMarket market,
+  Company company,
+  ({CountryId country, int sector}) place,
+  Fx sold, {
+  required bool newShares,
+}) {
+  final economy = world.national;
+  final rules = def.rules;
+  final i = market.stocks.length;
+  final stock = Listing(
+    table: -1,
+    since: world.today,
+    shares: 1,
+    price: const Money(1),
+    worth: Money.zero,
+    mood: 0,
+    management: averageManagement,
+    managementSince: Day(world.today.number - 31 * rules.unprovenMonths),
+    share: 0,
+    margin: Fx.zero,
+    debt: Money.zero,
+  );
+  final taken = <String>{
+    for (final listing in def.listings) listing.ticker,
+    for (final other in market.stocks)
+      if (other.own case final own?) own.ticker,
+  };
+  stock.own = OwnListing(
+    company: company.id.index,
+    ticker: _ticker(company.name, taken),
+    name: company.name,
+    country: place.country.index,
+    sector: place.sector,
+  )..revenueMark = -company.accounts[AccountKind.revenue];
+  market.stocks.add(stock);
+  final listing = listingOf(def, market, i);
+  final month = _month(world, content, def, market, listing, stock, economy);
+  for (var q = 4; q >= 1; q--) {
+    stock.keep(
+      Results(
+        day: Day(world.today.number - 91 * q),
+        revenue: Money.zero,
+        profit: month.profit.timesInt(3),
+        dividends: Money.zero,
+      ),
+    );
+  }
+  stock.worth = stockWorth(world, content, def, listing, stock, economy);
+  var shares = stock.worth.cents ~/ _sharePrice.cents;
+  if (shares < _fewestShares) shares = _fewestShares;
+  if (shares > maxListedShares ~/ 4) shares = maxListedShares ~/ 4;
+  stock.shares = shares;
+  stock.price = _price(stock, 0, rules);
+  stock.previous = stock.price;
+  stock.closes
+    ..clear()
+    ..add(stock.price);
+  // The player's holding takes every share, at what they put in.
+  final player = world.persons[world.player.index];
+  final held = Holding(index: false, of: i, units: shares)
+    ..cost = company.injected;
+  market.holdings.add(held);
+  company.injected = Money.zero;
+  // Opening an index's divisor carries on from where it stood.
+  stock.listed = false;
+  joinExchange(def, market, i);
+  if (newShares) {
+    // New shares, issued at the price, bring their money into the company.
+    final issued = mulDivRound(shares, sold.raw, (Fx.one - sold).raw);
+    final money = stock.price.timesInt(issued);
+    stock.shares += issued;
+    ledger.pay(
+      payer: world.elsewhere,
+      payerAccount: AccountKind.investments,
+      payee: company,
+      payeeAccount: AccountKind.equity,
+      amount: money,
+      reason: EntryReason.sharesSold,
+    );
+    stock.worth += money;
+  } else {
+    final units = mulDivRound(shares, sold.raw, Fx.scale);
+    sellHolding(
+      world,
+      content,
+      ledger,
+      market,
+      held,
+      units,
+      stock.price.timesInt(units),
+      fee: Money.zero,
+    );
+  }
+  assert(player.id == world.player);
+  return i;
+}
+
+/// Up to four letters from [name], none of them [taken].
+String _ticker(String name, Set<String> taken) {
+  final letters = [
+    for (final code in name.toUpperCase().codeUnits)
+      if (code >= 65 && code <= 90) String.fromCharCode(code),
+  ];
+  if (letters.isEmpty) letters.add('X');
+  for (var a = 1; a < letters.length; a++) {
+    for (var b = a + 1; b < letters.length; b++) {
+      for (var c = b + 1; c < letters.length; c++) {
+        final code = letters[0] + letters[a] + letters[b] + letters[c];
+        if (!taken.contains(code)) return code;
+      }
+    }
+  }
+  var n = 1;
+  while (taken.contains('${letters[0]}$n')) {
+    n++;
+  }
+  return '${letters[0]}$n';
+}
+
+/// Company [company] of the player's listed during the game, if it is
+/// still on the market.
+int? ownListing(StockMarket? market, CompanyId company) {
+  if (market == null) return null;
+  for (final (i, stock) in market.stocks.indexed) {
+    if (stock.own?.company == company.index && stock.running) return i;
+  }
+  return null;
 }

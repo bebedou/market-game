@@ -86,6 +86,10 @@ public at each 5% either way, a gain taxed
 after a carried loss, an index, dividends, a chain bought whole leaving its
 exchange, a recession's gloom, ratings and managements, saves, replays and
 an older save gaining the market.
+`takeovers_test` plays the prototype with a rich player: a bid that wins
+control, one that loses, a chain joining a company, levers and a director,
+a merger, a sale to a raider, the holding's loan, listing a company, being
+taken over, and a save.
 `software_test` runs the software market on the test
 town with a million customers and round figures: a team's pace, launching,
 customers conserved, rounds, investors' dividends, a sale and a save.
@@ -114,7 +118,8 @@ flutter test
   size and enlarging, its sales desk, a bid and a contract's page.
 - [languages_test.dart](../app/test/languages_test.dart) also walks the
   Market tab in each language: the exchanges, the portfolio, every sector,
-  a bank's page and an order.
+  a bank's page and an order; and the takeover pages: a company the
+  holding took over, its levers, a rival's bid, and Finance's listing.
 - [software_test.dart](../app/test/software_test.dart): the software pages,
   net worth on paper, and money shortened to millions and billions.
 - [saves_test.dart](../app/test/saves_test.dart): file slots.

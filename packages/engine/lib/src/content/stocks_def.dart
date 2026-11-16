@@ -16,6 +16,9 @@ enum ListingKind {
 
   /// A rival producer of factory goods.
   producer,
+
+  /// A company of the player's, listed during the game.
+  company,
 }
 
 /// How well a company is run, from bad to excellent.
@@ -85,6 +88,33 @@ final class SectorDef {
   final bool software;
 
   bool get byFormula => output != null;
+}
+
+/// How a raider picks what to buy.
+enum RaiderStyle {
+  /// Companies cheap against their usual, and well run.
+  value,
+
+  /// Companies whose profit grows fastest.
+  growth,
+
+  /// Companies cheap and badly run, which it builds a stake in and bids for.
+  raider,
+}
+
+/// A raider: a named investor by formula.
+final class RaiderDef {
+  const RaiderDef({
+    required this.name,
+    required this.style,
+    required this.funds,
+  });
+
+  final String name;
+  final RaiderStyle style;
+
+  /// Its money at the start.
+  final Money funds;
 }
 
 /// A country's stock exchange.
@@ -193,6 +223,18 @@ final class StockRulesDef {
     required this.chainReserveMonths,
     required this.producerUse,
     required this.indexBase,
+    required this.offerDays,
+    required this.acceptFrom,
+    required this.acceptSpan,
+    required this.acceptMost,
+    required this.squeezeOut,
+    required this.raiderStakes,
+    required this.raiderBuy,
+    required this.raiderMaxStake,
+    required this.raiderBidStake,
+    required this.raiderPremium,
+    required this.raiderLeverage,
+    required this.raiderSell,
   });
 
   /// Long rates over the central bank's.
@@ -274,6 +316,32 @@ final class StockRulesDef {
 
   /// What each index stands at the start.
   final Fx indexBase;
+
+  /// How long a bid stays open.
+  final int offerDays;
+
+  /// The free float accepts a bid as its premium over the higher of the
+  /// price and analysts' view of its worth rises from [acceptFrom], all of
+  /// it over [acceptSpan] more, at most [acceptMost] of it.
+  final Fx acceptFrom;
+  final Fx acceptSpan;
+  final Fx acceptMost;
+
+  /// The share past which a winning bid buys out the rest and takes the
+  /// company off its exchange.
+  final Fx squeezeOut;
+
+  /// How many stakes a raider holds at most; the most of a company it buys
+  /// a month and holds; the stake past which a raider bids, and at what
+  /// premium; how far it borrows beyond its money to bid; and the gain over
+  /// worth at which it sells.
+  final int raiderStakes;
+  final Fx raiderBuy;
+  final Fx raiderMaxStake;
+  final Fx raiderBidStake;
+  final Fx raiderPremium;
+  final Fx raiderLeverage;
+  final Fx raiderSell;
 }
 
 /// The stock market: its rules, exchanges, sectors and listed companies,
@@ -285,6 +353,7 @@ final class StocksDef {
     required this.exchanges,
     required this.sectors,
     required this.listings,
+    this.raiders = const [],
   });
 
   /// The table as read, to load it again beside a changed scenario.
@@ -295,6 +364,9 @@ final class StocksDef {
   final List<ExchangeDef> exchanges;
   final List<SectorDef> sectors;
   final List<ListingDef> listings;
+
+  /// By position: what the market keeps of each is in `StockMarket.raiders`.
+  final List<RaiderDef> raiders;
 
   /// Each listed company's exchange, by its position.
   late final List<int> listingExchange = List.unmodifiable([

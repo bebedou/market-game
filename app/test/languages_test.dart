@@ -299,6 +299,11 @@ void main() {
 
         // A sector, one of its companies, and buying it.
         final banks = tr('stocks.sectors.banks');
+        await tester.scrollUntilVisible(
+          find.widgetWithText(IndexRow, banks),
+          -200,
+          scrollable: find.byType(Scrollable).first,
+        );
         await tester.ensureVisible(find.widgetWithText(IndexRow, banks));
         await _settle(tester);
         await tester.tap(find.widgetWithText(IndexRow, banks));
@@ -322,6 +327,85 @@ void main() {
         await _settle(tester);
         _checkWords(tester, 'sent');
         expect(game.pending.whereType<BuyShares>(), hasLength(1));
+      });
+
+      testWidgets('the takeover pages fit', (tester) async {
+        _useNarrowPhone(tester);
+        final base = _stockContent();
+        final content = loadScenario(
+          localizedScenario(
+            File('../content/scenarios/prototype.json')
+                .readAsStringSync()
+                .replaceFirst(
+                  '"name": "You", "cash": "20000.00"',
+                  '"name": "You", "cash": "500000000.00"',
+                ),
+            currentStrings!.scenario,
+          ),
+          national: base.national,
+          stocks: base.stocks!.source,
+        );
+        final game = SimulationController.newGame(content, seed: 7);
+        // The holding takes over the smallest company by formula.
+        final view = game.view.stocks!;
+        final smallest = view.stocks
+            .where((s) => s.kind == ListingKind.formula)
+            .reduce((a, b) => a.cap < b.cap ? a : b);
+        game.submit(
+          BidForCompany(
+            content.player,
+            stock: smallest.index,
+            premium: Fx.parse('0.40'),
+            bidder: holdingOwner,
+          ),
+        );
+        for (var i = 0; i < 40; i++) {
+          game.step();
+        }
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => ScreenMargins(child: child!),
+            home: HomeScreen(controller: game),
+          ),
+        );
+        await _settle(tester);
+        await tester.tap(find.byIcon(Icons.candlestick_chart_outlined));
+        await _settle(tester);
+        _checkWords(tester, 'market with raiders');
+        final holdings = find.widgetWithText(IndexRow, tr('stocks.holdings'));
+        await tester.ensureVisible(holdings);
+        await _settle(tester);
+        await tester.tap(holdings);
+        await _settle(tester);
+        _checkWords(tester, 'holdings');
+        final company = find.widgetWithText(IndexRow, smallest.name);
+        await tester.ensureVisible(company);
+        await _settle(tester);
+        await tester.tap(company);
+        await _settle(tester);
+        _checkWords(tester, 'a company you control');
+        final run = find.widgetWithText(FilledButton, tr('stocks.runIt'));
+        await tester.ensureVisible(run);
+        await _settle(tester);
+        await tester.tap(run);
+        await _settle(tester);
+        _checkWords(tester, 'its levers');
+        final rivals = find.descendant(
+          of: find.byType(SingleChildScrollView).first,
+          matching: find.byType(IndexRow),
+        );
+        if (rivals.evaluate().isNotEmpty) {
+          await tester.ensureVisible(rivals.first);
+          await _settle(tester);
+          await tester.tap(rivals.first);
+          await _settle(tester);
+          _checkWords(tester, 'a rival bid');
+        }
+        // Listing the first company, from Finance.
+        await tester.tap(find.byIcon(Icons.payments_outlined));
+        await _settle(tester);
+        await _visitRows(tester, 'finance');
+        _checkWords(tester, 'finance');
       });
 
       testWidgets('the sheets and dialogs of a company fit', (tester) async {

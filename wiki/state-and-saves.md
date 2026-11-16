@@ -102,7 +102,7 @@ added since. Any problem is a `FormatException`.
 
 ## Version gating
 
-- `currentStateVersion` (38) in
+- `currentStateVersion` (39) in
   [state_io.dart](../packages/engine/lib/src/persistence/state_io.dart) is
   the layout written. Bump it whenever the layout or the rules change.
 - `oldestReadableVersion` (6) in
@@ -132,7 +132,9 @@ added since. Any problem is a `FormatException`.
   (`stocksVersion` in
   [stocks.dart](../packages/engine/lib/src/state/stocks.dart): the stock
   market beside the world; an older save opens it on its next day, from
-  the table, in `currentStocks`).
+  the table, in `currentStocks`), 39 (`controlVersion`: shares' owners,
+  bids, raiders, the holding's share loans, control and levers, and the
+  player's own listings).
   The full history of what each version added is in
   *Persistence* in [Engine Architecture.md](<../Engine Architecture.md>).
 

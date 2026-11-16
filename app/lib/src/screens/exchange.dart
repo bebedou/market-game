@@ -128,6 +128,24 @@ class ExchangeScreen extends StatelessWidget {
             ],
           ],
         ),
+        if (view.bids.any((b) => b.status == BidStatus.open))
+          Section(
+            title: tr('stocks.bidsOpen'),
+            children: [
+              for (final bid in view.bids)
+                if (bid.status == BidStatus.open)
+                  IndexRow(
+                    title: view.stocks[bid.stock].name,
+                    subtitle: tr('stocks.bidLine', {
+                      'bidder': ownerName(context, bid.bidder),
+                      'premium': change(bid.price, bid.reference),
+                      'date': shortDate(bid.closes),
+                    }),
+                    value: money(bid.price),
+                    onTap: () => _openStock(context, view.stocks[bid.stock]),
+                  ),
+            ],
+          ),
         Section(
           title: tr('stocks.sectors.title'),
           children: [
@@ -136,6 +154,30 @@ class ExchangeScreen extends StatelessWidget {
             Hint(tr('stocks.howPricesMove')),
           ],
         ),
+        if (view.raiders.isNotEmpty)
+          Section(
+            title: tr('stocks.raiders'),
+            children: [
+              for (final raider in view.raiders)
+                Line(
+                  raider.name,
+                  compactMoney(raider.worth),
+                  hint: [
+                    tr('stocks.styles.${raider.style.name}'),
+                    if (raider.stakes.isEmpty)
+                      tr('stocks.noStakes')
+                    else
+                      tr('stocks.holds', {
+                        'names': raider.stakes
+                            .take(2)
+                            .map((i) => view.stocks[i].name)
+                            .join(', '),
+                      }),
+                  ].join(' · '),
+                ),
+              Hint(tr('stocks.raidersHint')),
+            ],
+          ),
       ],
     );
   }
@@ -266,8 +308,21 @@ class StockPage extends StatelessWidget {
     final view = game.view.stocks!;
     final stock = view.stocks[this.stock];
     final holding = view.holdings
-        .where((h) => !h.index && h.of == stock.index)
+        .where(
+          (h) => !h.index && h.of == stock.index && h.owner == holdingOwner,
+        )
         .firstOrNull;
+    final bid = view.bids
+        .where((b) => b.stock == stock.index && b.status == BidStatus.open)
+        .firstOrNull;
+    final controller = stock.controller;
+    final mine = controller != null && isPlayers(controller);
+    final biddable =
+        stock.listed &&
+        !mine &&
+        (stock.kind == ListingKind.formula ||
+            stock.kind == ListingKind.chain) &&
+        (bid == null || !isPlayers(bid.bidder));
     final what = [
       sectorName(content, stock.sector),
       _exchangeName(content, stock.country),
@@ -350,40 +405,68 @@ class StockPage extends StatelessWidget {
         Section(
           title: tr('stocks.whoHolds'),
           children: [
-            if (holding == null)
+            if (controller != null)
+              Line(
+                tr('stocks.controlledBy'),
+                ownerName(context, controller),
+                color: mine ? ledger.gain : null,
+              ),
+            if (stock.holders.isEmpty)
               Hint(tr('stocks.noStake'))
             else
-              Line(
-                tr('stocks.you'),
-                share(holding.units, stock.shares),
-                hint: tr('stocks.youHold', {
-                  'units': compactCount(holding.units),
-                  'value': money(holding.value, cents: false),
-                }),
-              ),
+              for (final holder in stock.holders)
+                Line(
+                  ownerName(context, holder.owner),
+                  share(holder.units, stock.shares),
+                  hint: holder.owner == holdingOwner && holding != null
+                      ? tr('stocks.youHold', {
+                          'units': compactCount(holding.units),
+                          'value': money(holding.value, cents: false),
+                        })
+                      : null,
+                ),
           ],
         ),
-        if (stock.listed)
+        if (bid != null) BidSection(bid: bid, stock: stock),
+        if (stock.listed || mine)
           Section(
             title: tr('stocks.deal'),
             children: [
               Wrap(
                 spacing: 8,
+                runSpacing: 4,
                 children: [
-                  FilledButton(
-                    onPressed: () => context.openPage(
-                      tr('stocks.buy'),
-                      (_) => [TradePage(of: stock.index, buy: true)],
+                  if (stock.listed)
+                    FilledButton(
+                      onPressed: () => context.openPage(
+                        tr('stocks.buy'),
+                        (_) => [TradePage(of: stock.index, buy: true)],
+                      ),
+                      child: Text(tr('stocks.buy')),
                     ),
-                    child: Text(tr('stocks.buy')),
-                  ),
-                  if (holding != null)
+                  if (holding != null && stock.listed)
                     OutlinedButton(
                       onPressed: () => context.openPage(
                         tr('stocks.sell'),
                         (_) => [TradePage(of: stock.index, buy: false)],
                       ),
                       child: Text(tr('stocks.sell')),
+                    ),
+                  if (biddable)
+                    OutlinedButton(
+                      onPressed: () => context.openPage(
+                        tr('stocks.bidForAll'),
+                        (_) => [BidPage(stock: stock.index)],
+                      ),
+                      child: Text(tr('stocks.bidForAll')),
+                    ),
+                  if (mine && stock.kind == ListingKind.formula)
+                    FilledButton(
+                      onPressed: () => context.openPage(
+                        stock.name,
+                        (_) => [ControlPage(stock: stock.index)],
+                      ),
+                      child: Text(tr('stocks.runIt')),
                     ),
                 ],
               ),
@@ -531,7 +614,12 @@ class _TradePageState extends State<TradePage> {
     final rules = content.stocks!.rules;
     final view = game.view.stocks!;
     final holding = view.holdings
-        .where((h) => h.index == widget.index && h.of == widget.of)
+        .where(
+          (h) =>
+              h.index == widget.index &&
+              h.of == widget.of &&
+              h.owner == holdingOwner,
+        )
         .firstOrNull;
     final name = widget.index
         ? view.exchanges[widget.of].indexName
@@ -671,6 +759,16 @@ class PortfolioPage extends StatelessWidget {
                 tr('stocks.lossCarried'),
                 money(view.lossCarried, cents: false),
               ),
+            for (final loan in view.loans)
+              Line(
+                tr('stocks.loanOn', {'name': view.stocks[loan.stock].name}),
+                money(loan.outstanding, cents: false),
+                color: ledger.loss,
+                hint: tr('stocks.loanLine', {
+                  'rate': percent(loan.rate),
+                  'months': loan.installmentsLeft,
+                }),
+              ),
             Hint(tr('stocks.taxHint')),
           ],
         ),
@@ -682,10 +780,14 @@ class PortfolioPage extends StatelessWidget {
                 title: holding.index
                     ? view.exchanges[holding.of].indexName
                     : view.stocks[holding.of].name,
-                subtitle: tr('stocks.holdingLine', {
-                  'units': compactCount(holding.units),
-                  'cost': money(holding.cost, cents: false),
-                }),
+                subtitle: [
+                  tr('stocks.holdingLine', {
+                    'units': compactCount(holding.units),
+                    'cost': money(holding.cost, cents: false),
+                  }),
+                  if (holding.owner != holdingOwner)
+                    ownerName(context, holding.owner),
+                ].join(' · '),
                 value: money(holding.value, cents: false),
                 valueColor: holding.value < holding.cost
                     ? ledger.loss
@@ -696,6 +798,629 @@ class PortfolioPage extends StatelessWidget {
               ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+/// Who [owner] is, in words: the player's holding, one of their companies,
+/// a raider or a chain.
+String ownerName(BuildContext context, int owner) {
+  final game = context.game;
+  if (owner == holdingOwner) {
+    return game.holdingName ?? tr('stocks.yourHolding');
+  }
+  if (owner >= 0) return game.companyName(CompanyId(owner));
+  final content = game.content;
+  if (isRaider(owner)) {
+    final raiders = content.stocks!.raiders;
+    final r = raiderOf(owner);
+    return r < raiders.length ? raiders[r].name : '';
+  }
+  final code = -100000 - owner;
+  final country = content.national?.countries[code ~/ 1000];
+  final chains = country?.chains ?? const <ChainDef>[];
+  return code % 1000 < chains.length ? chains[code % 1000].name : '';
+}
+
+/// A bid open for a company, on its page: who bids, at what, until when, how
+/// much of the company would accept today, and, for someone else's bid,
+/// whether the player offers their shares into it.
+class BidSection extends StatelessWidget {
+  const BidSection({super.key, required this.bid, required this.stock});
+
+  final BidView bid;
+  final StockView stock;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final ledger = Ledger.of(context);
+    final ours = isPlayers(bid.bidder);
+    final held = stock.holders
+        .where((h) => isPlayers(h.owner))
+        .fold(0, (sum, h) => sum + h.units);
+    final half = bid.accepting > const Fx.raw(5000);
+    return Section(
+      title: tr('stocks.aBid'),
+      mark: ours ? ledger.gain : ledger.loss,
+      children: [
+        Line(tr('stocks.bidder'), ownerName(context, bid.bidder)),
+        Line(
+          tr('stocks.bidPrice'),
+          money(bid.price),
+          hint: tr('stocks.overReference', {
+            'premium': change(bid.price, bid.reference),
+          }),
+        ),
+        Line(tr('stocks.closes'), shortDate(bid.closes)),
+        Line(
+          tr('stocks.accepting'),
+          percent(bid.accepting, decimals: 0),
+          color: half ? ledger.gain : ledger.loss,
+          hint: tr('stocks.needsHalf'),
+        ),
+        if (!ours && held > 0) ...[
+          Hint(bid.tender ? tr('stocks.tendering') : tr('stocks.notTendering')),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton(
+              onPressed: () => game.submit(
+                AnswerBid(game.player, bid: bid.number, tender: !bid.tender),
+              ),
+              child: Text(
+                bid.tender ? tr('stocks.keepShares') : tr('stocks.tender'),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The premiums a bid may offer, as choices.
+const _premiums = [20, 30, 40, 50];
+
+/// Bidding for every share of a company (the owner's mockup 1): the premium
+/// over its price, what the shares the bidder lacks cost, who pays and what
+/// they borrow, and how its shareholders are likely to answer. With [via],
+/// a company the player controls bids, with debt, to merge it in.
+class BidPage extends StatefulWidget {
+  const BidPage({super.key, required this.stock, this.via});
+
+  final int stock;
+  final int? via;
+
+  @override
+  State<BidPage> createState() => _BidPageState();
+}
+
+class _BidPageState extends State<BidPage> {
+  int _premium = 30;
+  int? _bidder;
+  final _borrow = TextEditingController();
+  int _years = 5;
+  bool _sent = false;
+
+  @override
+  void dispose() {
+    _borrow.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final content = game.content;
+    final def = content.stocks!;
+    final ledger = Ledger.of(context);
+    final view = game.view.stocks!;
+    final stock = view.stocks[widget.stock];
+    final chain = stock.kind == ListingKind.chain;
+    final companies = [
+      for (final company in game.view.companies)
+        if (company.status == CompanyStatus.active) company,
+    ];
+    final bidders = [
+      if (!chain) holdingOwner,
+      for (final c in companies) c.id.index,
+    ];
+    if (_bidder == null || !bidders.contains(_bidder)) {
+      _bidder = bidders.isEmpty ? null : bidders.first;
+    }
+    final price = stock.price + stock.price.times(Fx.raw(_premium * 100));
+    final players = stock.holders
+        .where((h) => isPlayers(h.owner))
+        .fold(0, (sum, h) => sum + h.units);
+    final own = stock.holders
+        .where((h) => h.owner == _bidder)
+        .fold(0, (sum, h) => sum + h.units);
+    final cost = price.timesInt(stock.shares - own);
+    final reference = stock.analysts > stock.price
+        ? stock.analysts
+        : stock.price;
+    final part = freeFloatAccepting(def, reference, price);
+    final others = stock.holders
+        .where((h) => !isPlayers(h.owner))
+        .fold(0, (sum, h) => sum + h.units);
+    final free = stock.shares - players - others;
+    final likely = (players + free * part.raw ~/ Fx.scale) * 2 > stock.shares;
+    final borrow = parseMoney(_borrow.text) ?? Money.zero;
+    final cash = switch (_bidder) {
+      null => Money.zero,
+      holdingOwner => game.view.cash,
+      final c => companies.firstWhere((company) => company.id.index == c).cash,
+    };
+    final enough = widget.via != null || cash + borrow >= cost;
+    // A chain's shops take the bidder's national format of its trade.
+    final format = chain
+        ? content.formats.indexWhere(
+            (f) =>
+                f.national != null &&
+                formatTrades[f.key] == def.sectors[stock.sector].trade,
+          )
+        : -1;
+    final valid = !_sent && enough && (widget.via != null || _bidder != null);
+    return Section(
+      title: tr('stocks.bidFor', {'name': stock.name}),
+      children: [
+        Line(tr('stocks.price'), money(stock.price)),
+        Text(tr('stocks.premium')),
+        Wrap(
+          spacing: 6,
+          children: [
+            for (final premium in _premiums)
+              ChoiceChip(
+                label: Text(percentOf(premium)),
+                selected: _premium == premium,
+                onSelected: (_) => setState(() => _premium = premium),
+              ),
+          ],
+        ),
+        Line(tr('stocks.bidPrice'), money(price), strong: true),
+        Line(tr('stocks.youHoldShare'), share(players, stock.shares)),
+        Line(
+          tr('stocks.forTheRest', {
+            'share': share(stock.shares - own, stock.shares),
+          }),
+          compactMoney(cost),
+        ),
+        if (widget.via == null) ...[
+          DropdownButtonFormField<int>(
+            isExpanded: true,
+            initialValue: _bidder,
+            decoration: InputDecoration(labelText: tr('stocks.paidBy')),
+            items: [
+              for (final bidder in bidders)
+                DropdownMenuItem(
+                  value: bidder,
+                  child: Text(ownerName(context, bidder)),
+                ),
+            ],
+            onChanged: (value) => setState(() => _bidder = value),
+          ),
+          Line(tr('stocks.itsCash'), compactMoney(cash)),
+          TextField(
+            controller: _borrow,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(labelText: tr('stocks.borrow')),
+            onChanged: (_) => setState(() {}),
+          ),
+          if (borrow > Money.zero)
+            Row(
+              children: [
+                Expanded(child: Text(tr('stocks.over'))),
+                CountStepper(
+                  value: _years,
+                  min: 1,
+                  max: content.finance.maxTermMonths ~/ 12,
+                  label: termName(_years * 12),
+                  onChanged: (value) => setState(() => _years = value),
+                ),
+              ],
+            ),
+          Hint(
+            _bidder == holdingOwner
+                ? tr('stocks.holdingBorrowHint')
+                : tr('stocks.companyBorrowHint'),
+          ),
+          if (!enough)
+            Hint(tr('stocks.notEnoughForBid', {'cost': compactMoney(cost)})),
+        ] else
+          Hint(tr('stocks.rivalHint')),
+        Line(
+          tr('stocks.shareholders'),
+          likely ? tr('stocks.likelyYes') : tr('stocks.likelyNo'),
+          color: likely ? ledger.gain : ledger.loss,
+          hint: tr('stocks.freeFloatAccepts', {
+            'share': percent(part, decimals: 0),
+          }),
+        ),
+        Hint(chain ? tr('stocks.chainBidHint') : tr('stocks.bidHint')),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton(
+            onPressed: valid
+                ? () {
+                    game.submit(
+                      widget.via == null
+                          ? BidForCompany(
+                              game.player,
+                              stock: stock.index,
+                              premium: Fx.raw(_premium * 100),
+                              bidder: _bidder!,
+                              borrow: borrow,
+                              termMonths: borrow > Money.zero ? _years * 12 : 0,
+                              format: format,
+                              strategy: chain ? 0 : -1,
+                            )
+                          : BuyRival(
+                              game.player,
+                              via: widget.via!,
+                              stock: stock.index,
+                              premium: Fx.raw(_premium * 100),
+                            ),
+                    );
+                    setState(() => _sent = true);
+                  }
+                : null,
+            child: Text(tr('stocks.makeBid')),
+          ),
+        ),
+        if (_sent) Hint(tr('stocks.sent')),
+      ],
+    );
+  }
+}
+
+/// The levers' choices.
+const _payouts = [0, 25, 50, 75];
+const _debts = [0, 1, 2, 4];
+
+/// A company by formula the player controls (the owner's mockup 2): its
+/// year, its levers, who runs it, smaller rivals to buy, and selling it.
+class ControlPage extends StatefulWidget {
+  const ControlPage({super.key, required this.stock});
+
+  final int stock;
+
+  @override
+  State<ControlPage> createState() => _ControlPageState();
+}
+
+class _ControlPageState extends State<ControlPage> {
+  int? _payout;
+  int? _growth;
+  int? _debt;
+  int? _director;
+  bool _directorSet = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final content = game.content;
+    final view = game.view.stocks!;
+    final stock = view.stocks[widget.stock];
+    final controller = stock.controller;
+    if (controller == null || !isPlayers(controller)) {
+      return Hint(tr('stocks.noLongerYours'));
+    }
+    final payout = _payout ?? (stock.payoutLever?.raw ?? -100) ~/ 100;
+    final growth = _growth ?? stock.growthLever;
+    final debt = _debt ?? (stock.debtLever?.raw ?? -10000) ~/ 10000;
+    final director = _directorSet ? _director : stock.director;
+    final grades = content.directors?.grades ?? const <DirectorGradeDef>[];
+    final rivals = [
+      for (final other in view.stocks)
+        if (other.listed &&
+            other.index != stock.index &&
+            other.kind == ListingKind.formula &&
+            other.sector == stock.sector &&
+            other.country == stock.country &&
+            other.controller == null &&
+            other.cap < stock.cap)
+          other,
+    ]..sort((a, b) => b.cap.cents.compareTo(a.cap.cents));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Section(
+          title: stock.name,
+          children: [
+            Line(tr('stocks.controlledBy'), ownerName(context, controller)),
+            Line(tr('stocks.sales'), compactMoney(stock.yearRevenue)),
+            Line(tr('stocks.profitYear'), compactMoney(stock.yearProfit)),
+            Line(tr('stocks.cap'), compactMoney(stock.cap)),
+            Line(
+              tr('stocks.debt'),
+              stock.debtYears == null
+                  ? tr('stocks.noDebt')
+                  : tr('stocks.years', {
+                      'value': decimalText(
+                        (stock.debtYears!.raw ~/ 1000 / 10).toString(),
+                      ),
+                    }),
+            ),
+          ],
+        ),
+        Section(
+          title: tr('stocks.levers'),
+          children: [
+            Text(tr('stocks.dividendLever')),
+            Wrap(
+              spacing: 6,
+              children: [
+                ChoiceChip(
+                  label: Text(tr('stocks.asItWas')),
+                  selected: payout < 0,
+                  onSelected: (_) => setState(() => _payout = -1),
+                ),
+                for (final p in _payouts)
+                  ChoiceChip(
+                    label: Text(percentOf(p)),
+                    selected: payout == p,
+                    onSelected: (_) => setState(() => _payout = p),
+                  ),
+              ],
+            ),
+            Text(tr('stocks.growthLever')),
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final (g, key) in [
+                  (-1, 'slow'),
+                  (0, 'steady'),
+                  (1, 'fast'),
+                ])
+                  ChoiceChip(
+                    label: Text(tr('stocks.pace.$key')),
+                    selected: growth == g,
+                    onSelected: (_) => setState(() => _growth = g),
+                  ),
+              ],
+            ),
+            Hint(tr('stocks.growthHint')),
+            Text(tr('stocks.debtLever')),
+            Wrap(
+              spacing: 6,
+              children: [
+                ChoiceChip(
+                  label: Text(tr('stocks.asItWas')),
+                  selected: debt < 0,
+                  onSelected: (_) => setState(() => _debt = -1),
+                ),
+                for (final d in _debts)
+                  ChoiceChip(
+                    label: Text(
+                      d == 0
+                          ? tr('stocks.noDebt')
+                          : tr('terms.years', {'count': d}),
+                    ),
+                    selected: debt == d,
+                    onSelected: (_) => setState(() => _debt = d),
+                  ),
+              ],
+            ),
+            Hint(tr('stocks.debtHint')),
+            if (grades.isNotEmpty)
+              DropdownButtonFormField<int?>(
+                isExpanded: true,
+                initialValue: director,
+                decoration: InputDecoration(labelText: tr('stocks.runBy')),
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(tr('stocks.itsOwnManagement')),
+                  ),
+                  for (final (g, grade) in grades.indexed)
+                    DropdownMenuItem(value: g, child: Text(grade.name)),
+                ],
+                onChanged: (value) => setState(() {
+                  _director = value;
+                  _directorSet = true;
+                }),
+              ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton(
+                onPressed: () => game.submit(
+                  RunListed(
+                    game.player,
+                    stock: stock.index,
+                    payout: payout < 0 ? null : Fx.raw(payout * 100),
+                    growth: growth,
+                    debt: debt < 0 ? null : Fx.fromInt(debt),
+                    director: director,
+                  ),
+                ),
+                child: Text(tr('stocks.apply')),
+              ),
+            ),
+          ],
+        ),
+        Section(
+          title: tr('stocks.buyARival'),
+          children: [
+            if (rivals.isEmpty) Hint(tr('stocks.noRivals')),
+            for (final rival in rivals.take(5))
+              IndexRow(
+                title: rival.name,
+                subtitle: tr('stocks.pe', {'value': _multiple(rival.multiple)}),
+                value: compactMoney(rival.cap),
+                onTap: () => context.openPage(
+                  tr('stocks.buyARival'),
+                  (_) => [BidPage(stock: rival.index, via: stock.index)],
+                ),
+              ),
+          ],
+        ),
+        Section(
+          title: tr('stocks.sellIt'),
+          children: [
+            Hint(tr('stocks.sellItHint')),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(
+                onPressed: () => game.submit(
+                  SellControlled(game.player, stock: stock.index),
+                ),
+                child: Text(tr('stocks.sellIt')),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// The shares of a company that may be listed, as choices.
+const _listShares = [10, 25, 50, 75, 100];
+
+/// On a company's page: where it stands on the exchange, or the way to list
+/// it.
+class ExchangeEntry extends StatelessWidget {
+  const ExchangeEntry({super.key, required this.company});
+
+  final CompanyView company;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final view = game.view.stocks;
+    if (game.content.stocks == null || view == null) {
+      return const SizedBox.shrink();
+    }
+    final listed = view.stocks
+        .where((s) => s.company == company.id && s.running)
+        .firstOrNull;
+    return Section(
+      title: tr('stocks.onTheExchange'),
+      children: [
+        if (listed != null)
+          IndexRow(
+            title: '${listed.name} · ${listed.ticker}',
+            subtitle: tr('stocks.yourStake', {
+              'share': share(
+                listed.holders
+                    .where((h) => isPlayers(h.owner))
+                    .fold(0, (sum, h) => sum + h.units),
+                listed.shares,
+              ),
+            }),
+            value: money(listed.price),
+            onTap: () => _openStock(context, listed),
+          )
+        else
+          IndexRow(
+            title: tr('stocks.listIt'),
+            subtitle: tr('stocks.listItPitch'),
+            onTap: () => context.openPage(
+              tr('stocks.listIt'),
+              (_) => [ListCompanyPage(company: company.id)],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Listing a company of the player's (the owner's mockup 3): how much of
+/// it, new shares or the player's own, what it raises, and what the player
+/// keeps.
+class ListCompanyPage extends StatefulWidget {
+  const ListCompanyPage({super.key, required this.company});
+
+  final CompanyId company;
+
+  @override
+  State<ListCompanyPage> createState() => _ListCompanyPageState();
+}
+
+class _ListCompanyPageState extends State<ListCompanyPage> {
+  int _share = 25;
+  bool _newShares = true;
+  bool _sent = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final ledger = Ledger.of(context);
+    final worth = game.view.companyPrices[widget.company.index] ?? Money.zero;
+    final newShares = _newShares && _share < 100;
+    final sold = Fx.raw(_share * 100);
+    final raises = newShares
+        ? Money(worth.cents * _share ~/ (100 - _share))
+        : worth.times(sold);
+    final keep = newShares ? 100 - _share : 100 - _share;
+    final safe = keep * 2 > 100;
+    return Section(
+      title: tr('stocks.listName', {'name': game.companyName(widget.company)}),
+      children: [
+        Line(tr('stocks.byItsBooks'), compactMoney(worth)),
+        Text(tr('stocks.whatToSell')),
+        Wrap(
+          spacing: 6,
+          children: [
+            for (final s in _listShares)
+              ChoiceChip(
+                label: Text(percentOf(s)),
+                selected: _share == s,
+                onSelected: (_) => setState(() => _share = s),
+              ),
+          ],
+        ),
+        Wrap(
+          spacing: 6,
+          children: [
+            ChoiceChip(
+              label: Text(tr('stocks.newShares')),
+              selected: newShares,
+              onSelected: _share < 100
+                  ? (_) => setState(() => _newShares = true)
+                  : null,
+            ),
+            ChoiceChip(
+              label: Text(tr('stocks.yourShares')),
+              selected: !newShares,
+              onSelected: (_) => setState(() => _newShares = false),
+            ),
+          ],
+        ),
+        Line(
+          newShares ? tr('stocks.raisesCompany') : tr('stocks.raisesYou'),
+          compactMoney(raises),
+        ),
+        Line(
+          tr('stocks.youKeep'),
+          percentOf(keep),
+          color: safe ? ledger.gain : ledger.loss,
+        ),
+        Hint(safe ? tr('stocks.keepControl') : tr('stocks.openToBids')),
+        Hint(
+          newShares ? tr('stocks.newSharesHint') : tr('stocks.yourSharesHint'),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton(
+            onPressed: _sent
+                ? null
+                : () {
+                    game.submit(
+                      ListCompany(
+                        game.player,
+                        company: widget.company,
+                        share: sold,
+                        newShares: newShares,
+                      ),
+                    );
+                    setState(() => _sent = true);
+                  },
+            child: Text(tr('stocks.listItButton')),
+          ),
+        ),
+        if (_sent) Hint(tr('stocks.sent')),
       ],
     );
   }

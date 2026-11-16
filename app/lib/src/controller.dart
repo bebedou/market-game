@@ -311,15 +311,34 @@ class SimulationController extends ChangeNotifier {
   /// what it is worth, on paper.
   Money get netWorth => _view.companies.fold(
     _view.cash + _view.portfolio,
-    (sum, company) => sum + _worthOf(company),
+    (sum, company) => _view.listedCompanies.contains(company.id)
+        ? sum
+        : sum + _worthOf(company),
   );
 
   /// What net worth counts on paper: the player's shares of their software
   /// companies beyond what those companies hold.
   Money get onPaper => _view.companies.fold(
     Money.zero,
-    (sum, company) => sum + _worthOf(company) - company.netAssets,
+    (sum, company) => _view.listedCompanies.contains(company.id)
+        ? sum
+        : sum + _worthOf(company) - company.netAssets,
   );
+
+  /// Who [owner] is, in words, for the news.
+  String _ownerName(ContentDb content, int owner) {
+    if (owner == holdingOwner) return holdingName ?? tr('stocks.yourHolding');
+    if (owner >= 0) return companyName(CompanyId(owner));
+    if (isRaider(owner)) {
+      final raiders = content.stocks!.raiders;
+      final r = raiderOf(owner);
+      return r < raiders.length ? raiders[r].name : '';
+    }
+    final code = -100000 - owner;
+    final country = content.national?.countries[code ~/ 1000];
+    final chains = country?.chains ?? const <ChainDef>[];
+    return code % 1000 < chains.length ? chains[code % 1000].name : '';
+  }
 
   static Money _worthOf(CompanyView company) => switch (company.software) {
     final software? when software.running => software.yourWorth,
@@ -872,6 +891,11 @@ class SimulationController extends ChangeNotifier {
     BidTender(:final tender) => 'bid $tender',
     BuyShares(:final of, :final index) ||
     SellShares(:final of, :final index) => 'shares $of $index',
+    BidForCompany(:final stock) || BuyRival(:final stock) => 'bid $stock',
+    AnswerBid(:final bid) => 'answer $bid',
+    RunListed(:final stock) => 'levers $stock',
+    SellControlled(:final stock) => 'sell $stock',
+    ListCompany(:final company) => 'list ${company.index}',
     BreakContract(:final contract) ||
     AnswerContract(:final contract) ||
     AskPrice(:final contract) => 'contract $contract',
@@ -1233,6 +1257,68 @@ class SimulationController extends ChangeNotifier {
             tr(up ? 'alerts.stakeOver' : 'alerts.stakeUnder', {
               'name': content.stocks!.listings[stock].name,
               'percent': percent,
+            }),
+          );
+        case BidOpened(:final number):
+          final market = after.stocks;
+          final bid = market?.bids.where((b) => b.number == number).firstOrNull;
+          if (market != null && bid != null) {
+            final target = market.stocks[bid.stock];
+            final yours = target.holders.any((h) => isPlayers(h.owner));
+            if (isPlayers(bid.bidder) || yours) {
+              add(
+                AlertKind.offer,
+                tr('alerts.bidOpened', {
+                  'bidder': _ownerName(content, bid.bidder),
+                  'name': target.name,
+                  'premium': percent(
+                    Fx.raw(
+                      (bid.price.cents - bid.reference.cents) *
+                          10000 ~/
+                          bid.reference.cents,
+                    ),
+                    decimals: 0,
+                  ),
+                  'date': shortDate(bid.closes),
+                }),
+              );
+            }
+          }
+        case BidClosed(:final number, :final won):
+          final market = after.stocks;
+          final bid = market?.bids.where((b) => b.number == number).firstOrNull;
+          if (market != null && bid != null) {
+            final target = market.stocks[bid.stock];
+            final yours =
+                isPlayers(bid.bidder) ||
+                target.company != null ||
+                (target.controller != null && isPlayers(target.controller!));
+            if (yours) {
+              add(
+                AlertKind.economy,
+                tr(won ? 'alerts.bidWon' : 'alerts.bidFailed', {
+                  'bidder': _ownerName(content, bid.bidder),
+                  'name': target.name,
+                }),
+              );
+            }
+          }
+        case RaiderStake(:final raider, :final stock, :final percent, :final up)
+            when after.stocks?.holdings.any((h) => !h.index && h.of == stock) ??
+                false:
+          add(
+            AlertKind.economy,
+            tr(up ? 'alerts.raiderOver' : 'alerts.raiderUnder', {
+              'raider': content.stocks!.raiders[raider].name,
+              'name': after.stocks!.stocks[stock].name,
+              'percent': percent,
+            }),
+          );
+        case ShareLoanCalled(:final stock):
+          add(
+            AlertKind.overdue,
+            tr('alerts.shareLoanCalled', {
+              'name': after.stocks?.stocks[stock].name ?? '',
             }),
           );
         case ManagementChanged(:final stock)

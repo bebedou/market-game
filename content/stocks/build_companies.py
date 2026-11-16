@@ -132,7 +132,30 @@ RULES = {
     'chainReserveMonths': 3,
     'producerUse': '0.7',
     'indexBase': '1000',
+    # Takeovers and raiders.
+    'offerDays': 30,
+    'acceptFrom': '0.05',
+    'acceptSpan': '0.30',
+    'acceptMost': '0.95',
+    'squeezeOut': '0.90',
+    'raiderStakes': 8,
+    'raiderBuy': '0.02',
+    'raiderMaxStake': '0.15',
+    'raiderBidStake': '0.10',
+    'raiderPremium': '0.30',
+    'raiderLeverage': '1.5',
+    'raiderSell': '0.25',
 }
+
+# Named investors by formula, each with a style: value, growth or raider.
+RAIDERS = [
+    {'name': 'Orsini Capital', 'style': 'raider', 'funds': '8000000000'},
+    {'name': 'Halden Partners', 'style': 'value', 'funds': '5000000000'},
+    {'name': 'Vela Growth', 'style': 'growth', 'funds': '4000000000'},
+    {'name': 'Marchetti & Roux', 'style': 'raider', 'funds': '3000000000'},
+    {'name': 'Brennwald Invest', 'style': 'value', 'funds': '6000000000'},
+    {'name': 'Solano Fund', 'style': 'growth', 'funds': '2500000000'},
+]
 
 MANAGEMENT = ['bad', 'poor', 'average', 'good', 'excellent']
 MANAGEMENT_ODDS = [0.10, 0.20, 0.40, 0.20, 0.10]
@@ -407,6 +430,7 @@ def main():
         ],
         'sectors': sectors,
         'companies': companies,
+        'raiders': RAIDERS,
     }
     text = json.dumps(result, ensure_ascii=False, indent=1)
     with open(os.path.join(HERE, 'companies.json'), 'w', encoding='utf-8', newline='\n') as file:

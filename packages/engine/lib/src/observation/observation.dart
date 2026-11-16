@@ -8,6 +8,7 @@ import '../reports/period_report.dart' show ReportPeriod;
 import '../state/districts.dart';
 import 'national_view.dart';
 import 'stocks_view.dart';
+import '../state/stocks.dart' show Listing;
 import '../state/brands.dart';
 import '../state/buying_terms.dart';
 import '../state/credit.dart';
@@ -60,6 +61,7 @@ final class Observation {
     this.companyCredits = const [],
     this.guaranteeRoom = Money.zero,
     this.portfolio = Money.zero,
+    this.listedCompanies = const [],
     this.brands = const [],
     this.offers = const [],
     this.candidates = const [],
@@ -187,6 +189,10 @@ final class Observation {
 
   /// What the actor's shares and index units are worth at today's prices.
   final Money portfolio;
+
+  /// The player's companies listed on an exchange: their worth to the player
+  /// is their shares, in [portfolio].
+  final List<CompanyId> listedCompanies;
 
   /// The key people on the market, for anyone to hire, as their track
   /// records show them.
@@ -1167,6 +1173,11 @@ Observation observe(
     portfolio: actor == world.player
         ? portfolioWorth(world.stocks)
         : Money.zero,
+    listedCompanies: [
+      for (final stock in world.stocks?.stocks ?? const <Listing>[])
+        if (stock.own case final own? when stock.running)
+          CompanyId(own.company),
+    ],
     reports: List.unmodifiable([
       for (final report in world.reports)
         if (report.buyer == actor) report,

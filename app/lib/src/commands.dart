@@ -247,18 +247,39 @@ String describeCommand(Command command, ContentDb content, Observation view) {
       'number': contract,
       'price': money(price),
     }),
+    BidForCompany(:final stock, :final premium) => tr('commands.bidFor', {
+      'name': _listed(content, stock, index: false, view: view),
+      'premium': percent(premium, decimals: 0),
+    }),
+    AnswerBid(:final tender) => tr(
+      tender ? 'commands.tender' : 'commands.keepShares',
+    ),
+    RunListed(:final stock) => tr('commands.runListed', {
+      'name': _listed(content, stock, index: false, view: view),
+    }),
+    BuyRival(:final via, :final stock) => tr('commands.buyRival', {
+      'name': _listed(content, via, index: false, view: view),
+      'rival': _listed(content, stock, index: false, view: view),
+    }),
+    SellControlled(:final stock) => tr('commands.sellControlled', {
+      'name': _listed(content, stock, index: false, view: view),
+    }),
+    ListCompany(:final company, :final share) => tr('commands.listCompany', {
+      'name': view.companyNames[company.index],
+      'share': percent(share, decimals: 0),
+    }),
     BuyShares(:final of, :final units, :final index) => tr(
       index ? 'commands.buyIndex' : 'commands.buyShares',
       {
         'units': compactCount(units),
-        'name': _listed(content, of, index: index),
+        'name': _listed(content, of, index: index, view: view),
       },
     ),
     SellShares(:final of, :final units, :final index) => tr(
       index ? 'commands.sellIndex' : 'commands.sellShares',
       {
         'units': compactCount(units),
-        'name': _listed(content, of, index: index),
+        'name': _listed(content, of, index: index, view: view),
       },
     ),
     EnlargeFactory(:final factory) => tr('commands.enlargeFactory', {
@@ -341,11 +362,20 @@ String describeCommand(Command command, ContentDb content, Observation view) {
 
 /// The name of [chain] of the game's [country] in the national table.
 /// A listed company's name, or an exchange's index's.
-String _listed(ContentDb content, int of, {required bool index}) {
+String _listed(
+  ContentDb content,
+  int of, {
+  required bool index,
+  required Observation view,
+}) {
   final stocks = content.stocks;
   if (stocks == null) return '';
   if (index) {
     return of < stocks.exchanges.length ? stocks.exchanges[of].index : '';
+  }
+  final market = view.stocks;
+  if (market != null && of < market.stocks.length) {
+    return market.stocks[of].name;
   }
   return of < stocks.listings.length ? stocks.listings[of].name : '';
 }

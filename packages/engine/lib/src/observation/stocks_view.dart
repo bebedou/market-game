@@ -1,18 +1,24 @@
 import '../content/content_db.dart';
 import '../content/stocks_def.dart';
+import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../state/stocks.dart';
 import '../state/world_state.dart';
-import '../systems/stocks.dart' show chainOf, earningsMultiple;
+import '../systems/stocks.dart'
+    show analystPrice, chainOf, earningsMultiple, exchangeOfStock, listingOf;
+import '../systems/takeovers.dart' show acceptingUnits;
 
 /// What analysts say of a stock, from strong sell to strong buy.
 enum AnalystRating { strongSell, sell, hold, buy, strongBuy }
 
+/// Who holds shares of a company, and how many: see [holdingOwner].
+typedef HolderView = ({int owner, int units});
+
 /// A listed company, as anyone sees it.
 typedef StockView = ({
-  /// Its position in the table.
+  /// Its position on the market.
   int index,
   String ticker,
   String name,
@@ -24,6 +30,9 @@ typedef StockView = ({
 
   /// False once it has left its exchange.
   bool listed,
+
+  /// Whether it still trades: listed, or held whole by whoever took it over.
+  bool running,
 
   /// A share's price today and at yesterday's close, its shares, and what
   /// they are worth together.
@@ -47,6 +56,9 @@ typedef StockView = ({
   Fx? debtYears,
   AnalystRating rating,
 
+  /// What analysts think a share worth.
+  Money analysts,
+
   /// How well it is run, by `managementGrades`; null while unproven.
   int? management,
 
@@ -56,6 +68,23 @@ typedef StockView = ({
   /// Its shops, for a chain; its customers, for software; null otherwise.
   int? stores,
   int? customers,
+
+  /// The player's and their companies' holdings of it, and anyone else's
+  /// stake made public (5% or more), biggest first.
+  List<HolderView> holders,
+
+  /// Who controls it, if anyone took it over: see [holdingOwner].
+  int? controller,
+
+  /// What its controller set, for a company by formula: see
+  /// `Listing.payoutLever`.
+  Fx? payoutLever,
+  int growthLever,
+  Fx? debtLever,
+  int? director,
+
+  /// For a company of the player's listed during the game, the company.
+  CompanyId? company,
 });
 
 /// A country's exchange and its index, as anyone sees them.
@@ -71,24 +100,78 @@ typedef ExchangeView = ({
   List<Money> closes,
 });
 
-/// What the player holds: of a company, or of an exchange's index.
+/// What the player or one of their companies holds: of a company, or of
+/// an exchange's index.
 typedef HoldingView = ({
   bool index,
   int of,
   int units,
+
+  /// Who: the player's holding ([holdingOwner]) or a company by its index.
+  int owner,
 
   /// What they paid, fees included, and what the units are worth today.
   Money cost,
   Money value,
 });
 
+/// A bid for a listed company, as anyone sees it.
+typedef BidView = ({
+  int number,
+  int stock,
+
+  /// Who bids: see [holdingOwner]; and the company it would merge into, by
+  /// its position on the market, or -1.
+  int bidder,
+  int via,
+
+  /// What it offers a share, and what a share was worth to its holders
+  /// when it opened.
+  Money price,
+  Money reference,
+  Day opened,
+  Day closes,
+  BidStatus status,
+
+  /// Whether the player offers their shares into it.
+  bool tender,
+
+  /// What share of the company would accept it today, or did when it
+  /// closed.
+  Fx accepting,
+});
+
+/// A raider, as anyone sees it.
+typedef RaiderView = ({
+  String name,
+  RaiderStyle style,
+
+  /// Its money and its shares at today's prices, together.
+  Money worth,
+
+  /// The companies it holds stakes in, by position on the market, biggest
+  /// first.
+  List<int> stakes,
+});
+
+/// A loan of the player's holding, secured on shares.
+typedef ShareLoanView = ({
+  int number,
+  int stock,
+  Money outstanding,
+  Fx rate,
+  int installmentsLeft,
+});
+
 /// The stock market as the player sees it.
 typedef StockMarketView = ({
   List<ExchangeView> exchanges,
   List<StockView> stocks,
+
+  /// The player's and their companies'.
   List<HoldingView> holdings,
 
-  /// What the player's holdings are worth, and cost.
+  /// What the player's own holdings are worth, and cost.
   Money worth,
   Money cost,
 
@@ -96,6 +179,9 @@ typedef StockMarketView = ({
   /// set against a gain.
   Money dividends,
   Money lossCarried,
+  List<BidView> bids,
+  List<RaiderView> raiders,
+  List<ShareLoanView> loans,
 });
 
 /// The stock market of [world], as the player sees it; null without one.
@@ -105,13 +191,26 @@ StockMarketView? stockMarketView(WorldState world, ContentDb content) {
   if (def == null || market == null) return null;
   final rules = def.rules;
   final economy = world.national;
+  // Every holder of each company, the biggest first.
+  final holders = [for (final _ in market.stocks) <HolderView>[]];
+  for (final holding in market.holdings) {
+    if (holding.index) continue;
+    final stock = market.stocks[holding.of];
+    final public = holding.units * 100 >= stakeStep * stock.shares;
+    if (isPlayers(holding.owner) || public) {
+      holders[holding.of].add((owner: holding.owner, units: holding.units));
+    }
+  }
+  for (final list in holders) {
+    list.sort((a, b) => b.units.compareTo(a.units));
+  }
   final stocks = <StockView>[];
   for (final (i, stock) in market.stocks.indexed) {
-    final listing = def.listings[i];
-    final e = def.listingExchange[i];
+    final listing = listingOf(def, market, i);
+    final e = exchangeOfStock(def, market, i);
     final profit = stock.yearProfit;
     final multiple = profit > Money.zero ? stock.multiple : null;
-    // Analysts see its worth through their own view and half the mood.
+    // Analysts see its worth through their own view and part of the mood.
     final exchange = market.exchanges[e];
     final shared = rules.shared.raw;
     final marketMood =
@@ -138,6 +237,7 @@ StockMarketView? stockMarketView(WorldState world, ContentDb content) {
       sector: listing.sector,
       kind: listing.kind,
       listed: stock.listed,
+      running: stock.running,
       price: stock.price,
       previous: stock.previous,
       shares: stock.shares,
@@ -151,11 +251,21 @@ StockMarketView? stockMarketView(WorldState world, ContentDb content) {
           ? moneyRatio(debt, profit)
           : null,
       rating: AnalystRating.values[rating],
+      analysts: stock.running ? analystPrice(def, market, i) : stock.price,
       management: _management(world, content, def, listing, stock),
       closes: List.unmodifiable(stock.closes),
       stores: chain?.stores,
       customers: listing.kind == ListingKind.software
           ? world.softwareMarket?.rivals[listing.link].customers
+          : null,
+      holders: List.unmodifiable(holders[i]),
+      controller: stock.controller,
+      payoutLever: stock.payoutLever,
+      growthLever: stock.growthLever,
+      debtLever: stock.debtLever,
+      director: stock.director,
+      company: listing.kind == ListingKind.company
+          ? CompanyId(listing.link)
           : null,
     ));
   }
@@ -175,20 +285,47 @@ StockMarketView? stockMarketView(WorldState world, ContentDb content) {
   var cost = Money.zero;
   final holdings = <HoldingView>[];
   for (final holding in market.holdings) {
-    final price = holding.index
-        ? market.exchanges[holding.of].level
-        : market.stocks[holding.of].price;
-    final value = price.timesInt(holding.units);
-    worth += value;
-    cost += holding.cost;
+    if (!isPlayers(holding.owner)) continue;
+    final value = _priceOf(market, holding).timesInt(holding.units);
+    if (holding.owner == holdingOwner) {
+      worth += value;
+      cost += holding.cost;
+    }
     holdings.add((
       index: holding.index,
       of: holding.of,
       units: holding.units,
+      owner: holding.owner,
       cost: holding.cost,
       value: value,
     ));
   }
+  final bids = [
+    for (final bid in market.bids)
+      (
+        number: bid.number,
+        stock: bid.stock,
+        bidder: bid.bidder,
+        via: bid.via,
+        price: bid.price,
+        reference: bid.reference,
+        opened: bid.opened,
+        closes: bid.closes,
+        status: bid.status,
+        tender: bid.tender,
+        accepting: Fx.raw(
+          (bid.status == BidStatus.open
+                  ? acceptingUnits(def, market, bid)
+                  : bid.accepted) *
+              Fx.scale ~/
+              market.stocks[bid.stock].shares,
+        ),
+      ),
+  ];
+  final raiders = [
+    for (final (r, raider) in market.raiders.indexed)
+      if (r < def.raiders.length) _raiderView(def, market, r, raider),
+  ];
   return (
     exchanges: List.unmodifiable(exchanges),
     stocks: List.unmodifiable(stocks),
@@ -199,18 +336,57 @@ StockMarketView? stockMarketView(WorldState world, ContentDb content) {
         ? market.dividends
         : Money.zero,
     lossCarried: market.gainsLoss,
+    bids: List.unmodifiable(bids),
+    raiders: List.unmodifiable(raiders),
+    loans: List.unmodifiable([
+      for (final loan in market.loans)
+        (
+          number: loan.number,
+          stock: loan.stock,
+          outstanding: loan.outstanding,
+          rate: loan.rate,
+          installmentsLeft: loan.installmentsLeft,
+        ),
+    ]),
   );
 }
 
-/// What the player's holdings in [market] are worth at today's prices.
+RaiderView _raiderView(
+  StocksDef def,
+  StockMarket market,
+  int r,
+  Raider raider,
+) {
+  final owner = raiderOwner(r);
+  var worth = raider.cash;
+  final stakes = <(int, Money)>[];
+  for (final holding in market.holdings) {
+    if (holding.owner != owner || holding.index) continue;
+    final value = _priceOf(market, holding).timesInt(holding.units);
+    worth += value;
+    stakes.add((holding.of, value));
+  }
+  stakes.sort((a, b) => b.$2.cents.compareTo(a.$2.cents));
+  return (
+    name: def.raiders[r].name,
+    style: def.raiders[r].style,
+    worth: worth,
+    stakes: List.unmodifiable([for (final (i, _) in stakes) i]),
+  );
+}
+
+Money _priceOf(StockMarket market, Holding holding) => holding.index
+    ? market.exchanges[holding.of].level
+    : market.stocks[holding.of].price;
+
+/// What the player's own holdings in [market] are worth at today's prices;
+/// their companies' count in their companies' books.
 Money portfolioWorth(StockMarket? market) {
   if (market == null) return Money.zero;
   var worth = Money.zero;
   for (final holding in market.holdings) {
-    final price = holding.index
-        ? market.exchanges[holding.of].level
-        : market.stocks[holding.of].price;
-    worth += price.timesInt(holding.units);
+    if (holding.owner != holdingOwner) continue;
+    worth += _priceOf(market, holding).timesInt(holding.units);
   }
   return worth;
 }
@@ -282,6 +458,12 @@ int? _management(
       if (listing.link >= world.producers.length) return null;
       final lead = world.producers[listing.link].lead;
       return byScale(lead, const [-400, -150, 150, 400]);
+    case ListingKind.company:
+      // The player's own: as its director runs it, or as the player does.
+      final director = world.companies[listing.link].director;
+      final grades = content.directors?.grades.length ?? 0;
+      if (director == null || grades == 0) return averageManagement;
+      return managementGrades.length - grades + director.grade.index;
   }
 }
 

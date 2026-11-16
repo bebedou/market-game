@@ -31,6 +31,7 @@ import '../systems/closure.dart';
 import 'command.dart';
 import 'refusal.dart';
 import 'stock_trades.dart';
+import '../systems/stocks.dart' show ownListing;
 import 'transfers.dart';
 import '../state/factory_sales.dart';
 import '../systems/factory_sales.dart'
@@ -101,6 +102,12 @@ Refusal? applyCommand(
     AskPrice() => _askPrice(world, content, command),
     BuyShares() => buyShares(world, content, ledger, command),
     SellShares() => sellShares(world, content, ledger, command),
+    BidForCompany() => bidForCompany(world, content, command),
+    AnswerBid() => answerBid(world, command),
+    RunListed() => runListed(world, content, command),
+    BuyRival() => buyRival(world, content, command),
+    SellControlled() => sellControlled(world, content, command),
+    ListCompany() => listCompany(world, content, ledger, command),
     SetSoftwarePrice() => _setSoftwarePrice(world, content, command),
     SetSoftwareMarketing() => _setSoftwareMarketing(world, content, command),
     HireSoftwarePerson() => _hireSoftwarePerson(world, content, command),
@@ -616,6 +623,54 @@ Refusal? _loanRefusal(
             : earningsCredit(world, content, company, extra: extra),
         guarantee: guaranteeRoom(world, content, owner, spent: spent),
       );
+
+/// Lends [company] [amount] over [termMonths] for a takeover, as for any
+/// purchase: on its earnings with the target's [earnings] added, then on
+/// its owner's guarantee. False if the bank won't.
+bool lendForTakeover(
+  WorldState world,
+  ContentDb content,
+  Ledger ledger,
+  Company company,
+  Money amount,
+  int termMonths,
+  Money earnings,
+) {
+  if (_loanRefusal(world, content, amount, termMonths) != null) return false;
+  final owner = world.persons[company.owner.index];
+  final loan = _purchaseLoan(
+    world,
+    content,
+    company,
+    owner,
+    amount,
+    extra: earnings,
+  );
+  if (loan == null) return false;
+  _lendFor(world, content, ledger, company, owner, loan, termMonths);
+  return true;
+}
+
+/// Whether the bank would lend [company] [amount] for a takeover, as
+/// [lendForTakeover] does.
+bool wouldLendForTakeover(
+  WorldState world,
+  ContentDb content,
+  Company company,
+  Money amount,
+  int termMonths,
+  Money earnings,
+) =>
+    _loanRefusal(world, content, amount, termMonths) == null &&
+    _purchaseLoan(
+          world,
+          content,
+          company,
+          world.persons[company.owner.index],
+          amount,
+          extra: earnings,
+        ) !=
+        null;
 
 /// Lends [amount] to [company] over [termMonths] at the bank's rate for its
 /// [owner] today, guaranteed by [guarantor] if given.
@@ -2256,6 +2311,10 @@ Refusal? _hireSoftwarePerson(
   return null;
 }
 
+/// Whether [company] of the player's is listed.
+bool _listed(WorldState world, CompanyId company) =>
+    ownListing(world.stocks, company) != null;
+
 Refusal? _raiseRound(
   WorldState world,
   ContentDb content,
@@ -2268,6 +2327,7 @@ Refusal? _raiseRound(
     command.software,
   );
   if (software == null) return error;
+  if (_listed(world, software.company)) return const Refusal('companyListed');
   final def = content.software!;
   if (command.share <= Fx.zero || command.share > def.maxRoundShare) {
     return Refusal(

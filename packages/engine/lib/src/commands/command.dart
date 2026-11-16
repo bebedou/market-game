@@ -392,6 +392,48 @@ sealed class Command {
         units: reader.readInt(),
         index: reader.readBool(),
       ),
+      BidForCompany.tag => BidForCompany(
+        actor,
+        stock: reader.readInt(),
+        premium: Fx.raw(reader.readInt()),
+        bidder: reader.readInt(),
+        borrow: Money(reader.readInt()),
+        termMonths: reader.readInt(),
+        format: reader.readInt(),
+        strategy: reader.readInt(),
+      ),
+      AnswerBid.tag => AnswerBid(
+        actor,
+        bid: reader.readInt(),
+        tender: reader.readBool(),
+      ),
+      RunListed.tag => RunListed(
+        actor,
+        stock: reader.readInt(),
+        payout: switch (reader.readNullableInt()) {
+          final raw? => Fx.raw(raw),
+          null => null,
+        },
+        growth: reader.readInt(),
+        debt: switch (reader.readNullableInt()) {
+          final raw? => Fx.raw(raw),
+          null => null,
+        },
+        director: reader.readNullableInt(),
+      ),
+      BuyRival.tag => BuyRival(
+        actor,
+        via: reader.readInt(),
+        stock: reader.readInt(),
+        premium: Fx.raw(reader.readInt()),
+      ),
+      SellControlled.tag => SellControlled(actor, stock: reader.readInt()),
+      ListCompany.tag => ListCompany(
+        actor,
+        company: CompanyId(reader.readInt()),
+        share: Fx.raw(reader.readInt()),
+        newShares: reader.readBool(),
+      ),
       _ => throw FormatException('Unknown command tag $tag'),
     };
   }
@@ -2231,4 +2273,204 @@ final class SellShares extends Command {
   String toString() =>
       'SellShares(actor: ${actor.index}, of: $of, units: $units, '
       'index: $index)';
+}
+
+/// Bids for every share of listed company [stock] at [premium] over its
+/// price today, by [bidder]: the player's holding ([holdingOwner]) or one
+/// of their companies, borrowing [borrow] over [termMonths]. For a chain,
+/// [format] and [strategy] are what its shops take in the bidder's company.
+final class BidForCompany extends Command {
+  const BidForCompany(
+    super.actor, {
+    required this.stock,
+    required this.premium,
+    required this.bidder,
+    this.borrow = Money.zero,
+    this.termMonths = 0,
+    this.format = -1,
+    this.strategy = -1,
+  });
+
+  static const int tag = 59;
+
+  final int stock;
+  final Fx premium;
+  final int bidder;
+  final Money borrow;
+  final int termMonths;
+  final int format;
+  final int strategy;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(stock)
+      ..writeInt(premium.raw)
+      ..writeInt(bidder)
+      ..writeInt(borrow.cents)
+      ..writeInt(termMonths)
+      ..writeInt(format)
+      ..writeInt(strategy);
+  }
+
+  @override
+  String toString() =>
+      'BidForCompany(actor: ${actor.index}, stock: $stock, '
+      'premium: ${premium.toDecimalString()}, bidder: $bidder, '
+      'borrow: ${borrow.toDecimalString()}, termMonths: $termMonths, '
+      'format: $format, strategy: $strategy)';
+}
+
+/// Offers the player's shares into someone else's bid [bid], or, if not
+/// [tender], keeps them out of it.
+final class AnswerBid extends Command {
+  const AnswerBid(super.actor, {required this.bid, required this.tender});
+
+  static const int tag = 60;
+
+  final int bid;
+  final bool tender;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(bid)
+      ..writeBool(tender);
+  }
+
+  @override
+  String toString() =>
+      'AnswerBid(actor: ${actor.index}, bid: $bid, tender: $tender)';
+}
+
+/// Sets the levers of company by formula [stock], which the player
+/// controls: the share of profit paid out, how fast it invests to grow (-1
+/// slow, 0 steady, 1 fast), the debt it aims for in years of profit, and
+/// the grade of director running it; null keeps its own.
+final class RunListed extends Command {
+  const RunListed(
+    super.actor, {
+    required this.stock,
+    this.payout,
+    this.growth = 0,
+    this.debt,
+    this.director,
+  });
+
+  static const int tag = 61;
+
+  final int stock;
+  final Fx? payout;
+  final int growth;
+  final Fx? debt;
+  final int? director;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(stock)
+      ..writeNullableInt(payout?.raw)
+      ..writeInt(growth)
+      ..writeNullableInt(debt?.raw)
+      ..writeNullableInt(director);
+  }
+
+  @override
+  String toString() =>
+      'RunListed(actor: ${actor.index}, stock: $stock, payout: $payout, '
+      'growth: $growth, debt: $debt, director: $director)';
+}
+
+/// Has company [via], which the player controls, bid at [premium] for
+/// smaller listed company [stock] of its sector and country, to merge it
+/// in, paying with debt.
+final class BuyRival extends Command {
+  const BuyRival(
+    super.actor, {
+    required this.via,
+    required this.stock,
+    required this.premium,
+  });
+
+  static const int tag = 62;
+
+  final int via;
+  final int stock;
+  final Fx premium;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(via)
+      ..writeInt(stock)
+      ..writeInt(premium.raw);
+  }
+
+  @override
+  String toString() =>
+      'BuyRival(actor: ${actor.index}, via: $via, stock: $stock, '
+      'premium: ${premium.toDecimalString()})';
+}
+
+/// Puts company [stock], which the player controls, up for sale: the
+/// richest raider that can bids for all of it, the player's shares
+/// tendered.
+final class SellControlled extends Command {
+  const SellControlled(super.actor, {required this.stock});
+
+  static const int tag = 63;
+
+  final int stock;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(stock);
+  }
+
+  @override
+  String toString() => 'SellControlled(actor: ${actor.index}, stock: $stock)';
+}
+
+/// Lists [company], one of the player's, on its country's exchange, selling
+/// [share] of it: new shares, whose money goes into the company, if
+/// [newShares], else the player's own, whose money goes to the player.
+final class ListCompany extends Command {
+  const ListCompany(
+    super.actor, {
+    required this.company,
+    required this.share,
+    required this.newShares,
+  });
+
+  static const int tag = 64;
+
+  final CompanyId company;
+  final Fx share;
+  final bool newShares;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(company.index)
+      ..writeInt(share.raw)
+      ..writeBool(newShares);
+  }
+
+  @override
+  String toString() =>
+      'ListCompany(actor: ${actor.index}, company: ${company.index}, '
+      'share: ${share.toDecimalString()}, newShares: $newShares)';
 }
