@@ -716,6 +716,14 @@ class SoftwareCustomersPage extends StatelessWidget {
               money(marketing, cents: false),
               hint: tr('software.marketingHint'),
             ),
+            if (software.status == SoftwareStatus.selling &&
+                marketing == software.marketing &&
+                marketing > Money.zero)
+              Hint(
+                tr('software.fromMarketing', {
+                  'count': compactCount(software.fromMarketing),
+                }),
+              ),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(

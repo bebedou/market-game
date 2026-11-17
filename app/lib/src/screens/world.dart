@@ -645,7 +645,7 @@ class _Countries extends StatelessWidget {
               // Only the deepest phase, a recession, earns a stamp.
               stamp: regime == deepest ? regime.name : null,
               value: percent(macro.inflation),
-              onTap: () => _openCountry(context, country),
+              onTap: () => openCountryPage(context, country),
             );
           }(),
         Hint(tr('market.countriesHint')),
@@ -663,16 +663,17 @@ CountryState? _nationalState(SimulationController game, CountryDef country) =>
 
 /// A country's page: its economy and taxes, its regions with the player's
 /// shops run by formula there, its whole market by formula, and its places.
-void _openCountry(BuildContext context, CountryDef country) => context.openPage(
-  country.name,
-  (context) => [
-    _EconomySummary(country: country.id),
-    _CountryTaxes(country: country),
-    NationalMap(country: country.id),
-    _NationalMarket(country: country),
-    _CountryPlaces(country: country),
-  ],
-);
+void openCountryPage(BuildContext context, CountryDef country) =>
+    context.openPage(
+      country.name,
+      (context) => [
+        _EconomySummary(country: country.id),
+        _CountryTaxes(country: country),
+        NationalMap(country: country.id),
+        _NationalMarket(country: country),
+        _CountryPlaces(country: country),
+      ],
+    );
 
 /// What a country takes: corporate tax on what shops make there, and
 /// dividend tax from those who live there.

@@ -350,6 +350,7 @@
     "rivalEnlarged": "{owner} a agrandi {store} à {area} m².",
     "opened": "{store} a ouvert : {site}.",
     "closed": "{store} a fermé : {site}.",
+    "absorbed": "{store} tourne désormais par formule, parmi les magasins de {company} en {region}.",
     "beingFitted": "{store} est en cours d’aménagement.",
     "boughtCompany": {
       "one": "Vous avez acheté {company} et son magasin.",
@@ -617,6 +618,32 @@
       "electronics": "Smartphones, accessoires et maison connectée",
       "clothing": "Des collections commandées d’avance, tant que la mode dure"
     }
+  },
+  "businesses": {
+    "none": "Pas encore de société : lancez une affaire.",
+    "byHand": "gérée par vous",
+    "byHandShort": "Par vous",
+    "youRunIt": "Vous",
+    "factories": { "one": "{count} usine", "other": "{count} usines" },
+    "customers": "{count} clients",
+    "nothingYet": "Rien encore",
+    "lastMonth": "Le mois dernier : ventes {sales}, bénéfice {profit}",
+    "summary": "En bref",
+    "holds": "Ce qu’elle possède",
+    "sales": "Ventes du mois dernier",
+    "profit": "Bénéfice du mois dernier",
+    "shopsByHand": "Magasins gérés en détail",
+    "shopsByFormula": "Magasins par formule",
+    "runBy": "Dirigée par",
+    "byFormula": "Magasins par formule",
+    "byFormulaHint": "Un directeur gère la société par formule : ses magasins tournent comme ses magasins de leur type dans chaque région, sans rien à gérer au jour le jour.",
+    "block": "{format} en {country}",
+    "blockLine": { "one": "{count} magasin · {regions}", "other": "{count} magasins · {regions}" },
+    "district": "{district}, par formule",
+    "directorRuns": "Gérés par le directeur",
+    "directorRunsHint": "Le directeur gère ces magasins. Le premier du mois, ceux d’un type qui tourne par formule à l’échelle d’un pays rejoignent ses magasins par formule ; les autres restent gérés en détail.",
+    "rename": "Renommer la société",
+    "name": "Nom de la société"
   },
   "store": {
     "made": "maison",
@@ -1491,6 +1518,7 @@
     "change": "Modifier",
     "marketing": "Marketing mensuel",
     "marketingHint": "Le marketing attire des clients dès la première version. Chaque euro de plus en rapporte moins ; un produit en avance se répand aussi par le bouche-à-oreille.",
+    "fromMarketing": "À ce budget, le marketing gagne environ {count} nouveaux clients par mois.",
     "month": "Un mois en l’état",
     "serving": "Service aux clients",
     "offices": "Bureaux",

@@ -662,21 +662,18 @@ DirectorRecord _recordOf(CompanyView company, Director director) {
   return record;
 }
 
-/// A director's portrait beside their name and line, with a figure on the
-/// right.
+/// A director's name and line, with a figure on the right.
 class PersonHeader extends StatelessWidget {
   const PersonHeader({
     super.key,
     required this.person,
     required this.line,
     this.value,
-    this.size = 48,
   });
 
   final DirectorPerson? person;
   final String line;
   final String? value;
-  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -686,8 +683,6 @@ class PersonHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          DirectorPortrait(person: person, size: size),
-          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1292,8 +1287,6 @@ class _CandidateTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              DirectorPortrait(person: person, size: 40),
-              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

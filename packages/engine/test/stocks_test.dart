@@ -356,6 +356,31 @@ void main() {
       expect(growth(), Fx.parse('0.10'));
     });
 
+    test('a price to earnings on a profit near nothing means nothing', () {
+      final game = _game();
+      final i = _parisFormula(_content);
+      final stock = game.world.stocks!.stocks[i];
+      StockView view() => game.observe(game.world.player).stocks!.stocks[i];
+      // A cent of profit a year prices it at billions of times earnings.
+      for (var q = 0; q < 4; q++) {
+        stock.keep(
+          Results(
+            day: game.today,
+            revenue: stock.results.last.revenue,
+            profit: q == 0 ? const Money(1) : Money.zero,
+            dividends: Money.zero,
+          ),
+        );
+      }
+      expect(stock.multiple > meaningfulMultiple, isTrue);
+      expect(view().multiple, isNull);
+      // Nor does such a month count in its usual one.
+      stock.multiples
+        ..clear()
+        ..addAll([Fx.fromInt(14), stock.multiple, Fx.fromInt(16)]);
+      expect(view().averageMultiple, Fx.fromInt(15));
+    });
+
     test(
       'a chain that is bought whole leaves its exchange, its holders paid',
       () {

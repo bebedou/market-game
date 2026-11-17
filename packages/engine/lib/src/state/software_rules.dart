@@ -121,19 +121,109 @@ Fx softwareChurn(SoftwareDef def, Fx edge, Money price, Money reference) {
   return churn;
 }
 
-/// How many people a product with [customers] reaches a month spending
-/// [marketing]: marketing gives less for each euro more, and customers talk.
-int softwareReach(SoftwareDef def, Money marketing, int customers) {
-  final spent = marketing > Money.zero
-      ? isqrt(marketing.cents) * isqrt(def.marketingScale.cents)
-      : 0;
-  return spent + def.wordOfMouth.cents * customers;
+/// How many people a product reaches a month spending [marketing]: each
+/// euro more reaches fewer.
+int softwareReach(SoftwareDef def, Money marketing) => marketing > Money.zero
+    ? isqrt(marketing.cents) * isqrt(def.marketingScale.cents)
+    : 0;
+
+/// How strongly a product [edge] ahead at [price] draws those choosing:
+/// its pull times its price's draw.
+Fx softwareDraw(SoftwareDef def, Fx edge, Money price, Money reference) =>
+    softwarePull(def, edge) * softwarePriceDraw(def, price, reference);
+
+/// A product of the software market as the month's turn weighs it: its
+/// customers, its edge (its lead and its appeal), its price and its
+/// marketing, and whether it sells.
+typedef SoftwareProduct = ({
+  int customers,
+  Fx edge,
+  Money price,
+  Money marketing,
+  bool selling,
+});
+
+/// Every product of [world]'s software market, rivals then players', at
+/// the market's [reference] price.
+List<SoftwareProduct> softwareProducts(
+  WorldState world,
+  SoftwareDef def,
+  Money reference,
+) {
+  final market = world.softwareMarket!;
+  final SoftwareProduct none = (
+    customers: 0,
+    edge: Fx.zero,
+    price: reference,
+    marketing: Money.zero,
+    selling: false,
+  );
+  return [
+    for (final rival in market.rivals)
+      rival.selling
+          ? (
+              customers: rival.customers,
+              edge: rival.level - market.standard + rival.appeal,
+              price: reference.times(rival.price),
+              marketing:
+                  reference
+                      .timesInt(rival.customers)
+                      .times(rival.marketingShare) +
+                  rival.marketingBudget,
+              selling: true,
+            )
+          : none,
+    for (final software in world.software)
+      software.status == SoftwareStatus.selling
+          ? (
+              customers: software.customers,
+              edge:
+                  software.level -
+                  market.standard +
+                  softwareAppeal(
+                    def,
+                    softwarePower(world, def, software.id, KeyRole.designer),
+                  ),
+              price: software.price,
+              marketing: software.marketing,
+              selling: true,
+            )
+          : none,
+  ];
 }
 
-/// A product's weight among those customers who change products choose
-/// from.
-int softwareWeight(int reach, Fx pull, Fx priceDraw) =>
-    mulDivRound(reach, (pull * priceDraw).raw, Fx.scale);
+/// What the selling [products]' customers use draws on average, each
+/// counted by its customers; one in a market without any.
+Fx softwareUsualOf(
+  SoftwareDef def,
+  List<SoftwareProduct> products,
+  Money reference,
+) {
+  final all = products.fold(
+    0,
+    (sum, product) => product.selling ? sum + product.customers : sum,
+  );
+  if (all <= 0) return Fx.one;
+  var usual = 0;
+  for (final product in products) {
+    if (!product.selling) continue;
+    final draw = softwareDraw(def, product.edge, product.price, reference);
+    usual += partsOf(product.customers, all) * draw.raw;
+  }
+  final mean = Fx.raw(usual ~/ 100000);
+  return mean > Fx.zero ? mean : Fx.one;
+}
+
+/// The customers [reach] people win a month for a product that [draw]s
+/// against the market's [usual]. An advert carries how a product compares
+/// less than its customers do: by the square root of its draw against the
+/// usual.
+int softwareWon(SoftwareDef def, int reach, Fx draw, Fx usual) {
+  if (reach <= 0 || draw <= Fx.zero) return 0;
+  final against = mulDivRound(draw.raw, Fx.scale, usual.raw);
+  final carried = isqrt(against * Fx.scale);
+  return mulDivRound(reach, carried, Fx.scale) ~/ def.reachPerCustomer;
+}
 
 /// What a customer pays a month on average, at today's prices.
 Money softwareReferencePrice(WorldState world, SoftwareDef def) =>
@@ -341,21 +431,21 @@ Money payInvestors(
 bool holdsSoftware(WorldState world, CompanyId company) =>
     softwareOf(world, company) != null;
 
-/// [amount] shared out by [weights], each share rounded down: the weights
-/// are taken in coarser units until the sums stay safe, since a market's
-/// weights run to trillions.
+/// [amount] shared out by [weights], each share rounded down. Worked in
+/// big integers, exact on every platform, since a market's weights run to
+/// trillions and the smallest product must still get its share.
 List<int> shareOut(int amount, List<int> weights) {
-  var divisor = 1;
-  int sum() => weights.fold(0, (total, weight) => total + weight ~/ divisor);
-  var total = sum();
-  final limit = maxSafeInt ~/ (2 * (amount > 0 ? amount : 1)) - 1;
-  while (total > limit) {
-    divisor *= 10;
-    total = sum();
+  final total = weights.fold(
+    BigInt.zero,
+    (sum, weight) => weight > 0 ? sum + BigInt.from(weight) : sum,
+  );
+  if (amount <= 0 || total == BigInt.zero) {
+    return List.filled(weights.length, 0);
   }
-  if (total <= 0) return List.filled(weights.length, 0);
+  final whole = BigInt.from(amount);
   return [
-    for (final weight in weights) mulDivRound(amount, weight ~/ divisor, total),
+    for (final weight in weights)
+      weight > 0 ? (whole * BigInt.from(weight) ~/ total).toInt() : 0,
   ];
 }
 

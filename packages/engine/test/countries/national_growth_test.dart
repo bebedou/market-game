@@ -175,6 +175,68 @@ void main() {
     expect(strainFactor(block.strain), Fx.one);
   });
 
+  test(
+    'a director runs the company by formula: on the first of the month, '
+    'its shop in Lyon joins its shops of the kind in Auvergne-Rhône-Alpes',
+    () {
+      final game = _game(_content);
+      _advance(game, 20);
+      final store = game.world.stores.singleWhere(
+        (s) => s.company == _company && s.isTrading,
+      );
+      final company = game.world.companies[_company.index];
+      game.submit(
+        HireDirector(
+          _player,
+          company: _company,
+          grade: _grade('seasoned').id,
+          strategy: _grocer.id,
+          managerGrade: _content.managers.grades.last.id,
+          growth: Growth.none,
+          payout: false,
+        ),
+      );
+      // The director runs it in full until the month is out.
+      var day = game.step();
+      expect(day.events.whereType<StoreAbsorbed>(), isEmpty);
+      expect(store.status, StoreStatus.open);
+      while (!day.day.isFirstOfMonth) {
+        day = game.step();
+      }
+      final absorbed = day.events.whereType<StoreAbsorbed>().single;
+      expect(absorbed.store, store.id);
+      expect(store.status, StoreStatus.closed);
+      // Its stock went at cost, nothing written off.
+      expect(company.accounts[AccountKind.inventory], Money.zero);
+      expect(
+        day.entries.where(
+          (e) =>
+              e.party == (type: PartyType.company, index: _company.index) &&
+              e.debit == AccountKind.writeOffs,
+        ),
+        isEmpty,
+      );
+      final france = _table.countries.indexWhere((c) => c.key == 'fr');
+      final region = _table.countries[france].regions.indexWhere(
+        (r) => r.key == 'FRK',
+      );
+      expect(absorbed.region, region);
+      final block = game.national!.countries[france].blocks.single;
+      expect(block.company, _company.index);
+      expect(block.regions[region].settled, 1);
+      expect(block.stores, 1);
+      // It trades by formula from that day, in the company's books.
+      expect(block.months.last.start, day.day);
+      expect(block.months.last.sales > Money.zero, isTrue);
+      _advance(game, 45);
+      expect(
+        game.world.stores.where((s) => s.company == _company && s.isTrading),
+        isEmpty,
+      );
+      expect(invariantViolations(game.world), isEmpty);
+    },
+  );
+
   test('a brief to grow at a rate is saved and read', () {
     final game = _game(_content);
     game.submit(

@@ -4,6 +4,7 @@ import 'controller.dart';
 import 'format.dart';
 import 'l10n.dart';
 import 'screens/books.dart';
+import 'screens/businesses.dart';
 import 'screens/exchange.dart';
 import 'screens/finance.dart';
 import 'screens/guide.dart';
@@ -14,11 +15,13 @@ import 'theme.dart';
 import 'visuals.dart';
 import 'widgets.dart';
 
-/// The tabs, in order: the holding at a glance, the store picked, money
-/// and deals, the world outside, and the books.
+/// The tabs, in order: the holding at a glance, its businesses, money and
+/// deals, the world outside, the stock market, and the books of the store
+/// picked.
 enum HomeTab { holding, shop, finance, world, market, books }
 
-/// Switches to [tab], at [part] of the shop if given.
+/// Switches to [tab]; with [part], to the Businesses tab's store picked,
+/// at that part.
 typedef OpenTab = void Function(HomeTab tab, {ShopPart? part});
 
 /// The game: a tab per area, the clock at the bottom, and the changes
@@ -37,7 +40,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   HomeTab _tab = HomeTab.holding;
-  ShopPart _shopPart = ShopPart.shelves;
 
   /// The pages opened in each tab, the latest last.
   final _pages = {for (final tab in HomeTab.values) tab: <SubPage>[]};
@@ -112,7 +114,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _tab = tab;
     _pages[tab]!.clear();
     _ahead[tab]!.clear();
-    if (part != null) _shopPart = part;
+    if (part == null) return;
+    if (_game.store case final store?) {
+      final shown = ValueNotifier(part);
+      _pages[tab]!.add((
+        title: _game.storeName(store.id),
+        build: (_) => [ShopScreen(part: shown)],
+        whole: true,
+      ));
+    }
   });
 
   /// From the tabs: the tab as it was left, or back to its start if it is
@@ -155,10 +165,13 @@ class _HomeScreenState extends State<HomeScreen> {
               final store = game.store;
               final theme = Theme.of(context);
               final ledger = Ledger.of(context);
-              // The holding and the world are the player's whole affairs; the
-              // shop and the books are the store picked, which the title
-              // switches.
-              final picked = _tab == HomeTab.shop || _tab == HomeTab.books;
+              // The books, and a store's page in Businesses, are the store
+              // picked, which the title switches; otherwise Businesses names
+              // the page open in it.
+              final top = _pages[_tab]!.lastOrNull;
+              final picked =
+                  _tab == HomeTab.books ||
+                  _tab == HomeTab.shop && (top?.whole ?? false);
               final switchable = picked && game.myStores.length > 1;
               final small = theme.textTheme.bodySmall;
               final title = switch (_tab) {
@@ -166,6 +179,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 HomeTab.finance => tr('home.tabs.finance'),
                 HomeTab.world => tr('home.theWorld'),
                 HomeTab.market => tr('home.tabs.market'),
+                HomeTab.shop when !picked =>
+                  top?.title ?? tr('home.tabs.businesses'),
                 HomeTab.shop || HomeTab.books =>
                   store != null
                       ? game.storeName(store.id)
@@ -264,10 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: switch (_pages[_tab]!) {
                       [] => switch (_tab) {
                         HomeTab.holding => HoldingScreen(onOpen: _open),
-                        HomeTab.shop => ShopScreen(
-                          part: _shopPart,
-                          onPart: (part) => setState(() => _shopPart = part),
-                        ),
+                        HomeTab.shop => BusinessesScreen(onOpen: _open),
                         HomeTab.finance => const FinanceScreen(),
                         HomeTab.world => const WorldScreen(),
                         HomeTab.market => const ExchangeScreen(),
@@ -345,14 +357,16 @@ class _PageFrame extends StatelessWidget {
   // Laid out whole rather than lazily: pages are short, and a lazy list
   // trips the framework's semantics when a dialog over it closes.
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    key: PageStorageKey('page ${page.title}'),
-    padding: const EdgeInsets.only(bottom: 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: page.build(context),
-    ),
-  );
+  Widget build(BuildContext context) => page.whole
+      ? page.build(context).single
+      : SingleChildScrollView(
+          key: PageStorageKey('page ${page.title}'),
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: page.build(context),
+          ),
+        );
 }
 
 /// The date, the economy, and the clock's controls. While the clock runs, a

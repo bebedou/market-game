@@ -79,8 +79,13 @@ class Section extends StatelessWidget {
 }
 
 /// A page opened within a tab: its title, for the way back from pages
-/// opened on it, and the sections it shows.
-typedef SubPage = ({String title, List<Widget> Function(BuildContext) build});
+/// opened on it, and the sections it shows; or, [whole], the one widget
+/// that fills it, scrolling as it likes.
+typedef SubPage = ({
+  String title,
+  List<Widget> Function(BuildContext) build,
+  bool whole,
+});
 
 /// Opens pages within the current tab, keeping the clock and the tabs.
 class SubPages extends InheritedWidget {
@@ -99,6 +104,16 @@ extension PageContext on BuildContext {
       getInheritedWidgetOfExactType<SubPages>()!.open((
         title: title,
         build: build,
+        whole: false,
+      ));
+
+  /// Opens a page named [title] that [build] fills whole, within the
+  /// current tab.
+  void openWholePage(String title, Widget Function(BuildContext) build) =>
+      getInheritedWidgetOfExactType<SubPages>()!.open((
+        title: title,
+        build: (context) => [build(context)],
+        whole: true,
       ));
 }
 

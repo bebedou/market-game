@@ -277,6 +277,7 @@ List<NeighbourhoodRow> rowsFromScenario(ContentDb content) {
           room: mulDivRound(room, 1, sites.length),
           playerStartsHere: market.id == home,
           country: market.country,
+          region: market.region,
         );
       }(),
   ];
@@ -371,6 +372,7 @@ String generateScenario(
       'id': market.key,
       'name': market.name,
       'country': ?_countryKey(content, market.country),
+      'region': ?market.region,
       'households': {
         for (final segment in content.segments)
           if (row.households[segment.id.index] > 0)
@@ -788,6 +790,7 @@ final class _World {
       'id': row.key,
       'name': row.name,
       'country': ?_countryKey(content, row.country),
+      'region': ?row.region,
       'households': {
         for (final segment in content.segments)
           if (people[segment.id.index] > 0)

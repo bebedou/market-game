@@ -6,6 +6,7 @@ import '../core/money.dart';
 import '../core/rng.dart';
 import '../core/safe_int.dart';
 import '../countries/country_economy.dart';
+import '../countries/shop_bridge.dart' show formatTrades;
 import '../state/buying_terms.dart';
 import '../state/director.dart';
 import '../state/entities.dart';
@@ -13,8 +14,11 @@ import '../state/factories.dart';
 import '../state/factory.dart';
 import '../state/national_value.dart';
 import '../state/orders.dart';
+import '../state/store.dart';
 import '../state/taxation.dart';
 import '../state/world_state.dart';
+import 'closure.dart';
+import 'events.dart';
 import 'sleepers.dart' show formulaGoodsExtra;
 import 'tick_system.dart';
 import 'factory_sales.dart' show billMaking, kindShare;
@@ -224,6 +228,123 @@ Money nationalFitOut(
     .times(country.priceIndex)
     .times(country.costLevels[trade][region]);
 
+/// Whether [store], of a company its director runs, goes to formula: open,
+/// with no works under way, of a kind the countries by formula have, in a
+/// country the table plays.
+bool absorbable(WorldState world, ContentDb content, Store store) {
+  if (store.status != StoreStatus.open || store.works != null) return false;
+  final company = world.companies[store.company.index];
+  if (company.director == null || !company.isActive) return false;
+  final format = content.formats[store.format.index];
+  final trade = formatTrades[format.key];
+  final table = content.national;
+  return format.national != null &&
+      table != null &&
+      table.trades.any((t) => t.key == trade) &&
+      tableCountry(content, content.markets[store.market.index].country) !=
+          null;
+}
+
+/// The region of the table's country at [index] that [market] is in: the
+/// one the scenario names, or else the most populous.
+int marketRegion(CountryState country, MarketDef market) {
+  final regions = country.def.regions;
+  final named = regions.indexWhere((r) => r.key == market.region);
+  if (named >= 0) return named;
+  var best = 0;
+  for (var r = 1; r < regions.length; r++) {
+    if (regions[r].population > regions[best].population) best = r;
+  }
+  return best;
+}
+
+/// A director runs a company by formula: on the first of each month, every
+/// store of a company with a director that is [absorbable] joins its shops
+/// of its kind by formula in the region it trades in, as a settled shop,
+/// under the director's strategy. It does so before the countries run the
+/// month, so it trades there from the day it leaves the districts. Its stock
+/// is sold at cost to everyone beyond the districts played in full, what
+/// the company paid for it beyond its stock stays its business asset,
+/// carried by the shops by formula, and its site is free.
+void absorbDirected(WorldState world, TickContext context) {
+  final content = context.content;
+  if (content.national == null || !context.day.isFirstOfMonth) return;
+  for (final store in world.stores) {
+    if (!absorbable(world, content, store)) continue;
+    // As the countries stood last month, so the shop joins the one to come.
+    final economy = world.national ?? currentNational(world, content);
+    if (economy == null) return;
+    final company = world.companies[store.company.index];
+    final market = content.markets[store.market.index];
+    final index = tableCountry(content, market.country)!;
+    final country = economy.countries[index];
+    final format = content.formats[store.format.index];
+    final trade = economy.table.trades.indexWhere(
+      (t) => t.key == formatTrades[format.key],
+    );
+    final region = marketRegion(country, market);
+    var stock = Money.zero;
+    for (final product in store.stock) {
+      stock += product.clear().cost;
+    }
+    if (stock > Money.zero) {
+      context.ledger.pay(
+        payer: world.elsewhere,
+        payerAccount: AccountKind.spending,
+        payee: company,
+        payeeAccount: AccountKind.inventory,
+        amount: stock,
+        reason: EntryReason.storeSale,
+        store: store.id,
+      );
+    }
+    final strategy = _strategyFor(content, company, store);
+    final block = economy.open(
+      index,
+      company: company.id.index,
+      trade: trade,
+      format: format.id.index,
+      strategy: strategy.id.index,
+      region: region,
+      count: 1,
+      perStore: format.national!.salesIn(market.country),
+      price: Fx.one + strategy.marketPosition,
+      costs: nationalCosts(format, strategy, market.country),
+      settled: true,
+    );
+    block.cost += store.boughtFor;
+    store.boughtFor = Money.zero;
+    closeStore(world, context.ledger, store);
+    context.events.add(
+      StoreAbsorbed(
+        store: store.id,
+        company: company.id,
+        country: market.country,
+        region: region,
+      ),
+    );
+  }
+}
+
+/// How [store] is run once its director's: their strategy if it is for its
+/// kind of shop, else its manager's if that is, else its kind's at the
+/// market's prices.
+StrategyDef _strategyFor(ContentDb content, Company company, Store store) {
+  final director = content.strategies[company.director!.strategy.index];
+  if (director.format == store.format) return director;
+  if (store.manager?.strategy case final managed?
+      when content.strategies[managed.index].format == store.format) {
+    return content.strategies[managed.index];
+  }
+  final fitting = [
+    for (final option in content.strategies)
+      if (option.format == store.format) option,
+  ];
+  return fitting.where((s) => s.marketPosition == Fx.zero).firstOrNull ??
+      fitting.firstOrNull ??
+      director;
+}
+
 /// The table's country for the game's [country], if the table has it.
 int? tableCountry(ContentDb content, CountryId country) {
   final table = content.national;
@@ -243,6 +364,7 @@ final class NationalSystem implements TickSystem {
 
   @override
   void run(WorldState world, TickContext context) {
+    absorbDirected(world, context);
     if (!context.day.isFirstOfMonth) return;
     final economy = currentNational(world, context.content);
     if (economy == null) return;

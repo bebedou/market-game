@@ -30,8 +30,8 @@ final class SoftwareDef implements TalentDef {
     required this.churnSteepness,
     required this.minChurn,
     required this.maxChurn,
-    required this.wordOfMouth,
     required this.marketingScale,
+    required this.reachPerCustomer,
     required this.serving,
     required this.office,
     required this.maxPeople,
@@ -122,12 +122,15 @@ final class SoftwareDef implements TalentDef {
   final Fx minChurn;
   final Fx maxChurn;
 
-  /// What one customer's word is worth a month, as marketing.
-  final Money wordOfMouth;
-
-  /// The spend at which marketing reaches as many as it costs: reach grows
-  /// as the square root of spend times this.
+  /// The spend at which marketing reaches as many people as it costs in
+  /// cents: reach grows as the square root of spend times this.
   final Money marketingScale;
+
+  /// How many people marketing reaches for each customer it wins, for a
+  /// product that draws as well as what the market's customers use. Those
+  /// it doesn't win share out the rest by what customers say, so marketing
+  /// works the same in a market of any size.
+  final int reachPerCustomer;
 
   /// The share of its revenue serving its customers costs a product.
   final Fx serving;

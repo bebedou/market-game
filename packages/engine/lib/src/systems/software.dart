@@ -271,79 +271,46 @@ final class SoftwareSystem implements TickSystem {
     final demand = softwareDemand(world, context.content);
     final yearly = def.growth - def.cycle * (Fx.one - demand);
     final growth = mulDivRound(market.customers, yearly.raw, Fx.scale * 12);
-    // Every product selling, rivals then players', with its customers, its
-    // edge, its price and its marketing.
-    final products =
-        <({int customers, Fx edge, Money price, Money marketing})>[];
-    for (final rival in market.rivals) {
-      products.add(
-        rival.selling
-            ? (
-                customers: rival.customers,
-                edge: rival.level - market.standard + rival.appeal,
-                price: reference.times(rival.price),
-                marketing:
-                    reference
-                        .timesInt(rival.customers)
-                        .times(rival.marketingShare) +
-                    rival.marketingBudget,
-              )
-            : (
-                customers: 0,
-                edge: Fx.zero,
-                price: reference,
-                marketing: Money.zero,
-              ),
-      );
-    }
-    for (final software in world.software) {
-      final selling = software.status == SoftwareStatus.selling;
-      products.add(
-        selling
-            ? (
-                customers: software.customers,
-                edge:
-                    software.level -
-                    market.standard +
-                    softwareAppeal(
-                      def,
-                      softwarePower(world, def, software.id, KeyRole.designer),
-                    ),
-                price: software.price,
-                marketing: software.marketing,
-              )
-            : (
-                customers: 0,
-                edge: Fx.zero,
-                price: reference,
-                marketing: Money.zero,
-              ),
-      );
-    }
+    final products = softwareProducts(world, def, reference);
+    final selling = [for (final product in products) product.selling];
     final leaving = List.filled(products.length, 0);
-    final weights = List.filled(products.length, 0);
+    final draws = [
+      for (final product in products)
+        softwareDraw(def, product.edge, product.price, reference),
+    ];
     var pool = growth;
-    var total = 0;
     for (final (i, product) in products.indexed) {
-      final selling = i < market.rivals.length
-          ? market.rivals[i].selling
-          : world.software[i - market.rivals.length].status ==
-                SoftwareStatus.selling;
-      if (!selling) continue;
+      if (!selling[i]) continue;
       final churn = softwareChurn(def, product.edge, product.price, reference);
       leaving[i] = mulDivRound(product.customers, churn.raw, Fx.scale);
       pool += leaving[i];
-      weights[i] = softwareWeight(
-        softwareReach(def, product.marketing, product.customers),
-        softwarePull(def, product.edge),
-        softwarePriceDraw(def, product.price, reference),
-      );
-      total += weights[i];
     }
     if (pool < 0) pool = 0;
-    final gains = total > 0
-        ? shareOut(pool, weights)
-        : List.filled(products.length, 0);
+    // Marketing wins those it reaches as its product compares with what the
+    // market's customers use, whatever the market's size; what customers
+    // say shares out the rest.
+    final usual = softwareUsualOf(def, products, reference);
+    final won = [
+      for (final (i, product) in products.indexed)
+        selling[i]
+            ? softwareWon(
+                def,
+                softwareReach(def, product.marketing),
+                draws[i],
+                usual,
+              )
+            : 0,
+    ];
+    final wanted = won.fold<int>(0, (sum, count) => sum + count);
+    final byMarketing = wanted > pool ? shareOut(pool, won) : won;
+    final told = pool - byMarketing.fold<int>(0, (sum, count) => sum + count);
+    final byWord = shareOut(told, [
+      for (final (i, product) in products.indexed)
+        selling[i] ? mulDivRound(product.customers, draws[i].raw, Fx.scale) : 0,
+    ]);
+    final gains = [
+      for (var i = 0; i < products.length; i++) byMarketing[i] + byWord[i],
+    ];
     final placed = gains.fold(0, (sum, gain) => sum + gain);
     final restIndex = market.rest.id.index;
     // What rounding leaves, and a shrinking market's losses beyond its

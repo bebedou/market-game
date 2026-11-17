@@ -239,6 +239,7 @@ final class NeighbourhoodRow {
     this.layout,
     this.scale = const [],
     this.country = const CountryId(0),
+    this.region,
   });
 
   final String key;
@@ -246,6 +247,9 @@ final class NeighbourhoodRow {
 
   /// The country it is in.
   final CountryId country;
+
+  /// As [MarketDef.region]: the national region it is in.
+  final String? region;
 
   /// The place's own market, sites and stores, as a scenario writes them,
   /// for a city of the game's run by formula: see `withCitiesAsleep`. Null
@@ -391,6 +395,7 @@ final class MarketDef {
     this.incomeLevel = Fx.one,
     this.scale = const [],
     this.country = const CountryId(0),
+    this.region,
   });
 
   final MarketId id;
@@ -399,6 +404,10 @@ final class MarketDef {
 
   /// The country it is in, whose economy, suppliers and taxes it has.
   final CountryId country;
+
+  /// The key of the national table's region it is in, where its shops go
+  /// once a director runs them by formula; null if the scenario doesn't say.
+  final String? region;
 
   /// How many households of each segment live here at the start, indexed by
   /// [SegmentId]. A scenario gives a place its market in euros and the mix of

@@ -39,18 +39,36 @@ Money? supplierCost(SimulationController game, ProductDef product) {
 /// The parts of the shop tab.
 enum ShopPart { shelves, supplies, running }
 
+/// Opens the store picked, at [part], as a page of the current tab.
+void openStorePage(BuildContext context, {ShopPart part = ShopPart.shelves}) {
+  final game = context.game;
+  final store = game.store;
+  final shown = ValueNotifier(part);
+  context.openWholePage(
+    store == null ? tr('home.tabs.businesses') : game.storeName(store.id),
+    (_) => ShopScreen(part: shown),
+  );
+}
+
 /// One of the player's stores, in three parts: its shelves (each product's
 /// price, stock, sales and misses), its supplies (suppliers, orders and
 /// bills), and its running (the site and its size, the manager, staff and
-/// marketing).
+/// marketing). The page that holds it keeps the [part] shown, so coming
+/// back from a page opened on it returns to that part.
 class ShopScreen extends StatelessWidget {
-  const ShopScreen({super.key, required this.part, required this.onPart});
+  const ShopScreen({super.key, required this.part});
 
-  final ShopPart part;
-  final ValueChanged<ShopPart> onPart;
+  final ValueNotifier<ShopPart> part;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: part,
+    builder: (context, part, _) => _part(context, part),
+  );
+
+  void onPart(ShopPart picked) => part.value = picked;
+
+  Widget _part(BuildContext context, ShopPart part) {
     final game = context.game;
     final store = game.store;
     if (store == null) {

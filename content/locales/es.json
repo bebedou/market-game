@@ -349,6 +349,7 @@
     "rivalEnlarged": "{owner} ha ampliado {store} hasta {area} m².",
     "opened": "{store} ha abierto en {site}.",
     "closed": "{store} ha cerrado en {site}.",
+    "absorbed": "{store} funciona ahora por fórmula, una de las tiendas de {company} en {region}.",
     "beingFitted": "{store} se está acondicionando.",
     "boughtCompany": {
       "one": "Has comprado {company} y su tienda.",
@@ -616,6 +617,32 @@
       "electronics": "Móviles, accesorios y hogar conectado",
       "clothing": "Colecciones pedidas por adelantado, mientras dure la moda"
     }
+  },
+  "businesses": {
+    "none": "Aún no hay empresa: empieza un negocio.",
+    "byHand": "la llevas tú",
+    "byHandShort": "Tú",
+    "youRunIt": "Tú",
+    "factories": { "one": "{count} fábrica", "other": "{count} fábricas" },
+    "customers": "{count} clientes",
+    "nothingYet": "Nada todavía",
+    "lastMonth": "El mes pasado: ventas {sales}, beneficio {profit}",
+    "summary": "En resumen",
+    "holds": "Lo que tiene",
+    "sales": "Ventas del mes pasado",
+    "profit": "Beneficio del mes pasado",
+    "shopsByHand": "Tiendas llevadas al detalle",
+    "shopsByFormula": "Tiendas por fórmula",
+    "runBy": "Dirigida por",
+    "byFormula": "Tiendas por fórmula",
+    "byFormulaHint": "Un director lleva la empresa por fórmula: sus tiendas funcionan como sus tiendas de su tipo en cada región, sin nada que llevar día a día.",
+    "block": "{format} en {country}",
+    "blockLine": { "one": "{count} tienda · {regions}", "other": "{count} tiendas · {regions}" },
+    "district": "{district}, por fórmula",
+    "directorRuns": "Las lleva el director",
+    "directorRunsHint": "El director lleva estas tiendas. El día uno del mes, las de un tipo que funciona por fórmula a escala de país se suman a sus tiendas por fórmula; las demás siguen al detalle.",
+    "rename": "Cambiar el nombre de la empresa",
+    "name": "Nombre de la empresa"
   },
   "store": {
     "made": "propio",
@@ -1490,6 +1517,7 @@
     "change": "Cambiar",
     "marketing": "Marketing al mes",
     "marketingHint": "El marketing atrae clientes desde la primera versión. Cada euro de más trae menos; un producto por delante también se extiende de boca en boca.",
+    "fromMarketing": "Con este presupuesto, el marketing gana unos {count} clientes nuevos al mes.",
     "month": "Un mes tal como está",
     "serving": "Atender a los clientes",
     "offices": "Oficinas",

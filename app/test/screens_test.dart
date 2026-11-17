@@ -528,8 +528,7 @@ void main() {
   testWidgets('a price set in the store waits for tomorrow', (tester) async {
     final game = newController();
     await pumpGame(tester, game);
-    await tester.tap(find.text('Businesses'));
-    await tester.pumpAndSettle();
+    await openStore(tester, game);
     await tester.scrollUntilVisible(find.text('Value Milk 1 L'), 300);
     await tester.ensureVisible(find.text('Value Milk 1 L'));
     await tester.pumpAndSettle();
@@ -552,7 +551,7 @@ void main() {
   testWidgets('staffing a slot is a pending change', (tester) async {
     final game = newController();
     await pumpGame(tester, game);
-    await openRunning(tester);
+    await openRunning(tester, game);
     await openIndex(tester, 'Staff and opening hours');
     await tester.scrollUntilVisible(find.text('Night'), 200);
     await tester.ensureVisible(find.text('Night'));
@@ -567,8 +566,7 @@ void main() {
   ) async {
     final game = newController();
     await pumpGame(tester, game);
-    await tester.tap(find.text('Businesses'));
-    await tester.pumpAndSettle();
+    await openStore(tester, game);
     await tester.tap(find.text('Supplies'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(OutlinedButton, 'Order').first);
@@ -1317,7 +1315,7 @@ void main() {
   ) async {
     final game = newController();
     await pumpGame(tester, game);
-    await openRunning(tester);
+    await openRunning(tester, game);
     await openIndex(tester, 'Manager');
     await tester.scrollUntilVisible(find.text('Hire a manager'), 200);
     await tester.ensureVisible(find.text('Hire a manager'));
@@ -1536,7 +1534,7 @@ void main() {
     }
     expect(rich.formats[game.store!.format.index].key, 'supermarket');
     await pumpGame(tester, game);
-    await openRunning(tester);
+    await openRunning(tester, game);
     await openIndex(tester, 'Manager');
     await tester.scrollUntilVisible(find.text('Hire a manager'), 200);
     await tester.ensureVisible(find.text('Hire a manager'));
@@ -1599,7 +1597,7 @@ void main() {
   ) async {
     final game = newController();
     await pumpGame(tester, game);
-    await openRunning(tester);
+    await openRunning(tester, game);
     await openIndex(tester, 'Marketing');
     await tester.scrollUntilVisible(find.text('No marketing'), 300);
     await tester.ensureVisible(find.byType(Slider));
@@ -1635,8 +1633,7 @@ void main() {
     game.step();
     game.selectStore(game.myStores.last.$2.id);
     await pumpGame(tester, game);
-    await tester.tap(find.text('Businesses'));
-    await tester.pumpAndSettle();
+    await openStore(tester, game);
     await tester.scrollUntilVisible(find.text('Burger menu'), 300);
     expect(find.text('Value Milk 1 L'), findsNothing);
   });
@@ -1646,7 +1643,7 @@ void main() {
   ) async {
     final game = newController();
     await pumpGame(tester, game);
-    await openRunning(tester);
+    await openRunning(tester, game);
     await openIndex(tester, 'Become a supermarket');
     // A supermarket costs 1.8 times the 30,000 fit-out, so 24,000 more, and
     // 100 m² of works at 150.00 to reach its 220 m².
@@ -1664,7 +1661,7 @@ void main() {
   testWidgets('the store is enlarged from its header', (tester) async {
     final game = newController();
     await pumpGame(tester, game);
-    await openRunning(tester);
+    await openRunning(tester, game);
     expect(find.text('120 m²'), findsOneWidget);
     await tester.tap(find.widgetWithText(TextButton, 'Enlarge'));
     await tester.pumpAndSettle();
@@ -1688,7 +1685,7 @@ void main() {
   ) async {
     final game = newController();
     await pumpGame(tester, game);
-    await openRunning(tester);
+    await openRunning(tester, game);
     await tester.tap(find.byTooltip('Rename'));
     await tester.pumpAndSettle();
     expect(find.text('Rename the store'), findsOneWidget);
@@ -1989,9 +1986,8 @@ SimulationController managedGame({required int days}) {
 }
 
 /// Opens the shop tab at its running: site, staff, manager, marketing.
-Future<void> openRunning(WidgetTester tester) async {
-  await tester.tap(find.text('Businesses'));
-  await tester.pumpAndSettle();
+Future<void> openRunning(WidgetTester tester, SimulationController game) async {
+  await openStore(tester, game);
   await tester.tap(find.text('Running'));
   await tester.pumpAndSettle();
 }

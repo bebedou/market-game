@@ -5,7 +5,6 @@ import 'package:market_game/src/directors.dart';
 import 'package:market_game/src/l10n.dart';
 import 'package:market_game/src/letters.dart';
 import 'package:market_game/src/screens/finance.dart';
-import 'package:market_game/src/theme.dart';
 import 'package:market_game/src/widgets.dart';
 
 import 'flutter_test_config.dart';
@@ -107,33 +106,6 @@ void main() {
       'Directrice chevronnée · audacieuse',
     );
     useStrings(stringsFromFiles('en'));
-  });
-
-  testWidgets('portraits draw for any looks, by day and night', (tester) async {
-    for (final brightness in Brightness.values) {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: gameTheme(brightness),
-          home: Wrap(
-            children: [
-              for (var looks = 0; looks < 64; looks++)
-                DirectorPortrait(
-                  person: DirectorPerson(
-                    name: 'N $looks',
-                    female: looks.isOdd,
-                    character: 0,
-                    looks: looks * 2654435761 % 4294967296,
-                    years: looks % 20,
-                  ),
-                ),
-              const DirectorPortrait(person: null),
-            ],
-          ),
-        ),
-      );
-      expect(tester.takeException(), isNull);
-      expect(find.byType(DirectorPortrait), findsNWidgets(65));
-    }
   });
 
   testWidgets('the hiring sheet offers this month’s shortlist, and hires the '

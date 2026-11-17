@@ -116,6 +116,22 @@ Directors also open and buy in districts asleep for the player's company
 (`OpenInDistrict`, `BuyInDistrict`, `DistrictOpened` and `DistrictBought`
 memos).
 
+**A director runs the company by formula** (2026-11-17). On the first of
+each month, `absorbDirected` in [systems/national.dart](../packages/engine/lib/src/systems/national.dart),
+called first by `NationalSystem`, before the countries run the month,
+turns every store of a company with a director that is `absorbable` (open,
+no works, of a kind with national figures, in a country of the table) into
+one settled shop of its block in the region its market is in
+(`marketRegion`: the scenario's `MarketDef.region`, or the most populous),
+under the director's strategy if it fits the kind, else its manager's or
+the kind's at market prices (`_strategyFor`). The month it joins is the
+one it trades in, so it loses no days. Its stock is sold at cost to
+`elsewhere`, its `boughtFor` moves to the block's `cost`, and it closes
+(`closeStore`), with a `StoreAbsorbed` event. The director's `_growth` skips
+stores and sites in full while that holds (`byFormula`). Each market and
+neighbourhood row of the scenario names its region; the generator carries
+it to woken districts.
+
 **People and characters.** A director is a `DirectorPerson` with a
 character (`DirectorCharacterDef` in
 [content_db.dart](../packages/engine/lib/src/content/content_db.dart)),

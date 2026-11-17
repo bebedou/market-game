@@ -388,6 +388,13 @@ StrategyId _strategyFor(
   }
   final waited = view.today.number - latest;
   final term = content.finance.maxTermMonths;
+  // A shop of a kind the countries run by formula, run in full, joins its
+  // company's shops by formula the day it opens (see `absorbDirected`): the
+  // director buys and opens only in districts run by formula, and across
+  // countries.
+  final byFormula =
+      view.national.isNotEmpty &&
+      content.formats[strategy.format.index].national != null;
 
   // What the company borrows towards [cost], with [earnings] of a store it
   // buys counted: zero if it has the cash, may not borrow or the bank won't
@@ -410,14 +417,14 @@ StrategyId _strategyFor(
       judged: judged,
       judgedAt: judgedAt,
     );
-    var best = struggling?.shelf;
+    var best = byFormula ? null : struggling?.shelf;
     var bestPayback = struggling?.paybackMonths ?? 0;
     var price = struggling?.price ?? Money.zero;
     // Else, borrowing, the profitable shop that repays soonest.
     ShelfView? profitable;
     var profitablePayback = buyoutLimit + 1;
     for (final shelf in view.shelves) {
-      if (!director.borrows) break;
+      if (!director.borrows || byFormula) break;
       if (shelf.status == StoreStatus.closed ||
           shelf.format != strategy.format ||
           view.companyOwners[shelf.company.index] == view.actor) {
@@ -496,6 +503,7 @@ StrategyId _strategyFor(
   SiteDef? best;
   var bestPayback = 0;
   for (final id in view.vacantSites) {
+    if (byFormula) break;
     final site = content.sites[id.index];
     if (site.area < format.minArea) continue;
     final payback = owner.paybackMonths(

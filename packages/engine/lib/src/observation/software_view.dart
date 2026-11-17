@@ -92,6 +92,7 @@ final class SoftwareView {
     required this.customers,
     required this.price,
     required this.marketing,
+    this.fromMarketing = 0,
     required this.referencePrice,
     required this.churn,
     required this.growth,
@@ -141,6 +142,10 @@ final class SoftwareView {
   final int customers;
   final Money price;
   final Money marketing;
+
+  /// About how many new customers its marketing wins a month at its budget,
+  /// as its product compares with what the market's customers use now.
+  final int fromMarketing;
   final Money referencePrice;
 
   /// The share of its customers it loses a month, as it stands.
@@ -300,6 +305,18 @@ SoftwareView softwareViewOf(
     customers: software.customers,
     price: software.price,
     marketing: software.marketing,
+    fromMarketing: selling
+        ? softwareWon(
+            def,
+            softwareReach(def, software.marketing),
+            softwareDraw(def, lead + appeal, software.price, reference),
+            softwareUsualOf(
+              def,
+              softwareProducts(world, def, reference),
+              reference,
+            ),
+          )
+        : 0,
     referencePrice: reference,
     churn: softwareChurn(def, lead + appeal, software.price, reference),
     growth: softwareGrowth(software),

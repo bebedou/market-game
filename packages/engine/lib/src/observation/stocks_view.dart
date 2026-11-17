@@ -48,7 +48,8 @@ typedef StockView = ({
   Money yearDividends,
 
   /// Its price over a share's profit, and the same on average over the
-  /// months it has been listed; null while it loses money.
+  /// months it has been listed; null while it loses money or earns too
+  /// little for one to mean anything (over [meaningfulMultiple]).
   Fx? multiple,
   Fx? averageMultiple,
 
@@ -214,7 +215,9 @@ StockMarketView? stockMarketView(WorldState world, ContentDb content) {
     final listing = listingOf(def, market, i);
     final e = exchangeOfStock(def, market, i);
     final profit = stock.yearProfit;
-    final multiple = profit > Money.zero ? stock.multiple : null;
+    final multiple = profit > Money.zero && stock.multiple <= meaningfulMultiple
+        ? stock.multiple
+        : null;
     // Analysts see its worth through their own view and part of the mood.
     final exchange = market.exchanges[e];
     final shared = rules.shared.raw;
@@ -418,12 +421,16 @@ Fx? _salesGrowth(List<Results> results) {
   return moneyRatio(now - before, before);
 }
 
-/// The average of [multiples] that were positive, or null if none.
+/// The highest price to earnings that means anything: above it, a
+/// company earns too near nothing to be priced by its profit.
+const meaningfulMultiple = Fx.raw(1000 * Fx.scale);
+
+/// The average of [multiples] that meant something, or null if none.
 Fx? _average(List<Fx> multiples) {
   var sum = 0;
   var n = 0;
   for (final multiple in multiples) {
-    if (multiple <= Fx.zero) continue;
+    if (multiple <= Fx.zero || multiple > meaningfulMultiple) continue;
     sum += multiple.raw;
     n++;
   }

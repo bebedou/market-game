@@ -11,9 +11,11 @@ import 'package:market_game/src/home.dart';
 import 'package:market_game/src/l10n.dart';
 import 'package:market_game/src/letters.dart';
 import 'package:market_game/src/saves.dart';
+import 'package:market_game/src/screens/businesses.dart';
 import 'package:market_game/src/screens/guide.dart';
 import 'package:market_game/src/screens/menu.dart';
 import 'package:market_game/src/screens/new_game.dart';
+import 'package:market_game/src/screens/shop.dart';
 import 'package:market_game/src/widgets.dart';
 
 import 'flutter_test_config.dart';
@@ -255,11 +257,18 @@ void main() {
 
         await tester.tap(find.byIcon(Icons.storefront_outlined));
         await _settle(tester);
+        _checkWords(tester, 'businesses');
+        // A director runs this game's store, so nothing opens it by hand:
+        // its page is opened as a to-do would.
+        openStorePage(tester.element(find.byType(BusinessesScreen)));
+        await _settle(tester);
         _checkWords(tester, 'shelves');
         await tester.tap(find.text(tr('store.parts.supplies')));
         await _settle(tester);
         _checkWords(tester, 'supplies');
         await _visitRows(tester, 'supplies');
+        await tester.ensureVisible(find.text(tr('orders.order')).first);
+        await _settle(tester);
         await tester.tap(find.text(tr('orders.order')).first);
         await _settle(tester);
         _checkWords(tester, 'order sheet');

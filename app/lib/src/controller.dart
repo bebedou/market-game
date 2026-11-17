@@ -1488,6 +1488,19 @@ class SimulationController extends ChangeNotifier {
     final liquidated = {
       for (final sold in result.events.whereType<StoreSold>()) sold.store,
     };
+    // Stores a director now runs by formula, and the region they joined.
+    final absorbed = <StoreId, String>{
+      for (final event in result.events.whereType<StoreAbsorbed>())
+        event.store: switch (after.national
+            .where((n) => n.country == event.country)
+            .firstOrNull
+            ?.def
+            .regions) {
+          final regions? when event.region < regions.length =>
+            regions[event.region].name,
+          _ => content.countries[event.country.index].name,
+        },
+    };
     for (final shelf in after.shelves) {
       final previous = shelf.id.index < before.shelves.length
           ? before.shelves[shelf.id.index]
@@ -1550,10 +1563,14 @@ class SimulationController extends ChangeNotifier {
             'store': shelf.name,
             'site': site,
           }),
-          StoreStatus.closed => tr('alerts.closed', {
-            'store': shelf.name,
-            'site': site,
-          }),
+          StoreStatus.closed => switch (absorbed[shelf.id]) {
+            final region? => tr('alerts.absorbed', {
+              'store': shelf.name,
+              'company': owner,
+              'region': region,
+            }),
+            null => tr('alerts.closed', {'store': shelf.name, 'site': site}),
+          },
           StoreStatus.building => tr('alerts.beingFitted', {
             'store': shelf.name,
           }),

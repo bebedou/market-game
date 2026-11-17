@@ -96,6 +96,23 @@ final class StoreSold extends TickEvent {
   final CompanyId buyer;
 }
 
+/// A store of [company], run by its director, that now runs by formula as
+/// one of its shops of its kind in [region] (an index into the national
+/// table's regions of [country]): its stock sold at cost, its site free.
+final class StoreAbsorbed extends TickEvent {
+  const StoreAbsorbed({
+    required this.store,
+    required this.company,
+    required this.country,
+    required this.region,
+  });
+
+  final StoreId store;
+  final CompanyId company;
+  final CountryId country;
+  final int region;
+}
+
 /// A factory's lab launched [product]'s next [generation]: it gained
 /// [gain] in quality, which leaves it [lead] over the market's standard,
 /// and its materials now cost [saving] less than at the start.

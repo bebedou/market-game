@@ -1437,9 +1437,10 @@ final class CountryEconomy {
 
   /// Opens [count] of [company]'s shops of [format] in [region] of the
   /// country at [index]: they are fitted out this month and trade from the
-  /// next. Its first shops of that kind there make its block, whose settled
-  /// shops then sell about [perStore] a year at today's prices where the
-  /// trade's shops usually are.
+  /// next, or, already [settled], are shops that traded elsewhere and trade
+  /// from the next month as settled ones. Its first shops of that kind
+  /// there make its block, whose settled shops then sell about [perStore] a
+  /// year at today's prices where the trade's shops usually are.
   CompanyBlock open(
     int index, {
     required int company,
@@ -1451,6 +1452,7 @@ final class CountryEconomy {
     required Money perStore,
     required Fx price,
     required ShopCosts costs,
+    bool settled = false,
   }) {
     final country = countries[index];
     var block = blockOf(
@@ -1477,7 +1479,11 @@ final class CountryEconomy {
       ..strategy = strategy
       ..price = price
       ..costs = costs;
-    block.regions[region].pending += count;
+    if (settled) {
+      block.regions[region].settled += count;
+    } else {
+      block.regions[region].pending += count;
+    }
     return block;
   }
 

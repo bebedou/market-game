@@ -221,6 +221,7 @@ export 'src/observation/stocks_view.dart'
         ExchangeView,
         HolderView,
         HoldingView,
+        meaningfulMultiple,
         RaiderView,
         ShareLoanView,
         StockMarketView,

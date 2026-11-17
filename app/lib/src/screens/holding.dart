@@ -10,12 +10,14 @@ import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
 import 'books.dart';
+import 'businesses.dart';
 import 'exchange.dart' show HoldingRow, PortfolioPage;
 import 'factory.dart';
 import 'finance.dart';
 import 'shop.dart';
 import 'software.dart';
 import 'start.dart';
+import 'world.dart' show openCountryPage;
 
 /// The holding at a glance, the owner's layout A (its name is in the top
 /// bar): its net worth, what needs doing, what is being built, its own
@@ -236,6 +238,14 @@ class _Masthead extends StatelessWidget {
           store,
     ];
     final cities = {for (final store in trading) store.market};
+    // Its shops of every scale: by hand, and by formula.
+    final national = view.national;
+    var shops = 0;
+    for (final owner in active) {
+      if (company != null && owner.id != company.id) continue;
+      final summary = companySummary(game, owner, national);
+      shops += summary.byHand + summary.byFormula;
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Column(
@@ -245,8 +255,8 @@ class _Masthead extends StatelessWidget {
             [
               if (company == null)
                 tr('common.companies', {'count': active.length}),
-              tr('common.stores', {'count': trading.length}),
-              if (game.content.markets.length > 1)
+              tr('common.stores', {'count': shops}),
+              if (game.content.markets.length > 1 && cities.isNotEmpty)
                 tr('common.cities', {'count': cities.length}),
             ].join(' · '),
             style: theme.textTheme.bodySmall,
@@ -838,11 +848,16 @@ class _Stores extends StatelessWidget {
     ];
     final elsewhere = only == null && stores.length < game.myStores.length;
     if (only != null && stores.isEmpty) return const SizedBox.shrink();
+    // Those a director runs, of a kind not run by formula, are theirs.
+    final directed = only != null && game.directorOf(only) != null;
     return Section(
-      title: stores.length == 1
+      title: directed
+          ? tr('businesses.directorRuns')
+          : stores.length == 1
           ? tr('dashboard.yourStore')
           : tr('common.yourStores'),
       children: [
+        if (directed) Hint(tr('businesses.directorRunsHint')),
         for (final company in companies) ...[
           if (companies.length > 1)
             Padding(
@@ -875,10 +890,17 @@ class _Stores extends StatelessWidget {
               _StoreEntry(
                 company: company,
                 store: store,
-                onTap: () {
-                  game.selectStore(store.id);
-                  onOpen(HomeTab.shop, part: ShopPart.shelves);
-                },
+                onTap: directed
+                    ? null
+                    : () {
+                        game.selectStore(store.id);
+                        // On a company's page, the store opens on it.
+                        if (only != null) {
+                          openStorePage(context);
+                        } else {
+                          onOpen(HomeTab.shop, part: ShopPart.shelves);
+                        }
+                      },
               ),
         ],
         if (elsewhere) Hint(tr('dashboard.directorStoresHint')),
@@ -905,7 +927,7 @@ class _StoreEntry extends StatelessWidget {
 
   final CompanyView company;
   final StoreView store;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1056,12 +1078,14 @@ class CompanyDashboard extends StatelessWidget {
       children: [
         _Masthead(company: company),
         ...HoldingScreen._toDo(context, game, onOpen, only: id),
+        _Summary(company: company),
         if (game.content.directors != null &&
             active &&
             company.software == null)
           DirectorSection(company: company),
         if (company.software == null) _KeyFigures(company: company),
         _Stores(onOpen: onOpen, company: company),
+        _FormulaShops(company: company),
         FactoriesSection(company: id),
         if (company.software case final software?)
           Section(
@@ -1087,7 +1111,198 @@ class CompanyDashboard extends StatelessWidget {
               value: money(company.cash, cents: false),
               onTap: () => openCompanyPage(context, company),
             ),
+            if (active)
+              IndexRow(
+                icon: Icons.edit_outlined,
+                title: tr('businesses.rename'),
+                subtitle: game.companyName(company.id),
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => GameScope(
+                    controller: game,
+                    child: _RenameCompanyDialog(company: company.id),
+                  ),
+                ),
+              ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// A company in a few lines: what it holds, last month's sales and profit,
+/// its shops by hand and by formula, and who runs it.
+class _Summary extends StatelessWidget {
+  const _Summary({required this.company});
+
+  final CompanyView company;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final ledger = Ledger.of(context);
+    final summary = companySummary(game, company, game.view.national);
+    final month = summary.month;
+    return Section(
+      title: tr('businesses.summary'),
+      children: [
+        Line(tr('businesses.holds'), holdsLine(company, summary)),
+        if (month != null) ...[
+          Line(tr('businesses.sales'), money(month.sales, cents: false)),
+          Line(
+            tr('businesses.profit'),
+            signedMoney(month.profit, cents: false),
+            color: month.profit.isNegative ? ledger.loss : ledger.gain,
+          ),
+        ],
+        if (company.software == null) ...[
+          if (summary.byHand > 0)
+            Line(tr('businesses.shopsByHand'), '${summary.byHand}'),
+          if (summary.byFormula > 0)
+            Line(tr('businesses.shopsByFormula'), '${summary.byFormula}'),
+          Line(
+            tr('businesses.runBy'),
+            summary.director ?? tr('businesses.youRunIt'),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// [company]'s shops by formula: across each country, a line for each kind
+/// opening the country's page, with the regions they are in and last
+/// month's sales; then those in districts run by formula. Nothing while it
+/// has none.
+class _FormulaShops extends StatelessWidget {
+  const _FormulaShops({required this.company});
+
+  final CompanyView company;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final content = game.content;
+    final ledger = Ledger.of(context);
+    final blocks = [
+      for (final country in game.view.national)
+        for (final block in country.blocks)
+          if (block.company == company.id &&
+              block.regions.any((r) => r.trading + r.pending > 0))
+            (country, block),
+    ];
+    final shops = [
+      for (final district in game.view.districts)
+        for (final shop in district.shops)
+          if (shop.company == company.id) (district, shop),
+    ];
+    if (blocks.isEmpty && shops.isEmpty) return const SizedBox.shrink();
+    return Section(
+      title: tr('businesses.byFormula'),
+      children: [
+        if (game.directorOf(company) != null)
+          Hint(tr('businesses.byFormulaHint')),
+        for (final (country, block) in blocks)
+          IndexRow(
+            mark: ledger.trade(content.formats[block.format.index]),
+            title: tr('businesses.block', {
+              'format': content.formats[block.format.index].name,
+              'country': switch (country.country) {
+                final id? => content.countries[id.index].name,
+                null => country.def.name,
+              },
+            }),
+            subtitle: tr('businesses.blockLine', {
+              'count': block.regions.fold<int>(
+                0,
+                (sum, r) => sum + r.trading + r.pending,
+              ),
+              'regions': [
+                for (final (r, region) in block.regions.indexed)
+                  if (region.trading + region.pending > 0 &&
+                      r < country.def.regions.length)
+                    country.def.regions[r].name,
+              ].take(3).join(', '),
+            }),
+            value: switch (block.months.lastOrNull) {
+              final month? => money(month.sales, cents: false),
+              null => null,
+            },
+            onTap: switch (country.country) {
+              final id? => () => openCountryPage(
+                context,
+                content.countries[id.index],
+              ),
+              null => null,
+            },
+          ),
+        for (final (district, shop) in shops)
+          IndexRow(
+            mark: ledger.trade(content.formats[shop.format.index]),
+            title: shop.name,
+            subtitle: tr('businesses.district', {'district': district.name}),
+            onTap: null,
+          ),
+      ],
+    );
+  }
+}
+
+/// A company's new name.
+class _RenameCompanyDialog extends StatefulWidget {
+  const _RenameCompanyDialog({required this.company});
+
+  final CompanyId company;
+
+  @override
+  State<_RenameCompanyDialog> createState() => _RenameCompanyDialogState();
+}
+
+class _RenameCompanyDialogState extends State<_RenameCompanyDialog> {
+  late final _name = TextEditingController(
+    text: context.game.companyName(widget.company),
+  );
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final name = _name.text.trim();
+    return AlertDialog(
+      title: Text(tr('businesses.rename')),
+      content: TextField(
+        controller: _name,
+        autofocus: true,
+        maxLength: 32,
+        textCapitalization: TextCapitalization.words,
+        decoration: InputDecoration(labelText: tr('businesses.name')),
+        onChanged: (_) => setState(() {}),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(tr('common.cancel')),
+        ),
+        FilledButton(
+          onPressed: name.isEmpty
+              ? null
+              : () {
+                  game.submit(
+                    RenameCompany(
+                      game.player,
+                      company: widget.company,
+                      name: name,
+                    ),
+                  );
+                  Navigator.pop(context);
+                },
+          child: Text(tr('store.rename')),
         ),
       ],
     );

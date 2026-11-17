@@ -349,6 +349,7 @@
     "rivalEnlarged": "{owner} enlarged {store} to {area} m².",
     "opened": "{store} opened at {site}.",
     "closed": "{store} at {site} closed.",
+    "absorbed": "{store} now runs by formula, one of {company}’s shops in {region}.",
     "beingFitted": "{store} is being fitted out.",
     "boughtCompany": {
       "one": "You bought {company} and its {count} store.",
@@ -616,6 +617,32 @@
       "electronics": "Phones, accessories and smart home",
       "clothing": "Collections ordered ahead, while fashion lasts"
     }
+  },
+  "businesses": {
+    "none": "No company yet: start a business.",
+    "byHand": "run by hand",
+    "byHandShort": "By hand",
+    "youRunIt": "You",
+    "factories": { "one": "{count} factory", "other": "{count} factories" },
+    "customers": "{count} customers",
+    "nothingYet": "Nothing yet",
+    "lastMonth": "Last month: sales {sales}, profit {profit}",
+    "summary": "Summary",
+    "holds": "Holds",
+    "sales": "Sales last month",
+    "profit": "Profit last month",
+    "shopsByHand": "Shops run in full",
+    "shopsByFormula": "Shops by formula",
+    "runBy": "Run by",
+    "byFormula": "Shops by formula",
+    "byFormulaHint": "A director runs the company by formula: its shops trade as its shops of their kind in each region, with nothing to run day to day.",
+    "block": "{format} in {country}",
+    "blockLine": { "one": "{count} shop · {regions}", "other": "{count} shops · {regions}" },
+    "district": "{district}, by formula",
+    "directorRuns": "Run by the director",
+    "directorRunsHint": "The director runs these shops. On the first of the month, those of a kind run by formula across countries join its shops by formula; the others stay in full.",
+    "rename": "Rename the company",
+    "name": "Company name"
   },
   "store": {
     "made": "made",
@@ -1490,6 +1517,7 @@
     "change": "Change",
     "marketing": "Marketing a month",
     "marketingHint": "Marketing draws customers from the first version on. Each euro more brings fewer; a product ahead also spreads by word of mouth.",
+    "fromMarketing": "At this budget, marketing wins about {count} new customers a month.",
     "month": "A month as it stands",
     "serving": "Serving customers",
     "offices": "Offices",

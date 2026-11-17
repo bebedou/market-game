@@ -117,6 +117,28 @@ Future<void> openIndex(WidgetTester tester, String title) async {
   await tester.pumpAndSettle();
 }
 
+/// Opens [game]'s store picked as the player reaches it: the Businesses
+/// tab, its company's line, then its own.
+Future<void> openStore(WidgetTester tester, SimulationController game) async {
+  final store = game.store!;
+  final company = game.view.companies.firstWhere(
+    (company) => company.stores.any((s) => s.id == store.id),
+  );
+  await tester.tap(find.byIcon(Icons.storefront_outlined));
+  await tester.pumpAndSettle();
+  await openIndex(tester, game.companyName(company.id));
+  final row = find.byWidgetPredicate(
+    (widget) =>
+        widget is IndexRow &&
+        widget.title == game.storeName(store.id) &&
+        widget.mark != null &&
+        widget.onTap != null,
+  );
+  await scrollTo(tester, row);
+  await tester.tap(row);
+  await tester.pumpAndSettle();
+}
+
 /// Goes back from a page opened within a tab.
 Future<void> goBack(WidgetTester tester) async {
   await tester.tap(find.byIcon(Icons.arrow_back));

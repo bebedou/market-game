@@ -265,8 +265,13 @@ void main() {
     final occitanie = _table.countries[_frIndex].regions.indexWhere(
       (r) => r.key == 'FRJ',
     );
+    // Its shop in Lyon joined them on the first of the month.
+    final lyon = _table.countries[_frIndex].regions.indexWhere(
+      (r) => r.key == 'FRK',
+    );
+    expect(block.regions[lyon].stores, 1);
     for (final (r, region) in block.regions.indexed) {
-      if (r != occitanie) expect(region.stores, 0);
+      if (r != occitanie && r != lyon) expect(region.stores, 0);
     }
     // One in Occitanie each month: 4% of so few shops is less than one.
     expect(block.regions[occitanie].stores, inInclusiveRange(1, 7));

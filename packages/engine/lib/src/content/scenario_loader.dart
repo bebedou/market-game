@@ -266,6 +266,7 @@ ContentDb loadScenario(
           Fx wageLevel,
           Fx incomeLevel,
           CountryId country,
+          String? region,
         })
       >[];
   for (final node in root.objects('markets')) {
@@ -295,6 +296,7 @@ ContentDb loadScenario(
       wageLevel: node.level('wageLevel'),
       incomeLevel: node.level('incomeLevel'),
       country: countryIn(node),
+      region: node.optionalString('region'),
     ));
     node.finish();
   }
@@ -856,6 +858,7 @@ ContentDb loadScenario(
         incomeLevel: pending.incomeLevel,
         scale: scale,
         country: pending.country,
+        region: pending.region,
       ),
     );
   }
@@ -1125,6 +1128,7 @@ ContentDb loadScenario(
         room: node.positiveInt('room'),
         layout: node.optionalMap('layout'),
         country: countryIn(node),
+        region: node.optionalString('region'),
       ),
     );
     node.finish();
@@ -1572,8 +1576,8 @@ SoftwareDef _software(JsonNode node, LabsDef? labs) {
     churnSteepness: node.nonNegativeFx('churnSteepness'),
     minChurn: node.fraction('minChurn'),
     maxChurn: node.fraction('maxChurn'),
-    wordOfMouth: node.money('wordOfMouth'),
     marketingScale: node.positiveMoney('marketingScale'),
+    reachPerCustomer: node.positiveInt('reachPerCustomer'),
     serving: node.fraction('serving'),
     office: node.money('office'),
     maxPeople: node.positiveInt('maxPeople'),

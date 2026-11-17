@@ -111,8 +111,7 @@ void main() {
     ];
     expect(drinks, isNotEmpty);
     await pumpGame(tester, game);
-    await tester.tap(find.text('Businesses'));
-    await tester.pumpAndSettle();
+    await openStore(tester, game);
     await scrollTo(tester, find.text(drinks.first.name));
     expect(find.text('Made by Boissons du Coin'), findsWidgets);
     await tester.tap(find.text('Supplies'));
@@ -225,8 +224,7 @@ void main() {
     final quality = game.myStores.first.$2.qualityOf(drink.id);
     expect(quality > Fx.zero, isTrue);
     await pumpGame(tester, game);
-    await tester.tap(find.text('Businesses'));
-    await tester.pumpAndSettle();
+    await openStore(tester, game);
     await scrollTo(tester, find.text(drink.name));
     expect(
       find.text(

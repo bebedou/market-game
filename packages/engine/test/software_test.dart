@@ -28,7 +28,7 @@ final softwareContent = loadScenario(
     "progress": "0.01", "designerBuild": "0.5", "decay": "0.5", "hardness": "0", "appeal": "0.02",
     "draw": "10", "drawFloor": "-4", "drawCap": "3", "priceElasticity": 1,
     "churn": "0.10", "churnSteepness": "0", "minChurn": "0", "maxChurn": "1",
-    "wordOfMouth": "1.00", "marketingScale": "100.00", "serving": "0.20", "office": "0",
+    "marketingScale": "100.00", "reachPerCustomer": 100, "serving": "0.20", "office": "0",
     "maxPeople": 2, "candidates": 6, "candidateDays": 60, "revealMonths": 2,
     "levels": [
       { "share": "0.50", "power": "1", "salary": "100.00" },
