@@ -59,17 +59,23 @@ background.
 
 | Tab | File | Main widgets |
 |---|---|---|
-| Holding | [screens/holding.dart](../app/lib/src/screens/holding.dart) | `HoldingScreen` (the owner's layout A, 2026-11-16): masthead with net worth (the holding's name is in the top bar), to-dos, `_BeingBuilt` (stores and factories under construction, with the day each opens), `_HoldingBooks` (cash, shares, companies, loans on shares, net worth), `_Portfolio` (gain, dividends, the biggest `HoldingRow`s, all holdings), companies (each row opens its `CompanyDashboard`), brands, the stores the player runs by hand (those of companies without a director), factories, software, news, profit. `CompanyDashboard` (`openCompanyDashboard`, layout A): the company's worth and weeks, its to-dos, `DirectorSection`, key figures, all its stores, factories and software, and the way to its money in Finance (`openCompanyPage`). The player and the holding are one: its cash is what the engine calls the player's own |
-| Shop | [screens/shop.dart](../app/lib/src/screens/shop.dart), [screens/orders.dart](../app/lib/src/screens/orders.dart) | `ShopScreen` (shelves, running, staff, manager, marketing, size, conversion); `OrdersScreen`, `OrderSheet` (supplies) |
+| Holding | [screens/holding.dart](../app/lib/src/screens/holding.dart) | `HoldingScreen` (the owner's layout A, 2026-11-16): masthead with net worth (the holding's name is in the top bar), to-dos, `_BeingBuilt` (stores and factories under construction, with the day each opens), `_HoldingBooks` (cash, shares, companies, loans on shares, net worth), `_Portfolio` (gain, dividends, the biggest `HoldingRow`s, all holdings), companies (each row opens its `CompanyDashboard`), brands, the stores the player runs by hand (those of companies without a director) and the way to start a business, factories, software, news, profit. `CompanyDashboard` (`openCompanyDashboard`, layout A): the company's worth and weeks, its to-dos, `DirectorSection`, key figures, all its stores, factories and software, and the way to its money in Finance (`openCompanyPage`). The player and the holding are one: its cash is what the engine calls the player's own |
+| Businesses (`HomeTab.shop`, named Businesses since 2026-11-16) | [screens/shop.dart](../app/lib/src/screens/shop.dart), [screens/orders.dart](../app/lib/src/screens/orders.dart) | `ShopScreen` (shelves, running, staff, manager, marketing, size, conversion); `OrdersScreen`, `OrderSheet` (supplies) |
 | Finance | [screens/finance.dart](../app/lib/src/screens/finance.dart), [screens/financials.dart](../app/lib/src/screens/financials.dart) | `FinanceScreen`: the companies' money (the holding's is on Holding), company pages, director sheet and letters, borrowing, cushion, taxes, bargains; `FinancialsSection`: key figures, P&L, balance sheet, years |
-| World | [screens/world.dart](../app/lib/src/screens/world.dart), [screens/national.dart](../app/lib/src/screens/national.dart) | `WorldScreen`: economy, countries, competitors, cities, `NewBusiness` (start a business on any vacant site, waking its city); `NationalMap`: the country page and its ink map |
+| World | [screens/world.dart](../app/lib/src/screens/world.dart), [screens/national.dart](../app/lib/src/screens/national.dart) | `WorldScreen`: economy, countries, competitors, cities; `NewBusiness` (a shop of a kind already chosen: country, city and neighbourhood chips, the city read from a place's name as "City, Neighbourhood" by `placeParts`, then the vacant sites big enough, opening one waking its neighbourhood) and `freeSites`; `NationalMap`: the country page and its ink map |
 | Market | [screens/exchange.dart](../app/lib/src/screens/exchange.dart) | `ExchangeScreen` (the owner's layout A): exchanges today, the portfolio, sectors with their price to earnings; `SectorPage`, `StockPage` (price and chart, what it rests on, analysts and management, who holds it, buy and sell), `ExchangePage` (an index, bought whole), `TradePage`, `PortfolioPage` (with the holding's loans); phase 2: `BidSection` on a stock's page, `TakeoverBidPage` (mockup 1), `ControlPage` (mockup 2), `ExchangeEntry` on a company's page in Finance and `ListCompanyPage` (mockup 3), raiders and bids open on the tab (mockup 4) |
 | Books | [screens/books.dart](../app/lib/src/screens/books.dart) | `BooksScreen`: periods, what changed, results, shoppers, products, research |
 
 Other screens: [menu.dart](../app/lib/src/screens/menu.dart) (`MainMenu`:
 three slots, continue, new game, delete, language),
 [new_game.dart](../app/lib/src/screens/new_game.dart) (`NewGameScreen`: only
-the holding's name), [factory.dart](../app/lib/src/screens/factory.dart)
+the holding's name), [start.dart](../app/lib/src/screens/start.dart)
+(`StartBusinessPage`, the owner's layout A, 2026-11-16: a line per sector,
+the trades' shops grouped by `formatTrades`, then factories and software,
+each opening its kinds with what limits them, a pitch and the least it
+costs; a kind opens `NewBusiness`, `BuildFactoryPage` or
+`StartSoftwarePage`; `openStartBusiness`, also for a subsidiary, which is a
+shop or a factory), [factory.dart](../app/lib/src/screens/factory.dart)
 (`FactoriesSection`, `FactoryPage`, `BuildFactoryPage`),
 [sales_desk.dart](../app/lib/src/screens/sales_desk.dart) (a factory's
 sales desk in the owner's layout B: `SalesDeskEntry` on the factory page,

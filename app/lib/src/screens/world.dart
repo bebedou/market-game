@@ -9,7 +9,6 @@ import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
 import 'national.dart';
-import 'software.dart' show StartSoftwarePage;
 
 /// The world outside: the country's economy on top, with its history a page
 /// away, the player's patch, where to open next, then the competitors and the
@@ -324,10 +323,7 @@ class _WhereToOpenState extends State<_WhereToOpen> {
     final view = game.view;
     final content = game.content;
     final plan = game.plan;
-    final vacant = [
-      for (final id in view.vacantSites) content.sites[id.index],
-      if (plan != null) ..._plannedVacant(plan, content),
-    ];
+    final vacant = freeSites(game);
     final formats = [
       for (final format in content.formats)
         if (vacant.any((site) => site.area >= format.minArea)) format,
@@ -2277,11 +2273,22 @@ class _Hours extends StatelessWidget {
   }
 }
 
-/// Starting a new business: a country and a city, played in full or asleep
-/// (which opening there wakes), then a vacant site there to open a store of
-/// any kind on.
+/// Every vacant site: in the cities played in full, then in those asleep.
+List<SiteDef> freeSites(SimulationController game) {
+  final plan = game.plan;
+  return [
+    for (final id in game.view.vacantSites) game.content.sites[id.index],
+    if (plan != null) ..._plannedVacant(plan, game.content),
+  ];
+}
+
+/// Opening a shop of [format]: a country, a city and a neighbourhood there,
+/// played in full or asleep (which opening there wakes), then a vacant site
+/// big enough for it.
 class NewBusiness extends StatefulWidget {
-  const NewBusiness({super.key, this.subsidiary = false});
+  const NewBusiness({super.key, required this.format, this.subsidiary = false});
+
+  final FormatId format;
 
   /// Whether this is a company of its own for the holding, the first store
   /// offered as such.
@@ -2333,97 +2340,117 @@ class _NewBusinessState extends State<NewBusiness> {
   Widget build(BuildContext context) {
     final game = context.game;
     final content = game.content;
+    final theme = Theme.of(context);
     // The cities asleep follow those played in full, in the plan.
     final plan = game.plan;
     final source = plan ?? content;
+    final format = content.formats[widget.format.index];
     final vacant = [
-      for (final id in game.view.vacantSites) content.sites[id.index],
-      if (plan != null) ..._plannedVacant(plan, content),
+      for (final site in freeSites(game))
+        if (site.area >= format.minArea) site,
     ];
-    final cities = [
+    final places = [
       for (final market in source.markets)
         if (vacant.any((site) => site.market == market.id)) market,
     ];
-    // The player's first city by default, while it has room.
+    // The player's first neighbourhood by default, while it has room.
     final home = game.myStores.firstOrNull?.$2.market;
     final market =
         _market ??
-        (cities.any((city) => city.id == home) ? home : cities.firstOrNull?.id);
+        (places.any((place) => place.id == home)
+            ? home
+            : places.firstOrNull?.id);
     final chosen = market == null ? null : source.markets[market.index];
     final countries = [
       for (final country in content.countries)
-        if (cities.any((city) => city.country == country.id)) country,
+        if (places.any((place) => place.country == country.id)) country,
+    ];
+    String cityOf(MarketDef place) => placeParts(place.name).$1;
+    // The chosen country's cities, each once, and the chosen city's
+    // neighbourhoods.
+    final cities = {
+      for (final place in places)
+        if (place.country == chosen?.country) cityOf(place),
+    };
+    final city = chosen == null ? null : cityOf(chosen);
+    final districts = [
+      for (final place in places)
+        if (place.country == chosen?.country && cityOf(place) == city) place,
     ];
     // Opening in a city asleep wakes it.
     final row = chosen == null || chosen.id.index < content.markets.length
         ? null
         : plan!.neighbourhoods.indexWhere((row) => row.key == chosen.key);
+    Widget chips(List<Widget> children) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Wrap(spacing: 6, runSpacing: 6, children: children),
+    );
+    Widget label(String text) => Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(text, style: theme.textTheme.titleSmall),
+    );
     return Section(
-      title: widget.subsidiary
-          ? tr('common.startSubsidiary')
-          : tr('common.startBusiness'),
+      // A page shows no title of its own: its section names the kind.
+      title: format.name,
+      mark: Ledger.of(context).trade(format),
       children: [
         Hint(
           widget.subsidiary
               ? tr('market.subsidiaryHint')
               : tr('market.businessHint'),
         ),
-        // A business with no shop at all.
-        if (!widget.subsidiary && content.software != null)
-          IndexRow(
-            icon: Icons.code,
-            title: tr('software.start'),
-            subtitle: tr('software.startPitch'),
-            onTap: () => context.openPage(
-              tr('software.start'),
-              (_) => [const StartSoftwarePage()],
-            ),
-          ),
-        if (cities.isEmpty) Hint(tr('market.noVacant')),
+        if (places.isEmpty) Hint(tr('business.noSite')),
         if (chosen != null && countries.length > 1) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final country in countries)
-                  ChoiceChip(
-                    label: Text(country.name),
-                    selected: country.id == chosen.country,
-                    onSelected: (_) => setState(
-                      () => _market = cities
-                          .firstWhere((city) => city.country == country.id)
-                          .id,
-                    ),
-                  ),
-              ],
-            ),
-          ),
+          chips([
+            for (final country in countries)
+              ChoiceChip(
+                label: Text(country.name),
+                selected: country.id == chosen.country,
+                onSelected: (_) => setState(
+                  () => _market = places
+                      .firstWhere((place) => place.country == country.id)
+                      .id,
+                ),
+              ),
+          ]),
           Hint(_countryHint(content, chosen.country)),
         ],
-        if (chosen != null && source.markets.length > 1)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final city in cities)
-                  if (city.country == chosen.country)
-                    ChoiceChip(
-                      label: Text(city.name),
-                      selected: city.id == market,
-                      onSelected: (_) => setState(() => _market = city.id),
-                    ),
-              ],
-            ),
-          ),
-        if (chosen != null) Hint(_cityHint(source, chosen)),
+        if (chosen != null) ...[
+          label(tr('business.city')),
+          chips([
+            for (final option in cities)
+              ChoiceChip(
+                label: Text(option),
+                selected: option == city,
+                onSelected: (_) => setState(
+                  () => _market = places
+                      .firstWhere(
+                        (place) =>
+                            place.country == chosen.country &&
+                            cityOf(place) == option,
+                      )
+                      .id,
+                ),
+              ),
+          ]),
+          if (placeParts(chosen.name).$2 != null) ...[
+            label(tr('business.neighbourhood')),
+            chips([
+              for (final place in districts)
+                ChoiceChip(
+                  label: Text(placeParts(place.name).$2 ?? place.name),
+                  selected: place.id == market,
+                  onSelected: (_) => setState(() => _market = place.id),
+                ),
+            ]),
+          ],
+          Hint(_cityHint(source, chosen)),
+        ],
         for (final site in vacant)
           if (site.market == market)
             _VacantSite(
               site: site,
+              format: widget.format,
               subsidiary: widget.subsidiary,
               wakeRow: row,
             ),
@@ -2435,11 +2462,15 @@ class _NewBusinessState extends State<NewBusiness> {
 class _VacantSite extends StatelessWidget {
   const _VacantSite({
     required this.site,
+    this.format,
     this.subsidiary = false,
     this.wakeRow,
   });
 
   final SiteDef site;
+
+  /// The kind of shop to open there, if already chosen.
+  final FormatId? format;
 
   /// Whether to offer opening it as a company of its own.
   final bool subsidiary;
@@ -2451,6 +2482,10 @@ class _VacantSite extends StatelessWidget {
   Widget build(BuildContext context) {
     final game = context.game;
     final level = game.economyAt(site.market).priceIndex;
+    // Fitting it out for the kind of shop, once chosen.
+    final fitOut = format == null
+        ? Fx.one
+        : game.content.formats[format!.index].fitOut;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       dense: true,
@@ -2461,7 +2496,10 @@ class _VacantSite extends StatelessWidget {
           'most': site.maxArea,
           'location': percent(site.location, decimals: 0),
           'rent': money(site.rent.times(level), cents: false),
-          'cost': money(site.openingCost.times(level), cents: false),
+          'cost': money(
+            site.openingCost.times(fitOut).times(level),
+            cents: false,
+          ),
           'days': site.buildDays,
         }),
       ),
@@ -2472,6 +2510,7 @@ class _VacantSite extends StatelessWidget {
             controller: game,
             child: _OpenStoreDialog(
               site: site,
+              format: format,
               subsidiary: subsidiary,
               wakeRow: wakeRow,
             ),
@@ -2486,11 +2525,15 @@ class _VacantSite extends StatelessWidget {
 class _OpenStoreDialog extends StatefulWidget {
   const _OpenStoreDialog({
     required this.site,
+    this.format,
     this.subsidiary = false,
     this.wakeRow,
   });
 
   final SiteDef site;
+
+  /// The kind of shop, if already chosen; else the player picks it here.
+  final FormatId? format;
 
   /// The neighbourhood asleep that opening here wakes, if any.
   final int? wakeRow;
@@ -2508,7 +2551,7 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
   );
   final _capital = TextEditingController();
   late bool _newCompany = widget.subsidiary;
-  FormatId _format = const FormatId(0);
+  late FormatId _format = widget.format ?? const FormatId(0);
 
   /// The brand picked, once the player has picked; before that, their first
   /// for the type of business.
@@ -2579,7 +2622,7 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
                 'days': widget.site.buildDays,
               }),
             ),
-            if (formats.length > 1) ...[
+            if (widget.format == null && formats.length > 1) ...[
               const SizedBox(height: 12),
               Wrap(
                 spacing: 6,

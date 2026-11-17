@@ -14,7 +14,7 @@ import 'factory.dart';
 import 'finance.dart';
 import 'shop.dart';
 import 'software.dart';
-import 'world.dart';
+import 'start.dart';
 
 /// The holding at a glance, the owner's layout A (its name is in the top
 /// bar): its net worth, what needs doing, what is being built, its own
@@ -71,10 +71,7 @@ class HoldingScreen extends StatelessWidget {
           tr('dashboard.noCompany'),
           tr('dashboard.noCompanyDetail'),
           null,
-          () => context.openPage(
-            tr('common.startBusiness'),
-            (_) => [const NewBusiness()],
-          ),
+          () => openStartBusiness(context),
         ),
       for (final company in game.view.companies)
         if ((only == null || company.id == only) &&
@@ -677,10 +674,7 @@ class _Companies extends StatelessWidget {
           icon: Icons.add_business_outlined,
           title: tr('common.startSubsidiary'),
           subtitle: tr('dashboard.subsidiaryPitch'),
-          onTap: () => context.openPage(
-            tr('common.startSubsidiary'),
-            (_) => [const NewBusiness(subsidiary: true)],
-          ),
+          onTap: () => openStartBusiness(context, subsidiary: true),
         ),
       ],
     );
@@ -892,10 +886,7 @@ class _Stores extends StatelessWidget {
             icon: Icons.add,
             title: tr('common.startBusiness'),
             subtitle: tr('dashboard.startBusinessPitch'),
-            onTap: () => context.openPage(
-              tr('common.startBusiness'),
-              (_) => [const NewBusiness()],
-            ),
+            onTap: () => openStartBusiness(context),
           ),
       ],
     );

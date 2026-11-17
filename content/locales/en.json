@@ -392,7 +392,7 @@
     "allNews": "All news",
     "tabs": {
       "holding": "Holding",
-      "shop": "Shop",
+      "businesses": "Businesses",
       "finance": "Finance",
       "world": "World",
       "market": "Market",
@@ -571,7 +571,7 @@
     "createBrandButton": "Create brand",
     "yourStore": "Your store",
     "cashLine": "cash {amount}",
-    "startBusinessPitch": "Open a store of any kind on a vacant site, in any city",
+    "startBusinessPitch": "A shop, a factory or a software company, in any sector",
     "stampNoStaff": "No staff",
     "stampEmpty": "Empty",
     "stampSoldOut": "{count} sold out",
@@ -588,6 +588,34 @@
     "bestWorstWeek": "Best and worst week",
     "bestWorstMonth": "Best and worst month",
     "allCompaniesHint": "All your companies together."
+  },
+  "business": {
+    "pickSector": "Pick a sector, then the kind of business.",
+    "subsidiaryHint": "A subsidiary is a separate company in your holding, with its own cash, books, loans and director: if it fails, the rest is safe. Pick its sector, then the kind of business.",
+    "from": "from {amount}",
+    "leastArea": "At least {area} m²",
+    "noSiteLine": "No free site big enough",
+    "noSite": "There is no vacant site big enough for it anywhere.",
+    "city": "City",
+    "neighbourhood": "Neighbourhood",
+    "software": "Software company",
+    "sectors": {
+      "grocery": "Groceries",
+      "restaurants": "Restaurants",
+      "electronics": "Electronics",
+      "clothing": "Clothing",
+      "factories": "Factories",
+      "software": "Software"
+    },
+    "pitches": {
+      "grocery": "Everyday groceries close to home",
+      "supermarket": "A big grocer: more shelves, more shoppers",
+      "fastfood": "Many quick, cheap meals",
+      "steakhouse": "Fewer covers, dearer plates",
+      "finedining": "A few well-off diners, a skilled crew",
+      "electronics": "Phones, accessories and smart home",
+      "clothing": "Collections ordered ahead, while fashion lasts"
+    }
   },
   "store": {
     "made": "made",
@@ -776,7 +804,7 @@
     "orderFrom": "Order from {supplier}",
     "arrives": "Arrives {date}. At least {minimum} of each product you order.",
     "suggest": "Suggest a week's stock",
-    "nothingStocked": "You stock nothing this supplier sells. Stock products in the Store tab first.",
+    "nothingStocked": "You stock nothing this supplier sells. Stock products on the Businesses tab first.",
     "units": "{units} units",
     "paidOnDelivery": "Paid on delivery",
     "dueAfter": "Due {days} days after delivery",
@@ -1325,9 +1353,8 @@
       "finedining": "Fine dining",
       "electronics": "Electronics"
     },
-    "subsidiaryHint": "A subsidiary is a separate company in your holding, with its own cash, books, loans and director: if it fails, the rest is safe. Pick a city, then a vacant site for its first store. To buy a going company instead, see World.",
-    "businessHint": "Pick a country and a city, then a vacant site: you choose the kind of business, its name and the capital it starts with when you open. To buy a going business instead, see Finance.",
-    "noVacant": "There is no vacant site anywhere.",
+    "subsidiaryHint": "A subsidiary is a separate company in your holding, with its own cash, books, loans and director: if it fails, the rest is safe. Pick a city and a neighbourhood, then a vacant site for its first store. To buy a going company instead, see World.",
+    "businessHint": "Pick a country, a city and a neighbourhood, then a vacant site: you choose its name and the capital it starts with when you open. To buy a going business instead, see Finance.",
     "vacantDetails": "{area} m², room for {most} · location {location} · rent {rent} a month · fitting out from {cost}, {days} days",
     "open": "Open",
     "defaultStoreName": "{site} Store",
@@ -1652,9 +1679,6 @@
     "enlargeConfirm": "Enlarge",
     "yourFactory": "Your factory",
     "yourFactories": "Your factories",
-    "factories": "Factories",
-    "build": "Build a factory",
-    "buildPitch": "Make goods your shops buy, for less than the wholesalers charge",
     "stopped": "stopped",
     "shifts": {"one": "{count} shift", "other": "{count} shifts"},
     "usedLine": "{use} used",

@@ -334,12 +334,12 @@ void main() {
         final base = _stockContent();
         final content = loadScenario(
           localizedScenario(
-            File('../content/scenarios/prototype.json')
-                .readAsStringSync()
-                .replaceFirst(
-                  '"name": "You", "cash": "20000.00"',
-                  '"name": "You", "cash": "500000000.00"',
-                ),
+            File(
+              '../content/scenarios/prototype.json',
+            ).readAsStringSync().replaceFirst(
+              '"name": "You", "cash": "20000.00"',
+              '"name": "You", "cash": "500000000.00"',
+            ),
             currentStrings!.scenario,
           ),
           national: base.national,
@@ -774,6 +774,10 @@ void main() {
     await tester.tap(find.text('Commencer'));
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('aucune société en activité'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(IndexRow, 'Alimentation'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(IndexRow, 'Supérette'));
     await tester.pumpAndSettle();
     // The scenario's words came with it.
     expect(find.widgetWithText(ChoiceChip, 'Allemagne'), findsOneWidget);

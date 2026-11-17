@@ -258,3 +258,11 @@ String compactMoney(Money amount) {
 
 /// [count], shortened past a million as [compactMoney] is.
 String compactCount(int count) => compactMoney(Money(count * 100));
+
+/// A place's city and its neighbourhood there, from its name written
+/// "City, Neighbourhood"; a name without a comma is a city of its own.
+(String, String?) placeParts(String name) {
+  final comma = name.indexOf(', ');
+  if (comma < 0) return (name, null);
+  return (name.substring(0, comma), name.substring(comma + 2));
+}

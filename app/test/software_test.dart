@@ -66,7 +66,9 @@ void main() {
     await pumpGame(tester, game);
     await scrollTo(tester, find.text('Your software company'));
     expect(find.text('Tessel'), findsWidgets);
-    expect(find.text('Start a software company'), findsOneWidget);
+    await openIndex(tester, 'Start a new business');
+    await openIndex(tester, 'Software');
+    expect(find.text('Software company'), findsOneWidget);
   });
 
   testWidgets("its page leads with four figures and the pages' index", (

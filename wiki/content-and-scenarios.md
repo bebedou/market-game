@@ -146,9 +146,11 @@ asleep. It is never played.
 gives the player money and no business. The scenario's company for the
 player stays in the world as `CompanyStatus.dormant`, since content and world
 must have the same companies; observations hide it. The first business is
-opened from the dashboard (`NewBusiness` in
-[app/lib/src/screens/world.dart](../app/lib/src/screens/world.dart)), and
-opening on a site asleep wakes its city first.
+opened from the dashboard (`StartBusinessPage` in
+[app/lib/src/screens/start.dart](../app/lib/src/screens/start.dart), then
+`NewBusiness` in
+[app/lib/src/screens/world.dart](../app/lib/src/screens/world.dart) for a
+shop), and opening on a site asleep wakes its city first.
 
 ## The national table
 

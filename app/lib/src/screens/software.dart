@@ -50,22 +50,20 @@ int? _runway(CompanyView company, SoftwareView software) {
   return cash <= 0 ? 0 : cash ~/ loss;
 }
 
-/// The player's software companies on the holding, and the way to start
-/// one. Nothing if the scenario has no software market.
+/// The player's software companies on the holding; nothing while they have
+/// none. Starting one is on the page to start a business.
 class SoftwareSection extends StatelessWidget {
   const SoftwareSection({super.key});
 
   @override
   Widget build(BuildContext context) {
     final game = context.game;
-    if (game.content.software == null) return const SizedBox.shrink();
     final mine = game.mySoftware;
+    if (mine.isEmpty) return const SizedBox.shrink();
     final ledger = Ledger.of(context);
     return Section(
       title: mine.length == 1
           ? tr('software.yourOne')
-          : mine.isEmpty
-          ? tr('software.title')
           : tr('software.yourMany'),
       children: [
         for (final (_, software) in mine)
@@ -83,15 +81,6 @@ class SoftwareSection extends StatelessWidget {
             value: software.running ? compactMoney(software.yourWorth) : null,
             onTap: () => openSoftwarePage(context, software),
           ),
-        IndexRow(
-          icon: Icons.code,
-          title: tr('software.start'),
-          subtitle: tr('software.startPitch'),
-          onTap: () => context.openPage(
-            tr('software.start'),
-            (_) => [const StartSoftwarePage()],
-          ),
-        ),
       ],
     );
   }

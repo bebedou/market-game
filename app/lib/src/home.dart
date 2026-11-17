@@ -304,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.storefront_outlined),
-                            label: tr('home.tabs.shop'),
+                            label: tr('home.tabs.businesses'),
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.payments_outlined),

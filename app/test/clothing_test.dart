@@ -57,7 +57,7 @@ void main() {
     order(game, 300);
     game.step();
     await pumpGame(tester, game);
-    await tester.tap(find.text('Shop'));
+    await tester.tap(find.text('Businesses'));
     await tester.pumpAndSettle();
     expect(find.text('Rails'), findsOneWidget);
     expect(find.text('New, under 2 months'), findsOneWidget);

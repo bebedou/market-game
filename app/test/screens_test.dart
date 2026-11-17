@@ -159,7 +159,11 @@ void main() {
     expect(find.text('Fast food: a new shop'), findsOneWidget);
     expect(find.text('Best free site'), findsOneWidget);
     expect(find.textContaining('about 100%'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Businesses'), 300);
+    // The section on who is here, not the tab of the same name.
+    await tester.scrollUntilVisible(
+      find.widgetWithText(Section, 'Businesses'),
+      300,
+    );
     await tester.scrollUntilVisible(find.text('Vacant sites'), 300);
   });
 
@@ -524,7 +528,7 @@ void main() {
   testWidgets('a price set in the store waits for tomorrow', (tester) async {
     final game = newController();
     await pumpGame(tester, game);
-    await tester.tap(find.text('Shop'));
+    await tester.tap(find.text('Businesses'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Value Milk 1 L'), 300);
     await tester.ensureVisible(find.text('Value Milk 1 L'));
@@ -563,7 +567,7 @@ void main() {
   ) async {
     final game = newController();
     await pumpGame(tester, game);
-    await tester.tap(find.text('Shop'));
+    await tester.tap(find.text('Businesses'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Supplies'));
     await tester.pumpAndSettle();
@@ -1100,6 +1104,8 @@ void main() {
     await tester.tap(find.text('You have no company trading.'));
     await tester.pumpAndSettle();
     expect(find.text('Start a new business'), findsWidgets);
+    await openIndex(tester, 'Groceries');
+    await openIndex(tester, 'Convenience store');
     await tester.tap(find.widgetWithText(ChoiceChip, 'Germany'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Corporate tax'), findsOneWidget);
@@ -1453,6 +1459,8 @@ void main() {
     await pumpGame(tester, game);
     await openIndex(tester, 'Start a subsidiary');
     expect(find.textContaining('if it fails, the rest is safe'), findsWidgets);
+    await openIndex(tester, 'Groceries');
+    await openIndex(tester, 'Convenience store');
     await tester.scrollUntilVisible(find.text('Rue du Mail'), 300);
     await tester.ensureVisible(find.text('Rue du Mail'));
     await tester.pumpAndSettle();
@@ -1482,7 +1490,10 @@ void main() {
 
     game.step();
     await tester.pump();
-    await goBack(tester);
+    // Back from the kind of shop, its sector and the start.
+    for (var page = 0; page < 3; page++) {
+      await goBack(tester);
+    }
     await scrollTo(tester, find.text('Your companies'));
     expect(find.text('Rue du Mail Store'), findsWidgets);
     expect(find.textContaining('Hire a director for'), findsNWidgets(2));
@@ -1528,15 +1539,18 @@ void main() {
     expect(rich.strategies[hire.strategy.index].key, 'discount');
   });
 
-  testWidgets('a new business is started from the holding: a restaurant on '
-      'any site, its format picked', (tester) async {
+  testWidgets('a new business is started from the holding: its sector, its '
+      'kind, then a site in a city and a neighbourhood', (tester) async {
     final game = newController();
     await pumpGame(tester, game);
     await openIndex(tester, 'Start a new business');
-    expect(
-      find.widgetWithText(ChoiceChip, 'Lyon, Croix-Rousse'),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(IndexRow, 'Factories'), findsOneWidget);
+    expect(find.widgetWithText(IndexRow, 'Software'), findsOneWidget);
+    await openIndex(tester, 'Restaurants');
+    expect(find.widgetWithText(IndexRow, 'Steakhouse'), findsOneWidget);
+    await openIndex(tester, 'Fast food');
+    expect(find.widgetWithText(ChoiceChip, 'Lyon'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'Croix-Rousse'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Montée de la Grande-Côte'), 300);
     await tester.ensureVisible(find.text('Montée de la Grande-Côte'));
     await tester.pumpAndSettle();
@@ -1551,16 +1565,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(
-      find.text(
-        'Fitting out costs 20,000 and takes 28 days. Budget '
-        'for stock, staff and rent too.',
-      ),
-      findsOneWidget,
-    );
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Fast food'));
-    await tester.pumpAndSettle();
-    // A fast food costs 1.6 times the site's fitting out.
+    // Its kind is already chosen: a fast food costs 1.6 times the site's
+    // fitting out.
+    expect(find.widgetWithText(ChoiceChip, 'Steakhouse'), findsNothing);
     expect(find.textContaining('Fitting out costs 32,000'), findsOneWidget);
     await tester.enterText(
       find.widgetWithText(TextField, 'Capital from the holding’s cash'),
@@ -1614,7 +1621,7 @@ void main() {
     game.step();
     game.selectStore(game.myStores.last.$2.id);
     await pumpGame(tester, game);
-    await tester.tap(find.text('Shop'));
+    await tester.tap(find.text('Businesses'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Burger menu'), 300);
     expect(find.text('Value Milk 1 L'), findsNothing);
@@ -1969,7 +1976,7 @@ SimulationController managedGame({required int days}) {
 
 /// Opens the shop tab at its running: site, staff, manager, marketing.
 Future<void> openRunning(WidgetTester tester) async {
-  await tester.tap(find.text('Shop'));
+  await tester.tap(find.text('Businesses'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Running'));
   await tester.pumpAndSettle();

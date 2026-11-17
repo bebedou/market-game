@@ -393,7 +393,7 @@
     "allNews": "Toutes les actus",
     "tabs": {
       "holding": "Holding",
-      "shop": "Magasin",
+      "businesses": "Affaires",
       "finance": "Finance",
       "world": "Monde",
       "market": "Bourse",
@@ -572,7 +572,7 @@
     "createBrandButton": "Créer l’enseigne",
     "yourStore": "Votre magasin",
     "cashLine": "trésorerie {amount}",
-    "startBusinessPitch": "Ouvrez un magasin de tout type sur un emplacement libre, dans toute ville",
+    "startBusinessPitch": "Un magasin, une usine ou un éditeur de logiciels, dans tout secteur",
     "stampNoStaff": "Sans personnel",
     "stampEmpty": "Vide",
     "stampSoldOut": "{count} en rupture",
@@ -589,6 +589,34 @@
     "bestWorstWeek": "Meilleure et pire semaine",
     "bestWorstMonth": "Meilleur et pire mois",
     "allCompaniesHint": "Toutes vos sociétés ensemble."
+  },
+  "business": {
+    "pickSector": "Choisissez un secteur, puis le type d’activité.",
+    "subsidiaryHint": "Une filiale est une société à part dans votre holding, avec sa trésorerie, ses comptes, ses prêts et son directeur : si elle échoue, le reste est à l’abri. Choisissez son secteur, puis le type d’activité.",
+    "from": "dès {amount}",
+    "leastArea": "Au moins {area} m²",
+    "noSiteLine": "Aucun emplacement libre assez grand",
+    "noSite": "Il n’y a nulle part d’emplacement libre assez grand.",
+    "city": "Ville",
+    "neighbourhood": "Quartier",
+    "software": "Éditeur de logiciels",
+    "sectors": {
+      "grocery": "Alimentation",
+      "restaurants": "Restauration",
+      "electronics": "Électronique",
+      "clothing": "Habillement",
+      "factories": "Usines",
+      "software": "Logiciels"
+    },
+    "pitches": {
+      "grocery": "Les courses du quotidien, près de chez soi",
+      "supermarket": "Une grande surface : plus de rayons, plus de clients",
+      "fastfood": "Beaucoup de repas rapides et bon marché",
+      "steakhouse": "Moins de couverts, des assiettes plus chères",
+      "finedining": "Quelques clients aisés, une équipe chevronnée",
+      "electronics": "Smartphones, accessoires et maison connectée",
+      "clothing": "Des collections commandées d’avance, tant que la mode dure"
+    }
   },
   "store": {
     "made": "maison",
@@ -777,7 +805,7 @@
     "orderFrom": "Commander à {supplier}",
     "arrives": "Arrive le {date}. Au moins {minimum} de chaque produit commandé.",
     "suggest": "Suggérer une semaine de stock",
-    "nothingStocked": "Vous ne référencez rien de ce que vend ce fournisseur. Référencez d’abord des produits dans l’onglet Magasin.",
+    "nothingStocked": "Vous ne référencez rien de ce que vend ce fournisseur. Référencez d’abord des produits dans l’onglet Affaires.",
     "units": "{units} unités",
     "paidOnDelivery": "Payé à la livraison",
     "dueAfter": "Dû {days} jours après la livraison",
@@ -1326,9 +1354,8 @@
       "finedining": "Gastronomie",
       "electronics": "Électronique"
     },
-    "subsidiaryHint": "Une filiale est une société à part dans votre holding, avec sa trésorerie, ses comptes, ses prêts et son directeur : si elle échoue, le reste est à l’abri. Choisissez une ville, puis un emplacement libre pour son premier magasin. Pour acheter plutôt une société existante, voyez Monde.",
-    "businessHint": "Choisissez un pays et une ville, puis un emplacement libre : vous choisissez le type d’activité, son nom et son capital de départ à l’ouverture. Pour acheter plutôt une affaire existante, voyez Finance.",
-    "noVacant": "Aucun emplacement libre nulle part.",
+    "subsidiaryHint": "Une filiale est une société à part dans votre holding, avec sa trésorerie, ses comptes, ses prêts et son directeur : si elle échoue, le reste est à l’abri. Choisissez une ville et un quartier, puis un emplacement libre pour son premier magasin. Pour acheter plutôt une société existante, voyez Monde.",
+    "businessHint": "Choisissez un pays, une ville et un quartier, puis un emplacement libre : vous choisissez son nom et son capital de départ à l’ouverture. Pour acheter plutôt une affaire existante, voyez Finance.",
     "vacantDetails": "{area} m², place pour {most} · situation {location} · loyer {rent} par mois · aménagement dès {cost}, {days} jours",
     "open": "Ouvrir",
     "defaultStoreName": "Magasin {site}",
@@ -1653,9 +1680,6 @@
     "enlargeConfirm": "Agrandir",
     "yourFactory": "Votre usine",
     "yourFactories": "Vos usines",
-    "factories": "Usines",
-    "build": "Construire une usine",
-    "buildPitch": "Fabriquer ce que vos commerces achètent, moins cher que chez les grossistes",
     "stopped": "à l'arrêt",
     "shifts": {"one": "{count} équipe", "other": "{count} équipes"},
     "usedLine": "utilisée à {use}",

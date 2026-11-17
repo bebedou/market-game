@@ -45,9 +45,9 @@ void main() {
   testWidgets('a factory is built from the holding', (tester) async {
     final game = SimulationController.newGame(_rich, seed: 7);
     await pumpGame(tester, game);
-    await openIndex(tester, 'Build a factory');
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Drinks plant'));
-    await tester.pumpAndSettle();
+    await openIndex(tester, 'Start a new business');
+    await openIndex(tester, 'Factories');
+    await openIndex(tester, 'Drinks plant');
     expect(find.text('Drinks plant, France'), findsOneWidget);
     // Its shops sell nothing yet, so there's nothing to estimate.
     expect(find.text('None of your shops sells these goods yet.'), findsOne);
@@ -111,7 +111,7 @@ void main() {
     ];
     expect(drinks, isNotEmpty);
     await pumpGame(tester, game);
-    await tester.tap(find.text('Shop'));
+    await tester.tap(find.text('Businesses'));
     await tester.pumpAndSettle();
     await scrollTo(tester, find.text(drinks.first.name));
     expect(find.text('Made by Boissons du Coin'), findsWidgets);
@@ -225,7 +225,7 @@ void main() {
     final quality = game.myStores.first.$2.qualityOf(drink.id);
     expect(quality > Fx.zero, isTrue);
     await pumpGame(tester, game);
-    await tester.tap(find.text('Shop'));
+    await tester.tap(find.text('Businesses'));
     await tester.pumpAndSettle();
     await scrollTo(tester, find.text(drink.name));
     expect(

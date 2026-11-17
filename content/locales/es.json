@@ -392,7 +392,7 @@
     "allNews": "Todas",
     "tabs": {
       "holding": "Holding",
-      "shop": "Tienda",
+      "businesses": "Negocios",
       "finance": "Finanzas",
       "world": "Mundo",
       "market": "Bolsa",
@@ -571,7 +571,7 @@
     "createBrandButton": "Crear la marca",
     "yourStore": "Tu tienda",
     "cashLine": "caja {amount}",
-    "startBusinessPitch": "Abre una tienda de cualquier tipo en un local libre, en cualquier ciudad",
+    "startBusinessPitch": "Una tienda, una fábrica o una empresa de software, en cualquier sector",
     "stampNoStaff": "Sin personal",
     "stampEmpty": "Vacía",
     "stampSoldOut": "{count} agotados",
@@ -588,6 +588,34 @@
     "bestWorstWeek": "Mejor y peor semana",
     "bestWorstMonth": "Mejor y peor mes",
     "allCompaniesHint": "Todas tus empresas juntas."
+  },
+  "business": {
+    "pickSector": "Elige un sector y luego el tipo de negocio.",
+    "subsidiaryHint": "Una filial es una empresa aparte en tu holding, con su caja, cuentas, préstamos y director: si quiebra, el resto está a salvo. Elige su sector y luego el tipo de negocio.",
+    "from": "desde {amount}",
+    "leastArea": "Al menos {area} m²",
+    "noSiteLine": "Ningún local libre lo bastante grande",
+    "noSite": "No hay en ningún sitio un local libre lo bastante grande.",
+    "city": "Ciudad",
+    "neighbourhood": "Barrio",
+    "software": "Empresa de software",
+    "sectors": {
+      "grocery": "Alimentación",
+      "restaurants": "Restauración",
+      "electronics": "Electrónica",
+      "clothing": "Ropa",
+      "factories": "Fábricas",
+      "software": "Software"
+    },
+    "pitches": {
+      "grocery": "La compra diaria, cerca de casa",
+      "supermarket": "Un gran súper: más estantes, más clientes",
+      "fastfood": "Muchas comidas rápidas y baratas",
+      "steakhouse": "Menos cubiertos, platos más caros",
+      "finedining": "Pocos comensales pudientes, un equipo experto",
+      "electronics": "Móviles, accesorios y hogar conectado",
+      "clothing": "Colecciones pedidas por adelantado, mientras dure la moda"
+    }
   },
   "store": {
     "made": "propio",
@@ -776,7 +804,7 @@
     "orderFrom": "Pedir a {supplier}",
     "arrives": "Llega el {date}. Al menos {minimum} de cada producto que pidas.",
     "suggest": "Sugerir stock para una semana",
-    "nothingStocked": "No vendes nada de lo que ofrece este proveedor. Añade antes productos en la pestaña Tienda.",
+    "nothingStocked": "No vendes nada de lo que ofrece este proveedor. Añade antes productos en la pestaña Negocios.",
     "units": "{units} unidades",
     "paidOnDelivery": "Pago a la entrega",
     "dueAfter": "Vence {days} días tras la entrega",
@@ -1325,9 +1353,8 @@
       "finedining": "Alta cocina",
       "electronics": "Electrónica"
     },
-    "subsidiaryHint": "Una filial es una empresa aparte en tu holding, con su caja, cuentas, préstamos y director: si quiebra, el resto está a salvo. Elige una ciudad y luego un local libre para su primera tienda. Para comprar una empresa en marcha, mira Mundo.",
-    "businessHint": "Elige un país y una ciudad, y luego un local libre: al abrir eliges el tipo de negocio, su nombre y el capital con que empieza. Para comprar un negocio en marcha, mira Finanzas.",
-    "noVacant": "No hay ningún local libre.",
+    "subsidiaryHint": "Una filial es una empresa aparte en tu holding, con su caja, cuentas, préstamos y director: si quiebra, el resto está a salvo. Elige una ciudad y un barrio, y luego un local libre para su primera tienda. Para comprar una empresa en marcha, mira Mundo.",
+    "businessHint": "Elige un país, una ciudad y un barrio, y luego un local libre: al abrir eliges su nombre y el capital con que empieza. Para comprar un negocio en marcha, mira Finanzas.",
     "vacantDetails": "{area} m², espacio para {most} · ubicación {location} · alquiler {rent} al mes · acondicionamiento desde {cost}, {days} días",
     "open": "Abrir",
     "defaultStoreName": "Tienda {site}",
@@ -1652,9 +1679,6 @@
     "enlargeConfirm": "Ampliar",
     "yourFactory": "Tu fábrica",
     "yourFactories": "Tus fábricas",
-    "factories": "Fábricas",
-    "build": "Construir una fábrica",
-    "buildPitch": "Fabrica lo que compran tus tiendas, más barato que los mayoristas",
     "stopped": "parada",
     "shifts": {"one": "{count} turno", "other": "{count} turnos"},
     "usedLine": "al {use}",

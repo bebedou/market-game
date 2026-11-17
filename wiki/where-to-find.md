@@ -81,7 +81,7 @@ Paths are relative to the repo root; search the named symbol in the file.
 | Colours, fonts, the ledger look | [app/lib/src/theme.dart](../app/lib/src/theme.dart) | `Ledger`, `gameTheme`, `Ledger.trade` |
 | Charts and stamps | [app/lib/src/visuals.dart](../app/lib/src/visuals.dart) | `BarChart`, `TrendChart`, `Stamp` |
 | The tab bar, clock bar, alerts | [app/lib/src/home.dart](../app/lib/src/home.dart) | `HomeScreen`, `HomeTab` |
-| Starting a first business | [app/lib/src/screens/world.dart](../app/lib/src/screens/world.dart) | `NewBusiness` |
+| Starting a business: sector, kind, then where | [app/lib/src/screens/start.dart](../app/lib/src/screens/start.dart), [app/lib/src/screens/world.dart](../app/lib/src/screens/world.dart) | `StartBusinessPage`, `openStartBusiness`; `NewBusiness`, `freeSites` |
 | A company's dashboard, what is being built | [app/lib/src/screens/holding.dart](../app/lib/src/screens/holding.dart) | `CompanyDashboard`, `openCompanyDashboard`, `_BeingBuilt` |
 | The country page and its map | [app/lib/src/screens/national.dart](../app/lib/src/screens/national.dart), [app/lib/src/outlines.dart](../app/lib/src/outlines.dart) | `NationalMap`, `_InkMap`, `outlineOf` |
 | The main menu and save slots | [app/lib/src/screens/menu.dart](../app/lib/src/screens/menu.dart), [app/lib/src/saves_io.dart](../app/lib/src/saves_io.dart) | `MainMenu`, `FileSaveSlots` |

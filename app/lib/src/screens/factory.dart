@@ -20,38 +20,25 @@ final _discounts = [
 class FactoriesSection extends StatelessWidget {
   const FactoriesSection({super.key, this.company});
 
-  /// Only this company's factories, without the way to build one; nothing
-  /// if it has none.
+  /// Only this company's factories.
   final CompanyId? company;
 
   @override
   Widget build(BuildContext context) {
     final game = context.game;
-    if (game.content.factories == null) return const SizedBox.shrink();
     final mine = [
       for (final entry in game.myFactories)
         if (company == null || entry.$1.id == company) entry,
     ];
-    if (company != null && mine.isEmpty) return const SizedBox.shrink();
+    // Building one starts from the page to start a business.
+    if (mine.isEmpty) return const SizedBox.shrink();
     return Section(
       title: mine.length == 1
           ? tr('factory.yourFactory')
-          : mine.isEmpty
-          ? tr('factory.factories')
           : tr('factory.yourFactories'),
       children: [
         for (final (company, factory) in mine)
           _FactoryEntry(company: company, factory: factory),
-        if (company == null)
-          IndexRow(
-            icon: Icons.factory_outlined,
-            title: tr('factory.build'),
-            subtitle: tr('factory.buildPitch'),
-            onTap: () => context.openPage(
-              tr('factory.build'),
-              (_) => [const BuildFactoryPage()],
-            ),
-          ),
       ],
     );
   }
@@ -732,18 +719,24 @@ class _SellsTo extends StatelessWidget {
 /// Building a factory: what it makes, where, what the player's shops would
 /// give it to make at each number of shifts, what it costs and how to pay.
 class BuildFactoryPage extends StatefulWidget {
-  const BuildFactoryPage({super.key});
+  const BuildFactoryPage({super.key, this.kind, this.subsidiary = false});
+
+  /// What it makes, if already chosen; else the player picks it here.
+  final FactoryKindId? kind;
+
+  /// Whether it is built as a company of its own unless the player says not.
+  final bool subsidiary;
 
   @override
   State<BuildFactoryPage> createState() => _BuildFactoryPageState();
 }
 
 class _BuildFactoryPageState extends State<BuildFactoryPage> {
-  FactoryKindId? _kind;
+  late FactoryKindId? _kind = widget.kind;
   int _size = 0;
   CountryId? _country;
   int? _shifts;
-  bool _newCompany = false;
+  late bool _newCompany = widget.subsidiary;
   bool? _borrow;
   bool _named = false;
   bool _built = false;
@@ -851,24 +844,26 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Section(
-          title: tr('factory.whatItMakes'),
+          // Chosen already, it names the page.
+          title: widget.kind == null ? tr('factory.whatItMakes') : kind.name,
           children: [
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: [
-                for (final option in factories.kinds)
-                  ChoiceChip(
-                    label: Text(option.name),
-                    selected: option.id == kindId,
-                    onSelected: (_) => setState(() {
-                      _kind = option.id;
-                      _shifts = null;
-                      if (!option.exports) _country = null;
-                    }),
-                  ),
-              ],
-            ),
+            if (widget.kind == null)
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  for (final option in factories.kinds)
+                    ChoiceChip(
+                      label: Text(option.name),
+                      selected: option.id == kindId,
+                      onSelected: (_) => setState(() {
+                        _kind = option.id;
+                        _shifts = null;
+                        if (!option.exports) _country = null;
+                      }),
+                    ),
+                ],
+              ),
             Hint(tr('factory.makes', {'products': products.join(', ')})),
           ],
         ),
