@@ -1851,6 +1851,7 @@
     "unknownActor": "actor desconocido",
     "noDirectors": "no hay directores que contratar",
     "unknownDirectorGrade": "nivel de director desconocido",
+    "unknownCharacter": "carácter de director desconocido",
     "unknownStrategy": "estrategia desconocida",
     "unknownManagerGrade": "nivel de gerente desconocido",
     "noDirector": "la empresa no tiene director",
@@ -2136,6 +2137,291 @@
       "electronics": "Tiendas de electrónica",
       "clothing": "Tiendas de ropa",
       "software": "Software"
+    },
+    "screener": {
+      "title": "Filtro bursátil",
+      "entry": "Filtra y ordena las {count} empresas cotizadas",
+      "views": {
+        "screens": "Filtros",
+        "criteria": "Criterios",
+        "table": "Tabla"
+      },
+      "ready": {
+        "cheap": {
+          "title": "Baratas frente a su pasado",
+          "hint": "PER bajo 20 y una quinta parte por debajo de lo habitual, gestión al menos media",
+          "chip": "Bajo lo habitual"
+        },
+        "income": {
+          "title": "Pagan más del 5%",
+          "hint": "con deuda de menos de tres años de beneficio",
+          "chip": "Alta rentabilidad"
+        },
+        "growing": {
+          "title": "Ventas creciendo un 10% al año",
+          "hint": "los últimos cuatro trimestres frente a los cuatro anteriores",
+          "chip": "Creciendo"
+        },
+        "fallen": {
+          "title": "Han caído un 30% en un año, aún bien gestionadas",
+          "hint": "gestión buena o mejor",
+          "chip": "Caídas, bien gestionadas"
+        },
+        "strongBuys": {
+          "title": "Compras fuertes de los analistas",
+          "hint": "primero donde los analistas ven más por encima del precio",
+          "chip": "Compras fuertes"
+        },
+        "smallDebtFree": {
+          "title": "Pequeñas y sin deuda",
+          "hint": "valen menos de {amount}, las más baratas primero",
+          "chip": "Pequeñas, sin deuda"
+        },
+        "everything": {
+          "title": "Todo",
+          "hint": "todas las empresas cotizadas, las mayores primero",
+          "chip": "Todo"
+        }
+      },
+      "yourOwn": "Tu propio filtro",
+      "yourOwnHint": "elige las cifras y los límites",
+      "resultsLine": {
+        "one": "{count} empresa · {sort}",
+        "other": "{count} empresas · {sort}"
+      },
+      "byLine": "{sort}",
+      "sortTitle": "Ordenar",
+      "sorts": {
+        "size": "las mayores primero",
+        "pe": "por PER",
+        "belowUsual": "por PER frente a lo habitual",
+        "dividendYield": "por rentabilidad por dividendo",
+        "growth": "por crecimiento de ventas",
+        "debt": "por deuda",
+        "yearChange": "por precio en un año",
+        "upside": "por lo que los analistas ven sobre el precio"
+      },
+      "criteria": {
+        "sector": "Sector",
+        "exchanges": "Bolsas",
+        "pe": "PER",
+        "belowUsual": "Frente a lo habitual",
+        "dividendYield": "Rentabilidad por dividendo",
+        "growth": "Crecimiento de ventas",
+        "debt": "Deuda",
+        "size": "Tamaño",
+        "management": "Gestión",
+        "analysts": "Analistas",
+        "yearChange": "Precio en un año"
+      },
+      "short": {
+        "pe": "PER",
+        "belowUsual": "PER frente a lo habitual",
+        "dividendYield": "Rent.",
+        "growth": "Ventas",
+        "debt": "Deuda",
+        "size": "Tamaño",
+        "management": "Gestión",
+        "analysts": "Analistas",
+        "yearChange": "Precio"
+      },
+      "addCriterion": "Añadir un criterio",
+      "filter": "Filtro",
+      "chip": "{criterion} {limit}",
+      "allSectors": "Todos los sectores",
+      "someSectors": {
+        "one": "{count} sector",
+        "other": "{count} sectores"
+      },
+      "any": "Cualquiera",
+      "anyHint": "Sin marcar ninguno, valen todos.",
+      "done": "Listo",
+      "limits": {
+        "under": "menos de {value}",
+        "percentUnder": "un {value} por debajo",
+        "over": "más del {value}",
+        "falling": "en descenso",
+        "none": "ninguna",
+        "underYears": {
+          "one": "menos de {count} año",
+          "other": "menos de {count} años"
+        },
+        "management": {
+          "average": "media o mejor",
+          "good": "buena o mejor",
+          "excellent": "excelente"
+        },
+        "analysts": {
+          "buy": "compra o mejor",
+          "strongBuy": "compra fuerte",
+          "sell": "venta o peor"
+        },
+        "fallen": "ha caído un {value} o más",
+        "risen": "ha subido un {value} o más"
+      },
+      "sizes": {
+        "small": "menos de {amount}",
+        "mid": "de {amount} a {more}",
+        "large": "más de {more}"
+      },
+      "sales": "ventas",
+      "overYear": "en un año",
+      "upside": "{change} hasta su opinión",
+      "none": "Ninguna empresa cotizada cumple todo esto. Afloja un criterio.",
+      "more": "Ver {count} más",
+      "of": "{count} de {total}",
+      "columns": {
+        "pe": "PER",
+        "dividendYield": "Rent.",
+        "growth": "Ventas",
+        "debt": "Deuda"
+      },
+      "tableHint": "Toca una columna para ordenar por ella, otra vez para invertir. Ventas: los últimos cuatro trimestres frente a los cuatro anteriores. Deuda en años de beneficio."
     }
+  },
+  "directors": {
+    "titles": {
+      "promoted": {
+        "man": "Gerente ascendido",
+        "woman": "Gerente ascendida"
+      },
+      "seasoned": {
+        "man": "Director veterano",
+        "woman": "Directora veterana"
+      },
+      "star": {
+        "man": "Director estrella",
+        "woman": "Directora estrella"
+      }
+    },
+    "characters": {
+      "steady": {
+        "man": "sereno",
+        "woman": "serena"
+      },
+      "bold": {
+        "man": "audaz",
+        "woman": "audaz"
+      },
+      "cautious": {
+        "man": "prudente",
+        "woman": "prudente"
+      },
+      "thrifty": {
+        "man": "ahorrador",
+        "woman": "ahorradora"
+      }
+    },
+    "mottos": {
+      "steady": [
+        "Primero unas cuentas sanas; el crecimiento viene después.",
+        "Un buen mes es un mes sin sorpresas.",
+        "Hacemos lo que dicen las instrucciones, y lo hacemos bien."
+      ],
+      "bold": [
+        "Una tienda que espera es una tienda que abre un rival.",
+        "La calle es del primero que llega.",
+        "El dinero parado no rinde nada."
+      ],
+      "cautious": [
+        "Prefiero perder un buen local que abrir uno malo.",
+        "Las recesiones llegan; para eso está el colchón.",
+        "Crecer despacio también es crecer."
+      ],
+      "thrifty": [
+        "Cada euro que no gastamos es uno que conservamos.",
+        "Una tienda austera es una tienda que dura.",
+        "¿Por qué pagar por lo que saben hacer los gerentes?"
+      ]
+    },
+    "past": {
+      "promoted": "{count} años gestionando tiendas para {employer}",
+      "seasoned": "{count} años dirigiendo una región para {employer}",
+      "star": "{count} años al frente de las tiendas de {employer}"
+    },
+    "pastNowhere": {
+      "promoted": "{count} años gestionando tiendas",
+      "seasoned": "{count} años dirigiendo tiendas en una región",
+      "star": "{count} años al frente de una cadena"
+    },
+    "does": {
+      "payback": "acepta tiendas que se amorticen en hasta {months} meses, frente a los {usual} de tu estrategia",
+      "thickCushion": "guarda un colchón de caja más grueso",
+      "thinCushion": "guarda un colchón de caja más fino",
+      "credit": "no pide más del {share} de lo que prestaría el banco",
+      "fastPace": "a su propio ritmo, crece más deprisa de lo que su nivel lleva bien",
+      "slowPace": "a su propio ritmo, crece más despacio de lo que podría",
+      "lessCoaching": "revisa menos las previsiones de los gerentes",
+      "moreCoaching": "revisa más las previsiones de los gerentes",
+      "dearer": "pide un sueldo un {change} más alto",
+      "cheaper": "pide un sueldo un {change} más bajo",
+      "asItIs": "aplica las instrucciones tal cual"
+    },
+    "pitch": "{character}: {what}.",
+    "voices": {
+      "steady": {
+        "earned": [
+          "El mes fue según lo previsto.",
+          "Avances constantes, nada que temer.",
+          "Seguimos el plan."
+        ],
+        "lost": [
+          "Una pérdida, pero dentro de lo previsto.",
+          "Vigilo los costes de cerca.",
+          "El mes que viene enderezaremos el rumbo."
+        ]
+      },
+      "bold": {
+        "earned": [
+          "Bien. Ahora vayamos más lejos.",
+          "Es el momento de acelerar.",
+          "Los rivales son más lentos que nosotros; aprovechémoslo."
+        ],
+        "lost": [
+          "Un revés, no un motivo para parar.",
+          "Gastamos para crecer; volverá.",
+          "Sigo prefiriendo moverme a esperar."
+        ]
+      },
+      "cautious": {
+        "earned": [
+          "He guardado un buen colchón, por si el ciclo cambia.",
+          "Un buen mes; no cuento con el siguiente.",
+          "Seguimos con cuidado."
+        ],
+        "lost": [
+          "Freno las aperturas hasta que esto pase.",
+          "Para esto está el colchón.",
+          "Ningún riesgo nuevo este mes."
+        ]
+      },
+      "thrifty": {
+        "earned": [
+          "Los costes vuelven a bajar.",
+          "Cada euro ahorrado se ve en los resultados.",
+          "Los meses austeros son buenos meses."
+        ],
+        "lost": [
+          "Encontraré costes que recortar.",
+          "Gastamos demasiado; me ocupo.",
+          "Más ajustado el mes que viene."
+        ]
+      }
+    },
+    "saying": "«{text}»",
+    "recordSince": {
+      "woman": "Su historial aquí, desde el {date} {year}",
+      "man": "Su historial aquí, desde el {date} {year}"
+    },
+    "shops": "Tiendas",
+    "thenNow": "{then} → {now}",
+    "openedBoughtClosed": "Abiertas · compradas · cerradas",
+    "salesMonth": "Ventas del mes",
+    "paidYou": "Te ha pagado",
+    "before": "Antes: {past}.",
+    "shortlist": "La selección del mes",
+    "inPlace": "en el puesto",
+    "shortlistHint": "Cada día 1 llega una nueva selección. El carácter cambia cómo aplica tus instrucciones; el nivel, lo bien que juzga.",
+    "leftToJudge": "A su ritmo, crece un"
   }
 }

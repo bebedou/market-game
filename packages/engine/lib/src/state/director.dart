@@ -7,6 +7,9 @@ import '../persistence/state_io.dart';
 /// The save version from which a brief grows by a rate.
 const _rateVersion = 31;
 
+/// The save version from which a director is a person with a record.
+const personVersion = 40;
+
 /// How far a director may grow the company they run, each step allowing
 /// what the ones before it do.
 enum Growth {
@@ -40,6 +43,8 @@ final class Director {
     this.nationalRate = Fx.zero,
     this.nationalAuto = false,
     this.nationalRegions = const [],
+    this.person,
+    this.record = const DirectorRecord(),
   });
 
   Director.read(StateReader reader)
@@ -61,7 +66,13 @@ final class Director {
       nationalRegions = [
         if (reader.version >= 29)
           for (var i = 0, n = reader.readInt(); i < n; i++) reader.readString(),
-      ];
+      ],
+      person = reader.version >= personVersion && reader.readBool()
+          ? DirectorPerson.read(reader)
+          : null,
+      record = reader.version >= personVersion
+          ? DirectorRecord.read(reader)
+          : const DirectorRecord();
 
   final DirectorGradeId grade;
 
@@ -95,7 +106,34 @@ final class Director {
   /// region of the company's countries if empty.
   final List<String> nationalRegions;
 
+  /// Who they are; null for a director hired before directors were people,
+  /// or by a tool, who applies the brief as it is.
+  final DirectorPerson? person;
+
+  /// What they have done for the company since they were hired.
+  final DirectorRecord record;
+
   bool allows(Growth step) => growth.index >= step.index;
+
+  /// The same director, with [memo] counted in their record.
+  Director noting(Memo memo) {
+    final noted = record.noting(memo);
+    if (identical(noted, record)) return this;
+    return Director(
+      grade: grade,
+      strategy: strategy,
+      managerGrade: managerGrade,
+      growth: growth,
+      payout: payout,
+      hiredOn: hiredOn,
+      borrows: borrows,
+      nationalRate: nationalRate,
+      nationalAuto: nationalAuto,
+      nationalRegions: nationalRegions,
+      person: person,
+      record: noted,
+    );
+  }
 
   void write(StateWriter writer) {
     writer
@@ -110,6 +148,136 @@ final class Director {
       ..writeInt(nationalRate.raw)
       ..writeInt(nationalRegions.length);
     nationalRegions.forEach(writer.writeString);
+    writer.writeBool(person != null);
+    person?.write(writer);
+    record.write(writer);
+  }
+}
+
+/// Who a director is: a name, a character and a past, and what their
+/// portrait is drawn from.
+final class DirectorPerson {
+  const DirectorPerson({
+    required this.name,
+    required this.female,
+    required this.character,
+    required this.looks,
+    this.employer = '',
+    this.years = 0,
+  });
+
+  DirectorPerson.read(StateReader reader)
+    : name = reader.readString(),
+      female = reader.readBool(),
+      character = reader.readInt(),
+      looks = reader.readInt(),
+      employer = reader.readString(),
+      years = reader.readInt();
+
+  final String name;
+  final bool female;
+
+  /// By position in `DirectorsDef.characters`.
+  final int character;
+
+  /// A 32-bit number their portrait and sayings are picked from.
+  final int looks;
+
+  /// Where they worked before, if anywhere named, and for how many years.
+  final String employer;
+  final int years;
+
+  void write(StateWriter writer) {
+    writer
+      ..writeString(name)
+      ..writeBool(female)
+      ..writeInt(character)
+      ..writeInt(looks)
+      ..writeString(employer)
+      ..writeInt(years);
+  }
+}
+
+/// Whether [a] and [b] are the same person, both none included.
+bool samePerson(DirectorPerson? a, DirectorPerson? b) =>
+    identical(a, b) ||
+    a != null &&
+        b != null &&
+        a.name == b.name &&
+        a.female == b.female &&
+        a.character == b.character &&
+        a.looks == b.looks &&
+        a.employer == b.employer &&
+        a.years == b.years;
+
+/// What a director has done for their company since they were hired, kept
+/// in full though old memos are dropped.
+final class DirectorRecord {
+  const DirectorRecord({
+    this.shopsAtHire = -1,
+    this.opened = 0,
+    this.bought = 0,
+    this.closed = 0,
+    this.paid = Money.zero,
+  });
+
+  DirectorRecord.read(StateReader reader)
+    : shopsAtHire = reader.readInt(),
+      opened = reader.readInt(),
+      bought = reader.readInt(),
+      closed = reader.readInt(),
+      paid = Money(reader.readInt());
+
+  /// The company's shops when they came, of every kind and scale; -1 if
+  /// unknown, for a director hired before records were kept.
+  final int shopsAtHire;
+
+  /// The shops they opened (across countries too), bought and closed.
+  final int opened;
+  final int bought;
+  final int closed;
+
+  /// What they paid the owner.
+  final Money paid;
+
+  /// This record with [memo] counted; itself if [memo] counts for nothing.
+  DirectorRecord noting(Memo memo) {
+    var (opened, bought, closed, paid) = (
+      this.opened,
+      this.bought,
+      this.closed,
+      this.paid,
+    );
+    switch (memo) {
+      case StoreOpened() || DistrictOpened():
+        opened++;
+      case NationalOpened(:final count):
+        opened += count;
+      case StoreBought() || DistrictBought():
+        bought++;
+      case StoreClosed():
+        closed++;
+      case ProfitPaid(:final amount):
+        paid += amount;
+      default:
+        return this;
+    }
+    return DirectorRecord(
+      shopsAtHire: shopsAtHire,
+      opened: opened,
+      bought: bought,
+      closed: closed,
+      paid: paid,
+    );
+  }
+
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(shopsAtHire)
+      ..writeInt(opened)
+      ..writeInt(bought)
+      ..writeInt(closed)
+      ..writeInt(paid.cents);
   }
 }
 

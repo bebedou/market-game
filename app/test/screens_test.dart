@@ -703,7 +703,7 @@ void main() {
     expect(find.textContaining('buy profitable rivals'), findsOneWidget);
     await tester.tap(find.text('Borrow when it is short'));
     await tester.pump();
-    await tester.tap(find.text('Hire for 420 a month'));
+    await tester.tap(find.textContaining('Hire for'));
     await tester.pumpAndSettle();
     final hire = game.pending.single as HireDirector;
     expect(hire.growth, Growth.buy);
@@ -952,6 +952,8 @@ void main() {
       100,
       scrollable: sheet,
     );
+    await tester.ensureVisible(find.text('Also open new stores'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Also open new stores'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Across the country'));
@@ -1362,7 +1364,9 @@ void main() {
     await scrollTo(tester, find.text('Hire a director'));
     await tester.tap(find.text('Hire a director'));
     await tester.pumpAndSettle();
-    expect(find.text('Seasoned director · 420 a month'), findsOneWidget);
+    // The month's seasoned director, picked to begin with.
+    final seasoned = _seasoned(game);
+    expect(find.text(seasoned.person.name), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('The profit'),
       100,
@@ -1370,9 +1374,10 @@ void main() {
     );
     await tester.tap(find.text('Also open new stores'));
     await tester.pump();
-    await tester.tap(find.text('Hire for 420 a month'));
+    await tester.tap(find.textContaining('Hire for'));
     await tester.pumpAndSettle();
     final hire = game.pending.single as HireDirector;
+    expect(samePerson(hire.person, seasoned.person), isTrue);
     expect(hire.growth, Growth.open);
     expect(hire.payout, isTrue);
     expect(hire.managerGrade, grade('experienced'));
@@ -1396,7 +1401,8 @@ void main() {
     );
     expect(game.alerts.first.kind, AlertKind.director);
     await tester.pump();
-    await scrollTo(tester, find.text('Your director'));
+    // Signed with their first name.
+    await scrollTo(tester, find.text(seasoned.person.name.split(' ').first));
     expect(find.text('January 2026'), findsOneWidget);
     expect(
       find.text('I hired an experienced manager for Corner Shop.'),
@@ -1411,16 +1417,20 @@ void main() {
     await scrollTo(tester, find.text('Your company'));
     expect(find.text('1 store · no director'), findsOneWidget);
     await openIndex(tester, 'Hire a director');
-    expect(find.text('Seasoned director · 420 a month'), findsOneWidget);
+    final seasoned = _seasoned(game);
+    expect(find.text(seasoned.person.name), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('The profit'),
       100,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.tap(find.text('Hire for 420 a month'));
+    await tester.tap(find.textContaining('Hire for'));
     await tester.pumpAndSettle();
     expect(game.pending.single, isA<HireDirector>());
-    expect(find.text('1 store · run by a seasoned director'), findsOneWidget);
+    expect(
+      find.text('1 store · run by ${seasoned.person.name}'),
+      findsOneWidget,
+    );
     expect(find.widgetWithText(IndexRow, 'Hire a director'), findsNothing);
   });
 
@@ -1433,6 +1443,10 @@ void main() {
       100,
       scrollable: find.byType(Scrollable).last,
     );
+    // The sheet has grown with the shortlist: bring the chip clear of the
+    // footer.
+    await tester.ensureVisible(chip);
+    await tester.pumpAndSettle();
     await tester.tap(chip);
     await tester.pumpAndSettle();
     expect(find.textContaining("a supermarket's volume"), findsOneWidget);
@@ -1980,4 +1994,16 @@ Future<void> openRunning(WidgetTester tester) async {
   await tester.pumpAndSettle();
   await tester.tap(find.text('Running'));
   await tester.pumpAndSettle();
+}
+
+/// The seasoned director on the shortlist of [game]'s first company this
+/// month, whom the hiring sheet picks to begin with.
+DirectorCandidate _seasoned(SimulationController game) {
+  final company = game.view.companies.first;
+  return directorShortlist(
+    game.content,
+    game.view,
+    company,
+    game.countryOfCompany(company),
+  )[1];
 }

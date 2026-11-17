@@ -40,7 +40,7 @@ Money monthlyOccupancy(Observation view, ContentDb content, StoreView store) =>
         .times(view.economyAt(content, store.market).priceIndex);
 
 /// What [director] is paid a day to run [company], at the wages of the
-/// country of its first store still trading.
+/// country of its first store still trading, as their character asks.
 Money directorSalary(
   Observation view,
   ContentDb content,
@@ -53,7 +53,7 @@ Money directorSalary(
   final wages = home == null
       ? view.macro.wageIndex
       : view.economyAt(content, home.market).wageIndex;
-  return content.directors!.grades[director.grade.index].salary.times(wages);
+  return content.directors!.salaryOf(director).times(wages);
 }
 
 /// [loan]'s next monthly payment: its share of the principal and about a

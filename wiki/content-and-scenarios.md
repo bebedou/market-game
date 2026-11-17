@@ -11,7 +11,7 @@ whatever could differ in someone else's world is data. Design detail:
 
 | File | What it holds | Read by |
 |---|---|---|
-| [content/scenarios/prototype.json](../content/scenarios/prototype.json) | The scenario: start date, 4 countries, 13 markets, 126 sites, 12 categories, 6 formats, 24 products, 6 segments, 16 suppliers, 7 strategies, 77 persons, 73 companies and stores, 30 neighbourhood rows, and every tuning block (`finance`, `taxes`, `macro`, `demand`, `managers`, `directors`, `factories`, …) | `loadScenario` |
+| [content/scenarios/prototype.json](../content/scenarios/prototype.json) | The scenario: start date, 4 countries, 13 markets, 126 sites, 12 categories, 6 formats, 24 products, 6 segments, 16 suppliers, 7 strategies, 77 persons, 73 companies and stores, 30 neighbourhood rows, and every tuning block (`finance`, `taxes`, `macro`, `demand`, `managers`, `directors` (grades, characters and each country's names for directors), `factories`, …) | `loadScenario` |
 | [prototype.fr.json](../content/scenarios/prototype.fr.json), [prototype.es.json](../content/scenarios/prototype.es.json), [prototype.en.json](../content/scenarios/prototype.en.json) | The scenario's names and wordings per language, by id | `localizedScenario` in the app |
 | [content/countries/euro.json](../content/countries/euro.json) | The national table: countries, regions, income classes, trades, chains, regimes, brand and regional tuning | `loadCountryTable` |
 | [content/countries/calibration.json](../content/countries/calibration.json) | Numbers the formula borrows from the full simulation: `capture`, `staffFixed`, `riseResponse`, `cutResponse` | `loadCountryTable` |

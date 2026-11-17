@@ -116,6 +116,17 @@ Directors also open and buy in districts asleep for the player's company
 (`OpenInDistrict`, `BuyInDistrict`, `DistrictOpened` and `DistrictBought`
 memos).
 
+**People and characters.** A director is a `DirectorPerson` with a
+character (`DirectorCharacterDef` in
+[content_db.dart](../packages/engine/lib/src/content/content_db.dart)),
+which multiplies the payback limits, the reserve days, the credit used, the
+pace when left to judge (`DirectorsDef.growthRateOf`, which `_strain` also
+reads), the coaching (`keptBy`) and the pay (`salaryOf`). The month's
+shortlist is `directorShortlist` in
+[policies/candidates.dart](../packages/engine/lib/src/policies/candidates.dart);
+`personOf` gives one hired before people their month's. `DirectorRecord`
+counts what they did, noted by `Company.remember`.
+
 ## What size buys
 
 - **Buying terms**: `buyingDiscount` in

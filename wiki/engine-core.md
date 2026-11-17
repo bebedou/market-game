@@ -155,7 +155,8 @@ commands. Policies are stateless; what they remember is in the world.
 | [retail_policy.dart](../packages/engine/lib/src/policies/retail_policy.dart) | `RetailPolicy`, `StorePlan`, `closingLoss` | Running a store: forecast, supplier, orders, prices, assortment, staff, enlarging, dividends |
 | [entrepreneur_policy.dart](../packages/engine/lib/src/policies/entrepreneur_policy.dart) | `EntrepreneurPolicy` | Monthly: where to open or buy, including districts asleep |
 | [manager.dart](../packages/engine/lib/src/policies/manager.dart) | `manage` | Store managers and directors acting for an owner, within their duties |
-| [director.dart](../packages/engine/lib/src/policies/director.dart) | `Directive`, `nationalBudget`, `nationalChainShops`, `nationalPaybackMonths` | A company's director: hiring managers, closing, growing, borrowing, national openings |
+| [director.dart](../packages/engine/lib/src/policies/director.dart) | `Directive`, `nationalBudget`, `nationalChainShops`, `nationalPaybackMonths`, `scaledMonths` | A company's director: hiring managers, closing, growing, borrowing, national openings, as their character scales the brief |
+| [candidates.dart](../packages/engine/lib/src/policies/candidates.dart) | `directorShortlist`, `personOf`, `DirectorCandidate` | The directors on offer this month, one of each grade, and who an old director is |
 | [cushion.dart](../packages/engine/lib/src/policies/cushion.dart) | `cashCushion`, `storeCushion`, `cashForEssentials` | The cash a company keeps aside before ordering in full |
 
 Skill shows only as misjudgment, drawn from `RngStream.manager` (weekly) and

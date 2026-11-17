@@ -422,7 +422,19 @@ Refusal? _hireDirector(
       return const Refusal('unknownRegion');
     }
   }
+  final person = command.person;
+  if (person != null &&
+      !_inRange(person.character, directors.characters.length)) {
+    return const Refusal('unknownCharacter');
+  }
   final current = company.director;
+  // The same person at the same grade keeps their date and record.
+  final staying =
+      current != null &&
+          current.grade == command.grade &&
+          samePerson(current.person, person)
+      ? current
+      : null;
   company.director = Director(
     grade: command.grade,
     strategy: command.strategy,
@@ -433,11 +445,33 @@ Refusal? _hireDirector(
     nationalRate: command.nationalRate,
     nationalAuto: command.nationalAuto,
     nationalRegions: List.unmodifiable(command.nationalRegions),
-    hiredOn: current != null && current.grade == command.grade
-        ? current.hiredOn
-        : world.today,
+    hiredOn: staying?.hiredOn ?? world.today,
+    person: person,
+    record:
+        staying?.record ??
+        DirectorRecord(shopsAtHire: companyShops(world, company.id)),
   );
   return null;
+}
+
+/// [company]'s shops of every scale: trading in full, asleep in districts
+/// run by formula, and across countries.
+int companyShops(WorldState world, CompanyId company) {
+  var shops = 0;
+  for (final store in world.stores) {
+    if (store.company == company && store.isTrading) shops++;
+  }
+  for (final district in world.sleepers) {
+    for (final shop in district.shops) {
+      if (shop.company == company) shops++;
+    }
+  }
+  for (final country in world.national?.countries ?? const <CountryState>[]) {
+    for (final block in country.blocks) {
+      if (block.company == company) shops += block.stores;
+    }
+  }
+  return shops;
 }
 
 Refusal? _fireDirector(WorldState world, FireDirector command) {

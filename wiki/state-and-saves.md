@@ -48,7 +48,7 @@ All in [state/](../packages/engine/lib/src/state):
 | [orders.dart](../packages/engine/lib/src/state/orders.dart) | `PurchaseOrder`, `OrderLine`, `Payable`, `Loan` | Bills of every kind are `Payable`s |
 | [macro.dart](../packages/engine/lib/src/state/macro.dart) | `MacroState`, `Economy`, `SharedCycle` | One `MacroState` per country |
 | [market.dart](../packages/engine/lib/src/state/market.dart) | `MarketState`, `Census` | |
-| [director.dart](../packages/engine/lib/src/state/director.dart) | `Director`, `Growth`, the sealed `Memo` family | A director's brief and the memos the letters are written from |
+| [director.dart](../packages/engine/lib/src/state/director.dart) | `Director`, `Growth`, `DirectorPerson`, `DirectorRecord`, the sealed `Memo` family | A director's brief, who they are (format 40, `personVersion`), their record and the memos the letters are written from |
 | [factory.dart](../packages/engine/lib/src/state/factory.dart), [factories.dart](../packages/engine/lib/src/state/factories.dart) | `Factory`, `FactoryStatus`; `factoryFor`, `marketQuote`, `factoryPrice` | See [national-economy.md](national-economy.md) |
 | [labs.dart](../packages/engine/lib/src/state/labs.dart), [talent.dart](../packages/engine/lib/src/state/talent.dart) | `KeyPerson`, `KeyRole`, `KeyStatus`; `labPower`, `generationWork`, `generationGain`, `keySalary`, `labYearCost` | See [national-economy.md](national-economy.md) |
 | [brands.dart](../packages/engine/lib/src/state/brands.dart) | `Brand`, `BrandView`; `brandStore`, `aiBrand`, `takeOverName` | |
@@ -102,7 +102,7 @@ added since. Any problem is a `FormatException`.
 
 ## Version gating
 
-- `currentStateVersion` (39) in
+- `currentStateVersion` (40) in
   [state_io.dart](../packages/engine/lib/src/persistence/state_io.dart) is
   the layout written. Bump it whenever the layout or the rules change.
 - `oldestReadableVersion` (6) in

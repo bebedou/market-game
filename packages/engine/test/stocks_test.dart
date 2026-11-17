@@ -330,6 +330,32 @@ void main() {
       );
     });
 
+    test('sales growth reads a year against the year before, or a quarter '
+        'against its year-ago one', () {
+      final game = _game();
+      final i = _parisFormula(_content);
+      final stock = game.world.stocks!.stocks[i];
+      Fx? growth() =>
+          game.observe(game.world.player).stocks!.stocks[i].salesGrowth;
+      // Four quarters, all alike, as the market opens.
+      expect(stock.results, hasLength(4));
+      expect(growth(), isNull);
+      final quarter = stock.results.last.revenue;
+      Results at(Money revenue) => Results(
+        day: game.today,
+        revenue: revenue,
+        profit: Money.zero,
+        dividends: Money.zero,
+      );
+      stock.keep(at(quarter + quarter.times(Fx.parse('0.10'))));
+      expect(growth(), Fx.parse('0.10'));
+      for (var q = 0; q < 3; q++) {
+        stock.keep(at(quarter + quarter.times(Fx.parse('0.10'))));
+      }
+      expect(stock.results, hasLength(8));
+      expect(growth(), Fx.parse('0.10'));
+    });
+
     test(
       'a chain that is bought whole leaves its exchange, its holders paid',
       () {

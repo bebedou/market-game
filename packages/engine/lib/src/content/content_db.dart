@@ -5,6 +5,7 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
+import '../state/director.dart' show Director, DirectorPerson;
 import 'factory_sales_def.dart';
 import 'software_def.dart';
 import 'stocks_def.dart';
@@ -1465,7 +1466,60 @@ final class DirectorsDef {
     required this.coaching,
     required this.grades,
     required this.criticalShare,
+    this.characters = const [],
+    this.people = const [],
   });
+
+  /// The characters directors come with, each changing how they apply a
+  /// brief; none in a scenario without persons.
+  final List<DirectorCharacterDef> characters;
+
+  /// The names directors are given, by country position; null for a
+  /// country with none of its own, which takes the first country's.
+  final List<DirectorNames?> people;
+
+  /// The character of [director]: their person's, or one that changes
+  /// nothing for a director without one.
+  DirectorCharacterDef characterOf(Director? director) =>
+      characterOfPerson(director?.person);
+
+  /// The character of [person], or one that changes nothing without one.
+  DirectorCharacterDef characterOfPerson(DirectorPerson? person) {
+    final index = person?.character;
+    if (index == null || index < 0 || index >= characters.length) {
+      return DirectorCharacterDef.plain;
+    }
+    return characters[index];
+  }
+
+  /// The share of their misjudgment the managers of a company keep under
+  /// [director], as their grade and character coach them; all of it
+  /// without a director.
+  Fx keptBy(Director? director) => director == null
+      ? Fx.one
+      : Fx.one -
+            coaching *
+                grades[director.grade.index].skill *
+                characterOf(director).coaching;
+
+  /// The rate [director] grows their company's shops run by formula at:
+  /// their brief's, or, left to judge, their grade's at their character's
+  /// pace.
+  Fx growthRateOf(Director director) => director.nationalAuto
+      ? grades[director.grade.index].growth * characterOf(director).pace
+      : director.nationalRate;
+
+  /// What [director] is paid a day at a wage index of 1: their grade's
+  /// salary, as their character asks.
+  Money salaryOf(Director director) =>
+      grades[director.grade.index].salary.times(characterOf(director).salary);
+
+  /// The names for directors from [country].
+  DirectorNames? namesIn(CountryId country) {
+    if (people.isEmpty) return null;
+    final index = country.index;
+    return (index < people.length ? people[index] : null) ?? people.first;
+  }
 
   /// A company's share of a trade in a country at which a director grows
   /// its shops of that trade there half as fast as they otherwise would:
@@ -1514,6 +1568,72 @@ final class DirectorGradeDef {
 
   /// Pay per day at a wage index of 1.
   final Money salary;
+}
+
+/// A director's character: how they apply the brief beside their grade's
+/// skill. Each figure multiplies the brief's, strategy's or grade's own, so
+/// 1 changes nothing.
+final class DirectorCharacterDef {
+  const DirectorCharacterDef({
+    required this.key,
+    required this.name,
+    this.payback = Fx.one,
+    this.reserve = Fx.one,
+    this.credit = Fx.one,
+    this.pace = Fx.one,
+    this.coaching = Fx.one,
+    this.salary = Fx.one,
+  });
+
+  /// A character that changes nothing, for a director without a person.
+  static const plain = DirectorCharacterDef(key: '', name: '');
+
+  final String key;
+  final String name;
+
+  /// The longest a new or bought shop may take to pay back: the strategy's
+  /// times this.
+  final Fx payback;
+
+  /// The cash kept back beyond the year's tax: the strategy's reserve days
+  /// times this.
+  final Fx reserve;
+
+  /// The share of what the bank would lend that they will borrow.
+  final Fx credit;
+
+  /// How fast they grow shops run by formula when left to judge: their
+  /// grade's rate times this. Above 1 they push past what they run well.
+  final Fx pace;
+
+  /// How much of their grade's coaching of managers' forecasts they do.
+  final Fx coaching;
+
+  /// What they ask to be paid: their grade's salary times this.
+  final Fx salary;
+
+  /// Whether they apply a brief as it is, as directors without a character
+  /// do.
+  bool get isPlain =>
+      payback == Fx.one &&
+      reserve == Fx.one &&
+      credit == Fx.one &&
+      pace == Fx.one &&
+      coaching == Fx.one &&
+      salary == Fx.one;
+}
+
+/// The names directors from one country are given.
+final class DirectorNames {
+  const DirectorNames({
+    required this.women,
+    required this.men,
+    required this.surnames,
+  });
+
+  final List<String> women;
+  final List<String> men;
+  final List<String> surnames;
 }
 
 /// A wholesale supplier. Suppliers are outside the simulation in the

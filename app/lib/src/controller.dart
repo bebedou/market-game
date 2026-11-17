@@ -611,8 +611,16 @@ class SimulationController extends ChangeNotifier {
               :final nationalRate,
               :final nationalAuto,
               :final nationalRegions,
+              :final person,
             )
             when c == company.id:
+          // The same person at the same grade keeps their date and record.
+          final staying =
+              director != null &&
+                  director.grade == grade &&
+                  samePerson(director.person, person)
+              ? director
+              : null;
           director = Director(
             grade: grade,
             strategy: strategy,
@@ -623,9 +631,9 @@ class SimulationController extends ChangeNotifier {
             nationalRate: nationalRate,
             nationalAuto: nationalAuto,
             nationalRegions: nationalRegions,
-            hiredOn: director != null && director.grade == grade
-                ? director.hiredOn
-                : today,
+            hiredOn: staying?.hiredOn ?? today,
+            person: person,
+            record: staying?.record ?? const DirectorRecord(),
           );
         case FireDirector(company: final c) when c == company.id:
           director = null;
@@ -986,10 +994,13 @@ class SimulationController extends ChangeNotifier {
         :final growth,
         :final payout,
         :final borrows,
+        :final person,
       ) =>
         _view.companies.any(
           (c) =>
               c.id == company &&
+              c.director != null &&
+              samePerson(c.director?.person, person) &&
               c.director?.grade == grade &&
               c.director?.strategy == strategy &&
               c.director?.managerGrade == managerGrade &&

@@ -53,7 +53,9 @@ Set<StoreId> closingStores(Observation view, CompanyView company) => {
 /// the bank offers. What they would grow but can't pay for, they save for;
 /// otherwise, if the brief says so, they pay the owner what is left. Their
 /// estimate of a site is off by up to their grade's share of the scenario's
-/// error, drawn from [judgment] for each site; null judges exactly.
+/// error, drawn from [judgment] for each site; null judges exactly. Their
+/// character scales the reserve they keep, how much of the bank's credit
+/// they use and how long a shop may take to pay back.
 List<Command> direct(
   Observation view,
   ContentDb content,
@@ -100,12 +102,20 @@ List<Command> direct(
     );
   }
 
-  final reserve = operatingReserve(view, company, strategy.reserveDays);
+  final character = content.directors!.characterOf(director);
+  final reserve = operatingReserve(
+    view,
+    company,
+    scaledMonths(strategy.reserveDays, character.reserve),
+  );
   if (reserve == null) return commands;
   var spare = budget - reserve - company.taxAccrued;
-  // What the bank still lends on the company's earnings, if they may ask.
+  // What the bank still lends on the company's earnings, if they may ask,
+  // as far as they will go.
   var credit = director.borrows
-      ? view.companyCredits[company.id.index] ?? Money.zero
+      ? (view.companyCredits[company.id.index] ?? Money.zero).times(
+          character.credit,
+        )
       : Money.zero;
   final term = content.finance.maxTermMonths;
   bool canPay(Money cost) =>
@@ -284,6 +294,10 @@ List<Command> direct(
   return commands;
 }
 
+/// [count] days or months times [factor], rounded.
+int scaledMonths(int count, Fx factor) =>
+    mulDivRound(count, factor.raw, Fx.scale);
+
 /// [amount] rounded up to a whole thousand.
 Money _thousands(Money amount) {
   const thousand = 100000;
@@ -319,10 +333,11 @@ StrategyId _strategyFor(
 /// asking price and the buyer's reserve, if the brief allows buying, or else
 /// the vacant site that would repay a new store soonest, with its opening
 /// cost and starting months. Either must repay within the strategy's payback
-/// period, and come the strategy's interval after the company's latest
-/// store. If the brief lets them borrow and no struggling store will do,
-/// they also buy the profitable rival's store that repays soonest, within
-/// [buyoutPaybackMonths], if the bank lends what that takes.
+/// period, as their character stretches it, and come the strategy's
+/// interval after the company's latest store. If the brief lets them borrow
+/// and no struggling store will do, they also buy the profitable rival's
+/// store that repays soonest, within [buyoutPaybackMonths] stretched the
+/// same way, if the bank lends what that takes.
 ({Command command, Memo memo, Money cost, Money borrowed})? _growth(
   Observation view,
   ContentDb content,
@@ -336,6 +351,13 @@ StrategyId _strategyFor(
   final owner = EntrepreneurPolicy(strategy);
   final grade = content.directors!.grades[director.grade.index];
   final error = content.directors!.judgmentError * (Fx.one - grade.skill);
+  final character = content.directors!.characterOf(director);
+  // The longest a new shop, or a profitable rival's, may take to repay.
+  final paybackLimit = scaledMonths(
+    strategy.expansionPaybackMonths,
+    character.payback,
+  );
+  final buyoutLimit = scaledMonths(buyoutPaybackMonths, character.payback);
   Fx judged(SiteId site) => switch (judgment) {
     final judgment? => judgmentFactor(
       judgment(company.id.index * content.sites.length + site.index),
@@ -393,7 +415,7 @@ StrategyId _strategyFor(
     var price = struggling?.price ?? Money.zero;
     // Else, borrowing, the profitable shop that repays soonest.
     ShelfView? profitable;
-    var profitablePayback = buyoutPaybackMonths + 1;
+    var profitablePayback = buyoutLimit + 1;
     for (final shelf in view.shelves) {
       if (!director.borrows) break;
       if (shelf.status == StoreStatus.closed ||
@@ -482,9 +504,7 @@ StrategyId _strategyFor(
       site,
       judged: judged(id),
     );
-    if (payback == null || payback > strategy.expansionPaybackMonths) {
-      continue;
-    }
+    if (payback == null || payback > paybackLimit) continue;
     if (best == null || payback < bestPayback) {
       best = site;
       bestPayback = payback;
@@ -502,7 +522,7 @@ StrategyId _strategyFor(
         openingCost: site.openingCost,
       ), judged: judgedAt(district.row, site.number));
       if (payback == null ||
-          payback > strategy.expansionPaybackMonths ||
+          payback > paybackLimit ||
           (best != null || there != null) && payback >= bestPayback) {
         continue;
       }
@@ -572,11 +592,10 @@ StrategyId _strategyFor(
 const nationalPaybackMonths = 36;
 
 /// The rate [director] grows their company's shops run by formula at:
-/// their brief's, or what their grade runs well.
+/// their brief's, or, left to judge, what their grade runs well at their
+/// character's pace.
 Fx nationalGrowthRate(ContentDb content, Director director) =>
-    director.nationalAuto
-    ? content.directors!.grades[director.grade.index].growth
-    : director.nationalRate;
+    content.directors!.growthRateOf(director);
 
 /// [company]'s shops of [trade] in [country]: run by hand, in districts run
 /// by formula, and across the country, its chains bought among them.
@@ -667,8 +686,8 @@ int nationalBudget(
 /// allows at the rate they grow it, each in the region allowed where one
 /// more would pay back soonest as they judge it, counting those placed
 /// before it this month, within [nationalPaybackMonths] or the strategy's
-/// payback period if longer. Asked to grow faster than their grade runs
-/// well, they misjudge in proportion.
+/// payback period if longer, as their character stretches it. Growing
+/// faster than their grade runs well, they misjudge in proportion.
 List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
   Observation view,
   ContentDb content,
@@ -695,9 +714,12 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
       if (district.shops.any((shop) => shop.company == company.id))
         district.country.index,
   };
-  final limit = strategy.expansionPaybackMonths > nationalPaybackMonths
-      ? strategy.expansionPaybackMonths
-      : nationalPaybackMonths;
+  final limit = scaledMonths(
+    strategy.expansionPaybackMonths > nationalPaybackMonths
+        ? strategy.expansionPaybackMonths
+        : nationalPaybackMonths,
+    content.directors!.characterOf(director).payback,
+  );
   final picks = <({OpenNational command, NationalOpened memo})>[];
   for (final country in view.national) {
     final game = country.country;

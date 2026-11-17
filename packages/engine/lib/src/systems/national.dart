@@ -173,18 +173,16 @@ Fx _quality(
   return labs.nationalPull * total;
 }
 
-/// How far past what [director]'s grade runs well their brief grows the
-/// company's shops run by formula: the rate over their grade's, less one;
-/// nothing as they judge, within it, or without them.
+/// How far past what [director]'s grade runs well they grow the company's
+/// shops run by formula: the rate over their grade's, less one; nothing
+/// within it or without them. Left to judge, only a character who pushes
+/// past their grade's rate strains.
 Fx _strain(ContentDb content, Director? director) {
-  if (director == null ||
-      director.nationalAuto ||
-      !director.allows(Growth.open)) {
-    return Fx.zero;
-  }
+  if (director == null || !director.allows(Growth.open)) return Fx.zero;
   final limit = content.directors!.grades[director.grade.index].growth;
-  if (limit <= Fx.zero || director.nationalRate <= limit) return Fx.zero;
-  return director.nationalRate.div(limit) - Fx.one;
+  final rate = content.directors!.growthRateOf(director);
+  if (limit <= Fx.zero || rate <= limit) return Fx.zero;
+  return rate.div(limit) - Fx.one;
 }
 
 /// The game's country for the table's country at [index], if it plays it.

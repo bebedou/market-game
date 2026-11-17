@@ -120,9 +120,11 @@ String describeCommand(Command command, ContentDb content, Observation view) {
       :final grade,
       :final growth,
       :final borrows,
+      :final person,
     ) =>
       tr('commands.hireDirector', {
-        'director': aDirector(content.directors!.grades[grade.index]),
+        'director':
+            person?.name ?? aDirector(content.directors!.grades[grade.index]),
         'company': company(c),
         'growth': growthName(growth),
         'borrows': borrows ? tr('commands.borrowing') : '',

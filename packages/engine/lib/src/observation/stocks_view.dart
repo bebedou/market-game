@@ -52,6 +52,11 @@ typedef StockView = ({
   Fx? multiple,
   Fx? averageMultiple,
 
+  /// How far its sales grew: its last four quarters' against the four
+  /// before, or, with less than two years of results, its latest quarter's
+  /// against the same quarter a year before; null with less than that.
+  Fx? salesGrowth,
+
   /// Its net debt in years of profit; null without debt or profit.
   Fx? debtYears,
   AnalystRating rating,
@@ -247,6 +252,7 @@ StockMarketView? stockMarketView(WorldState world, ContentDb content) {
       yearDividends: stock.yearDividends,
       multiple: multiple,
       averageMultiple: _average(stock.multiples),
+      salesGrowth: _salesGrowth(stock.results),
       debtYears: debt > Money.zero && profit > Money.zero
           ? moneyRatio(debt, profit)
           : null,
@@ -389,6 +395,27 @@ Money portfolioWorth(StockMarket? market) {
     worth += _priceOf(market, holding).timesInt(holding.units);
   }
   return worth;
+}
+
+/// How far sales grew over [results], oldest first: see
+/// `StockView.salesGrowth`.
+Fx? _salesGrowth(List<Results> results) {
+  final n = results.length;
+  Money sum(int from, int to) {
+    var total = Money.zero;
+    for (var i = from; i < to; i++) {
+      total += results[i].revenue;
+    }
+    return total;
+  }
+
+  final (now, before) = n >= 8
+      ? (sum(n - 4, n), sum(n - 8, n - 4))
+      : n >= 5
+      ? (results[n - 1].revenue, results[n - 5].revenue)
+      : (Money.zero, Money.zero);
+  if (before <= Money.zero) return null;
+  return moneyRatio(now - before, before);
 }
 
 /// The average of [multiples] that were positive, or null if none.

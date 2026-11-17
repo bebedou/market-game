@@ -2,6 +2,7 @@ import 'package:engine/engine.dart';
 import 'package:flutter/material.dart';
 
 import '../controller.dart';
+import '../directors.dart';
 import '../format.dart';
 import '../l10n.dart';
 import '../letters.dart';
@@ -9,7 +10,7 @@ import '../loans.dart';
 import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
-import 'exchange.dart' show ExchangeEntry;
+import 'exchange.dart' show ExchangeEntry, change;
 import 'financials.dart';
 import 'shop.dart';
 import 'world.dart';
@@ -538,18 +539,81 @@ class DirectorSection extends StatelessWidget {
       company,
       director,
     ).timesInt(30);
+    final person = directorPerson(game, company, director);
+    final ledger = Ledger.of(context);
+    final theme = Theme.of(context);
+    final record = _recordOf(company, director);
+    final shops = shopsOf(game.view, company);
+    final sales = salesSince(game, company, director);
+    final saying = motto(content, person);
+    final past = pastLine(grade, person);
     return Section(
       title: tr('finance.director'),
       icon: Icons.badge_outlined,
       children: [
-        Line(
-          grade.name,
-          tr('common.perMonth', {'amount': money(monthly, cents: false)}),
-          hint: tr('finance.since', {
-            'date': shortDate(director.hiredOn),
-            'year': director.hiredOn.date.year,
+        PersonHeader(
+          person: person,
+          line: directorLine(content, grade, person),
+          value: tr('common.perMonth', {
+            'amount': money(monthly, cents: false),
           }),
         ),
+        if (saying != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 2),
+            child: Text(
+              tr('directors.saying', {'text': saying}),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontFamily: titleFont,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            tr(
+              'directors.recordSince.${person?.female ?? false ? 'woman' : 'man'}',
+              {
+                'date': shortDate(director.hiredOn),
+                'year': director.hiredOn.date.year,
+              },
+            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: ledger.muted),
+          ),
+        ),
+        Line(
+          tr('directors.shops'),
+          record.shopsAtHire < 0
+              ? '$shops'
+              : tr('directors.thenNow', {
+                  'then': record.shopsAtHire,
+                  'now': shops,
+                }),
+        ),
+        Line(
+          tr('directors.openedBoughtClosed'),
+          '${record.opened} · ${record.bought} · ${record.closed}',
+        ),
+        if (sales != null)
+          Line(
+            tr('directors.salesMonth'),
+            change(sales.now, sales.then),
+            color: gainColor(context, (sales.now - sales.then).cents.sign),
+            hint: tr('directors.thenNow', {
+              'then': money(sales.then, cents: false),
+              'now': money(sales.now, cents: false),
+            }),
+          ),
+        Line(tr('directors.paidYou'), money(record.paid, cents: false)),
+        if (past != null) Hint(tr('directors.before', {'past': past})),
+        if (characterPitch(
+              content,
+              person,
+              content.strategies[director.strategy.index],
+            )
+            case final pitch?)
+          Hint(pitch),
         Hint(
           tr('finance.directorBrief', {
             'growth': director.growth == Growth.none
@@ -585,7 +649,80 @@ class DirectorSection extends StatelessWidget {
   }
 }
 
-/// Picks a director's grade and brief, for hiring or a new brief.
+/// [director]'s record: as kept, or, for one hired before records were
+/// kept, as far as [company]'s memos since they came go back.
+DirectorRecord _recordOf(CompanyView company, Director director) {
+  if (director.record.shopsAtHire >= 0) return director.record;
+  var record = director.record;
+  for (final memo in company.memos) {
+    if (memo.day.number >= director.hiredOn.number) {
+      record = record.noting(memo);
+    }
+  }
+  return record;
+}
+
+/// A director's portrait beside their name and line, with a figure on the
+/// right.
+class PersonHeader extends StatelessWidget {
+  const PersonHeader({
+    super.key,
+    required this.person,
+    required this.line,
+    this.value,
+    this.size = 48,
+  });
+
+  final DirectorPerson? person;
+  final String line;
+  final String? value;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ledger = Ledger.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          DirectorPortrait(person: person, size: size),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (person case final person?)
+                  Text(person.name, style: theme.textTheme.titleMedium),
+                Text(
+                  line,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: ledger.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (value case final value?) ...[
+            const SizedBox(width: 8),
+            Text(value, style: figures(theme.textTheme.bodyMedium)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Who may run the company: the director in place, then this month's
+/// shortlist; or, in a scenario without persons, the grades.
+typedef _Option = ({
+  DirectorGradeId grade,
+  DirectorPerson? person,
+  DirectorPerson? shown,
+  bool current,
+});
+
+/// Picks a director and brief, for hiring or a new brief.
 class _DirectorSheet extends StatefulWidget {
   const _DirectorSheet({required this.company});
 
@@ -596,7 +733,7 @@ class _DirectorSheet extends StatefulWidget {
 }
 
 class _DirectorSheetState extends State<_DirectorSheet> {
-  DirectorGradeId? _grade;
+  int? _pick;
   Growth? _growth;
   bool? _payout;
   bool? _borrows;
@@ -612,8 +749,42 @@ class _DirectorSheetState extends State<_DirectorSheet> {
     final content = game.content;
     final theme = Theme.of(context);
     final current = game.directorOf(widget.company);
-    final grades = content.directors!.grades;
-    final grade = _grade ?? current?.grade ?? grades[grades.length ~/ 2].id;
+    final directors = content.directors!;
+    final grades = directors.grades;
+    final shortlist = directorShortlist(
+      content,
+      game.view,
+      widget.company,
+      game.countryOfCompany(widget.company),
+    );
+    final options = <_Option>[
+      if (current != null)
+        (
+          grade: current.grade,
+          person: current.person,
+          shown: directorPerson(game, widget.company, current),
+          current: true,
+        ),
+      if (shortlist.isNotEmpty)
+        for (final (:grade, :person) in shortlist)
+          if (!samePerson(current?.person, person))
+            (grade: grade, person: person, shown: person, current: false)
+          else
+            for (final option in grades)
+              if (current == null || current.grade != option.id)
+                (grade: option.id, person: null, shown: null, current: false),
+    ];
+    // The director in place, or else one of the middle grade.
+    final fallback = options.indexWhere(
+      (o) => o.current || o.grade == grades[grades.length ~/ 2].id,
+    );
+    final chosen =
+        options[(_pick ?? (fallback < 0 ? 0 : fallback)).clamp(
+          0,
+          options.length - 1,
+        )];
+    final grade = chosen.grade;
+    final character = directors.characterOfPerson(chosen.shown);
     final growth = _growth ?? current?.growth ?? Growth.invest;
     final payout = _payout ?? current?.payout ?? true;
     // Borrowing is for growing.
@@ -665,8 +836,10 @@ class _DirectorSheetState extends State<_DirectorSheet> {
     final auto = _auto ?? current?.nationalAuto ?? false;
     final rate = _rate ?? current?.nationalRate ?? Fx.zero;
     final gradeDef = grades[grade.index];
+    // What they grow it at left to judge, as their character paces it.
+    final judged = gradeDef.growth * character.pace;
     // What the director grows the chain at, and so opens this month.
-    final growing = auto ? gradeDef.growth : rate;
+    final growing = auto ? judged : rate;
     final growsAtAll = growing > Fx.zero;
     final planned = nationally
         ? _planned(
@@ -708,8 +881,10 @@ class _DirectorSheetState extends State<_DirectorSheet> {
         fittingOut += memo.cost;
       }
     }
-    Money monthly(DirectorGradeDef option) =>
-        option.salary.times(wageIndex).timesInt(30);
+    Money monthly(_Option option) => grades[option.grade.index].salary
+        .times(directors.characterOfPerson(option.shown).salary)
+        .times(wageIndex)
+        .timesInt(30);
     return SheetFrame(
       footer: FilledButton(
         onPressed: () {
@@ -723,6 +898,7 @@ class _DirectorSheetState extends State<_DirectorSheet> {
               growth: growth,
               payout: payout,
               borrows: borrows,
+              person: chosen.person,
               nationalRate: nationally && !auto ? rate : Fx.zero,
               nationalAuto: nationally && auto,
               nationalRegions: [
@@ -738,9 +914,9 @@ class _DirectorSheetState extends State<_DirectorSheet> {
         child: Text(
           current == null
               ? tr('finance.hireFor', {
-                  'amount': money(monthly(grades[grade.index]), cents: false),
+                  'amount': money(monthly(chosen), cents: false),
                 })
-              : current.grade == grade
+              : chosen.current
               ? tr('common.updateBrief')
               : tr('finance.replaceDirector'),
         ),
@@ -760,26 +936,46 @@ class _DirectorSheetState extends State<_DirectorSheet> {
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
-        Text(tr('common.who'), style: theme.textTheme.titleSmall),
-        for (final option in grades)
-          ChoiceTile(
-            selected: option.id == grade,
-            title: tr('finance.gradeLine', {
-              'grade': option.name,
-              'salary': money(monthly(option), cents: false),
-            }),
-            subtitle: tr('finance.gradeHint', {
-              'cuts': percent(
-                Fx.one - content.directors!.kept(option.id),
-                decimals: 0,
-              ),
-              'error': percent(
-                content.directors!.judgmentError * (Fx.one - option.skill),
-                decimals: 0,
-              ),
-            }),
-            onTap: () => setState(() => _grade = option.id),
-          ),
+        Text(
+          shortlist.isEmpty ? tr('common.who') : tr('directors.shortlist'),
+          style: theme.textTheme.titleSmall,
+        ),
+        for (final (i, option) in options.indexed)
+          if (option.shown == null)
+            ChoiceTile(
+              selected: identical(option, chosen),
+              title: tr('finance.gradeLine', {
+                'grade': grades[option.grade.index].name,
+                'salary': money(monthly(option), cents: false),
+              }),
+              subtitle: _gradeHint(content, grades[option.grade.index]),
+              onTap: () => setState(() => _pick = i),
+            )
+          else
+            _CandidateTile(
+              person: option.shown!,
+              line: [
+                directorLine(content, grades[option.grade.index], option.shown),
+                if (option.current) tr('directors.inPlace'),
+              ].join(' · '),
+              salary: money(monthly(option), cents: false),
+              about: [
+                if (pastLine(grades[option.grade.index], option.shown)
+                    case final past?)
+                  tr('directors.before', {'past': past}),
+                ?characterPitch(
+                  content,
+                  option.shown,
+                  content.strategies[strategy.index],
+                ),
+              ].join(' '),
+              selected: identical(option, chosen),
+              onTap: () => setState(() => _pick = i),
+            ),
+        if (shortlist.isNotEmpty) ...[
+          Hint(_gradeHint(content, gradeDef, character)),
+          Hint(tr('directors.shortlistHint')),
+        ],
         const SizedBox(height: 8),
         Text(tr('finance.howFar'), style: theme.textTheme.titleSmall),
         for (final option in Growth.values)
@@ -858,19 +1054,26 @@ class _DirectorSheetState extends State<_DirectorSheet> {
             ),
           Line(
             capitalized(
-              tr('finance.runsWellUpTo', {'director': aDirector(gradeDef)}),
+              tr('finance.runsWellUpTo', {
+                'director': chosen.shown?.name ?? aDirector(gradeDef),
+              }),
             ),
             tr('finance.aMonth', {
               'rate': percent(gradeDef.growth, decimals: 1),
             }),
           ),
+          if (character.pace != Fx.one)
+            Line(
+              tr('directors.leftToJudge'),
+              tr('finance.aMonth', {'rate': percent(judged, decimals: 1)}),
+            ),
           Line(
             tr('finance.slowsPast'),
             tr('finance.ofItsTrade', {
               'share': percent(content.directors!.criticalShare, decimals: 0),
             }),
           ),
-          if (!auto && rate > gradeDef.growth) ...[
+          if (growing > gradeDef.growth) ...[
             const SizedBox(height: 4),
             Align(
               alignment: Alignment.centerLeft,
@@ -1032,6 +1235,110 @@ class _DirectorSheetState extends State<_DirectorSheet> {
   }
 }
 
+/// What a director of [grade] and [character] does to their managers'
+/// misjudgment, and how far they misjudge a new store.
+String _gradeHint(
+  ContentDb content,
+  DirectorGradeDef grade, [
+  DirectorCharacterDef character = DirectorCharacterDef.plain,
+]) {
+  final directors = content.directors!;
+  return tr('finance.gradeHint', {
+    'cuts': percent(
+      directors.coaching * grade.skill * character.coaching,
+      decimals: 0,
+    ),
+    'error': percent(
+      directors.judgmentError * (Fx.one - grade.skill),
+      decimals: 0,
+    ),
+  });
+}
+
+/// A candidate on the shortlist, or the director in place: their portrait,
+/// name and line, pay, past and what their character changes.
+class _CandidateTile extends StatelessWidget {
+  const _CandidateTile({
+    required this.person,
+    required this.line,
+    required this.salary,
+    required this.about,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final DirectorPerson person;
+  final String line;
+  final String salary;
+  final String about;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ledger = Ledger.of(context);
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+          decoration: BoxDecoration(
+            color: selected ? ledger.shade : null,
+            border: Border(bottom: BorderSide(color: ledger.rule, width: 0.6)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DirectorPortrait(person: person, size: 40),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            person.name,
+                            style: theme.textTheme.titleSmall,
+                          ),
+                        ),
+                        Text(
+                          tr('common.perMonth', {'amount': salary}),
+                          style: figures(theme.textTheme.bodySmall),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      line,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: ledger.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(about, style: theme.textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                size: 20,
+                color: selected ? ledger.ink : ledger.muted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The rates a brief may grow a chain at, a month.
 final _rates = [
   Fx.zero,
@@ -1076,11 +1383,14 @@ class _Letters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = context.game;
+    final director = company.director;
     final letters = directorLetters(
       company,
       game.reports(ReportPeriod.month, company: company.id),
       game.content,
       game.view,
+      by: director == null ? null : directorPerson(game, company, director),
+      since: director?.hiredOn,
     );
     return Section(
       title: tr('finance.letters'),
@@ -1134,13 +1444,19 @@ class _LetterCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 6),
               child: Text(paragraph, style: text),
             ),
-          Text(
-            tr('finance.yourDirector'),
-            style: text?.copyWith(
-              fontStyle: FontStyle.italic,
-              color: ledger.muted,
+          if (letter.by case final by?)
+            Text(
+              by.name.split(' ').first,
+              style: text?.copyWith(fontStyle: FontStyle.italic, fontSize: 17),
+            )
+          else
+            Text(
+              tr('finance.yourDirector'),
+              style: text?.copyWith(
+                fontStyle: FontStyle.italic,
+                color: ledger.muted,
+              ),
             ),
-          ),
         ],
       ),
     );

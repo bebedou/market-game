@@ -606,6 +606,51 @@ ContentDb loadScenario(
       );
       grade.finish();
     }
+    final characters = <DirectorCharacterDef>[];
+    final characterKeys = <String>{};
+    for (final character in node.objects('characters', optional: true)) {
+      final key = character.string('id');
+      if (!characterKeys.add(key)) character.fail('id', 'is repeated');
+      Fx factor(String name) =>
+          character.has(name) ? character.nonNegativeFx(name) : Fx.one;
+      characters.add(
+        DirectorCharacterDef(
+          key: key,
+          name: character.string('name'),
+          payback: factor('payback'),
+          reserve: factor('reserve'),
+          credit: character.has('credit')
+              ? character.fraction('credit')
+              : Fx.one,
+          pace: factor('pace'),
+          coaching: factor('coaching'),
+          salary: factor('salary'),
+        ),
+      );
+      character.finish();
+    }
+    final people = List<DirectorNames?>.filled(countries.length, null);
+    for (final names in node.objects('people', optional: true)) {
+      // A scenario of one country may leave it out.
+      final country = names.has('country')
+          ? countryKeys.resolve(
+              names.string('country'),
+              names.pathOf('country'),
+            )
+          : 0;
+      List<String> some(String key) {
+        final list = names.strings(key);
+        if (list.isEmpty) names.fail(key, 'must name at least one');
+        return List.unmodifiable(list);
+      }
+
+      people[country] = DirectorNames(
+        women: some('women'),
+        men: some('men'),
+        surnames: some('surnames'),
+      );
+      names.finish();
+    }
     directors = DirectorsDef(
       judgmentError: node.fraction('judgmentError'),
       coaching: node.fraction('coaching'),
@@ -613,6 +658,10 @@ ContentDb loadScenario(
       criticalShare: node.has('criticalShare')
           ? node.fraction('criticalShare')
           : Fx.raw(500),
+      characters: List.unmodifiable(characters),
+      people: people.every((p) => p == null)
+          ? const []
+          : List.unmodifiable(people),
     );
     node.finish();
   }

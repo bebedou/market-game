@@ -524,6 +524,38 @@
       { "id": "promoted", "name": "Promoted manager", "skill": "0.40", "salary": "8.00", "growth": "0.015" },
       { "id": "seasoned", "name": "Seasoned director", "skill": "0.70", "salary": "14.00", "growth": "0.035" },
       { "id": "star", "name": "Star director", "skill": "0.95", "salary": "22.00", "growth": "0.06" }
+    ],
+    "characters": [
+      { "id": "steady", "name": "Steady" },
+      { "id": "bold", "name": "Bold", "payback": "1.25", "reserve": "0.75", "pace": "1.2", "salary": "1.1" },
+      { "id": "cautious", "name": "Cautious", "payback": "0.75", "reserve": "1.5", "credit": "0.5", "pace": "0.75" },
+      { "id": "thrifty", "name": "Thrifty", "reserve": "0.75", "coaching": "0.6", "salary": "0.8" }
+    ],
+    "people": [
+      {
+        "country": "fr",
+        "women": ["Hélène", "Claire", "Sophie", "Camille", "Nathalie", "Isabelle", "Élodie", "Margaux", "Juliette", "Anne", "Céline", "Laure", "Manon", "Agathe", "Sylvie", "Inès"],
+        "men": ["Thomas", "Julien", "Nicolas", "Antoine", "Mathieu", "Laurent", "Olivier", "Benoît", "Hugo", "Pierre", "Vincent", "Guillaume", "Romain", "Étienne", "Arnaud", "Yannick"],
+        "surnames": ["Varenne", "Lefort", "Marchal", "Dubreuil", "Garnier", "Roussel", "Perrin", "Chauvet", "Delorme", "Fabre", "Lemaire", "Boyer", "Vasseur", "Morel", "Carpentier", "Joubert", "Renaud", "Guérin", "Lacombe", "Picard", "Barbier", "Collin", "Aubert", "Mercier", "Charpentier", "Brunet", "Poulain", "Tessier", "Masson", "Hébert"]
+      },
+      {
+        "country": "de",
+        "women": ["Anna", "Katharina", "Julia", "Sabine", "Claudia", "Miriam", "Lena", "Petra", "Franziska", "Annette", "Johanna", "Ulrike", "Lisa", "Carola", "Heike", "Svenja"],
+        "men": ["Thomas", "Michael", "Stefan", "Jan", "Andreas", "Matthias", "Lukas", "Jens", "Florian", "Markus", "Tobias", "Uwe", "Ralf", "Henrik", "Sebastian", "Dirk"],
+        "surnames": ["Kessler", "Brandt", "Vogel", "Hartmann", "Lehmann", "Krüger", "Schreiber", "Baumann", "Wolff", "Engel", "Seidel", "Kuhn", "Albrecht", "Lorenz", "Pohl", "Sommer", "Winkler", "Böhm", "Franke", "Graf", "Roth", "Haas", "Ziegler", "Busch", "Thiel", "Jansen", "Möller", "Brenner", "Lindner", "Reuter"]
+      },
+      {
+        "country": "it",
+        "women": ["Giulia", "Francesca", "Chiara", "Valentina", "Elena", "Silvia", "Paola", "Federica", "Martina", "Laura", "Alessandra", "Roberta", "Sara", "Ilaria", "Cristina", "Marta"],
+        "men": ["Paolo", "Marco", "Luca", "Andrea", "Matteo", "Stefano", "Davide", "Giorgio", "Alessandro", "Lorenzo", "Simone", "Fabio", "Riccardo", "Enrico", "Massimo", "Tommaso"],
+        "surnames": ["Bertin", "Ferraro", "Galli", "Rinaldi", "Conti", "Mancini", "Fontana", "Moretti", "Caruso", "Lombardi", "Marini", "Barbieri", "Testa", "Colombo", "Gentile", "Ferri", "Bellini", "Sala", "Vitale", "Longo", "Grassi", "Pellegrini", "Serra", "Fabbri", "Leone", "Martinelli", "Bassi", "Monti", "Rossetti", "Valenti"]
+      },
+      {
+        "country": "es",
+        "women": ["Lucía", "Carmen", "Marta", "Elena", "Laura", "Pilar", "Isabel", "Cristina", "Nuria", "Ana", "Beatriz", "Raquel", "Silvia", "Inés", "Rocío", "Teresa"],
+        "men": ["Javier", "Carlos", "Miguel", "Pablo", "Sergio", "Alberto", "Jorge", "Rafael", "Diego", "Andrés", "Fernando", "Luis", "Íñigo", "Raúl", "Álvaro", "Ignacio"],
+        "surnames": ["Ferrer", "Navarro", "Molina", "Ortega", "Delgado", "Castillo", "Romero", "Vidal", "Serrano", "Blanco", "Iglesias", "Medina", "Garrido", "Cortés", "Lozano", "Prieto", "Herrera", "Santos", "Marín", "Rubio", "Gallego", "Cabrera", "Pascual", "Vega", "Soler", "Campos", "Fuentes", "Carrasco", "Méndez", "Rojas"]
+      }
     ]
   },
   "factories": {

@@ -1851,6 +1851,7 @@
     "unknownActor": "unknown actor",
     "noDirectors": "there are no directors for hire",
     "unknownDirectorGrade": "unknown director grade",
+    "unknownCharacter": "unknown director character",
     "unknownStrategy": "unknown strategy",
     "unknownManagerGrade": "unknown manager grade",
     "noDirector": "the company has no director",
@@ -2136,6 +2137,291 @@
       "electronics": "Electronics shops",
       "clothing": "Clothing shops",
       "software": "Software"
+    },
+    "screener": {
+      "title": "Screener",
+      "entry": "Filter and sort the {count} listed companies",
+      "views": {
+        "screens": "Screens",
+        "criteria": "Criteria",
+        "table": "Table"
+      },
+      "ready": {
+        "cheap": {
+          "title": "Cheap against their past",
+          "hint": "Price to earnings under 20 and a fifth under its usual, run at least averagely",
+          "chip": "Cheap against usual"
+        },
+        "income": {
+          "title": "Paying over 5%",
+          "hint": "with debt under three years of profit",
+          "chip": "High yield"
+        },
+        "growing": {
+          "title": "Sales growing 10% a year",
+          "hint": "the last four quarters against the four before",
+          "chip": "Growing"
+        },
+        "fallen": {
+          "title": "Fallen 30% in a year, still well run",
+          "hint": "management good or better",
+          "chip": "Fallen, well run"
+        },
+        "strongBuys": {
+          "title": "Analysts’ strong buys",
+          "hint": "where analysts see the most above the price first",
+          "chip": "Strong buys"
+        },
+        "smallDebtFree": {
+          "title": "Small and free of debt",
+          "hint": "worth under {amount}, cheapest first",
+          "chip": "Small, no debt"
+        },
+        "everything": {
+          "title": "Everything",
+          "hint": "every listed company, biggest first",
+          "chip": "Everything"
+        }
+      },
+      "yourOwn": "Your own screen",
+      "yourOwnHint": "pick the figures and the limits",
+      "resultsLine": {
+        "one": "{count} company · {sort}",
+        "other": "{count} companies · {sort}"
+      },
+      "byLine": "{sort}",
+      "sortTitle": "Sort by",
+      "sorts": {
+        "size": "biggest first",
+        "pe": "by price to earnings",
+        "belowUsual": "by price to earnings against its usual",
+        "dividendYield": "by dividend yield",
+        "growth": "by sales growth",
+        "debt": "by debt",
+        "yearChange": "by price over a year",
+        "upside": "by what analysts see above the price"
+      },
+      "criteria": {
+        "sector": "Sector",
+        "exchanges": "Exchanges",
+        "pe": "Price to earnings",
+        "belowUsual": "Against its usual",
+        "dividendYield": "Dividend yield",
+        "growth": "Sales growth",
+        "debt": "Debt",
+        "size": "Size",
+        "management": "Management",
+        "analysts": "Analysts",
+        "yearChange": "Price over a year"
+      },
+      "short": {
+        "pe": "P/E",
+        "belowUsual": "P/E vs usual",
+        "dividendYield": "Yield",
+        "growth": "Sales",
+        "debt": "Debt",
+        "size": "Size",
+        "management": "Management",
+        "analysts": "Analysts",
+        "yearChange": "Price"
+      },
+      "addCriterion": "Add a criterion",
+      "filter": "Filter",
+      "chip": "{criterion} {limit}",
+      "allSectors": "All sectors",
+      "someSectors": {
+        "one": "{count} sector",
+        "other": "{count} sectors"
+      },
+      "any": "Any",
+      "anyHint": "None ticked means any.",
+      "done": "Done",
+      "limits": {
+        "under": "under {value}",
+        "percentUnder": "{value} under",
+        "over": "over {value}",
+        "falling": "falling",
+        "none": "none",
+        "underYears": {
+          "one": "under {count} year",
+          "other": "under {count} years"
+        },
+        "management": {
+          "average": "average or better",
+          "good": "good or better",
+          "excellent": "excellent"
+        },
+        "analysts": {
+          "buy": "buy or better",
+          "strongBuy": "strong buy",
+          "sell": "sell or worse"
+        },
+        "fallen": "fallen {value} or more",
+        "risen": "risen {value} or more"
+      },
+      "sizes": {
+        "small": "under {amount}",
+        "mid": "{amount} to {more}",
+        "large": "over {more}"
+      },
+      "sales": "sales",
+      "overYear": "over a year",
+      "upside": "{change} to their view",
+      "none": "No listed company meets all of these. Loosen a criterion.",
+      "more": "Show {count} more",
+      "of": "{count} of {total}",
+      "columns": {
+        "pe": "P/E",
+        "dividendYield": "Yield",
+        "growth": "Sales",
+        "debt": "Debt"
+      },
+      "tableHint": "Tap a column to sort by it, again to reverse. Sales: the last four quarters against the four before. Debt in years of profit."
     }
+  },
+  "directors": {
+    "titles": {
+      "promoted": {
+        "man": "Promoted manager",
+        "woman": "Promoted manager"
+      },
+      "seasoned": {
+        "man": "Seasoned director",
+        "woman": "Seasoned director"
+      },
+      "star": {
+        "man": "Star director",
+        "woman": "Star director"
+      }
+    },
+    "characters": {
+      "steady": {
+        "man": "steady",
+        "woman": "steady"
+      },
+      "bold": {
+        "man": "bold",
+        "woman": "bold"
+      },
+      "cautious": {
+        "man": "cautious",
+        "woman": "cautious"
+      },
+      "thrifty": {
+        "man": "thrifty",
+        "woman": "thrifty"
+      }
+    },
+    "mottos": {
+      "steady": [
+        "Sound books first, and growth follows.",
+        "A good month is one without surprises.",
+        "We do what the brief says, and do it well."
+      ],
+      "bold": [
+        "A shop that waits is a shop a rival opens.",
+        "The street belongs to whoever opens there first.",
+        "Cash in the bank earns nothing."
+      ],
+      "cautious": [
+        "I’d rather miss a good site than open a bad one.",
+        "Recessions come; the cushion is for them.",
+        "Slow growth is still growth."
+      ],
+      "thrifty": [
+        "Every euro we don’t spend is one we keep.",
+        "A lean shop is a shop that lasts.",
+        "Why pay for what the managers can do?"
+      ]
+    },
+    "past": {
+      "promoted": "{count} years managing shops for {employer}",
+      "seasoned": "{count} years running a region for {employer}",
+      "star": "{count} years at the head of {employer}’s shops"
+    },
+    "pastNowhere": {
+      "promoted": "{count} years managing shops",
+      "seasoned": "{count} years running shops across a region",
+      "star": "{count} years at the head of a chain"
+    },
+    "does": {
+      "payback": "takes shops that pay back in up to {months} months, against your strategy’s {usual}",
+      "thickCushion": "keeps a thicker cushion of cash",
+      "thinCushion": "keeps a thinner cushion of cash",
+      "credit": "borrows at most {share} of what the bank would lend",
+      "fastPace": "left to judge, grows faster than their grade runs well",
+      "slowPace": "left to judge, grows slower than they could",
+      "lessCoaching": "checks the managers’ forecasts less",
+      "moreCoaching": "checks the managers’ forecasts more",
+      "dearer": "asks {change} more pay",
+      "cheaper": "asks {change} less pay",
+      "asItIs": "applies the brief as it is"
+    },
+    "pitch": "{character}: {what}.",
+    "voices": {
+      "steady": {
+        "earned": [
+          "The month went as planned.",
+          "Steady progress, nothing to alarm you.",
+          "We keep to the plan."
+        ],
+        "lost": [
+          "A loss, but within what the plan allowed for.",
+          "I’m watching costs closely.",
+          "We’ll steady things next month."
+        ]
+      },
+      "bold": {
+        "earned": [
+          "Good. Now let’s go further.",
+          "This is the time to push on.",
+          "Our rivals are slower than us; let’s use it."
+        ],
+        "lost": [
+          "A setback, not a reason to stop.",
+          "We spent to grow; it will come back.",
+          "I’d still rather move than wait."
+        ]
+      },
+      "cautious": {
+        "earned": [
+          "I’ve kept a good cushion aside, in case the cycle turns.",
+          "A good month; I’m not counting on the next.",
+          "We stay careful."
+        ],
+        "lost": [
+          "I’m holding back on new shops until this passes.",
+          "This is what the cushion is for.",
+          "No new risks this month."
+        ]
+      },
+      "thrifty": {
+        "earned": [
+          "Costs are down again.",
+          "Every euro saved shows in the results.",
+          "Lean months are good months."
+        ],
+        "lost": [
+          "I’ll find the costs to cut.",
+          "We spent too much; I’m on it.",
+          "Tighter next month."
+        ]
+      }
+    },
+    "saying": "“{text}”",
+    "recordSince": {
+      "woman": "Her record here, since {date} {year}",
+      "man": "His record here, since {date} {year}"
+    },
+    "shops": "Shops",
+    "thenNow": "{then} → {now}",
+    "openedBoughtClosed": "Opened · bought · closed",
+    "salesMonth": "Sales a month",
+    "paidYou": "Paid to you",
+    "before": "Before: {past}.",
+    "shortlist": "This month’s shortlist",
+    "inPlace": "in place",
+    "shortlistHint": "A new shortlist comes on the first of each month. Character changes how they apply your brief; grade, how well they judge.",
+    "leftToJudge": "Left to judge, they grow at"
   }
 }

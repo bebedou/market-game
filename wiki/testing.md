@@ -73,7 +73,7 @@ Test files by area: [core/](../packages/engine/test/core),
 [neighbourhoods/](../packages/engine/test/neighbourhoods),
 [tool/sim_test.dart](../packages/engine/test/tool/sim_test.dart), and one
 file per feature at the top level (`acquisitions_test`, `borrowing_test`,
-`director_test`, `factories_test`, `growth_test`, `manager_test`,
+`director_test`, `director_persons_test`, `factories_test`, `growth_test`, `manager_test`,
 `software_test`, `factory_sales_test`, …). `factory_sales_test` plays the
 prototype with the national figures: sizes, enlarging, tenders opening,
 bids won and lost, a shortfall's penalty, independents, rivals' capacity

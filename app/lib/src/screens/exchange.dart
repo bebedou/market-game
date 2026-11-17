@@ -6,6 +6,7 @@ import '../l10n.dart';
 import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
+import 'screener.dart';
 
 /// [sector]'s name in the player's language, or the table's own.
 String sectorName(ContentDb content, int sector) {
@@ -46,7 +47,8 @@ String _exchangeName(ContentDb content, CountryId country) {
   return def.exchanges[def.exchangeOf(country)!].name;
 }
 
-void _openStock(BuildContext context, StockView stock) =>
+/// Opens [stock]'s page.
+void openStock(BuildContext context, StockView stock) =>
     context.openPage(stock.name, (_) => [StockPage(stock: stock.index)]);
 
 void _openExchange(BuildContext context, ExchangeView exchange) =>
@@ -142,13 +144,24 @@ class ExchangeScreen extends StatelessWidget {
                       'date': shortDate(bid.closes),
                     }),
                     value: money(bid.price),
-                    onTap: () => _openStock(context, view.stocks[bid.stock]),
+                    onTap: () => openStock(context, view.stocks[bid.stock]),
                   ),
             ],
           ),
         Section(
           title: tr('stocks.sectors.title'),
           children: [
+            IndexRow(
+              icon: Icons.filter_list,
+              title: tr('stocks.screener.title'),
+              subtitle: tr('stocks.screener.entry', {
+                'count': view.stocks.where((s) => s.listed).length,
+              }),
+              onTap: () => context.openPage(
+                tr('stocks.screener.title'),
+                (_) => [const ScreenerPage()],
+              ),
+            ),
             for (final (s, _) in def.sectors.indexed)
               _SectorRow(sector: s, stocks: view.stocks),
             Hint(tr('stocks.howPricesMove')),
@@ -285,7 +298,7 @@ class _SectorPageState extends State<SectorPage> {
             ].join(' · '),
             value: _price(stock.price),
             valueColor: _changeColor(ledger, stock.price, stock.previous),
-            onTap: () => _openStock(context, stock),
+            onTap: () => openStock(context, stock),
           ),
       ],
     );
@@ -569,7 +582,7 @@ class ExchangePage extends StatelessWidget {
                   change(stock.price, stock.previous),
                 ].join(' · '),
                 value: compactMoney(stock.cap),
-                onTap: () => _openStock(context, stock),
+                onTap: () => openStock(context, stock),
               ),
           ],
         ),
@@ -811,7 +824,7 @@ class HoldingRow extends StatelessWidget {
       valueColor: holding.value < holding.cost ? ledger.loss : ledger.gain,
       onTap: () => holding.index
           ? _openExchange(context, view.exchanges[holding.of])
-          : _openStock(context, view.stocks[holding.of]),
+          : openStock(context, view.stocks[holding.of]),
     );
   }
 }
@@ -1305,7 +1318,7 @@ class ExchangeEntry extends StatelessWidget {
               ),
             }),
             value: money(listed.price),
-            onTap: () => _openStock(context, listed),
+            onTap: () => openStock(context, listed),
           )
         else
           IndexRow(

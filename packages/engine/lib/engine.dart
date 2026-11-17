@@ -167,6 +167,8 @@ export 'src/policies/cushion.dart'
         directorSalary,
         nextInstallment,
         storeCushion;
+export 'src/policies/candidates.dart'
+    show DirectorCandidate, directorShortlist, personOf;
 export 'src/policies/director.dart'
     show
         buyoutPaybackMonths,
@@ -174,7 +176,8 @@ export 'src/policies/director.dart'
         nationalBudget,
         nationalChainShops,
         nationalGrowthRate,
-        nationalPaybackMonths;
+        nationalPaybackMonths,
+        scaledMonths;
 export 'src/policies/entrepreneur_policy.dart' show EntrepreneurPolicy;
 export 'src/policies/policy.dart'
     show CombinedPolicy, Policy, ownerPolicy, standardPolicies;

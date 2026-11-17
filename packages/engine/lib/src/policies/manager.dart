@@ -67,7 +67,7 @@ List<Command> manage(
           store,
           content.managers.grades[manager.grade.index],
           judgment,
-          kept: content.directors?.kept(company.director?.grade) ?? Fx.one,
+          kept: content.directors?.keptBy(company.director) ?? Fx.one,
         ),
       );
       bool does(ManagerDuty duty) => manager.duties[duty.index];

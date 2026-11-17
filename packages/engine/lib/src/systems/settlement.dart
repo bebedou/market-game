@@ -121,11 +121,8 @@ final class SettlementSystem implements TickSystem {
           .where((store) => store.company == company.id && store.isTrading)
           .firstOrNull;
       if (home == null) continue;
-      final salary = context
-          .content
-          .directors!
-          .grades[director.grade.index]
-          .salary
+      final salary = context.content.directors!
+          .salaryOf(director)
           .times(world.macroAt(context.content, home.market).wageIndex);
       if (salary == Money.zero) continue;
       bill(

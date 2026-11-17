@@ -186,10 +186,12 @@ final class Company implements LedgerParty {
     writer.writeInt(goodsMark!.cents);
   }
 
-  /// Keeps [memo], dropping the oldest beyond [maxMemos].
+  /// Keeps [memo], dropping the oldest beyond [maxMemos], and counts it in
+  /// its director's record.
   void remember(Memo memo) {
     memos.add(memo);
     if (memos.length > maxMemos) memos.removeAt(0);
+    director = director?.noting(memo);
   }
 }
 

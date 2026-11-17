@@ -3,7 +3,7 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../persistence/state_io.dart';
-import '../state/director.dart' show Growth;
+import '../state/director.dart' show DirectorPerson, Growth, personVersion;
 import '../state/factory_sales.dart' show factorySalesVersion;
 import '../state/store.dart' show allDuties;
 
@@ -201,6 +201,9 @@ sealed class Command {
             for (var i = 0, n = reader.readInt(); i < n; i++)
               reader.readString(),
         ],
+        person: reader.version >= personVersion && reader.readBool()
+            ? DirectorPerson.read(reader)
+            : null,
       ),
       FireDirector.tag => FireDirector(
         actor,
@@ -1093,9 +1096,10 @@ final class SetCushion extends Command {
       'days: $days)';
 }
 
-/// Puts a director of [grade] in charge of a company (see `Director`); or,
-/// for the director already there, changes the brief. A new grade replaces
-/// the director. Directors are paid daily, like managers.
+/// Puts a director of [grade], who is [person], in charge of a company (see
+/// `Director`); or, for the director already there, changes the brief. A
+/// new grade or person replaces the director. Directors are paid daily,
+/// like managers.
 final class HireDirector extends Command {
   const HireDirector(
     super.actor, {
@@ -1109,6 +1113,7 @@ final class HireDirector extends Command {
     this.nationalRate = Fx.zero,
     this.nationalAuto = false,
     this.nationalRegions = const [],
+    this.person,
   });
 
   static const int tag = 24;
@@ -1129,6 +1134,10 @@ final class HireDirector extends Command {
   final bool nationalAuto;
   final List<String> nationalRegions;
 
+  /// Who they are, from the month's shortlist; null for a director who
+  /// applies the brief as it is.
+  final DirectorPerson? person;
+
   @override
   void write(StateWriter writer) {
     writer
@@ -1145,6 +1154,8 @@ final class HireDirector extends Command {
       ..writeInt(nationalRate.raw)
       ..writeInt(nationalRegions.length);
     nationalRegions.forEach(writer.writeString);
+    writer.writeBool(person != null);
+    person?.write(writer);
   }
 
   @override
@@ -1154,7 +1165,7 @@ final class HireDirector extends Command {
       'managerGrade: ${managerGrade.index}, growth: ${growth.name}, '
       'payout: $payout, borrows: $borrows, nationalRate: ${nationalRate.toDecimalString()}, '
       'nationalAuto: $nationalAuto, '
-      'nationalRegions: $nationalRegions)';
+      'nationalRegions: $nationalRegions, person: ${person?.name})';
 }
 
 /// Lets a company's director go; the owner runs it again, and its store

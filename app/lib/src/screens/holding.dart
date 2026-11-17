@@ -2,6 +2,7 @@ import 'package:engine/engine.dart';
 import 'package:flutter/material.dart';
 
 import '../controller.dart';
+import '../directors.dart';
 import '../format.dart';
 import '../home.dart';
 import '../l10n.dart';
@@ -647,9 +648,9 @@ class _Companies extends StatelessWidget {
               if (directors != null && company.software == null)
                 switch (game.directorOf(company)) {
                   final director? => tr('dashboard.runBy', {
-                    'director': aDirector(
-                      directors.grades[director.grade.index],
-                    ),
+                    'director':
+                        directorPerson(game, company, director)?.name ??
+                        aDirector(directors.grades[director.grade.index]),
                   }),
                   null => tr('common.noDirector'),
                 },

@@ -1,20 +1,27 @@
 import 'package:engine/engine.dart';
 
+import 'directors.dart';
 import 'format.dart';
 import 'l10n.dart';
 
 /// A director's letter for one month: how the month before went, then what
-/// they did, in their own words.
-typedef Letter = ({Day month, List<String> paragraphs});
+/// they did, in their own words, and who signed it: null for one by a
+/// director no longer there.
+typedef Letter = ({Day month, List<String> paragraphs, DirectorPerson? by});
 
 /// [company]'s letters, newest first: one for each month its directors did
-/// something in, from its [months] reports, oldest first.
+/// something in, from its [months] reports, oldest first. Those from the
+/// month [by] came, [since], are signed by them and end with a line in
+/// their voice.
 List<Letter> directorLetters(
   CompanyView company,
   List<PeriodReport> months,
   ContentDb content,
-  Observation view,
-) {
+  Observation view, {
+  DirectorPerson? by,
+  Day? since,
+}) {
+  final from = since == null ? null : ReportPeriod.month.startOf(since);
   final byMonth = <int, List<Memo>>{};
   for (final memo in company.memos) {
     (byMonth[ReportPeriod.month.startOf(memo.day).number] ??= []).add(memo);
@@ -24,19 +31,38 @@ List<Letter> directorLetters(
   return [
     for (final MapEntry(key: start, value: memos)
         in byMonth.entries.toList().reversed)
-      (
-        month: Day(start),
-        paragraphs: [
-          ?_results(report, Day(start)),
-          ..._sentences(memos, content, view),
-        ],
+      _letter(
+        Day(start),
+        _results(report, Day(start)),
+        _sentences(memos, content, view),
+        content,
+        from != null && start >= from.number ? by : null,
       ),
   ];
 }
 
-/// How the month before [start] went, against the one before it; null
-/// without its report.
-String? _results(PeriodReport? Function(Day start) report, Day start) {
+Letter _letter(
+  Day month,
+  ({String text, bool earned})? results,
+  List<String> sentences,
+  ContentDb content,
+  DirectorPerson? by,
+) => (
+  month: month,
+  paragraphs: [
+    ?results?.text,
+    ...sentences,
+    ?voiceLine(content, by, month, earned: results?.earned ?? true),
+  ],
+  by: by,
+);
+
+/// How the month before [start] went, against the one before it, and
+/// whether it earned; null without its report.
+({String text, bool earned})? _results(
+  PeriodReport? Function(Day start) report,
+  Day start,
+) {
   final last = ReportPeriod.month.startOf(start + -1);
   final month = report(last);
   if (month == null) return null;
@@ -59,14 +85,17 @@ String? _results(PeriodReport? Function(Day start) report, Day start) {
     }
   }
   final profit = month.tradingProfit;
-  return tr(
-    profit.isNegative ? 'letters.resultsLost' : 'letters.resultsEarned',
-    {
-      'month': name,
-      'sales': money(sales, cents: false),
-      'against': against,
-      'amount': money(profit.isNegative ? -profit : profit, cents: false),
-    },
+  return (
+    text: tr(
+      profit.isNegative ? 'letters.resultsLost' : 'letters.resultsEarned',
+      {
+        'month': name,
+        'sales': money(sales, cents: false),
+        'against': against,
+        'amount': money(profit.isNegative ? -profit : profit, cents: false),
+      },
+    ),
+    earned: !profit.isNegative,
   );
 }
 
