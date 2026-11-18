@@ -4,6 +4,7 @@ import 'package:engine/engine.dart';
 import 'package:flutter/material.dart' hide Simulation;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:market_game/src/app.dart';
+import 'package:market_game/src/business.dart';
 import 'package:market_game/src/controller.dart';
 import 'package:market_game/src/home.dart';
 import 'package:market_game/src/saves.dart';
@@ -118,24 +119,60 @@ Future<void> openIndex(WidgetTester tester, String title) async {
 }
 
 /// Opens [game]'s store picked as the player reaches it: the Businesses
-/// tab, its company's line, then its own.
+/// tab, its company's line, its trade's, then its own.
 Future<void> openStore(WidgetTester tester, SimulationController game) async {
   final store = game.store!;
   final company = game.view.companies.firstWhere(
     (company) => company.stores.any((s) => s.id == store.id),
   );
+  await openCompany(tester, game, company.id);
+  await openRow(tester, tradeNameOf(game, store.format));
+  await openRow(tester, game.storeName(store.id));
+}
+
+/// Opens the plant named [name] as the player reaches it: the Businesses
+/// tab, its company's line, its kind's, then its own.
+Future<void> openFactory(
+  WidgetTester tester,
+  SimulationController game,
+  String name,
+) async {
+  final (company, factory) = game.myFactories.firstWhere(
+    (entry) => entry.$2.name == name,
+  );
+  await openCompany(tester, game, company.id);
+  await openRow(tester, game.content.factories!.kinds[factory.kind.index].name);
+  await openRow(tester, name);
+}
+
+/// Opens [company]'s page from the Businesses tab.
+Future<void> openCompany(
+  WidgetTester tester,
+  SimulationController game,
+  CompanyId company,
+) async {
   await tester.tap(find.byIcon(Icons.storefront_outlined));
   await tester.pumpAndSettle();
-  await openIndex(tester, game.companyName(company.id));
+  await openRow(tester, game.companyName(company));
+}
+
+/// The name of [format]'s trade, as its business is called.
+String tradeNameOf(SimulationController game, FormatId format) {
+  final key = tradeOf(game.content.formats[format.index]);
+  return tradeName(key, [
+    for (final other in game.content.formats)
+      if (tradeOf(other) == key) other,
+  ]);
+}
+
+/// Opens the line titled [title] that opens something, on the page shown.
+Future<void> openRow(WidgetTester tester, String title) async {
   final row = find.byWidgetPredicate(
     (widget) =>
-        widget is IndexRow &&
-        widget.title == game.storeName(store.id) &&
-        widget.mark != null &&
-        widget.onTap != null,
+        widget is IndexRow && widget.title == title && widget.onTap != null,
   );
-  await scrollTo(tester, row);
-  await tester.tap(row);
+  await scrollTo(tester, row.first);
+  await tester.tap(row.first);
   await tester.pumpAndSettle();
 }
 

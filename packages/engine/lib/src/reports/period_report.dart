@@ -606,6 +606,59 @@ void _writeSwitches(StateWriter writer, Map<SwitchKey, int> switches) {
   }
 }
 
+/// The save version from which the holding keeps its own months.
+const holdingMonthsVersion = 42;
+
+/// How many of the holding's months are kept.
+const holdingMonthsKept = 36;
+
+/// A month of the holding's own books, which are the player's: what posted
+/// to each of their accounts, debit-positive, as a company report's flows.
+final class HoldingMonth {
+  HoldingMonth(this.start)
+    : _flows = List.filled(AccountKind.values.length, Money.zero);
+
+  HoldingMonth.read(StateReader reader)
+    : start = Day(reader.readInt()),
+      _flows = Accounts.readBalances(reader);
+
+  HoldingMonth._copy(this.start, List<Money> flows) : _flows = [...flows];
+
+  /// The first of its month.
+  final Day start;
+  final List<Money> _flows;
+
+  Money flow(AccountKind kind) => _flows[kind.index];
+
+  HoldingMonth copy() => HoldingMonth._copy(start, _flows);
+
+  void write(StateWriter writer) {
+    writer.writeInt(start.number);
+    Accounts.writeBalances(writer, _flows);
+  }
+}
+
+/// Folds the day's entries on the player's own books into the holding's
+/// month, begun on its first day whatever posts, the oldest dropped beyond
+/// [holdingMonthsKept].
+void _recordHoldingMonth(WorldState world, TickContext context) {
+  final start = ReportPeriod.month.startOf(context.day);
+  final months = world.holdingMonths;
+  if (months.isEmpty || months.last.start != start) {
+    months.add(HoldingMonth(start));
+    if (months.length > holdingMonthsKept) months.removeAt(0);
+  }
+  final month = months.last;
+  for (final entry in context.ledger.entries) {
+    if (entry.party.type != PartyType.person ||
+        entry.party.index != world.player.index) {
+      continue;
+    }
+    month._flows[entry.debit.index] += entry.amount;
+    month._flows[entry.credit.index] -= entry.amount;
+  }
+}
+
 /// [company]'s reports for [period], oldest first, as copies unaffected by
 /// later steps.
 List<PeriodReport> companyReports(
@@ -621,6 +674,7 @@ List<PeriodReport> companyReports(
 /// running week and month reports. Active companies are recorded every day;
 /// a company liquidated today is recorded one last time.
 void recordPeriodReports(WorldState world, TickContext context) {
+  _recordHoldingMonth(world, context);
   final day = context.day;
   final products = context.content.products.length;
   final running = List<List<PeriodReport>?>.filled(

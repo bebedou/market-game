@@ -149,6 +149,44 @@ void main() {
       expect(view.companyOwners, [player, rival]);
     });
 
+    test("a company's owner sees what it is worth: its stores at their "
+        'asking prices, its cash, less its debts, never below nothing', () {
+      final content = loadScenario(tradingJson());
+      final simulation = Simulation.newGame(
+        content,
+        seed: 1,
+        systems: testSystems,
+      );
+      runScripted(simulation, 30);
+      final view = simulation.observe(player);
+      final company = simulation.world.companies[playerCompany.index];
+      final worth = view.companies.single.worth;
+      expect(
+        worth,
+        company.accounts[AccountKind.cash] +
+            company.accounts[AccountKind.receivables] +
+            company.accounts[AccountKind.payables] +
+            company.accounts[AccountKind.loans] +
+            view.valuations[playerStore.index]!.price,
+      );
+      // More than its books: its fittings and custom count.
+      expect(worth > company.accounts.netAssets, isTrue);
+      // Owing more than it holds, it is worth nothing to its owner.
+      final broke = Simulation.newGame(
+        loadScenario(tradingJson(slotWage: '50.00')),
+        seed: 1,
+        systems: quietSystems,
+        policies: const {},
+      );
+      for (var i = 0; i < 10; i++) {
+        broke.step();
+      }
+      expect(
+        companyWorth(broke.world, broke.content, broke.world.companies[1]),
+        Money.zero,
+      );
+    });
+
     test('a company owing more than it is worth asks a symbolic euro', () {
       final simulation = Simulation.newGame(
         loadScenario(tradingJson(slotWage: '50.00')),
@@ -239,10 +277,7 @@ void main() {
       simulation.submit(
         BuyStore(rival, store: rivalStore, company: CompanyId(1)),
       );
-      expect(
-        simulation.step().rejections.single.reason.key,
-        'ownerNotSelling',
-      );
+      expect(simulation.step().rejections.single.reason.key, 'ownerNotSelling');
     });
 
     test("only the player sells the player's stores", () {
@@ -261,10 +296,7 @@ void main() {
           ),
         )
         ..submit(BuyStore(rival, store: playerStore, company: CompanyId(1)));
-      expect(
-        simulation.step().rejections.single.reason.key,
-        'ownerNotSelling',
-      );
+      expect(simulation.step().rejections.single.reason.key, 'ownerNotSelling');
     });
 
     test('selling goes to the AI owner of its format best able to pay, who '
@@ -341,10 +373,7 @@ void main() {
         isNull,
       );
       simulation.submit(SellStore(player, store: playerStore));
-      expect(
-        simulation.step().rejections.single.reason.key,
-        'noBuyer',
-      );
+      expect(simulation.step().rejections.single.reason.key, 'noBuyer');
     });
 
     test('the player buys a whole company with its stores, cash and debts; '

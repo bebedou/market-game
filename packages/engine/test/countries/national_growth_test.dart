@@ -95,6 +95,30 @@ void main() {
     expect(_grade('star').growth, Fx.parse('0.06'));
   });
 
+  test("a chain's share of a country's market stays sound however big the "
+      'market grows', () {
+    // France's groceries by 2047 in the owner's game: 450 billion a year.
+    final market = Money.parse('450609153036.00');
+    expect(
+      shareOfMarket(Money.parse('22530457651.80'), market),
+      Fx.parse('0.05'),
+    );
+    expect(shareOfMarket(Money.zero, market), Fx.zero);
+    // Far bigger still, as inflation goes on.
+    expect(
+      shareOfMarket(
+        Money.parse('3000000000000.00'),
+        Money.parse('30000000000000.00'),
+      ),
+      Fx.parse('0.10'),
+    );
+    // Small markets keep every euro.
+    expect(
+      shareOfMarket(Money.parse('1.00'), Money.parse('3.00')),
+      Fx.parse('0.3333'),
+    );
+  });
+
   test("a month's openings are a share of the chain's shops, at least one", () {
     final game = _game(_content);
     // One shop in Lyon: still one a month; none at no rate.

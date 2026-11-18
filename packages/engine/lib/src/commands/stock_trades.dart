@@ -503,6 +503,9 @@ Refusal? listCompany(
   if (company.owner != world.player || !company.isActive) {
     return const Refusal('notYourCompany');
   }
+  // Only what the holding holds directly is listed: a subsidiary goes with
+  // its parent.
+  if (company.parent != null) return const Refusal('subsidiaryListed');
   if (ownListing(market, company.id) != null) {
     return const Refusal('companyListed');
   }

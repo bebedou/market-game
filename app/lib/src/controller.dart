@@ -316,7 +316,8 @@ class SimulationController extends ChangeNotifier {
   /// counts at the holding's share of what it is worth, on paper.
   Money get companiesWorth => _view.companies.fold(
     Money.zero,
-    (sum, company) => _view.listedCompanies.contains(company.id)
+    (sum, company) =>
+        _view.listedCompanies.contains(company.id) || company.parent != null
         ? sum
         : sum + worthOf(company),
   );
@@ -356,13 +357,12 @@ class SimulationController extends ChangeNotifier {
     return code % 1000 < chains.length ? chains[code % 1000].name : '';
   }
 
-  /// What [company] is worth to the holding: what it owns less what it
-  /// owes, or for a software company the holding's share of what it is
-  /// worth, on paper.
-  static Money worthOf(CompanyView company) => switch (company.software) {
-    final software? when software.running => software.yourWorth,
-    _ => company.netAssets,
-  };
+  /// What [company] is worth to the holding: what it is worth whole (its
+  /// businesses at what they would sell for, its shares, its cash, less
+  /// what it owes), times the holding's share of it where investors own
+  /// part.
+  static Money worthOf(CompanyView company) =>
+      company.worth.times(company.software?.stake ?? Fx.one);
 
   /// Every software company of the player's, with its company, in the
   /// order started.
@@ -612,6 +612,7 @@ class SimulationController extends ChangeNotifier {
               :final nationalAuto,
               :final nationalRegions,
               :final person,
+              :final goals,
             )
             when c == company.id:
           // The same person at the same grade keeps their date and record.
@@ -634,6 +635,7 @@ class SimulationController extends ChangeNotifier {
             hiredOn: staying?.hiredOn ?? today,
             person: person,
             record: staying?.record ?? const DirectorRecord(),
+            goals: goals,
           );
         case FireDirector(company: final c) when c == company.id:
           director = null;
@@ -889,6 +891,12 @@ class SimulationController extends ChangeNotifier {
       if (company.status == CompanyStatus.active) company,
   ];
 
+  /// [company]'s subsidiaries still trading, in the order founded.
+  List<CompanyView> subsidiariesOf(CompanyId company) => [
+    for (final other in activeCompanies)
+      if (other.parent == company) other,
+  ];
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -995,6 +1003,7 @@ class SimulationController extends ChangeNotifier {
         :final payout,
         :final borrows,
         :final person,
+        :final goals,
       ) =>
         _view.companies.any(
           (c) =>
@@ -1006,7 +1015,8 @@ class SimulationController extends ChangeNotifier {
               c.director?.managerGrade == managerGrade &&
               c.director?.growth == growth &&
               c.director?.payout == payout &&
-              c.director?.borrows == borrows,
+              c.director?.borrows == borrows &&
+              _sameGoals(c.director?.goals, goals),
         ),
       FireDirector(:final company) => _view.companies.any(
         (c) => c.id == company && c.director == null,
@@ -1807,3 +1817,9 @@ class SimulationController extends ChangeNotifier {
     _ => tr('terms.bills.other'),
   };
 }
+
+/// Whether a brief's goals [a] and [b] are the same.
+bool _sameGoals(Map<String, Goal>? a, Map<String, Goal> b) =>
+    a != null &&
+    a.length == b.length &&
+    a.entries.every((entry) => b[entry.key] == entry.value);

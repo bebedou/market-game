@@ -71,6 +71,11 @@ enum AccountKind {
   /// What a company's factories made for its owner's shops, at what the
   /// wholesalers would have charged them: income, kept apart from sales.
   ownGoods,
+
+  /// Dividends a company receives from its subsidiaries, before the tax
+  /// held back on them: kept apart from its profit, since its subsidiaries'
+  /// profit counted them, and from what it pays out.
+  dividendsReceived,
 }
 
 /// Accounts there were before saves recorded how many.

@@ -5,32 +5,38 @@ import 'package:engine/engine.dart';
 import 'package:flutter/material.dart' hide Simulation;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:market_game/src/app.dart';
+import 'package:market_game/src/business.dart' show tradeOf;
 import 'package:market_game/src/controller.dart';
 import 'package:market_game/src/financials.dart';
 import 'package:market_game/src/format.dart';
 import 'package:market_game/src/letters.dart';
 import 'package:market_game/src/saves.dart';
+import 'package:market_game/src/visuals.dart';
 import 'package:market_game/src/screens/national.dart';
 import 'package:market_game/src/widgets.dart';
 
 import 'support.dart';
 
 void main() {
-  testWidgets('the dashboard shows the holding, the date and what to do', (
-    tester,
-  ) async {
-    await pumpGame(tester, newController());
-    expect(find.text('Net worth 35,000'), findsWidgets);
-    expect(find.text('1 company · 1 store · 1 city'), findsOneWidget);
+  testWidgets('the holding leads with a verdict, its figures and what needs '
+      'the player', (tester) async {
+    final game = newController();
+    await pumpGame(tester, game);
+    expect(
+      find.text('Net worth ${money(game.netWorth, cents: false)}'),
+      findsWidgets,
+    );
     expect(find.text('Thu 1 Jan 2026'), findsOneWidget);
+    expect(find.textContaining('Too new to judge'), findsOneWidget);
+    expect(find.text('Profit a month'), findsOneWidget);
+    expect(find.text('Needs you'), findsOneWidget);
     expect(find.text('Your shelves are empty.'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Your store'), 300);
-    expect(find.text('Corner Shop'), findsWidgets);
+    await tester.scrollUntilVisible(find.text('Your company'), 300);
+    expect(find.widgetWithText(IndexRow, 'Corner Shop'), findsOneWidget);
+    expect(find.text('run by you'), findsOneWidget);
   });
 
-  testWidgets('the dashboard leads with the last four weeks and their trend', (
-    tester,
-  ) async {
+  testWidgets('the holding judges its months once it has some', (tester) async {
     // A manager runs the store, so it trades from the first week.
     final game = newController()
       ..submit(
@@ -42,13 +48,20 @@ void main() {
           duties: [for (final _ in ManagerDuty.values) true],
         ),
       );
-    for (var i = 0; i < 70; i++) {
+    for (var i = 0; i < 200; i++) {
       game.step();
     }
     await pumpGame(tester, game);
-    expect(find.text('Last 4 weeks'), findsOneWidget);
-    expect(find.textContaining(RegExp('[▲▼] [0-9]+%')), findsOneWidget);
-    expect(find.text('Trading profit, the last 10 weeks'), findsOneWidget);
+    // Six full months: a verdict on them, and profit's line.
+    expect(find.byType(VerdictBox), findsOneWidget);
+    expect(find.textContaining('Too new to judge'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(FigureGrid),
+        matching: find.byType(Sparkline),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('the world tab shows competitors, cities and the economy', (
@@ -333,10 +346,12 @@ void main() {
     );
   });
 
-  testWidgets('a brand is created in the holding and names a shop opened '
-      'under it', (tester) async {
+  testWidgets("a brand is created on its trade's page and names a shop "
+      'opened under it', (tester) async {
     final game = newController();
     await pumpGame(tester, game);
+    await openCompany(tester, game, playerCompany);
+    await openRow(tester, tradeNameOf(game, game.store!.format));
     await openIndex(tester, 'Create a brand');
     await tester.enterText(find.byType(TextField), 'Coin Malin');
     await tester.pump();
@@ -499,20 +514,16 @@ void main() {
     expect(find.text('Going cheap'), findsOneWidget);
   });
 
-  testWidgets('each store has a card that opens it, and the title switches '
-      'stores', (tester) async {
+  testWidgets('a store opens from its trade, and the title switches stores', (
+    tester,
+  ) async {
     final game = newController();
     openSecondStore(game);
     game.step();
     await pumpGame(tester, game);
-    expect(find.text('2 companies · 2 stores · 1 city'), findsOneWidget);
-    // The new company is named after its store: the company is listed first.
-    await scrollTo(tester, find.text('Your stores'));
-    final row = find.widgetWithText(IndexRow, 'Mail Market').last;
-    await tester.ensureVisible(row);
-    await tester.pumpAndSettle();
-    await tester.tap(row);
-    await tester.pumpAndSettle();
+    // The new company is named after its store.
+    game.selectStore(game.myStores.last.$2.id);
+    await openStore(tester, game);
     expect(game.store?.id, game.myStores.last.$2.id);
     expect(find.text('Rename the store'), findsNothing);
     expect(find.byIcon(Icons.arrow_drop_down), findsOneWidget);
@@ -674,8 +685,8 @@ void main() {
     expect(content.fingerprint, prototype.fingerprint);
   });
 
-  testWidgets('a director can be let borrow, when they may open or buy '
-      'stores', (tester) async {
+  testWidgets('a boss is briefed with a goal for each business and the '
+      "company's two money rules", (tester) async {
     final game = newController();
     await pumpGame(tester, game);
     await tester.tap(find.text('Finance'));
@@ -684,30 +695,39 @@ void main() {
     await scrollTo(tester, find.text('Hire a director'));
     await tester.tap(find.text('Hire a director'));
     await tester.pumpAndSettle();
-    expect(find.text('Borrow when it is short'), findsNothing);
+    final sheet = find.byType(Scrollable).last;
     await tester.scrollUntilVisible(
-      find.text('The profit'),
+      find.text('Grow fast'),
       100,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: sheet,
     );
-    await tester.tap(find.text('Also buy struggling rivals'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Borrow when it is short'));
+    // Held by default: kept up to date, nothing new.
+    expect(find.textContaining('opens none'), findsOneWidget);
+    await tester.tap(find.text('Grow fast'));
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining('never on the holding’s guarantee'),
-      findsOneWidget,
+    expect(find.textContaining('Opens or buys a shop'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Borrow to grow'),
+      100,
+      scrollable: sheet,
     );
-    expect(find.textContaining('buy profitable rivals'), findsOneWidget);
-    await tester.tap(find.text('Borrow when it is short'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Borrow to grow'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('never on your guarantee'), findsOneWidget);
     await tester.tap(find.textContaining('Hire for'));
     await tester.pumpAndSettle();
     final hire = game.pending.single as HireDirector;
+    final trade = tradeOf(game.content.formats[game.store!.format.index]);
+    expect(hire.goals, {trade: Goal.growFast});
     expect(hire.growth, Growth.buy);
     expect(hire.borrows, isTrue);
+    expect(hire.payout, isTrue);
+    // The boss's section says the brief back.
+    expect(find.text('Grow fast'), findsOneWidget);
     expect(
-      find.textContaining('borrowing when it is short, sends you'),
+      find.text('Pay up what it can spare · Borrow to grow'),
       findsOneWidget,
     );
   });
@@ -932,9 +952,8 @@ void main() {
     );
   });
 
-  testWidgets('a director is briefed to open shops across the country', (
-    tester,
-  ) async {
+  testWidgets('a boss growing a trade opens shops across the country at '
+      'the pace they run well', (tester) async {
     final game = SimulationController.newGame(nationalPrototype, seed: 7);
     await pumpGame(tester, game);
     await tester.tap(find.text('Finance'));
@@ -944,47 +963,26 @@ void main() {
     await tester.tap(find.text('Hire a director'));
     await tester.pumpAndSettle();
     final sheet = find.byType(Scrollable).last;
-    expect(find.text('Across the country'), findsNothing);
-    await tester.scrollUntilVisible(
-      find.text('Also open new stores'),
-      100,
-      scrollable: sheet,
+    await tester.scrollUntilVisible(find.text('Grow'), 100, scrollable: sheet);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Grow'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining(
+        'more shops a month where they pay back within 3 '
+        'years',
+      ),
+      findsOneWidget,
     );
-    await tester.ensureVisible(find.text('Also open new stores'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Also open new stores'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Across the country'));
-    await tester.pumpAndSettle();
-    // Off until the player sets a rate; then the regions to pick from.
-    expect(find.widgetWithText(FilterChip, 'Occitanie'), findsNothing);
-    final fast = find.widgetWithText(ChoiceChip, '10%');
-    await tester.ensureVisible(fast);
-    await tester.pumpAndSettle();
-    await tester.tap(fast);
-    await tester.pumpAndSettle();
-    // Faster than a seasoned director runs well.
-    expect(find.text('beyond what they run well'), findsOneWidget);
-    final steady = find.widgetWithText(ChoiceChip, '2%');
-    await tester.ensureVisible(steady);
-    await tester.pumpAndSettle();
-    await tester.tap(steady);
-    await tester.pumpAndSettle();
-    expect(find.text('beyond what they run well'), findsNothing);
-    expect(find.textContaining('about 1 shop'), findsOneWidget);
-    final occitanie = find.widgetWithText(FilterChip, 'Occitanie');
-    await tester.ensureVisible(occitanie);
-    await tester.pumpAndSettle();
-    await tester.tap(occitanie);
-    await tester.pumpAndSettle();
-    expect(find.text('Only in the region picked.'), findsOneWidget);
+    expect(find.textContaining('this month'), findsWidgets);
     await tester.tap(find.textContaining('Hire for'));
     await tester.pumpAndSettle();
     final hire = game.pending.single as HireDirector;
+    expect(hire.goals.values, [Goal.grow]);
     expect(hire.growth, Growth.open);
-    expect(hire.nationalRate, Fx.parse('0.02'));
+    expect(hire.nationalRate, Fx.zero);
     expect(hire.nationalAuto, isFalse);
-    expect(hire.nationalRegions, ['FRJ']);
+    expect(hire.nationalRegions, isEmpty);
   });
 
   test('a director says what they borrowed', () {
@@ -1366,11 +1364,12 @@ void main() {
     final seasoned = _seasoned(game);
     expect(find.text(seasoned.person.name), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('The profit'),
+      find.text('Grow'),
       100,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.tap(find.text('Also open new stores'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Grow'));
     await tester.pump();
     await tester.tap(find.textContaining('Hire for'));
     await tester.pumpAndSettle();
@@ -1378,15 +1377,11 @@ void main() {
     expect(samePerson(hire.person, seasoned.person), isTrue);
     expect(hire.growth, Growth.open);
     expect(hire.payout, isTrue);
+    // The managers and the way of trading are the boss's to pick.
     expect(hire.managerGrade, grade('experienced'));
     expect(hire.strategy, strategy('balanced'));
-    expect(
-      find.text(
-        'Grows it by opening new stores, sends you the profit each month, '
-        'and hires experienced managers, balanced.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('Grow'), findsOneWidget);
+    expect(find.text('Pay up what it can spare · No debt'), findsOneWidget);
 
     // The next day they hire a manager for the store, and say so.
     game
@@ -1408,61 +1403,76 @@ void main() {
     );
   });
 
-  testWidgets('the holding shows the company and who runs it, and hires a '
+  testWidgets("the holding shows who runs the company, whose page hires a "
       'director', (tester) async {
     final game = newController();
     await pumpGame(tester, game);
     await scrollTo(tester, find.text('Your company'));
-    expect(find.text('1 store · no director'), findsOneWidget);
+    expect(find.text('run by you'), findsOneWidget);
+    await openRow(tester, 'Corner Shop');
     await openIndex(tester, 'Hire a director');
     final seasoned = _seasoned(game);
     expect(find.text(seasoned.person.name), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('The profit'),
+      find.text('The company’s money'),
       100,
       scrollable: find.byType(Scrollable).last,
     );
     await tester.tap(find.textContaining('Hire for'));
     await tester.pumpAndSettle();
     expect(game.pending.single, isA<HireDirector>());
-    expect(
-      find.text('1 store · run by ${seasoned.person.name}'),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(IndexRow, seasoned.person.name), findsOneWidget);
     expect(find.widgetWithText(IndexRow, 'Hire a director'), findsNothing);
   });
 
-  testWidgets("a director's sheet says when discounting pays", (tester) async {
-    await pumpGame(tester, newController());
-    await openIndex(tester, 'Hire a director');
-    final chip = find.widgetWithText(ChoiceChip, 'Discount and volume');
-    await tester.scrollUntilVisible(
-      chip,
-      100,
-      scrollable: find.byType(Scrollable).last,
-    );
-    // The sheet has grown with the shortlist: bring the chip clear of the
-    // footer.
-    await tester.ensureVisible(chip);
-    await tester.pumpAndSettle();
-    await tester.tap(chip);
-    await tester.pumpAndSettle();
-    expect(find.textContaining("a supermarket's volume"), findsOneWidget);
-  });
-
-  testWidgets('the holding opens each company at who runs it', (tester) async {
+  testWidgets("the holding opens each company's page", (tester) async {
     final game = newController();
     await pumpGame(tester, game);
     await scrollTo(tester, find.text('Your company'));
-    await tester.tap(find.text('1 store · no director'));
-    await tester.pumpAndSettle();
-    expect(find.text('Director'), findsOneWidget);
+    await openRow(tester, 'Corner Shop');
+    // Its businesses, its boss, and the owner's levers.
+    expect(find.widgetWithText(IndexRow, 'Groceries'), findsOneWidget);
+    await scrollTo(tester, find.text('Boss'));
     expect(find.text('Hire a director'), findsOneWidget);
     // Its money is a tap away, on its page in Finance.
     await scrollTo(tester, find.text('Cash, loans and books'));
     await tester.tap(find.text('Cash, loans and books'));
     await tester.pumpAndSettle();
     expect(find.text('Cash'), findsOneWidget);
+  });
+
+  testWidgets("a company's page adds a business to it: a plant beside its "
+      'shops', (tester) async {
+    // A shop company rich enough for a bakery.
+    final rich = loadScenario(
+      File(
+        '../content/scenarios/prototype.json',
+      ).readAsStringSync().replaceFirst(
+        '"owner": "player", "cash": "15000.00"',
+        '"owner": "player", "cash": "200000.00"',
+      ),
+    );
+    final game = SimulationController.newGame(rich, seed: 7);
+    await pumpGame(tester, game);
+    await openCompany(tester, game, playerCompany);
+    await openRow(tester, 'Add a business');
+    expect(find.textContaining('For Corner Shop'), findsOneWidget);
+    await openIndex(tester, 'Factories');
+    await openIndex(tester, 'Bakery');
+    // Built in the company, from its own cash.
+    expect(find.text('Owned by Corner Shop'), findsOneWidget);
+    final button = find.byWidgetPredicate(
+      (widget) =>
+          widget is FilledButton &&
+          widget.child is Text &&
+          (widget.child! as Text).data!.startsWith('Build for'),
+    );
+    await scrollTo(tester, button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    final order = game.pending.whereType<BuildFactory>().single;
+    expect(order.company, playerCompany);
+    expect(order.capital, Money.zero);
   });
 
   testWidgets('a subsidiary is started from the holding as a company of its '
@@ -1487,10 +1497,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final choice = tester.widget<SwitchListTile>(
-      find.widgetWithText(SwitchListTile, 'As a new company'),
-    );
-    expect(choice.value, isTrue);
+    // A company of its own, to begin with.
+    expect(find.text('A company of its own'), findsOneWidget);
     await tester.enterText(
       find.widgetWithText(TextField, 'Capital from the holding’s cash'),
       '20000',
@@ -1507,8 +1515,8 @@ void main() {
       await goBack(tester);
     }
     await scrollTo(tester, find.text('Your companies'));
-    expect(find.text('Rue du Mail Store'), findsWidgets);
-    expect(find.textContaining('Hire a director for'), findsNWidgets(2));
+    expect(find.widgetWithText(IndexRow, 'Rue du Mail Store'), findsOneWidget);
+    expect(find.text('run by you'), findsNWidgets(2));
   });
 
   testWidgets('a supermarket takes a manager of any grocery stance, and its '
@@ -1555,7 +1563,8 @@ void main() {
       'kind, then a site in a city and a neighbourhood', (tester) async {
     final game = newController();
     await pumpGame(tester, game);
-    await openIndex(tester, 'Start a new business');
+    // A company of its own, the holding holding only companies.
+    await openIndex(tester, 'Start a subsidiary');
     expect(find.widgetWithText(IndexRow, 'Factories'), findsOneWidget);
     expect(find.widgetWithText(IndexRow, 'Software'), findsOneWidget);
     await openIndex(tester, 'Restaurants');
@@ -1581,6 +1590,11 @@ void main() {
     // fitting out.
     expect(find.widgetWithText(ChoiceChip, 'Steakhouse'), findsNothing);
     expect(find.textContaining('Fitting out costs 32,000'), findsOneWidget);
+    // Offered as a new company; this one goes into the one there is.
+    await tester.tap(find.text('A company of its own'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Corner Shop').last);
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextField, 'Capital from the holding’s cash'),
       '17000',
@@ -1590,6 +1604,7 @@ void main() {
     await tester.pumpAndSettle();
     final opening = game.pending.single as OpenStore;
     expect(prototype.formats[opening.format.index].key, 'fastfood');
+    expect(opening.company, playerCompany);
   });
 
   testWidgets('marketing is set with a slider and waits for tomorrow', (

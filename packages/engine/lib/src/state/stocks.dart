@@ -750,3 +750,18 @@ final class StockMarket {
       ..writeInt(nextLoan);
   }
 }
+
+/// What [owner]'s holdings in [market] are worth at today's prices: the
+/// player's own with [holdingOwner], a company's by its index.
+Money sharesWorth(StockMarket? market, int owner) {
+  if (market == null) return Money.zero;
+  var worth = Money.zero;
+  for (final holding in market.holdings) {
+    if (holding.owner != owner) continue;
+    final price = holding.index
+        ? market.exchanges[holding.of].level
+        : market.stocks[holding.of].price;
+    worth += price.timesInt(holding.units);
+  }
+  return worth;
+}

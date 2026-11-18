@@ -32,10 +32,26 @@ String describeCommand(Command command, ContentDb content, Observation view) {
       'amount': money(amount),
       'company': company(c),
     }),
-    PayDividend(company: final c, :final amount) => tr('commands.dividend', {
-      'amount': money(amount),
-      'company': company(c),
-    }),
+    PayDividend(company: final c, :final amount) => switch (view.companies
+        .where((each) => each.id == c)
+        .firstOrNull
+        ?.parent) {
+      final parent? => tr('commands.dividendToParent', {
+        'amount': money(amount),
+        'company': company(c),
+        'parent': company(parent),
+      }),
+      null => tr('commands.dividend', {
+        'amount': money(amount),
+        'company': company(c),
+      }),
+    },
+    FoundCompany(:final name, :final capital, :final parent) =>
+      tr('commands.foundCompany', {
+        'name': name,
+        'capital': money(capital, cents: false),
+        'holder': parent == null ? tr('common.theHolding') : company(parent),
+      }),
     TakeLoan(
       company: final c,
       :final amount,

@@ -93,10 +93,14 @@ class CapitalField extends StatelessWidget {
     required this.cash,
     required this.valid,
     required this.onChanged,
+    this.from,
   });
 
   final TextEditingController controller;
+
+  /// The cash it comes from: the holding's, or [from], the parent's.
   final Money cash;
+  final String? from;
   final bool valid;
   final VoidCallback onChanged;
 
@@ -105,42 +109,64 @@ class CapitalField extends StatelessWidget {
     controller: controller,
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
     decoration: InputDecoration(
-      labelText: tr('market.capitalFromCash'),
-      helperText: tr('market.youHave', {'cash': money(cash)}),
+      labelText: from == null
+          ? tr('market.capitalFromCash')
+          : tr('businesses.capitalFrom', {'company': from}),
+      helperText: from == null
+          ? tr('market.youHave', {'cash': money(cash)})
+          : tr('businesses.hasCash', {'cash': money(cash)}),
       errorText: valid ? null : tr('common.notAnAmount'),
     ),
     onChanged: (_) => onChanged(),
   );
 }
 
-/// Whether a new business is set up as a company of its own, with its own
-/// books, or under the player's [company], named as it will be tomorrow.
-class NewCompanySwitch extends StatelessWidget {
-  const NewCompanySwitch({
+/// The player's company a new business goes in, when they have one still
+/// trading and nothing picked: the one they last looked at.
+CompanyId? currentCompany(SimulationController game) {
+  final company = game.company;
+  return company != null && company.status == CompanyStatus.active
+      ? company.id
+      : null;
+}
+
+/// Which company a new business goes in: one of the player's companies
+/// still trading, or a company of its own; with what that means.
+class CompanyPicker extends StatelessWidget {
+  const CompanyPicker({
     super.key,
-    required this.title,
     required this.value,
-    required this.company,
     required this.onChanged,
   });
 
-  final String title;
-  final bool value;
-  final String company;
-  final ValueChanged<bool> onChanged;
+  /// The company picked; null for one of its own.
+  final CompanyId? value;
+  final ValueChanged<CompanyId?> onChanged;
 
   @override
-  Widget build(BuildContext context) => SwitchListTile(
-    contentPadding: EdgeInsets.zero,
-    title: Text(title),
-    subtitle: Text(
-      value
-          ? tr('market.ownBooks')
-          : tr('market.ownedBy', {'company': company}),
-    ),
-    value: value,
-    onChanged: onChanged,
-  );
+  Widget build(BuildContext context) {
+    final game = context.game;
+    return DropdownButtonFormField<CompanyId?>(
+      initialValue: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: tr('business.inCompany'),
+        helperText: value == null
+            ? tr('market.ownBooks')
+            : tr('market.ownedBy', {'company': game.companyName(value!)}),
+        helperMaxLines: 2,
+      ),
+      items: [
+        DropdownMenuItem(value: null, child: Text(tr('business.ownCompany'))),
+        for (final company in game.activeCompanies)
+          DropdownMenuItem(
+            value: company.id,
+            child: Text(game.companyName(company.id)),
+          ),
+      ],
+      onChanged: onChanged,
+    );
+  }
 }
 
 /// Whether to borrow the rest of a purchase from the bank. Off, it says

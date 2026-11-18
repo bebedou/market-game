@@ -71,6 +71,10 @@ typedef SoftwareOfferView = ({
   /// What its owner would get: their share of the price.
   Money yours,
   Day expires,
+
+  /// Whether the rival buys the whole company, which holds nothing else;
+  /// if not, the software alone, its price paid into the company.
+  bool whole,
 });
 
 /// A software company's product as its owner sees it.
@@ -277,9 +281,7 @@ SoftwareView softwareViewOf(
   final office = softwareOffice(world, def, software);
   final revenue = software.price.timesInt(software.customers);
   final selling = software.status == SoftwareStatus.selling;
-  final marketing = selling ? software.marketing : Money.zero;
-  final monthProfit =
-      revenue - revenue.times(def.serving) - marketing - office - payroll;
+  final monthProfit = softwareMonthProfit(world, content, def, software);
   final perCustomer = software.price - software.price.times(def.serving);
   final costs = payroll + office + software.marketing;
   final breakEven = perCustomer <= Money.zero
@@ -358,6 +360,7 @@ SoftwareView softwareViewOf(
             price: offer.price,
             yours: offer.price.times(software.stake),
             expires: offer.expires,
+            whole: holdsSoftwareAlone(world, software.company),
           ),
   );
 }

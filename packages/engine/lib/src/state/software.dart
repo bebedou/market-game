@@ -13,6 +13,10 @@ const softwareVersion = 35;
 const softwareHistoryMonths = 36;
 
 /// Append only.
+/// The save version from which software may start inside a company that
+/// holds other businesses.
+const softwareBesideVersion = 42;
+
 enum SoftwareStatus {
   /// Building its first version: it can't sell yet.
   building,
@@ -34,6 +38,7 @@ final class SoftwareMonth {
     required this.revenue,
     required this.lead,
     required this.bestRival,
+    this.profit = Money.zero,
   });
 
   SoftwareMonth.read(StateReader reader)
@@ -41,7 +46,10 @@ final class SoftwareMonth {
       customers = reader.readInt(),
       revenue = Money(reader.readInt()),
       lead = Fx.raw(reader.readInt()),
-      bestRival = Fx.raw(reader.readInt());
+      bestRival = Fx.raw(reader.readInt()),
+      profit = reader.version >= softwareBesideVersion
+          ? Money(reader.readInt())
+          : Money.zero;
 
   final Day day;
   final int customers;
@@ -53,13 +61,18 @@ final class SoftwareMonth {
   final Fx lead;
   final Fx bestRival;
 
+  /// What a month left it after its costs that day; zero in a save from
+  /// before software could sit beside other businesses.
+  final Money profit;
+
   void write(StateWriter writer) {
     writer
       ..writeInt(day.number)
       ..writeInt(customers)
       ..writeInt(revenue.cents)
       ..writeInt(lead.raw)
-      ..writeInt(bestRival.raw);
+      ..writeInt(bestRival.raw)
+      ..writeInt(profit.cents);
   }
 }
 

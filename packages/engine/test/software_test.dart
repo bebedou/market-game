@@ -15,13 +15,15 @@ import 'support/fixtures.dart';
 /// power 3 at 300; a month of power 1 builds a point; the standard rises a
 /// point a month; a new product starts ten points under it and sells once
 /// within five. A tenth of every product's customers leave each month.
-final softwareContent = loadScenario(
-  testScenarioJson
-      .replaceFirst(
-        '"name": "Player", "cash": "1000.00"',
-        '"name": "Player", "cash": "100000.00"',
-      )
-      .replaceFirst('  "suppliers": [', '''
+final softwareContent = loadScenario(softwareJson);
+
+/// The scenario of [softwareContent].
+final softwareJson = testScenarioJson
+    .replaceFirst(
+      '"name": "Player", "cash": "1000.00"',
+      '"name": "Player", "cash": "100000.00"',
+    )
+    .replaceFirst('  "suppliers": [', '''
   "software": {
     "customers": 1000000, "price": "10.00", "growth": "0", "cycle": "0",
     "standard": "1.00", "rise": "0.01", "startGap": "0.10", "launchGap": "0.05",
@@ -47,8 +49,7 @@ final softwareContent = loadScenario(
       { "name": "Everyone else", "share": "0.50", "lead": "0", "price": "1", "marketing": "0", "rest": true }
     ]
   },
-  "suppliers": ['''),
-);
+  "suppliers": [''');
 
 /// The quiet pipeline with the software market run before settlement.
 final softwareSystems = <TickSystem>[
@@ -127,12 +128,116 @@ void main() {
     expect(software.level, Fx.parse('0.90'));
     expect(software.price, Money.parse('10.00'));
     expect(software.stake, Fx.one);
-    // Shops can't open in it.
+    expect(holdsSoftwareAlone(game.world, company.id), isTrue);
+    // A shop may open beside it, and then it no longer holds it alone.
     game.submit(
       OpenStore(player, site: lane, name: 'Corner', company: software.company),
     );
-    final result = game.step();
-    expect(result.rejections.single.reason.key, 'softwareOnly');
+    expect(game.step().rejections, isEmpty);
+    expect(holdsSoftwareAlone(game.world, company.id), isFalse);
+  });
+
+  test('software starts beside the shops of a company, one to a company, '
+      'and a round there prices the whole company', () {
+    final game = newGame();
+    final holding = game.world.persons[player.index];
+    final before = holding.accounts[AccountKind.cash];
+    final companies = game.world.companies.length;
+    final country = softwareContent.countries.first.id;
+    game.submit(
+      StartSoftware(
+        player,
+        name: 'Tessel',
+        country: country,
+        capital: Money.parse('20000.00'),
+        company: playerCompany,
+      ),
+    );
+    expect(game.step().rejections, isEmpty);
+    final software = game.world.software.single;
+    expect(software.company, playerCompany);
+    expect(game.world.companies, hasLength(companies));
+    expect(
+      holding.accounts[AccountKind.cash],
+      before - Money.parse('20000.00'),
+    );
+    expect(holdsSoftwareAlone(game.world, playerCompany), isFalse);
+    game.submit(
+      StartSoftware(
+        player,
+        name: 'Autre',
+        country: country,
+        company: playerCompany,
+      ),
+    );
+    expect(game.step().rejections.single.reason.key, 'hasSoftware');
+    final company = game.world.companies[playerCompany.index];
+    final worth = companyWorth(game.world, softwareContent, company);
+    game.submit(
+      RaiseRound(player, software: software.id, share: Fx.parse('0.10')),
+    );
+    expect(game.step().rejections, isEmpty);
+    expect(software.rounds.single.value, worth);
+    expect(invariantViolations(game.world), isEmpty);
+    expect(
+      Simulation.replay(
+        softwareContent,
+        game.save(),
+        systems: softwareSystems,
+      ).stateHash(),
+      game.stateHash(),
+    );
+    // Beside the shops, a rival buys the software alone, paying the
+    // company, which trades on.
+    final cash = company.accounts[AccountKind.cash];
+    final holdingCash = holding.accounts[AccountKind.cash];
+    software.offer = SoftwareOffer(
+      rival: game.world.softwareMarket!.rivals.first.id,
+      price: Money.parse('1000.00'),
+      expires: game.today + 30,
+    );
+    game.submit(AcceptSoftwareOffer(player, software: software.id));
+    expect(game.step().rejections, isEmpty);
+    expect(software.status, SoftwareStatus.sold);
+    expect(company.isActive, isTrue);
+    expect(company.accounts[AccountKind.disposals], -Money.parse('1000.00'));
+    expect(company.accounts[AccountKind.cash] > cash, isTrue);
+    expect(holding.accounts[AccountKind.cash], holdingCash);
+    expect(invariantViolations(game.world), isEmpty);
+  });
+
+  test('a software month keeps what it left after its costs through a '
+      'save', () {
+    final game = newGame();
+    game.submit(
+      StartSoftware(
+        player,
+        name: 'Tessel',
+        country: softwareContent.countries.first.id,
+        capital: Money.parse('20000.00'),
+        company: playerCompany,
+      ),
+    );
+    game.step();
+    final software = game.world.software.single;
+    final month = SoftwareMonth(
+      day: game.today,
+      customers: 0,
+      revenue: Money.zero,
+      lead: Fx.zero,
+      bestRival: Fx.zero,
+      profit: -Money.parse('12.34'),
+    );
+    software.record(month);
+    final loaded = Simulation.load(
+      softwareContent,
+      game.save(),
+      systems: softwareSystems,
+    );
+    expect(
+      loaded.world.software.single.history.last.profit,
+      -Money.parse('12.34'),
+    );
   });
 
   test('starting one takes a name and the cash', () {

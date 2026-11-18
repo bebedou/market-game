@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' hide Simulation;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:market_game/src/controller.dart';
 import 'package:market_game/src/screens/shop.dart';
+import 'package:market_game/src/visuals.dart';
 import 'package:market_game/src/widgets.dart';
 
 import 'support.dart';
@@ -41,7 +42,7 @@ void main() {
     expect(find.text('Shelves'), findsOneWidget);
   });
 
-  testWidgets('a director runs the company by formula, and it can be '
+  testWidgets("a director's company shows its figures, and it can be "
       'renamed', (tester) async {
     final game = SimulationController.newGame(
       _content,
@@ -78,11 +79,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('1 store · run by'), findsOneWidget);
     await openIndex(tester, game.companyName(company.id));
-    // Its store left the hand-run list for its shops by formula.
-    expect(find.text('Shops by formula'), findsWidgets);
-    final format = _content.formats[store.format.index].name;
-    expect(find.text('$format in France'), findsOneWidget);
-    expect(find.textContaining('Auvergne-Rhône-Alpes'), findsOneWidget);
+    // The boss's verdict, the company's figures, its one business.
+    expect(find.byType(VerdictBox), findsOneWidget);
+    expect(find.text('Worth'), findsOneWidget);
+    expect(find.textContaining('1 store · 1 country'), findsOneWidget);
+    // The trade's figures, by country, and no shop to run: nothing says
+    // how the game works its shops out.
+    await openRow(tester, tradeNameOf(game, store.format));
+    expect(find.text('Sales a month'), findsOneWidget);
+    await scrollTo(tester, find.widgetWithText(IndexRow, 'France'));
     expect(
       find.byWidgetPredicate(
         (widget) =>
@@ -92,6 +97,8 @@ void main() {
       ),
       findsNothing,
     );
+    expect(find.textContaining('formula'), findsNothing);
+    await goBack(tester);
 
     await openIndex(tester, 'Rename the company');
     await tester.enterText(find.byType(TextField), 'Hénon Holdings');

@@ -56,8 +56,12 @@ void main() {
 
   test('the holding adds up every company: net worth and profit', () {
     final game = newController();
-    // Your 20,000 and the company's 15,000.
-    expect(game.netWorth, Money.parse('35000.00'));
+    // Your 20,000 and the company: its 15,000 of books, and more, as its
+    // shop's fittings count at what they would sell for.
+    final company = game.view.companies.single;
+    expect(company.netAssets, Money.parse('15000.00'));
+    expect(company.worth > company.netAssets, isTrue);
+    expect(game.netWorth, Money.parse('20000.00') + company.worth);
     openSecondStore(game);
     // A month, before its unpaid rent winds the new company up.
     for (var i = 0; i < 30; i++) {
@@ -72,7 +76,7 @@ void main() {
       game.netWorth,
       game.view.companies.fold(
         game.view.cash,
-        (sum, company) => sum + company.netAssets,
+        (sum, company) => sum + company.worth,
       ),
     );
     final weeks = game.holdingProfits(ReportPeriod.week);
@@ -92,10 +96,14 @@ void main() {
         ),
       );
     }
-    // Moving cash into the new company left net worth alone: only profit,
-    // the fitting out included, changed it.
+    // Moving cash into the new company left the books alone: only profit,
+    // the fitting out included, changed them.
     expect(
-      game.netWorth - Money.parse('35000.00'),
+      game.view.companies.fold(
+            game.view.cash,
+            (sum, company) => sum + company.netAssets,
+          ) -
+          Money.parse('35000.00'),
       weeks.fold(Money.zero, (sum, week) => sum + week.profit),
     );
   });

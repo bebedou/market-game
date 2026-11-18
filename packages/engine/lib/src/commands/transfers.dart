@@ -11,15 +11,16 @@ import '../state/software.dart';
 import '../systems/settlement.dart' show billInstallment;
 import '../systems/software.dart' show closeSoftware;
 
-/// Puts [amount] of [person]'s cash into [company] as capital.
+/// Puts [amount] of [holder]'s cash into [company] as capital: its owner's,
+/// or its parent company's.
 void injectCapital(
   Ledger ledger,
-  Person person,
+  LedgerParty holder,
   Company company,
   Money amount,
 ) {
   ledger.pay(
-    payer: person,
+    payer: holder,
     payerAccount: AccountKind.investments,
     payee: company,
     payeeAccount: AccountKind.equity,
@@ -189,6 +190,34 @@ void transferCompany(
 /// price and books the gain over what they put in, taxed as a dividend;
 /// outside investors get theirs beyond the simulation. Its customers go to
 /// the buyer, its people leave, and the company is [CompanyStatus.sold].
+/// Sells [software] alone to the rival making [offer], out of a company
+/// that holds other businesses: the company is paid the price, a gain taxed
+/// with its profit, and trades on without it; its investors keep their
+/// share of the company.
+void sellSoftwareBusiness(
+  WorldState world,
+  Ledger ledger,
+  Software software,
+  SoftwareOffer offer,
+) {
+  ledger.pay(
+    payer: world.elsewhere,
+    payerAccount: AccountKind.investments,
+    payee: world.companies[software.company.index],
+    payeeAccount: AccountKind.disposals,
+    amount: offer.price,
+    reason: EntryReason.softwareSale,
+  );
+  final market = world.softwareMarket!;
+  closeSoftware(
+    world,
+    market,
+    software,
+    SoftwareStatus.sold,
+    to: market.rivals[offer.rival.index],
+  );
+}
+
 void sellSoftware(
   WorldState world,
   ContentDb content,
@@ -197,7 +226,11 @@ void sellSoftware(
   SoftwareOffer offer,
 ) {
   final company = world.companies[software.company.index];
-  final seller = world.persons[company.owner.index];
+  // Whoever holds it sells: its parent company, or its owner's holding.
+  final LedgerParty seller = switch (company.parent) {
+    final parent? => world.companies[parent.index],
+    null => world.persons[company.owner.index],
+  };
   for (final loan in world.loans) {
     if (loan.company == company.id && loan.outstanding > Money.zero) {
       billInstallment(world, ledger, loan, all: true);
@@ -263,8 +296,10 @@ void sellSoftware(
       reason: EntryReason.softwareSale,
     );
   }
-  final gain = proceeds - company.injected;
-  taxGain(world, content, ledger, seller, gain);
+  // A parent's gain is its income, taxed with its profit.
+  if (seller is Person) {
+    taxGain(world, content, ledger, seller, proceeds - company.injected);
+  }
   final market = world.softwareMarket!;
   closeSoftware(
     world,

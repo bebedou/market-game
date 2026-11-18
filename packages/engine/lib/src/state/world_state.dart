@@ -97,6 +97,9 @@ final class WorldState {
   /// Chains' own plants, in the order built.
   final chainPlants = <ChainPlant>[];
 
+  /// The holding's own months, the player's books, oldest first.
+  final holdingMonths = <HoldingMonth>[];
+
   /// The stock market; null until first run, and without a table for one.
   /// Kept beside the world, as the national economy is.
   StockMarket? stocks;
@@ -476,6 +479,11 @@ final class WorldState {
         _readList(reader, (_) => ChainPlant.read(reader)),
       );
     }
+    if (reader.version >= holdingMonthsVersion) {
+      world.holdingMonths.addAll(
+        _readList(reader, (_) => HoldingMonth.read(reader)),
+      );
+    }
     return world;
   }
 
@@ -702,6 +710,7 @@ final class WorldState {
     _writeList(writer, contracts, (contract) => contract.write(writer));
     writer.writeInt(nextTenderNumber);
     _writeList(writer, chainPlants, (plant) => plant.write(writer));
+    _writeList(writer, holdingMonths, (month) => month.write(writer));
   }
 }
 

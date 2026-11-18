@@ -108,6 +108,7 @@ Refusal? applyCommand(
     BuyRival() => buyRival(world, content, command),
     SellControlled() => sellControlled(world, content, command),
     ListCompany() => listCompany(world, content, ledger, command),
+    FoundCompany() => _foundCompany(world, ledger, command),
     SetSoftwarePrice() => _setSoftwarePrice(world, content, command),
     SetSoftwareMarketing() => _setSoftwareMarketing(world, content, command),
     HireSoftwarePerson() => _hireSoftwarePerson(world, content, command),
@@ -202,12 +203,10 @@ Refusal? _openInDistrict(
   }
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
-  if (person.accounts[AccountKind.cash] < command.capital) {
-    return const Refusal('notEnoughHoldingCash');
-  }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
-  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
+  final (holder, short) = _capitalFrom(world, person, company, command.capital);
+  if (short != null) return short;
   final cost = site.openingCost
       .times(format.fitOut)
       .times(
@@ -217,7 +216,7 @@ Refusal? _openInDistrict(
     return Refusal('cannotPayOpening', amount: cost);
   }
   if (command.capital > Money.zero) {
-    injectCapital(ledger, person, company, command.capital);
+    injectCapital(ledger, holder, company, command.capital);
   }
   if (cost > Money.zero) {
     ledger.pay(
@@ -302,7 +301,6 @@ Refusal? _buyInDistrict(
   if (shop == null) return const Refusal('unknownStore');
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
-  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
   final seller = switch (shop.company) {
     final id? => world.companies[id.index],
     null => null,
@@ -399,7 +397,11 @@ Refusal? _hireDirector(
 ) {
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
-  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
+  // A software company has a boss only with a brief of goals: one who
+  // runs it, not its shops.
+  if (holdsSoftware(world, company.id) && command.goals.isEmpty) {
+    return const Refusal('softwareOnly');
+  }
   final directors = content.directors;
   if (directors == null) return const Refusal('noDirectors');
   if (!_inRange(command.grade.index, directors.grades.length)) {
@@ -450,6 +452,7 @@ Refusal? _hireDirector(
     record:
         staying?.record ??
         DirectorRecord(shopsAtHire: companyShops(world, company.id)),
+    goals: Map.unmodifiable(command.goals),
   );
   return null;
 }
@@ -520,11 +523,71 @@ Refusal? _injectCapital(
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
   if (command.amount <= Money.zero) return const Refusal('amountNotPositive');
-  final person = world.persons[command.actor.index];
-  if (person.accounts[AccountKind.cash] < command.amount) {
-    return const Refusal('notEnoughHoldingCash');
+  // A subsidiary's capital comes from its parent, the rest's from the
+  // holding.
+  final holder = holderOf(world, company);
+  if (holder.accounts[AccountKind.cash] < command.amount) {
+    return Refusal(
+      company.parent == null ? 'notEnoughHoldingCash' : 'notEnoughParentCash',
+    );
   }
-  injectCapital(ledger, person, company, command.amount);
+  injectCapital(ledger, holder, company, command.amount);
+  return null;
+}
+
+/// Who puts [capital] into [company] for a purchase, or into a new company
+/// if null: whoever holds it (see [holderOf]); with the refusal if they lack
+/// the cash.
+(LedgerParty, Refusal?) _capitalFrom(
+  WorldState world,
+  Person person,
+  Company? company,
+  Money capital,
+) {
+  final holder = company == null ? person : holderOf(world, company);
+  if (holder.accounts[AccountKind.cash] < capital) {
+    return (
+      holder,
+      Refusal(
+        company?.parent == null
+            ? 'notEnoughHoldingCash'
+            : 'notEnoughParentCash',
+      ),
+    );
+  }
+  return (holder, null);
+}
+
+/// Who holds [company] and so funds it and takes its dividends: its parent
+/// company, or its owner's holding, that is its owner.
+LedgerParty holderOf(WorldState world, Company company) =>
+    switch (company.parent) {
+      final parent? => world.companies[parent.index],
+      null => world.persons[company.owner.index],
+    };
+
+Refusal? _foundCompany(WorldState world, Ledger ledger, FoundCompany command) {
+  final problem = _nameProblem(command.name);
+  if (problem != null) return problem;
+  if (command.capital <= Money.zero) {
+    return const Refusal('amountNotPositive');
+  }
+  final LedgerParty holder;
+  if (command.parent case final parentId?) {
+    final (parent, error) = _ownedCompany(world, command.actor, parentId);
+    if (parent == null) return error;
+    holder = parent;
+  } else {
+    holder = world.persons[command.actor.index];
+  }
+  if (holder.accounts[AccountKind.cash] < command.capital) {
+    return Refusal(
+      command.parent == null ? 'notEnoughHoldingCash' : 'notEnoughParentCash',
+    );
+  }
+  final company = world.addCompany(command.name, command.actor)
+    ..parent = command.parent;
+  injectCapital(ledger, holder, company, command.capital);
   return null;
 }
 
@@ -553,6 +616,34 @@ Refusal? _payDividend(
     AccountKind.dividends,
     EntryReason.dividend,
   );
+  final taxes = content.taxesOf(world.residence(content, owner.id));
+  // A subsidiary pays up to its parent, which pays the dividend rate on it,
+  // as the holding does (owner's choice, 2026-11-17). The parent may pay it
+  // on; it is not the parent's profit, so the group's profit counts it once,
+  // less that tax.
+  if (company.parent case final id?) {
+    final parent = world.companies[id.index];
+    ledger.pay(
+      payer: company,
+      payerAccount: AccountKind.dividends,
+      payee: parent,
+      payeeAccount: AccountKind.dividendsReceived,
+      amount: owners,
+      reason: EntryReason.dividend,
+    );
+    final tax = taxes == null ? Money.zero : owners.times(taxes.dividendRate);
+    if (tax > Money.zero) {
+      ledger.pay(
+        payer: parent,
+        payerAccount: AccountKind.taxes,
+        payee: world.government,
+        payeeAccount: AccountKind.revenue,
+        amount: tax,
+        reason: EntryReason.dividendTax,
+      );
+    }
+    return null;
+  }
   ledger.pay(
     payer: company,
     payerAccount: AccountKind.dividends,
@@ -561,7 +652,7 @@ Refusal? _payDividend(
     amount: owners,
     reason: EntryReason.dividend,
   );
-  if (content.taxesOf(world.residence(content, owner.id)) case final taxes?) {
+  if (taxes != null) {
     final tax = owners.times(taxes.dividendRate);
     if (tax > Money.zero) {
       ledger.pay(
@@ -872,16 +963,16 @@ Refusal? _openStore(
   }
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
-  if (person.accounts[AccountKind.cash] < command.capital) {
-    return const Refusal('notEnoughHoldingCash');
-  }
   Company? company;
   if (command.company case final id?) {
     final (owned, error) = _ownedCompany(world, command.actor, id);
     if (owned == null) return error;
-    if (holdsSoftware(world, owned.id)) return const Refusal('softwareOnly');
     company = owned;
   }
+  // A subsidiary's capital comes from its parent, any other's from the
+  // holding.
+  final (holder, short) = _capitalFrom(world, person, company, command.capital);
+  if (short != null) return short;
   final cash =
       (company?.accounts[AccountKind.cash] ?? Money.zero) +
       command.capital +
@@ -899,7 +990,7 @@ Refusal? _openStore(
     person,
     command.borrow,
     command.termMonths,
-    spent: command.capital,
+    spent: identical(holder, person) ? command.capital : Money.zero,
   );
   if (loanError != null) return loanError;
   company ??= world.addCompany(brand?.name ?? command.name, person.id);
@@ -908,7 +999,7 @@ Refusal? _openStore(
     brand = aiBrand(world, content, command.actor, format.id, company.name);
   }
   if (command.capital > Money.zero) {
-    injectCapital(ledger, person, company, command.capital);
+    injectCapital(ledger, holder, company, command.capital);
   }
   if (loan != null) {
     _lendFor(world, content, ledger, company, person, loan, command.termMonths);
@@ -1386,7 +1477,6 @@ Refusal? _buyStore(
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
-  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
   final store = world.stores[command.store.index];
   if (!store.isTrading) return const Refusal('storeClosed');
   final owner = world.companies[store.company.index].owner;
@@ -1566,16 +1656,16 @@ Refusal? _buildFactory(
     serves.setAll(0, wanted);
   }
   final person = world.persons[command.actor.index];
-  if (person.accounts[AccountKind.cash] < command.capital) {
-    return const Refusal('notEnoughHoldingCash');
-  }
   Company? company;
   if (command.company case final id?) {
     final (owned, error) = _ownedCompany(world, command.actor, id);
     if (owned == null) return error;
-    if (holdsSoftware(world, owned.id)) return const Refusal('softwareOnly');
     company = owned;
   }
+  // A subsidiary's capital comes from its parent, any other's from the
+  // holding.
+  final (holder, short) = _capitalFrom(world, person, company, command.capital);
+  if (short != null) return short;
   final cost = kind.buildCost.times(world.macroOf(command.country).priceIndex);
   final cash =
       (company?.accounts[AccountKind.cash] ?? Money.zero) +
@@ -1589,12 +1679,12 @@ Refusal? _buildFactory(
     person,
     command.borrow,
     command.termMonths,
-    spent: command.capital,
+    spent: identical(holder, person) ? command.capital : Money.zero,
   );
   if (loanError != null) return loanError;
   company ??= world.addCompany(command.name, person.id);
   if (command.capital > Money.zero) {
-    injectCapital(ledger, person, company, command.capital);
+    injectCapital(ledger, holder, company, command.capital);
   }
   if (loan != null) {
     _lendFor(world, content, ledger, company, person, loan, command.termMonths);
@@ -1951,7 +2041,6 @@ Refusal? _openNational(
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
-  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
   final cost = nationalFitOut(
     national,
     country,
@@ -2035,7 +2124,6 @@ Refusal? _buyNationalChain(
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
-  if (holdsSoftware(world, company.id)) return const Refusal('softwareOnly');
   final price = value.price;
   if (company.accounts[AccountKind.cash] + command.borrow < price) {
     return Refusal('cannotPayPrice', amount: price);
@@ -2236,12 +2324,30 @@ Refusal? _startSoftware(
   if (problem != null) return problem;
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
-  if (person.accounts[AccountKind.cash] < command.capital) {
-    return const Refusal('notEnoughHoldingCash');
-  }
-  final company = world.addCompany(command.name, person.id);
-  if (command.capital > Money.zero) {
-    injectCapital(ledger, person, company, command.capital);
+  final Company company;
+  if (command.company case final id?) {
+    // Beside the company's other businesses, one software to a company.
+    final (owned, error) = _ownedCompany(world, command.actor, id);
+    if (owned == null) return error;
+    if (holdsSoftware(world, owned.id)) return const Refusal('hasSoftware');
+    final holder = holderOf(world, owned);
+    if (holder.accounts[AccountKind.cash] < command.capital) {
+      return Refusal(
+        owned.parent == null ? 'notEnoughHoldingCash' : 'notEnoughParentCash',
+      );
+    }
+    company = owned;
+    if (command.capital > Money.zero) {
+      injectCapital(ledger, holder, company, command.capital);
+    }
+  } else {
+    if (person.accounts[AccountKind.cash] < command.capital) {
+      return const Refusal('notEnoughHoldingCash');
+    }
+    company = world.addCompany(command.name, person.id);
+    if (command.capital > Money.zero) {
+      injectCapital(ledger, person, company, command.capital);
+    }
   }
   world.software.add(
     Software(
@@ -2358,7 +2464,11 @@ Refusal? _raiseRound(
       when monthOf(world.today) - monthOf(last.day) < def.roundMonths) {
     return Refusal('roundTooSoon', count: def.roundMonths);
   }
-  final worth = softwareWorth(world, content, def, software).worth;
+  // Investors buy into the whole company: beside other businesses, at what
+  // all of it is worth.
+  final worth = holdsSoftwareAlone(world, software.company)
+      ? softwareWorth(world, content, def, software).worth
+      : companyWorth(world, content, world.companies[software.company.index]);
   final money = roundMoney(worth, command.share);
   if (money <= Money.zero) return const Refusal('nothingToRaise');
   ledger.pay(
@@ -2398,7 +2508,13 @@ Refusal? _acceptSoftwareOffer(
   if (offer == null || offer.expires < world.today) {
     return const Refusal('noSoftwareOffer');
   }
-  sellSoftware(world, content, ledger, software, offer);
+  // A rival buys a software company holding nothing else whole; beside
+  // other businesses, the software alone.
+  if (holdsSoftwareAlone(world, software.company)) {
+    sellSoftware(world, content, ledger, software, offer);
+  } else {
+    sellSoftwareBusiness(world, ledger, software, offer);
+  }
   return null;
 }
 
@@ -2450,10 +2566,9 @@ Refusal? _enlargeFactory(
   if (next >= factories.sizes.length) return const Refusal('factoryLargest');
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
-  if (person.accounts[AccountKind.cash] < command.capital) {
-    return const Refusal('notEnoughHoldingCash');
-  }
   final company = world.companies[factory.company.index];
+  final (holder, short) = _capitalFrom(world, person, company, command.capital);
+  if (short != null) return short;
   final cost =
       (factories.sized(factory.kind, next).buildCost -
               factories.sized(factory.kind, factory.size).buildCost)
@@ -2468,11 +2583,11 @@ Refusal? _enlargeFactory(
     person,
     command.borrow,
     command.termMonths,
-    spent: command.capital,
+    spent: identical(holder, person) ? command.capital : Money.zero,
   );
   if (loanError != null) return loanError;
   if (command.capital > Money.zero) {
-    injectCapital(ledger, person, company, command.capital);
+    injectCapital(ledger, holder, company, command.capital);
   }
   if (loan != null) {
     _lendFor(world, content, ledger, company, person, loan, command.termMonths);

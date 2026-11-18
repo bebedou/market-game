@@ -390,15 +390,7 @@ Money _priceOf(StockMarket market, Holding holding) => holding.index
 
 /// What the player's own holdings in [market] are worth at today's prices;
 /// their companies' count in their companies' books.
-Money portfolioWorth(StockMarket? market) {
-  if (market == null) return Money.zero;
-  var worth = Money.zero;
-  for (final holding in market.holdings) {
-    if (holding.owner != holdingOwner) continue;
-    worth += _priceOf(market, holding).timesInt(holding.units);
-  }
-  return worth;
-}
+Money portfolioWorth(StockMarket? market) => sharesWorth(market, holdingOwner);
 
 /// How far sales grew over [results], oldest first: see
 /// `StockView.salesGrowth`.

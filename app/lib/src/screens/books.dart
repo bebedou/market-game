@@ -519,6 +519,12 @@ class _Results extends StatelessWidget {
             color: gainColor(context, report.profit.cents.sign),
             hint: tr('reports.profitKeptHint'),
           ),
+        if (report.flow(AccountKind.dividendsReceived) != Money.zero)
+          Line(
+            tr('reports.dividendsReceived'),
+            money(-report.flow(AccountKind.dividendsReceived)),
+            hint: tr('reports.dividendsReceivedHint'),
+          ),
         if (report.flow(AccountKind.dividends) != Money.zero)
           Line(
             tr('reports.dividendsPaid'),

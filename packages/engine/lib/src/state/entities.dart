@@ -9,6 +9,9 @@ import 'orders.dart';
 /// The save version from which companies keep their goods bought by month.
 const _buyingVersion = 30;
 
+/// The first save format whose companies may belong to another company.
+const parentVersion = 41;
+
 /// The player or an AI owner. Personal wealth is separate from the companies
 /// the person owns.
 final class Person implements LedgerParty {
@@ -58,7 +61,8 @@ final class Person implements LedgerParty {
 /// software company [sold] went to a rival, beyond the simulation.
 enum CompanyStatus { active, liquidated, dormant, sold }
 
-/// A company, wholly owned by one person.
+/// A company, wholly owned by one person: held by their holding, or by
+/// another of their companies, its [parent].
 /// The days of wages a company's cash cushion holds unless its owner says
 /// otherwise, and the most it may.
 const defaultCushionDays = 14;
@@ -76,6 +80,7 @@ final class Company implements LedgerParty {
     this.lossCarried = Money.zero,
     this.cushionDays = defaultCushionDays,
     this.director,
+    this.parent,
   }) : payables = [],
        memos = [],
        goodsMonths = [],
@@ -109,6 +114,9 @@ final class Company implements LedgerParty {
       ],
       goodsMark = reader.version >= _buyingVersion
           ? Money(reader.readInt())
+          : null,
+      parent = reader.version >= parentVersion && reader.readBool()
+          ? CompanyId(reader.readInt())
           : null {
     // Older saves count from now.
     goodsMark ??= accounts[AccountKind.costOfGoods];
@@ -119,6 +127,10 @@ final class Company implements LedgerParty {
 
   /// Who owns it, which changes when it is sold.
   PersonId owner;
+
+  /// The company of its owner's that holds it, which puts capital in and
+  /// takes its dividends; null when their holding holds it directly.
+  CompanyId? parent;
 
   @override
   final Accounts accounts;
@@ -183,7 +195,10 @@ final class Company implements LedgerParty {
     for (final month in goodsMonths) {
       writer.writeInt(month.cents);
     }
-    writer.writeInt(goodsMark!.cents);
+    writer
+      ..writeInt(goodsMark!.cents)
+      ..writeBool(parent != null);
+    if (parent case final parent?) writer.writeInt(parent.index);
   }
 
   /// Keeps [memo], dropping the oldest beyond [maxMemos], and counts it in

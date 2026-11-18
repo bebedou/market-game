@@ -1,6 +1,7 @@
 import 'package:engine/engine.dart';
 import 'package:flutter/material.dart';
 
+import '../business.dart';
 import '../controller.dart';
 import '../directors.dart';
 import '../format.dart';
@@ -448,10 +449,19 @@ class _CompanyCard extends StatelessWidget {
   }
 
   Future<void> _inject(BuildContext context, SimulationController game) async {
+    // A subsidiary's capital comes from its parent.
+    final parent = game.view.companies
+        .where((each) => each.id == company.parent)
+        .firstOrNull;
     final amount = await askAmount(
       context,
       title: tr('finance.addCapital'),
-      message: tr('finance.addCapitalBody', {'cash': money(game.view.cash)}),
+      message: parent == null
+          ? tr('finance.addCapitalBody', {'cash': money(game.view.cash)})
+          : tr('finance.addCapitalBodyParent', {
+              'parent': game.companyName(parent.id),
+              'cash': money(parent.cash),
+            }),
       action: tr('finance.add'),
     );
     if (amount != null) {
@@ -465,18 +475,27 @@ class _CompanyCard extends StatelessWidget {
     BuildContext context,
     SimulationController game,
   ) async {
+    // A subsidiary pays its parent, at the same rate on the way.
+    final parent = company.parent;
+    final tax = switch (game.content.taxesOf(game.residence)) {
+      final taxes? => tr('finance.dividendTax', {
+        'rate': percent(taxes.dividendRate, decimals: 0),
+      }),
+      null => '',
+    };
     final amount = await askAmount(
       context,
       title: tr('finance.payADividend'),
-      message: tr('finance.dividendBody', {
-        'kept': money(company.retainedEarnings),
-        'tax': switch (game.content.taxesOf(game.residence)) {
-          final taxes? => tr('finance.dividendTax', {
-            'rate': percent(taxes.dividendRate, decimals: 0),
-          }),
-          null => '',
-        },
-      }),
+      message: parent != null
+          ? tr('finance.dividendBodyParent', {
+              'parent': game.companyName(parent),
+              'kept': money(company.retainedEarnings),
+              'tax': tax,
+            })
+          : tr('finance.dividendBody', {
+              'kept': money(company.retainedEarnings),
+              'tax': tax,
+            }),
       action: tr('finance.pay'),
     );
     if (amount != null) {
@@ -614,21 +633,21 @@ class DirectorSection extends StatelessWidget {
             )
             case final pitch?)
           Hint(pitch),
-        Hint(
-          tr('finance.directorBrief', {
-            'growth': director.growth == Growth.none
-                ? tr('finance.keepsStores')
-                : tr('finance.growsBy', {'how': growthName(director.growth)}),
-            'borrows': director.borrows ? tr('finance.borrowingShort') : '',
-            'profit': tr(
-              director.payout ? 'finance.sendsProfit' : 'finance.keepsProfit',
+        const SizedBox(height: 6),
+        Text(tr('brief.goals'), style: theme.textTheme.labelSmall),
+        for (final business in businessesOf(game, company, game.view.national))
+          Line(
+            business.name,
+            tr(
+              'brief.goal.${director.goalOf(briefKey(content, business)).name}',
             ),
-            'managers': managersOf(
-              content.managers.grades[director.managerGrade.index],
-            ),
-            'strategy': content.strategies[director.strategy.index].name
-                .toLowerCase(),
-          }),
+          ),
+        Line(
+          tr('brief.money'),
+          [
+            tr(director.payout ? 'brief.payUp' : 'brief.keepIt'),
+            tr(director.borrows ? 'brief.borrowToGrow' : 'brief.noDebt'),
+          ].join(' · '),
         ),
         Wrap(
           spacing: 8,
@@ -729,14 +748,11 @@ class _DirectorSheet extends StatefulWidget {
 
 class _DirectorSheetState extends State<_DirectorSheet> {
   int? _pick;
-  Growth? _growth;
   bool? _payout;
   bool? _borrows;
-  ManagerGradeId? _managerGrade;
-  StrategyId? _strategy;
-  Fx? _rate;
-  bool? _auto;
-  Set<String>? _regions;
+
+  /// The goals picked so far, by business key.
+  final _goals = <String, Goal>{};
 
   @override
   Widget build(BuildContext context) {
@@ -779,18 +795,15 @@ class _DirectorSheetState extends State<_DirectorSheet> {
           options.length - 1,
         )];
     final grade = chosen.grade;
+    final gradeDef = grades[grade.index];
     final character = directors.characterOfPerson(chosen.shown);
-    final growth = _growth ?? current?.growth ?? Growth.invest;
     final payout = _payout ?? current?.payout ?? true;
-    // Borrowing is for growing.
-    final borrows =
-        growth != Growth.none && (_borrows ?? current?.borrows ?? false);
+    final borrows = _borrows ?? current?.borrows ?? false;
+    // What the boss picks, as the brief leaves it to them: the managers and
+    // the way of trading the company's shops already have.
     final managers = content.managers.grades;
     final managerGrade =
-        _managerGrade ??
-        current?.managerGrade ??
-        managers[managers.length ~/ 2].id;
-    // Strategies that run the kinds of business the company has.
+        current?.managerGrade ?? managers[managers.length ~/ 2].id;
     final channels = {
       for (final store in widget.company.stores)
         if (store.status != StoreStatus.closed)
@@ -801,85 +814,53 @@ class _DirectorSheetState extends State<_DirectorSheet> {
         if (channels.contains(content.formatChannels[option.format.index]))
           option,
     ];
-    final strategies = fitting.isEmpty ? content.strategies : fitting;
+    StrategyId? managed;
+    for (final store in widget.company.stores) {
+      if (store.status != StoreStatus.closed && store.manager != null) {
+        managed = store.manager!.strategy;
+        break;
+      }
+    }
     final strategy =
-        _strategy ?? current?.strategy ?? balancedStrategy(strategies);
+        current?.strategy ??
+        managed ??
+        balancedStrategy(fitting.isEmpty ? content.strategies : fitting);
+    final businesses = businessesOf(game, widget.company, game.view.national);
+    String keyOf(Business business) => briefKey(content, business);
+    Goal goalOf(Business business) =>
+        _goals[keyOf(business)] ??
+        current?.goalOf(keyOf(business)) ??
+        Goal.hold;
+    final goals = {
+      for (final business in businesses) keyOf(business): goalOf(business),
+    };
+    // Before goals, a brief grew by the director's own trade alone: what
+    // its goal amounts to.
+    final own = tradeOf(
+      content.formats[content.strategies[strategy.index].format.index],
+    );
+    final growth = switch (goals[own]) {
+      Goal.growFast => Growth.buy,
+      Goal.grow => Growth.open,
+      Goal.hold => Growth.invest,
+      Goal.harvest || null => Growth.none,
+    };
     final wageIndex = game.view
         .economy(game.countryOfCompany(widget.company))
         .wageIndex;
-    // Shops run by formula across the countries the company trades in, for
-    // a kind of shop that can be run so.
-    final national = content
-        .formats[content.strategies[strategy.index].format.index]
-        .national;
-    final homes = {
-      for (final store in widget.company.stores)
-        if (store.status != StoreStatus.closed) content.countryOf(store.market),
-    };
-    final countries = [
-      for (final country in game.view.national)
-        if (country.country != null &&
-            country.def.regions.isNotEmpty &&
-            (homes.contains(country.country) ||
-                country.blocks.any((b) => b.company == widget.company.id)))
-          country,
-    ];
-    final nationally =
-        national != null &&
-        countries.isNotEmpty &&
-        (growth == Growth.open || growth == Growth.buy);
-    final auto = _auto ?? current?.nationalAuto ?? false;
-    final rate = _rate ?? current?.nationalRate ?? Fx.zero;
-    final gradeDef = grades[grade.index];
-    // What they grow it at left to judge, as their character paces it.
-    final judged = gradeDef.growth * character.pace;
-    // What the director grows the chain at, and so opens this month.
-    final growing = auto ? judged : rate;
-    final growsAtAll = growing > Fx.zero;
-    final planned = nationally
-        ? _planned(
-            game,
-            widget.company,
-            countries,
-            content.strategies[strategy.index].format,
-            growing,
-          )
-        : (opens: 0, shops: 0);
-    final picked = _regions ?? {...?current?.nationalRegions};
-    // This year's shops run by formula: opened and closed, their fitting
-    // out and what they earned.
-    final year = game.today.date.year;
-    var opened = 0;
-    var closed = 0;
-    var earned = Money.zero;
-    var hasBlocks = false;
-    // Its biggest shops run by formula, whose marketing and brand show.
-    CompanyBlockView? biggest;
-    for (final country in countries) {
-      for (final block in country.blocks) {
-        if (block.company != widget.company.id) continue;
-        hasBlocks = true;
-        if (biggest == null || block.stores > biggest.stores) {
-          biggest = block;
-        }
-        for (final month in block.months) {
-          if (month.start.date.year != year) continue;
-          opened += month.opened;
-          closed += month.closed;
-          earned += month.profit;
-        }
-      }
-    }
-    var fittingOut = Money.zero;
-    for (final memo in widget.company.memos) {
-      if (memo is NationalOpened && memo.day.date.year == year) {
-        fittingOut += memo.cost;
-      }
-    }
     Money monthly(_Option option) => grades[option.grade.index].salary
         .times(directors.characterOfPerson(option.shown).salary)
         .times(wageIndex)
         .timesInt(30);
+    final director = chosen.shown?.name ?? aDirector(gradeDef);
+    // What they grow shops at left to judge, as their character paces it.
+    final judged = gradeDef.growth * character.pace;
+    final paybackYears =
+        (scaledMonths(nationalPaybackMonths, character.payback) / 12).round();
+    final countries = [
+      for (final country in game.view.national)
+        if (country.country != null && country.def.regions.isNotEmpty) country,
+    ];
     return SheetFrame(
       footer: FilledButton(
         onPressed: () {
@@ -894,14 +875,7 @@ class _DirectorSheetState extends State<_DirectorSheet> {
               payout: payout,
               borrows: borrows,
               person: chosen.person,
-              nationalRate: nationally && !auto ? rate : Fx.zero,
-              nationalAuto: nationally && auto,
-              nationalRegions: [
-                if (nationally && growsAtAll)
-                  for (final country in countries)
-                    for (final region in country.def.regions)
-                      if (picked.contains(region.key)) region.key,
-              ],
+              goals: goals,
             ),
           );
           Navigator.pop(context);
@@ -971,262 +945,157 @@ class _DirectorSheetState extends State<_DirectorSheet> {
           Hint(_gradeHint(content, gradeDef, character)),
           Hint(tr('directors.shortlistHint')),
         ],
-        const SizedBox(height: 8),
-        Text(tr('finance.howFar'), style: theme.textTheme.titleSmall),
-        for (final option in Growth.values)
-          ChoiceTile(
-            selected: option == growth,
-            title: switch (option) {
-              Growth.none => tr('finance.growth.none'),
-              Growth.invest => tr('finance.growth.invest'),
-              Growth.open => tr('finance.growth.open'),
-              Growth.buy => tr('finance.growth.buy'),
-            },
-            subtitle: switch (option) {
-              Growth.none => tr('finance.growthHints.none'),
-              Growth.invest => tr('finance.growthHints.invest'),
-              Growth.open => tr('finance.growthHints.open'),
-              Growth.buy => tr('finance.growthHints.buy'),
-            },
-            onTap: () => setState(() => _growth = option),
-          ),
-        if (growth != Growth.none) ...[
+        const SizedBox(height: 12),
+        Text(tr('brief.goals'), style: theme.textTheme.titleSmall),
+        if (businesses.isEmpty) Hint(tr('brief.noBusiness')),
+        for (final business in businesses) ...[
           const SizedBox(height: 8),
-          Text(tr('finance.payingForIt'), style: theme.textTheme.titleSmall),
-          ChoiceTile(
-            selected: !borrows,
-            title: tr('finance.onlyEarnings'),
-            onTap: () => setState(() => _borrows = false),
-          ),
-          ChoiceTile(
-            selected: borrows,
-            title: tr('finance.borrowShort'),
-            subtitle: growth == Growth.buy
-                ? tr('finance.onEarningsBuy', {
-                    'years': buyoutPaybackMonths ~/ 12,
-                  })
-                : tr('finance.onEarnings'),
-            onTap: () => setState(() => _borrows = true),
-          ),
-        ],
-        if (nationally) ...[
-          const SizedBox(height: 8),
-          Text(tr('finance.acrossCountry'), style: theme.textTheme.titleSmall),
-          Text(tr('finance.growRate')),
+          Text(business.name, style: theme.textTheme.bodyLarge),
           const SizedBox(height: 4),
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: [
-              for (final option in _rates)
-                ChoiceChip(
-                  label: Text(
-                    option == Fx.zero
-                        ? tr('finance.rateOff')
-                        : percent(option, decimals: 0),
-                  ),
-                  selected: !auto && rate == option,
-                  onSelected: (_) => setState(() {
-                    _auto = false;
-                    _rate = option;
-                  }),
-                ),
-              ChoiceChip(
-                label: Text(tr('finance.rateAsJudged')),
-                selected: auto,
-                onSelected: (_) => setState(() => _auto = true),
-              ),
-            ],
+          _Choice<Goal>(
+            values: Goal.values,
+            selected: goalOf(business),
+            label: (goal) => tr('brief.goal.${goal.name}'),
+            onPick: (goal) => setState(() => _goals[keyOf(business)] = goal),
           ),
-          Hint(tr('finance.growRateHint')),
-          if (growsAtAll)
-            Line(
-              tr('finance.thisMonth'),
-              tr('finance.aboutShops', {
-                'count': planned.opens,
-                'total': planned.shops,
-              }),
-            ),
-          Line(
-            capitalized(
-              tr('finance.runsWellUpTo', {
-                'director': chosen.shown?.name ?? aDirector(gradeDef),
-              }),
-            ),
-            tr('finance.aMonth', {
-              'rate': percent(gradeDef.growth, decimals: 1),
-            }),
-          ),
-          if (character.pace != Fx.one)
-            Line(
-              tr('directors.leftToJudge'),
-              tr('finance.aMonth', {'rate': percent(judged, decimals: 1)}),
-            ),
-          Line(
-            tr('finance.slowsPast'),
-            tr('finance.ofItsTrade', {
-              'share': percent(content.directors!.criticalShare, decimals: 0),
-            }),
-          ),
-          if (growing > gradeDef.growth) ...[
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Stamp(tr('finance.beyondPace')),
-            ),
-            Hint(tr('finance.beyondPaceHint')),
-          ],
           Hint(
-            tr('finance.nationalPaceHint', {
-              'cost': money(
-                national.fitOut.times(countries.first.priceIndex),
-                cents: false,
-              ),
-            }),
+            _goalSentence(
+              game,
+              business,
+              goalOf(business),
+              judged: judged,
+              paybackYears: paybackYears,
+              acrossCountries: countries.isNotEmpty,
+              countries: countries,
+            ),
           ),
-          if (growsAtAll) ...[
-            for (final country in countries) ...[
-              if (countries.length > 1)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6, bottom: 2),
-                  child: Text(
-                    content.countries[country.country!.index].name,
-                    style: theme.textTheme.labelSmall,
-                  ),
-                ),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: [
-                  for (final region in country.def.regions)
-                    FilterChip(
-                      label: Text(region.name),
-                      selected: picked.contains(region.key),
-                      onSelected: (on) => setState(
-                        () => _regions = on
-                            ? ({...picked, region.key})
-                            : ({...picked}..remove(region.key)),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-            Hint(
-              picked.isEmpty
-                  ? tr('finance.nationalAnywhere')
-                  : tr('finance.nationalOnly', {'count': picked.length}),
-            ),
-          ],
-          if (hasBlocks) ...[
-            const SizedBox(height: 6),
-            Text(
-              tr('finance.nationalThisYear'),
-              style: theme.textTheme.labelSmall,
-            ),
-            Line(
-              tr('market.openedThisYear'),
-              tr('market.openedAndClosed', {
-                'opened': opened,
-                'closed': closed,
-              }),
-            ),
-            Line(
-              tr('finance.fittingOut'),
-              money(Money.zero - fittingOut, cents: false),
-            ),
-            Line(
-              tr('finance.earnedByThem'),
-              signedMoney(earned, cents: false),
-              color: gainColor(context, earned.cents.sign),
-            ),
-          ],
         ],
-        if (content.buyingTerms != null &&
-            widget.company.goodsBought > Money.zero) ...[
-          const SizedBox(height: 8),
-          Text(tr('finance.whatSizeBuys'), style: theme.textTheme.titleSmall),
-          Line(
-            tr('finance.buyingTerms'),
-            '−${percent(widget.company.buyingDiscount)}',
-            color: Ledger.of(context).gain,
-            hint: tr('finance.boughtThisYear', {
-              'amount': money(widget.company.goodsBought, cents: false),
-            }),
-          ),
-          Line(
-            tr('finance.atTwice', {
-              'amount': money(
-                widget.company.goodsBought.timesInt(2),
-                cents: false,
-              ),
-            }),
-            '−${percent(buyingDiscountAt(content, widget.company.goodsBought.timesInt(2)))}',
-          ),
-          if (biggest != null) ...[
-            Line(
-              tr('finance.nationalMarketing'),
-              percent(biggest.marketing),
-              hint: current == null
-                  ? tr('finance.marketingStrategy')
-                  : tr('finance.marketingDirector'),
-            ),
-            Line(
-              tr('finance.brandPull'),
-              '+${percent(biggest.brandPull)}',
-              color: Ledger.of(context).gain,
-            ),
-          ],
-          Hint(tr('finance.whatSizeBuysHint')),
-        ],
-        const SizedBox(height: 8),
-        Text(tr('finance.theProfit'), style: theme.textTheme.titleSmall),
-        ChoiceTile(
-          selected: !payout,
-          title: tr('finance.keepInCompany'),
-          onTap: () => setState(() => _payout = false),
-        ),
-        ChoiceTile(
-          selected: payout,
-          title: tr('finance.sendMe'),
-          subtitle: tr('finance.sendMeHint'),
-          onTap: () => setState(() => _payout = true),
-        ),
-        const SizedBox(height: 8),
-        Text(tr('finance.managersHire'), style: theme.textTheme.titleSmall),
+        const SizedBox(height: 12),
+        Text(tr('brief.money'), style: theme.textTheme.titleSmall),
         const SizedBox(height: 4),
-        Wrap(
-          spacing: 6,
-          children: [
-            for (final option in managers)
-              ChoiceChip(
-                label: Text(
-                  tr('store.gradeLine', {
-                    'grade': option.name,
-                    'salary': money(option.salary.times(wageIndex)),
-                  }),
-                ),
-                selected: option.id == managerGrade,
-                onSelected: (_) => setState(() => _managerGrade = option.id),
-              ),
-          ],
+        _Choice<bool>(
+          values: const [false, true],
+          selected: payout,
+          label: (pays) => tr(pays ? 'brief.payUp' : 'brief.keepIt'),
+          onPick: (pays) => setState(() => _payout = pays),
         ),
+        Hint(tr(payout ? 'brief.payUpHint' : 'brief.keepItHint')),
         const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          children: [
-            for (final option in strategies)
-              ChoiceChip(
-                label: Text(option.name),
-                selected: option.id == strategy,
-                onSelected: (_) => setState(() => _strategy = option.id),
-              ),
-          ],
+        _Choice<bool>(
+          values: const [false, true],
+          selected: borrows,
+          label: (borrowing) =>
+              tr(borrowing ? 'brief.borrowToGrow' : 'brief.noDebt'),
+          onPick: (borrowing) => setState(() => _borrows = borrowing),
         ),
-        if (stanceAdvice(content.strategies[strategy.index]) case final advice?)
-          Hint(advice),
+        Hint(tr(borrows ? 'brief.borrowHint' : 'brief.noDebtHint')),
+        if (characterPitch(
+              content,
+              chosen.shown,
+              content.strategies[strategy.index],
+            )
+            case final pitch?) ...[
+          const SizedBox(height: 8),
+          Text(
+            tr('brief.character', {'director': director}),
+            style: theme.textTheme.titleSmall,
+          ),
+          Hint(pitch),
+        ],
         const SizedBox(height: 12),
       ],
     );
+  }
+}
+
+/// A row of choices, one picked, as wide as the sheet.
+class _Choice<T> extends StatelessWidget {
+  const _Choice({
+    required this.values,
+    required this.selected,
+    required this.label,
+    required this.onPick,
+  });
+
+  final List<T> values;
+  final T selected;
+  final String Function(T value) label;
+  final ValueChanged<T> onPick;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: SegmentedButton<T>(
+      showSelectedIcon: false,
+      style: const ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      segments: [
+        for (final value in values)
+          ButtonSegment(
+            value: value,
+            label: Text(label(value), maxLines: 2, textAlign: TextAlign.center),
+          ),
+      ],
+      selected: {selected},
+      onSelectionChanged: (picked) => onPick(picked.single),
+    ),
+  );
+}
+
+/// What [goal] has a boss do with [business], in a sentence: for shops,
+/// growing, at about [judged] more a month where they pay back within
+/// [paybackYears] years across [countries] if the game has them, and how
+/// many that is this month.
+String _goalSentence(
+  SimulationController game,
+  Business business,
+  Goal goal, {
+  required Fx judged,
+  required int paybackYears,
+  required bool acrossCountries,
+  required List<NationalCountryView> countries,
+}) {
+  final content = game.content;
+  switch (business.kind) {
+    case BusinessKind.trade:
+      final rate = goal == Goal.growFast ? judged.timesInt(2) : judged;
+      final national =
+          acrossCountries &&
+          business.format != null &&
+          content.formats[business.format!.index].national != null;
+      if (goal == Goal.harvest || goal == Goal.hold) {
+        return tr('brief.trade.${goal.name}');
+      }
+      if (!national) {
+        return tr('brief.trade.${goal.name}Local', {'years': paybackYears});
+      }
+      final planned = _planned(
+        game,
+        business.company,
+        countries,
+        business.format!,
+        rate,
+      );
+      return tr('brief.trade.${goal.name}', {
+        'rate': percent(rate, decimals: 1),
+        'years': paybackYears,
+        'count': planned.opens,
+      });
+    case BusinessKind.works:
+      return tr('brief.works.${goal.name}', {
+        'full': goal == Goal.growFast ? growFastPlantFull : growPlantFull,
+      });
+    case BusinessKind.software:
+      return tr('brief.software.${goal.name}', {
+        'share': percent(
+          goal == Goal.growFast
+              ? growFastSoftwareMarketing
+              : growSoftwareMarketing,
+          decimals: 0,
+        ),
+      });
   }
 }
 
@@ -1331,16 +1200,6 @@ class _CandidateTile extends StatelessWidget {
     );
   }
 }
-
-/// The rates a brief may grow a chain at, a month.
-final _rates = [
-  Fx.zero,
-  Fx.parse('0.01'),
-  Fx.parse('0.02'),
-  Fx.parse('0.04'),
-  Fx.parse('0.06'),
-  maxNationalRate,
-];
 
 /// What a director growing [company]'s shops of [format] at [rate] opens
 /// this month across [countries], and its shops of that trade there.

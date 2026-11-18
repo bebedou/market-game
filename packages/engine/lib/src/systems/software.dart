@@ -194,6 +194,7 @@ final class SoftwareSystem implements TickSystem {
           revenue: software.price.timesInt(software.customers),
           lead: software.level - market.standard,
           bestRival: best,
+          profit: softwareMonthProfit(world, context.content, def, software),
         ),
       );
       _offer(world, context, def, market, software);
@@ -358,7 +359,12 @@ final class SoftwareSystem implements TickSystem {
       if (buyer == null || rival.customers > buyer.customers) buyer = rival;
     }
     if (buyer == null) return;
-    final worth = softwareWorth(world, context.content, def, software).worth;
+    // A company holding nothing else is bought whole, cash and all; beside
+    // other businesses, the software alone.
+    final value = softwareWorth(world, context.content, def, software);
+    final worth = holdsSoftwareAlone(world, software.company)
+        ? value.worth
+        : value.business;
     final premium =
         def.minPremium + (def.maxPremium - def.minPremium) * rng.nextFx();
     final price = worth.times(premium);

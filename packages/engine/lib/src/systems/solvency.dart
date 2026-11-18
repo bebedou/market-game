@@ -1,4 +1,5 @@
 import '../accounting/ledger.dart';
+import '../commands/apply_command.dart' show holderOf;
 import '../commands/transfers.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
@@ -152,6 +153,8 @@ void liquidate(WorldState world, TickContext context, Company company) {
   // What is left after the creditors goes back to the owner, as a return of
   // capital first; whatever capital isn't returned is lost.
   final owner = world.persons[company.owner.index];
+  // A subsidiary's surplus goes to its parent, which bears what it lost.
+  final holder = holderOf(world, company);
   // Outside investors in a software company take their share first.
   payInvestors(
     world,
@@ -167,7 +170,7 @@ void liquidate(WorldState world, TickContext context, Company company) {
     ledger.pay(
       payer: company,
       payerAccount: AccountKind.equity,
-      payee: owner,
+      payee: holder,
       payeeAccount: AccountKind.investments,
       amount: returned,
       reason: EntryReason.liquidation,
@@ -177,8 +180,10 @@ void liquidate(WorldState world, TickContext context, Company company) {
     ledger.pay(
       payer: company,
       payerAccount: AccountKind.dividends,
-      payee: owner,
-      payeeAccount: AccountKind.dividends,
+      payee: holder,
+      payeeAccount: company.parent == null
+          ? AccountKind.dividends
+          : AccountKind.disposals,
       amount: surplus - returned,
       reason: EntryReason.liquidation,
     );
@@ -186,7 +191,7 @@ void liquidate(WorldState world, TickContext context, Company company) {
   final lost = company.injected - returned;
   if (lost > Money.zero) {
     ledger.post(
-      owner,
+      holder,
       debit: AccountKind.writeOffs,
       credit: AccountKind.investments,
       amount: lost,
@@ -196,6 +201,10 @@ void liquidate(WorldState world, TickContext context, Company company) {
   company
     ..injected = Money.zero
     ..status = CompanyStatus.liquidated;
+  // Its own subsidiaries go up to whoever held it.
+  for (final other in world.companies) {
+    if (other.parent == company.id) other.parent = company.parent;
+  }
   owner
     ..bankruptcies += 1
     ..lastBankruptcy = context.day;

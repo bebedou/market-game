@@ -89,6 +89,9 @@ class Ledger extends ThemeExtension<Ledger> {
   /// Factories' colour, a slate, marking them wherever they show.
   Color get works => night ? const Color(0xFF9AA4B0) : const Color(0xFF5B6470);
 
+  /// Amber ink, for what is worth watching: between [gain] and [loss].
+  Color get watch => night ? const Color(0xFFD9A441) : const Color(0xFFB07A1A);
+
   /// Software companies' colour, a teal, marking them wherever they show.
   Color get software =>
       night ? const Color(0xFF6FB8B2) : const Color(0xFF1F6F6B);

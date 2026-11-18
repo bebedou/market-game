@@ -4,6 +4,7 @@ import 'package:engine/engine.dart';
 import 'package:flutter/material.dart' hide Simulation;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:market_game/src/controller.dart';
+import 'package:market_game/src/financials.dart';
 import 'package:market_game/src/home.dart';
 import 'package:market_game/src/widgets.dart';
 
@@ -44,17 +45,62 @@ void main() {
     );
   });
 
-  testWidgets('Holding leads with the holding\'s books and its portfolio', (
-    tester,
-  ) async {
+  test("a group's books leave out the capital its companies put into each "
+      'other, its profit kept the same', () {
+    final game = newController();
+    game
+      ..submit(
+        FoundCompany(
+          game.player,
+          name: 'Filiale',
+          capital: Money.parse('1000.00'),
+          parent: playerCompany,
+        ),
+      )
+      ..step();
+    final companies = game.view.companies;
+    final parent = companies.first;
+    expect(
+      financialsOf(game, [parent]).balance(AccountKind.investments),
+      Money.parse('1000.00'),
+    );
+    final group = financialsOf(game, companies);
+    expect(group.balance(AccountKind.investments), Money.zero);
+    expect(
+      group.retainedEarnings,
+      companies.fold(Money.zero, (sum, c) => sum + c.retainedEarnings),
+    );
+    expect(
+      group.balance(AccountKind.equity),
+      companies.fold(
+            Money.zero,
+            (sum, c) => sum + c.balance(AccountKind.equity),
+          ) +
+          Money.parse('1000.00'),
+    );
+  });
+
+  testWidgets('Holding has its own books and its portfolio', (tester) async {
     final game = _investor();
     await tester.pumpWidget(MaterialApp(home: HomeScreen(controller: game)));
     await tester.pumpAndSettle();
     expect(find.text('Bebedou'), findsOneWidget);
-    expect(find.text('The holding’s books'), findsOneWidget);
-    expect(find.text('Cash'), findsOneWidget);
+    // No company yet: the verdict says so, and the figures are the holding's.
+    expect(find.textContaining('No company yet'), findsOneWidget);
+    expect(find.text('Net worth'), findsWidgets);
+    await tester.scrollUntilVisible(find.text('The holding’s books'), 200);
     expect(find.text('Shares'), findsOneWidget);
-    expect(find.text('Your portfolio'), findsOneWidget);
+    // Nothing sold yet, so no result of its own; one unit sold books the
+    // gain or loss and the brokerage.
+    expect(find.text('Its own result'), findsNothing);
+    game
+      ..submit(SellShares(_content.player, of: 0, units: 1, index: true))
+      ..step();
+    await tester.pumpAndSettle();
+    expect(game.view.balances[AccountKind.spending.index] > Money.zero, isTrue);
+    await tester.scrollUntilVisible(find.text('Its own result'), 200);
+    expect(find.text('Fees'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Your portfolio'), 200);
     // The index bought, as a line that opens it.
     final index = game.view.stocks!.exchanges.first.indexName;
     await tester.scrollUntilVisible(find.text(index), 200);
@@ -65,8 +111,8 @@ void main() {
     expect(find.text('The holding’s cash'), findsNothing);
   });
 
-  testWidgets('a factory being built is on Holding, with news the day its '
-      'works start', (tester) async {
+  testWidgets('a factory being built is on its business, with news the day '
+      'its works start', (tester) async {
     final rich = loadScenario(
       File(
         '../content/scenarios/prototype.json',
@@ -93,20 +139,25 @@ void main() {
       contains(startsWith('Works have started on Fournil du Coin')),
     );
     await pumpGame(tester, game);
-    expect(find.text('Being built'), findsOneWidget);
-    expect(find.widgetWithText(IndexRow, 'Fournil du Coin'), findsWidgets);
+    await openCompany(tester, game, playerCompany);
+    await openRow(tester, rich.factories!.kinds.first.name);
+    expect(find.widgetWithText(IndexRow, 'Fournil du Coin'), findsOneWidget);
+    expect(find.textContaining('opens'), findsWidgets);
   });
 
-  testWidgets('each company has a dashboard, and a director takes its stores '
-      'off Holding', (tester) async {
+  testWidgets("under a director, a trade's page shows its figures, not its "
+      'shops', (tester) async {
     final game = newController();
     await pumpGame(tester, game);
-    // The store's line, marked with its trade; its company is named alike.
+    await openCompany(tester, game, playerCompany);
+    expect(find.text('Worth'), findsOneWidget);
+    await openRow(tester, 'Groceries');
+    // Run by hand: the store's line, which opens it.
     final shop = find.byWidgetPredicate(
       (widget) =>
           widget is IndexRow &&
           widget.title == 'Corner Shop' &&
-          widget.mark != null,
+          widget.onTap != null,
     );
     await scrollTo(tester, shop);
     expect(shop, findsOneWidget);
@@ -125,24 +176,44 @@ void main() {
       ..step();
     await tester.pumpAndSettle();
     expect(shop, findsNothing);
-    expect(
-      find.text('Stores run by a director are on their company’s page.'),
-      findsOneWidget,
-    );
-    // Its dashboard has its worth, its store and the way to its money.
-    await tester.fling(
-      find.byType(Scrollable).first,
-      const Offset(0, 3000),
-      3000,
-    );
-    await tester.pumpAndSettle();
-    await openIndex(tester, game.companyName(playerCompany));
-    expect(find.text('Worth'), findsOneWidget);
-    await scrollTo(tester, shop);
-    expect(shop, findsOneWidget);
+    expect(find.text('Sales a month'), findsOneWidget);
+    // Its company's page leads to its money.
+    await goBack(tester);
     await scrollTo(tester, find.text('Cash, loans and books'));
     await tester.tap(find.text('Cash, loans and books'));
     await tester.pumpAndSettle();
     expect(find.text('Director'), findsWidgets);
+  });
+
+  testWidgets('a company founds a subsidiary from its page, which the '
+      'holding counts once, through its parent', (tester) async {
+    final game = newController();
+    await pumpGame(tester, game);
+    await openCompany(tester, game, playerCompany);
+    await openRow(tester, 'Found a subsidiary');
+    await tester.enterText(find.byType(TextField).first, 'Filiale');
+    await tester.enterText(find.byType(TextField).last, '1000');
+    await tester.pump();
+    await tester.tap(find.text('Found'));
+    await tester.pumpAndSettle();
+    expect(game.pending.whereType<FoundCompany>().single.parent, playerCompany);
+    game.step();
+    await tester.pumpAndSettle();
+    final subsidiary = game.view.companies.last;
+    expect(subsidiary.parent, playerCompany);
+    expect(subsidiary.cash, Money.parse('1000.00'));
+    // On its parent's page, and only there.
+    await scrollTo(tester, find.widgetWithText(IndexRow, 'Filiale'));
+    expect(find.text('Subsidiaries'), findsOneWidget);
+    // The parent's worth carries it, so the holding adds only the parent.
+    final parent = game.view.companies.first;
+    expect(game.companiesWorth, SimulationController.worthOf(parent));
+    expect(
+      SimulationController.worthOf(parent) >= Money.parse('1000.00'),
+      isTrue,
+    );
+    await tester.tap(find.byIcon(Icons.account_balance_outlined));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(IndexRow, 'Filiale'), findsNothing);
   });
 }

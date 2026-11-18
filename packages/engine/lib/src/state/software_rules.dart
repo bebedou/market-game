@@ -6,8 +6,10 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
+import 'factory.dart' show FactoryStatus;
 import 'stocks.dart';
 import 'software.dart';
+import 'store.dart' show StoreStatus;
 import 'talent.dart';
 import 'world_state.dart';
 
@@ -259,6 +261,26 @@ Money softwarePayroll(
 }
 
 /// What [software]'s offices cost a month, for its team.
+/// What a month leaves [software] after its costs, as things stand: its
+/// customers' payments less serving them, its marketing once selling, its
+/// office and its team.
+Money softwareMonthProfit(
+  WorldState world,
+  ContentDb content,
+  SoftwareDef def,
+  Software software,
+) {
+  final revenue = software.price.timesInt(software.customers);
+  final marketing = software.status == SoftwareStatus.selling
+      ? software.marketing
+      : Money.zero;
+  return revenue -
+      revenue.times(def.serving) -
+      marketing -
+      softwareOffice(world, def, software) -
+      softwarePayroll(world, content, def, software);
+}
+
 Money softwareOffice(WorldState world, SoftwareDef def, Software software) =>
     def.office
         .timesInt(softwarePeople(world, software.id).length)
@@ -299,6 +321,9 @@ Fx softwareGrowth(Software software) {
 typedef SoftwareWorth = ({
   /// The whole company: its business plus its cash, less what it owes.
   Money worth,
+
+  /// Its business alone: a year's revenue at its multiple, or its team.
+  Money business,
 
   /// A year of what its customers pay now.
   Money yearRevenue,
@@ -353,6 +378,7 @@ SoftwareWorth softwareWorth(
       (business > team ? business : team) + company.accounts.netAssets;
   return (
     worth: worth > Money.zero ? worth : Money.zero,
+    business: business > team ? business : team,
     yearRevenue: yearRevenue,
     growth: growth,
     multiple: multiple,
@@ -430,6 +456,40 @@ Money payInvestors(
 /// else.
 bool holdsSoftware(WorldState world, CompanyId company) =>
     softwareOf(world, company) != null;
+
+/// Whether [company] holds its software and nothing else beside it: no
+/// shop of any scale, no plant, no subsidiary and no shares. Only such a
+/// company is bought whole by a rival, and priced by its software alone.
+bool holdsSoftwareAlone(WorldState world, CompanyId company) {
+  if (!holdsSoftware(world, company)) return false;
+  for (final store in world.stores) {
+    if (store.company == company && store.status != StoreStatus.closed) {
+      return false;
+    }
+  }
+  for (final factory in world.factories) {
+    if (factory.company == company && factory.status != FactoryStatus.closed) {
+      return false;
+    }
+  }
+  for (final district in world.sleepers) {
+    if (district.shops.any((shop) => shop.company == company)) return false;
+  }
+  if (world.national case final national?) {
+    for (final country in national.countries) {
+      if (country.blocks.any((block) => block.company == company)) {
+        return false;
+      }
+    }
+  }
+  for (final other in world.companies) {
+    if (other.parent == company && other.isActive) return false;
+  }
+  return world.stocks?.holdings.every(
+        (holding) => holding.owner != company.index,
+      ) ??
+      true;
+}
 
 /// [amount] shared out by [weights], each share rounded down. Worked in
 /// big integers, exact on every platform, since a market's weights run to

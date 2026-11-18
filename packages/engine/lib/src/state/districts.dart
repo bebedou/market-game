@@ -41,6 +41,11 @@ typedef DistrictShop = ({
 
   /// Its asking price, where businesses change hands.
   Valuation? value,
+
+  /// Its latest months' sales and profit before tax, oldest first, the
+  /// last the month just ended: what its company's books show of it.
+  List<Money> sales,
+  List<Money> profits,
 });
 
 /// A district run by formula, as anyone can see it: a chain weighs opening
@@ -140,6 +145,8 @@ List<DistrictView> districtViews(WorldState world, ContentDb content) {
                   month,
                   country: row.country,
                 ),
+                sales: List<Money>.unmodifiable(shop.sales),
+                profits: List<Money>.unmodifiable(shop.profits),
               ),
           ]),
         );

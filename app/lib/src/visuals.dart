@@ -619,3 +619,101 @@ class _TrendPainter extends CustomPainter {
   bool shouldRepaint(_TrendPainter old) =>
       old.series != series || old.grid != grid;
 }
+
+/// A page's verdict, the owner's layout B: how it is going and why, in a
+/// sentence, ruled down its left in [color]: green, amber or red.
+class VerdictBox extends StatelessWidget {
+  const VerdictBox(this.text, {super.key, required this.color});
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    padding: const EdgeInsets.fromLTRB(12, 4, 0, 4),
+    decoration: BoxDecoration(
+      border: Border(left: BorderSide(color: color, width: 3)),
+    ),
+    child: Text(text, style: Theme.of(context).textTheme.bodyLarge),
+  );
+}
+
+/// One of a page's four key figures: its [label], its [value], and, given
+/// [values] by month, oldest first, their line.
+typedef Figure = ({String label, String value, List<int>? values});
+
+/// A page's key figures two by two, each with its line where it has one,
+/// green while it rises and red while it falls.
+class FigureGrid extends StatelessWidget {
+  const FigureGrid(this.items, {super.key});
+
+  final List<Figure> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ledger = Ledger.of(context);
+    Widget tile(Figure figure) {
+      final values = figure.values;
+      final rising =
+          values != null && values.length >= 2 && values.last >= values.first;
+      return Container(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+        color: ledger.shade,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              figure.label,
+              style: theme.textTheme.labelSmall?.copyWith(color: ledger.muted),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              figure.value,
+              style: figures(
+                theme.textTheme.titleLarge,
+              ).copyWith(fontSize: 20, fontWeight: FontWeight.w500),
+              maxLines: 1,
+            ),
+            if (values != null && values.length >= 2)
+              Sparkline(
+                values,
+                color: rising ? ledger.gain : ledger.loss,
+                height: 18,
+              )
+            else
+              const SizedBox(height: 18),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+      child: Column(
+        children: [
+          for (var i = 0; i < items.length; i += 2) ...[
+            if (i > 0) const SizedBox(height: 8),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: tile(items[i])),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: i + 1 < items.length
+                        ? tile(items[i + 1])
+                        : const SizedBox(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

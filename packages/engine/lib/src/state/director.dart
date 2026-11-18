@@ -10,6 +10,26 @@ const _rateVersion = 31;
 /// The save version from which a director is a person with a record.
 const personVersion = 40;
 
+/// The save version from which a brief sets a goal for each business.
+const goalsVersion = 42;
+
+/// What the owner asks of one of a company's businesses, the boss's brief
+/// (the owner's brief B, 2026-11-17). Append only.
+enum Goal {
+  /// Takes the cash out: no works, nothing new, no research; its shops
+  /// that keep losing money closed.
+  harvest,
+
+  /// Keeps it as it is: its shops kept up to date, its plants kept full.
+  hold,
+
+  /// Grows it at the pace its boss runs well, where it pays back.
+  grow,
+
+  /// Grows it twice as fast, buying rivals too, and misjudging more.
+  growFast,
+}
+
 /// How far a director may grow the company they run, each step allowing
 /// what the ones before it do.
 enum Growth {
@@ -45,6 +65,7 @@ final class Director {
     this.nationalRegions = const [],
     this.person,
     this.record = const DirectorRecord(),
+    this.goals = const {},
   });
 
   Director.read(StateReader reader)
@@ -72,7 +93,8 @@ final class Director {
           : null,
       record = reader.version >= personVersion
           ? DirectorRecord.read(reader)
-          : const DirectorRecord();
+          : const DirectorRecord(),
+      goals = reader.version >= goalsVersion ? readGoals(reader) : const {};
 
   final DirectorGradeId grade;
 
@@ -113,7 +135,35 @@ final class Director {
   /// What they have done for the company since they were hired.
   final DirectorRecord record;
 
+  /// The goal for each of the company's businesses, by its key (see
+  /// `tradeKey`, `plantsKey` and `softwareBusiness`); empty for a brief
+  /// given before goals, which [growth] and the national rate set alone.
+  final Map<String, Goal> goals;
+
   bool allows(Growth step) => growth.index >= step.index;
+
+  /// The goal for [business]: as briefed, or else what [growth] amounts to.
+  Goal goalOf(String business) =>
+      goals[business] ??
+      switch (growth) {
+        Growth.none => Goal.harvest,
+        Growth.invest => Goal.hold,
+        Growth.open => Goal.grow,
+        Growth.buy => Goal.growFast,
+      };
+
+  /// Whether [business]'s goal allows [step]: works from holding on,
+  /// opening from growing, buying when growing fast.
+  bool allowsIn(String business, Growth step) {
+    if (goals.isEmpty) return allows(step);
+    final allowed = switch (goalOf(business)) {
+      Goal.harvest => Growth.none,
+      Goal.hold => Growth.invest,
+      Goal.grow => Growth.open,
+      Goal.growFast => Growth.buy,
+    };
+    return allowed.index >= step.index;
+  }
 
   /// The same director, with [memo] counted in their record.
   Director noting(Memo memo) {
@@ -132,6 +182,7 @@ final class Director {
       nationalRegions: nationalRegions,
       person: person,
       record: noted,
+      goals: goals,
     );
   }
 
@@ -151,6 +202,22 @@ final class Director {
     writer.writeBool(person != null);
     person?.write(writer);
     record.write(writer);
+    writeGoals(writer, goals);
+  }
+}
+
+/// A brief's goals, as [writeGoals] wrote them.
+Map<String, Goal> readGoals(StateReader reader) => Map.unmodifiable({
+  for (var i = 0, n = reader.readInt(); i < n; i++)
+    reader.readString(): Goal.values[reader.readInt()],
+});
+
+void writeGoals(StateWriter writer, Map<String, Goal> goals) {
+  writer.writeInt(goals.length);
+  for (final MapEntry(:key, :value) in goals.entries) {
+    writer
+      ..writeString(key)
+      ..writeInt(value.index);
   }
 }
 

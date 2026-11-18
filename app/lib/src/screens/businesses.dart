@@ -8,7 +8,7 @@ import '../home.dart';
 import '../l10n.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'holding.dart' show openCompanyDashboard;
+import 'company.dart' show openCompanyDashboard;
 import 'start.dart';
 
 /// What a company holds and how it did, as its line in the Businesses tab
@@ -155,6 +155,12 @@ class _CompanyLine extends StatelessWidget {
       null when company.software == null => tr('businesses.byHand'),
       null => null,
     };
+    final heldBy = switch (company.parent) {
+      final parent? => tr('businesses.heldBy', {
+        'company': game.companyName(parent),
+      }),
+      null => null,
+    };
     return IndexRow(
       mark: company.software != null
           ? ledger.software
@@ -165,7 +171,7 @@ class _CompanyLine extends StatelessWidget {
           : null,
       title: game.companyName(company.id),
       subtitle: [
-        [holdsLine(company, summary), ?runBy].join(' · '),
+        [holdsLine(company, summary), ?runBy, ?heldBy].join(' · '),
         if (summary.month case (:final sales, :final profit))
           tr('businesses.lastMonth', {
             'sales': money(sales, cents: false),

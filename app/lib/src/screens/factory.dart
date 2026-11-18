@@ -15,35 +15,6 @@ final _discounts = [
   for (final rate in ['0', '0.05', '0.10', '0.15', '0.20']) Fx.parse(rate),
 ];
 
-/// The player's factories on the holding, each on a line, and the way to
-/// build one. Nothing if the scenario has none.
-class FactoriesSection extends StatelessWidget {
-  const FactoriesSection({super.key, this.company});
-
-  /// Only this company's factories.
-  final CompanyId? company;
-
-  @override
-  Widget build(BuildContext context) {
-    final game = context.game;
-    final mine = [
-      for (final entry in game.myFactories)
-        if (company == null || entry.$1.id == company) entry,
-    ];
-    // Building one starts from the page to start a business.
-    if (mine.isEmpty) return const SizedBox.shrink();
-    return Section(
-      title: mine.length == 1
-          ? tr('factory.yourFactory')
-          : tr('factory.yourFactories'),
-      children: [
-        for (final (company, factory) in mine)
-          _FactoryEntry(company: company, factory: factory),
-      ],
-    );
-  }
-}
-
 /// Opens [factory]'s page within the current tab.
 void openFactoryPage(BuildContext context, FactoryView factory) =>
     context.openPage(factory.name, (_) => [FactoryPage(id: factory.id)]);
@@ -95,10 +66,11 @@ Money _shiftCost(SimulationController game, FactoryKindDef kind, CountryId c) =>
         .times(game.view.economy(c).wageIndex)
         .times(game.content.countries[c.index].service);
 
-class _FactoryEntry extends StatelessWidget {
-  const _FactoryEntry({required this.company, required this.factory});
+/// A plant on a line: its kind, country, shifts and use this month, and
+/// the month's profit against buying.
+class FactoryLine extends StatelessWidget {
+  const FactoryLine({super.key, required this.factory});
 
-  final CompanyView company;
   final FactoryView factory;
 
   @override
@@ -719,13 +691,21 @@ class _SellsTo extends StatelessWidget {
 /// Building a factory: what it makes, where, what the player's shops would
 /// give it to make at each number of shifts, what it costs and how to pay.
 class BuildFactoryPage extends StatefulWidget {
-  const BuildFactoryPage({super.key, this.kind, this.subsidiary = false});
+  const BuildFactoryPage({
+    super.key,
+    this.kind,
+    this.subsidiary = false,
+    this.company,
+  });
 
   /// What it makes, if already chosen; else the player picks it here.
   final FactoryKindId? kind;
 
   /// Whether it is built as a company of its own unless the player says not.
   final bool subsidiary;
+
+  /// The company it is built in unless the player says not, picked already.
+  final CompanyId? company;
 
   @override
   State<BuildFactoryPage> createState() => _BuildFactoryPageState();
@@ -736,7 +716,11 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
   int _size = 0;
   CountryId? _country;
   int? _shifts;
-  late bool _newCompany = widget.subsidiary;
+
+  /// The company it is built in; a company of its own if null.
+  late CompanyId? _company =
+      widget.company ??
+      (widget.subsidiary ? null : currentCompany(context.game));
   bool? _borrow;
   bool _named = false;
   bool _built = false;
@@ -795,10 +779,13 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
         'country': content.countries[country.index].name,
       });
     }
-    final company = game.company;
-    final hasCompany =
-        company != null && company.status == CompanyStatus.active;
-    final separate = _newCompany || !hasCompany;
+    final company = game.activeCompanies
+        .where((each) => each.id == _company)
+        .firstOrNull;
+    // A subsidiary's capital comes from its parent.
+    final parent = game.view.companies
+        .where((each) => each.id == company?.parent)
+        .firstOrNull;
     final cost = outlook.buildCost;
     final capital = _capital.text.isEmpty
         ? Money.zero
@@ -806,7 +793,7 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
     final view = game.view;
     final (:short, :amount, :borrow, :terms) = newBusinessFunding(
       game,
-      company: separate ? null : company,
+      company: company,
       cost: cost,
       capital: capital ?? Money.zero,
       borrow: _borrow,
@@ -989,16 +976,15 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
               decoration: InputDecoration(labelText: tr('factory.name')),
               onChanged: (_) => setState(() => _named = true),
             ),
-            if (hasCompany)
-              NewCompanySwitch(
-                title: tr('factory.asNewCompany'),
-                value: _newCompany,
-                company: game.companyName(company.id),
-                onChanged: (on) => setState(() => _newCompany = on),
+            if (game.activeCompanies.isNotEmpty)
+              CompanyPicker(
+                value: company?.id,
+                onChanged: (id) => setState(() => _company = id),
               ),
             CapitalField(
               controller: _capital,
-              cash: view.cash,
+              cash: parent?.cash ?? view.cash,
+              from: parent == null ? null : game.companyName(parent.id),
               valid: capital != null,
               onChanged: () => setState(() {}),
             ),
@@ -1023,7 +1009,7 @@ class _BuildFactoryPageState extends State<BuildFactoryPage> {
                             kind: kindId,
                             country: country,
                             name: _name.text.trim(),
-                            company: separate ? null : company.id,
+                            company: company?.id,
                             capital: capital,
                             borrow: borrow ? amount : Money.zero,
                             termMonths: borrow ? _months : 0,

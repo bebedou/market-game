@@ -64,11 +64,36 @@ void main() {
   ) async {
     final game = _founder();
     await pumpGame(tester, game);
-    await scrollTo(tester, find.text('Your software company'));
-    expect(find.text('Tessel'), findsWidgets);
-    await openIndex(tester, 'Start a new business');
+    await scrollTo(tester, find.text('Your company'));
+    expect(find.widgetWithText(IndexRow, 'Tessel'), findsOneWidget);
+    await openIndex(tester, 'Start a subsidiary');
     await openIndex(tester, 'Software');
     expect(find.text('Software company'), findsOneWidget);
+  });
+
+  testWidgets('software starts beside the shops of a company picked on its '
+      'start page', (tester) async {
+    final game = newController();
+    await _pumpPage(tester, game, const StartSoftwarePage());
+    expect(find.text('A company of its own'), findsOneWidget);
+    await tester.tap(find.text('A company of its own'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(game.companyName(playerCompany)).last);
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('a round sells a share of all of'),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextField).first, 'Tessel');
+    await tester.pump();
+    await scrollTo(tester, find.text('Start Tessel'));
+    await tester.tap(find.text('Start Tessel'));
+    await tester.pump();
+    final start = game.pending.single as StartSoftware;
+    expect(start.company, playerCompany);
+    expect(start.capital, Money.zero);
+    game.step();
+    expect(game.mySoftware.single.$1.id, playerCompany);
   });
 
   testWidgets("its page leads with four figures and the pages' index", (

@@ -3,8 +3,17 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../persistence/state_io.dart';
-import '../state/director.dart' show DirectorPerson, Growth, personVersion;
+import '../state/director.dart'
+    show
+        DirectorPerson,
+        Goal,
+        Growth,
+        goalsVersion,
+        personVersion,
+        readGoals,
+        writeGoals;
 import '../state/factory_sales.dart' show factorySalesVersion;
+import '../state/software.dart' show softwareBesideVersion;
 import '../state/store.dart' show allDuties;
 
 /// A command as it was applied: the day it took effect, and the command.
@@ -204,6 +213,7 @@ sealed class Command {
         person: reader.version >= personVersion && reader.readBool()
             ? DirectorPerson.read(reader)
             : null,
+        goals: reader.version >= goalsVersion ? readGoals(reader) : const {},
       ),
       FireDirector.tag => FireDirector(
         actor,
@@ -323,6 +333,12 @@ sealed class Command {
         name: reader.readString(),
         country: CountryId(reader.readInt()),
         capital: Money(reader.readInt()),
+        company: reader.version >= softwareBesideVersion
+            ? switch (reader.readNullableInt()) {
+                final index? => CompanyId(index),
+                null => null,
+              }
+            : null,
       ),
       SetSoftwarePrice.tag => SetSoftwarePrice(
         actor,
@@ -436,6 +452,12 @@ sealed class Command {
         company: CompanyId(reader.readInt()),
         share: Fx.raw(reader.readInt()),
         newShares: reader.readBool(),
+      ),
+      FoundCompany.tag => FoundCompany(
+        actor,
+        name: reader.readString(),
+        capital: Money(reader.readInt()),
+        parent: reader.readBool() ? CompanyId(reader.readInt()) : null,
       ),
       _ => throw FormatException('Unknown command tag $tag'),
     };
@@ -1114,6 +1136,7 @@ final class HireDirector extends Command {
     this.nationalAuto = false,
     this.nationalRegions = const [],
     this.person,
+    this.goals = const {},
   });
 
   static const int tag = 24;
@@ -1138,6 +1161,10 @@ final class HireDirector extends Command {
   /// applies the brief as it is.
   final DirectorPerson? person;
 
+  /// The goal for each business (see `Director.goals`); empty for a brief
+  /// set by [growth] and the national rate alone.
+  final Map<String, Goal> goals;
+
   @override
   void write(StateWriter writer) {
     writer
@@ -1156,6 +1183,7 @@ final class HireDirector extends Command {
     nationalRegions.forEach(writer.writeString);
     writer.writeBool(person != null);
     person?.write(writer);
+    writeGoals(writer, goals);
   }
 
   @override
@@ -1165,7 +1193,8 @@ final class HireDirector extends Command {
       'managerGrade: ${managerGrade.index}, growth: ${growth.name}, '
       'payout: $payout, borrows: $borrows, nationalRate: ${nationalRate.toDecimalString()}, '
       'nationalAuto: $nationalAuto, '
-      'nationalRegions: $nationalRegions, person: ${person?.name})';
+      'nationalRegions: $nationalRegions, person: ${person?.name}, '
+      'goals: ${{for (final e in goals.entries) e.key: e.value.name}})';
 }
 
 /// Lets a company's director go; the owner runs it again, and its store
@@ -1873,6 +1902,7 @@ final class StartSoftware extends Command {
     required this.name,
     required this.country,
     this.capital = Money.zero,
+    this.company,
   });
 
   static const int tag = 44;
@@ -1881,6 +1911,10 @@ final class StartSoftware extends Command {
   final CountryId country;
   final Money capital;
 
+  /// The player's company it starts in, beside what that company holds;
+  /// null for a company of its own, under the holding.
+  final CompanyId? company;
+
   @override
   void write(StateWriter writer) {
     writer
@@ -1888,7 +1922,8 @@ final class StartSoftware extends Command {
       ..writeInt(actor.index)
       ..writeString(name)
       ..writeInt(country.index)
-      ..writeInt(capital.cents);
+      ..writeInt(capital.cents)
+      ..writeNullableInt(company?.index);
   }
 
   @override
@@ -2484,4 +2519,38 @@ final class ListCompany extends Command {
   String toString() =>
       'ListCompany(actor: ${actor.index}, company: ${company.index}, '
       'share: ${share.toDecimalString()}, newShares: $newShares)';
+}
+
+/// Founds an empty company named [name] for the actor, held by [parent], one
+/// of their companies, or by their holding if null; [capital] comes out of
+/// the holder's cash. Its businesses are started from it afterwards.
+final class FoundCompany extends Command {
+  const FoundCompany(
+    super.actor, {
+    required this.name,
+    required this.capital,
+    this.parent,
+  });
+
+  static const int tag = 65;
+
+  final String name;
+  final Money capital;
+  final CompanyId? parent;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeString(name)
+      ..writeInt(capital.cents)
+      ..writeBool(parent != null);
+    if (parent case final parent?) writer.writeInt(parent.index);
+  }
+
+  @override
+  String toString() =>
+      'FoundCompany(actor: ${actor.index}, name: $name, '
+      'capital: ${capital.toDecimalString()}, parent: ${parent?.index})';
 }

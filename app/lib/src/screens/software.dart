@@ -50,46 +50,14 @@ int? _runway(CompanyView company, SoftwareView software) {
   return cash <= 0 ? 0 : cash ~/ loss;
 }
 
-/// The player's software companies on the holding; nothing while they have
-/// none. Starting one is on the page to start a business.
-class SoftwareSection extends StatelessWidget {
-  const SoftwareSection({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final game = context.game;
-    final mine = game.mySoftware;
-    if (mine.isEmpty) return const SizedBox.shrink();
-    final ledger = Ledger.of(context);
-    return Section(
-      title: mine.length == 1
-          ? tr('software.yourOne')
-          : tr('software.yourMany'),
-      children: [
-        for (final (_, software) in mine)
-          IndexRow(
-            mark: ledger.software,
-            title: software.name,
-            subtitle: [
-              softwareStatus(software),
-              if (software.status == SoftwareStatus.selling)
-                tr('software.customersLine', {
-                  'customers': compactCount(software.customers),
-                  'revenue': compactMoney(software.revenue),
-                }),
-            ].join(' · '),
-            value: software.running ? compactMoney(software.yourWorth) : null,
-            onTap: () => openSoftwarePage(context, software),
-          ),
-      ],
-    );
-  }
-}
-
 /// Starting a software company: its name, where it works from, the money
 /// put in, and how the business works.
 class StartSoftwarePage extends StatefulWidget {
-  const StartSoftwarePage({super.key});
+  const StartSoftwarePage({super.key, this.company});
+
+  /// The company it starts in, picked already; a company of its own if
+  /// null, unless the player picks one of theirs.
+  final CompanyId? company;
 
   @override
   State<StartSoftwarePage> createState() => _StartSoftwarePageState();
@@ -100,6 +68,9 @@ class _StartSoftwarePageState extends State<StartSoftwarePage> {
   final _capital = TextEditingController();
   CountryId? _country;
   bool _started = false;
+
+  /// The company picked to start it in; a company of its own if null.
+  late CompanyId? _company = widget.company;
 
   @override
   void dispose() {
@@ -113,9 +84,19 @@ class _StartSoftwarePageState extends State<StartSoftwarePage> {
     final game = context.game;
     final content = game.content;
     final def = content.software!;
-    final cash = game.view.cash;
+    // Beside the businesses of a company without software, or on its own.
+    final homes = [
+      for (final company in game.activeCompanies)
+        if (company.software == null) company,
+    ];
+    final home = homes.where((c) => c.id == _company).firstOrNull;
+    // Its capital comes from whoever holds that company.
+    final parent = game.view.companies
+        .where((c) => c.id == home?.parent)
+        .firstOrNull;
+    final cash = parent?.cash ?? game.view.cash;
     if (_capital.text.isEmpty && !_started) {
-      _capital.text = moneyInput(cash);
+      _capital.text = home == null ? moneyInput(cash) : '0';
     }
     final country = _country ?? game.homeCountry;
     final capital = parseMoney(_capital.text);
@@ -140,6 +121,37 @@ class _StartSoftwarePageState extends State<StartSoftwarePage> {
             decoration: InputDecoration(labelText: tr('software.name')),
             onChanged: (_) => setState(() {}),
           ),
+          if (homes.isNotEmpty) ...[
+            DropdownButtonFormField<CompanyId?>(
+              initialValue: home?.id,
+              decoration: InputDecoration(labelText: tr('software.where')),
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text(tr('software.ownCompany')),
+                ),
+                for (final company in homes)
+                  DropdownMenuItem(
+                    value: company.id,
+                    child: Text(game.companyName(company.id)),
+                  ),
+              ],
+              // Beside a company's businesses, its own cash pays first.
+              onChanged: (value) => setState(() {
+                _company = value;
+                _capital.text = value == null
+                    ? moneyInput(game.view.cash)
+                    : '0';
+              }),
+            ),
+            Hint(
+              home == null
+                  ? tr('software.ownCompanyHint')
+                  : tr('software.besideHint', {
+                      'company': game.companyName(home.id),
+                    }),
+            ),
+          ],
           if (content.countries.length > 1) ...[
             DropdownButtonFormField<CountryId>(
               initialValue: country,
@@ -159,11 +171,17 @@ class _StartSoftwarePageState extends State<StartSoftwarePage> {
             onChanged: (_) => setState(() {}),
           ),
           Hint(
-            tr('software.capitalHint', {
-              'cash': money(cash, cents: false),
-              'low': pay(0),
-              'high': pay(def.levels.length - 1),
-            }),
+            tr(
+              parent == null
+                  ? 'software.capitalHint'
+                  : 'software.capitalHintParent',
+              {
+                'company': ?parent == null ? null : game.companyName(parent.id),
+                'cash': money(cash, cents: false),
+                'low': pay(0),
+                'high': pay(def.levels.length - 1),
+              },
+            ),
           ),
           const SizedBox(height: 8),
           Hint(
@@ -186,6 +204,7 @@ class _StartSoftwarePageState extends State<StartSoftwarePage> {
                           name: name,
                           country: country,
                           capital: capital,
+                          company: home?.id,
                         ),
                       );
                       setState(() => _started = true);
@@ -911,10 +930,17 @@ class SoftwareFundingPage extends StatelessWidget {
             title: tr('software.offer'),
             children: [
               Hint(
-                tr('software.offerLine', {
-                  'rival': offer.rivalName,
-                  'price': compactMoney(offer.price),
-                }),
+                tr(
+                  offer.whole
+                      ? 'software.offerLine'
+                      : 'software.offerLineAlone',
+                  {
+                    'rival': offer.rivalName,
+                    'name': software.name,
+                    'company': game.companyName(software.company),
+                    'price': compactMoney(offer.price),
+                  },
+                ),
               ),
               Hint(
                 tr('software.offerYours', {
@@ -1032,10 +1058,16 @@ class SoftwareFundingPage extends StatelessWidget {
         'name': software.name,
         'rival': offer.rivalName,
       }),
-      body: tr('software.acceptBody', {
-        'yours': compactMoney(offer.yours),
-        'rival': offer.rivalName,
-      }),
+      body: offer.whole
+          ? tr('software.acceptBody', {
+              'yours': compactMoney(offer.yours),
+              'rival': offer.rivalName,
+            })
+          : tr('software.acceptBodyAlone', {
+              'company': game.companyName(software.company),
+              'price': compactMoney(offer.price),
+              'rival': offer.rivalName,
+            }),
       action: tr('software.accept'),
     );
     if (ok) {

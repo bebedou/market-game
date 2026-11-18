@@ -10,13 +10,39 @@ import 'factory.dart' show BuildFactoryPage;
 import 'software.dart' show StartSoftwarePage;
 import 'world.dart' show NewBusiness, freeSites;
 
-/// Opens the page to start a business, or with [subsidiary] a company of its
-/// own for the holding, within the current tab.
-void openStartBusiness(BuildContext context, {bool subsidiary = false}) {
+/// Opens the page to start a business, in [company] if given, or with
+/// [subsidiary] a company of its own for the holding, within the current
+/// tab.
+void openStartBusiness(
+  BuildContext context, {
+  bool subsidiary = false,
+  CompanyId? company,
+}) {
   final title = subsidiary
       ? tr('common.startSubsidiary')
       : tr('common.startBusiness');
-  context.openPage(title, (_) => [StartBusinessPage(subsidiary: subsidiary)]);
+  context.openPage(
+    title,
+    (_) => [StartBusinessPage(subsidiary: subsidiary, company: company)],
+  );
+}
+
+/// Opens [sector]'s kinds of business within the current tab: a trade's
+/// kinds of shop, by its key.
+void openSector(BuildContext context, String sector) {
+  final chosen = _sectors(
+    context.game,
+    Ledger.of(context),
+    subsidiary: false,
+  ).where((each) => each.key == sector).firstOrNull;
+  if (chosen == null) {
+    openStartBusiness(context);
+    return;
+  }
+  context.openPage(
+    chosen.name,
+    (_) => [_SectorPage(sector: sector, subsidiary: false)],
+  );
 }
 
 /// A kind of business: its name, what sets it apart, its colour, the least
@@ -34,11 +60,12 @@ typedef _Sector = ({String key, String name, Color mark, List<_Kind> kinds});
 
 /// The sectors a business can be started in: each trade's kinds of shop, in
 /// the order the formats come, then factories and software where the
-/// scenario has them. A subsidiary is a shop or a factory.
+/// scenario has them. Software is always a company of its own.
 List<_Sector> _sectors(
   SimulationController game,
   Ledger ledger, {
   required bool subsidiary,
+  CompanyId? company,
 }) {
   final content = game.content;
   final sites = freeSites(game);
@@ -65,7 +92,13 @@ List<_Sector> _sectors(
       from: from,
       open: (context) => context.openPage(
         format.name,
-        (_) => [NewBusiness(format: format.id, subsidiary: subsidiary)],
+        (_) => [
+          NewBusiness(
+            format: format.id,
+            subsidiary: subsidiary,
+            company: company,
+          ),
+        ],
       ),
     );
   }
@@ -108,13 +141,17 @@ List<_Sector> _sectors(
               open: (context) => context.openPage(
                 kind.name,
                 (_) => [
-                  BuildFactoryPage(kind: kind.id, subsidiary: subsidiary),
+                  BuildFactoryPage(
+                    kind: kind.id,
+                    subsidiary: subsidiary,
+                    company: company,
+                  ),
                 ],
               ),
             ),
         ],
       ),
-    if (content.software != null && !subsidiary)
+    if (content.software != null)
       (
         key: 'software',
         name: tr('business.sectors.software'),
@@ -127,7 +164,7 @@ List<_Sector> _sectors(
             from: null,
             open: (context) => context.openPage(
               tr('software.start'),
-              (_) => [const StartSoftwarePage()],
+              (_) => [StartSoftwarePage(company: company)],
             ),
           ),
         ],
@@ -138,10 +175,13 @@ List<_Sector> _sectors(
 /// Starting a business, the owner's layout A: a line for each sector, with
 /// its colour and its kinds, each opening the sector's kinds of business.
 class StartBusinessPage extends StatelessWidget {
-  const StartBusinessPage({super.key, this.subsidiary = false});
+  const StartBusinessPage({super.key, this.subsidiary = false, this.company});
 
   /// Whether it is a company of its own for the holding.
   final bool subsidiary;
+
+  /// The company it starts in, picked already.
+  final CompanyId? company;
 
   @override
   Widget build(BuildContext context) {
@@ -149,6 +189,7 @@ class StartBusinessPage extends StatelessWidget {
       context.game,
       Ledger.of(context),
       subsidiary: subsidiary,
+      company: company,
     );
     // A page shows no title of its own: its section says what it is.
     return Section(
@@ -159,7 +200,12 @@ class StartBusinessPage extends StatelessWidget {
         Hint(
           subsidiary
               ? tr('business.subsidiaryHint')
-              : tr('business.pickSector'),
+              : switch (company) {
+                  final id? => tr('business.pickSectorIn', {
+                    'company': context.game.companyName(id),
+                  }),
+                  null => tr('business.pickSector'),
+                },
         ),
         for (final sector in sectors)
           IndexRow(
@@ -169,7 +215,13 @@ class StartBusinessPage extends StatelessWidget {
             value: '${sector.kinds.length}',
             onTap: () => context.openPage(
               sector.name,
-              (_) => [_SectorPage(sector: sector.key, subsidiary: subsidiary)],
+              (_) => [
+                _SectorPage(
+                  sector: sector.key,
+                  subsidiary: subsidiary,
+                  company: company,
+                ),
+              ],
             ),
           ),
       ],
@@ -180,10 +232,15 @@ class StartBusinessPage extends StatelessWidget {
 /// A sector's kinds of business, a line each with what sets it apart and the
 /// least it costs to set up, each opening the page that starts one.
 class _SectorPage extends StatelessWidget {
-  const _SectorPage({required this.sector, required this.subsidiary});
+  const _SectorPage({
+    required this.sector,
+    required this.subsidiary,
+    this.company,
+  });
 
   final String sector;
   final bool subsidiary;
+  final CompanyId? company;
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +248,7 @@ class _SectorPage extends StatelessWidget {
       context.game,
       Ledger.of(context),
       subsidiary: subsidiary,
+      company: company,
     ).firstWhere((each) => each.key == sector);
     return Section(
       title: chosen.name,

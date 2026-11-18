@@ -45,7 +45,8 @@ void main() {
   testWidgets('a factory is built from the holding', (tester) async {
     final game = SimulationController.newGame(_rich, seed: 7);
     await pumpGame(tester, game);
-    await openIndex(tester, 'Start a new business');
+    // A company of its own, from the holding.
+    await openIndex(tester, 'Start a subsidiary');
     await openIndex(tester, 'Factories');
     await openIndex(tester, 'Drinks plant');
     expect(find.text('Drinks plant, France'), findsOneWidget);
@@ -77,7 +78,7 @@ void main() {
       game.step();
     }
     await pumpGame(tester, game);
-    await openIndex(tester, 'Boissons du Coin');
+    await openFactory(tester, game, 'Boissons du Coin');
     expect(find.textContaining('against buying'), findsWidgets);
     expect(
       find.text('Your shops would have paid the wholesalers'),
@@ -135,7 +136,7 @@ void main() {
       'people hired from the market', (tester) async {
     final game = _making();
     await pumpGame(tester, game);
-    await openIndex(tester, 'Boissons du Coin');
+    await openFactory(tester, game, 'Boissons du Coin');
     await openIndex(tester, 'The lab');
     expect(find.text('On the bench'), findsOneWidget);
     expect(find.textContaining('The lab is idle'), findsOneWidget);
@@ -296,7 +297,7 @@ void main() {
         ..physicalSize = const Size(1080, 2280)
         ..devicePixelRatio = 3;
       await tester.pumpAndSettle();
-      await openIndex(tester, 'Boissons du Coin');
+      await openFactory(tester, game, 'Boissons du Coin');
       if (lab) await openIndex(tester, tr('lab.title'));
       for (var i = 0; i < 6; i++) {
         await tester.drag(

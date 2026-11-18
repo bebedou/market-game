@@ -32,6 +32,7 @@ export 'src/commands/command.dart'
         CloseFactory,
         CloseStore,
         Command,
+        FoundCompany,
         ListCompany,
         RunListed,
         SellControlled,
@@ -173,11 +174,19 @@ export 'src/policies/director.dart'
     show
         buyoutPaybackMonths,
         directorManagerDuties,
+        growFastPlantFull,
+        growFastSoftwareMarketing,
+        growPlantFull,
+        growSoftwareMarketing,
         nationalBudget,
         nationalChainShops,
         nationalGrowthRate,
         nationalPaybackMonths,
-        scaledMonths;
+        plantsKey,
+        scaledMonths,
+        shareOfMarket,
+        softwareBusiness,
+        tradeKey;
 export 'src/policies/entrepreneur_policy.dart' show EntrepreneurPolicy;
 export 'src/policies/policy.dart'
     show CombinedPolicy, Policy, ownerPolicy, standardPolicies;
@@ -185,7 +194,13 @@ export 'src/policies/retail_policy.dart' show RetailPolicy;
 export 'src/reports/attribution.dart'
     show Attribution, ItemMiss, MissReason, StoreSwitch, SwitchCause;
 export 'src/reports/period_report.dart'
-    show FactoryReport, PeriodReport, ReportPeriod, StoreReport, SwitchKey;
+    show
+        FactoryReport,
+        HoldingMonth,
+        PeriodReport,
+        ReportPeriod,
+        StoreReport,
+        SwitchKey;
 export 'src/simulation.dart' show CommandRejection, Simulation, TickResult;
 export 'src/state/credit.dart' show lendingRate, splitLoan;
 export 'src/state/director.dart';
@@ -213,7 +228,7 @@ export 'src/state/software.dart'
 export 'src/state/software_rules.dart' show SoftwareWorth, roundMoney;
 export 'src/state/talent.dart' show KeyRole;
 export 'src/state/taxation.dart' show CountryTax;
-export 'src/state/valuation.dart' show Valuation, symbolicPrice;
+export 'src/state/valuation.dart' show Valuation, companyWorth, symbolicPrice;
 export 'src/observation/stocks_view.dart'
     show
         AnalystRating,

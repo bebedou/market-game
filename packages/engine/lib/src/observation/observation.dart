@@ -4,7 +4,7 @@ import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
-import '../reports/period_report.dart' show ReportPeriod;
+import '../reports/period_report.dart' show HoldingMonth, ReportPeriod;
 import '../state/districts.dart';
 import 'national_view.dart';
 import 'stocks_view.dart';
@@ -42,6 +42,8 @@ final class Observation {
     required this.today,
     required this.actor,
     required this.cash,
+    this.balances = const [],
+    this.holdingMonths = const [],
     required this.lastBankruptcy,
     required this.macro,
     this.economies = const [],
@@ -111,6 +113,14 @@ final class Observation {
 
   /// The actor's personal cash.
   final Money cash;
+
+  /// The actor's own balances, by [AccountKind]: for the player, the
+  /// holding's books, what it received and paid since the game began.
+  final List<Money> balances;
+
+  /// For the player, the holding's own months, oldest first, as copies;
+  /// empty for anyone else.
+  final List<HoldingMonth> holdingMonths;
 
   /// When a company of the actor's was last liquidated, if ever.
   final Day? lastBankruptcy;
@@ -563,12 +573,27 @@ final class CompanyView {
     this.goodsBought = Money.zero,
     this.buyingDiscount = Fx.zero,
     this.software,
+    this.worth = Money.zero,
+    this.parent,
+    this.injected = Money.zero,
   });
 
   final CompanyId id;
 
   /// Its software product, if it is a software company.
   final SoftwareView? software;
+
+  /// What it is worth whole: its businesses at what they would sell for,
+  /// its shares at their price, its subsidiaries, its cash, less what it
+  /// owes (see `companyWorth`).
+  final Money worth;
+
+  /// The company of its owner's that holds it; null when their holding
+  /// does.
+  final CompanyId? parent;
+
+  /// The capital whoever holds it has put in, less what came back.
+  final Money injected;
 
   /// What it bought of goods over its latest twelve months, and what its
   /// suppliers take off them for it (see `buyingDiscount`).
@@ -1061,6 +1086,12 @@ Observation observe(
     today: world.today,
     actor: actor,
     cash: person.accounts[AccountKind.cash],
+    balances: [for (final kind in AccountKind.values) person.accounts[kind]],
+    holdingMonths: actor == world.player
+        ? List.unmodifiable([
+            for (final month in world.holdingMonths) month.copy(),
+          ])
+        : const [],
     lastBankruptcy: person.lastBankruptcy,
     macro: shared.macro,
     economies: shared.economies,
@@ -1078,6 +1109,14 @@ Observation observe(
             founded: company.founded,
             goodsBought: goodsBoughtInYear(company),
             buyingDiscount: buyingDiscount(content, company),
+            worth: companyWorth(
+              world,
+              content,
+              company,
+              values: shared.valuations,
+            ),
+            parent: company.parent,
+            injected: company.injected,
             balances: List.unmodifiable([
               for (final kind in AccountKind.values) company.accounts[kind],
             ]),

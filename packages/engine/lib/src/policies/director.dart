@@ -1,5 +1,6 @@
 import '../accounting/ledger.dart';
-import '../commands/apply_command.dart' show maxNationalOpenings;
+import '../commands/apply_command.dart'
+    show maxNationalOpenings, maxNationalRate;
 import '../commands/command.dart';
 import '../content/content_db.dart';
 import '../core/fx.dart';
@@ -7,10 +8,15 @@ import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/rng.dart';
 import '../core/safe_int.dart';
+import '../countries/shop_bridge.dart' show formatTrades;
+import '../observation/factory_sales_view.dart' show TenderView;
 import '../observation/national_view.dart';
 import '../observation/observation.dart';
 import '../state/director.dart';
 import '../state/districts.dart';
+import '../observation/software_view.dart' show SoftwareView;
+import '../state/factory.dart' show FactoryStatus;
+import '../state/factory_sales.dart' show TenderStatus;
 import '../state/store.dart';
 import 'entrepreneur_policy.dart';
 import 'manager.dart';
@@ -23,6 +29,49 @@ typedef Directive = ({CompanyId company, Command? command, Memo memo});
 /// The most months a director allowed to borrow lets a rival's profitable
 /// store take to repay its asking price, at its present earnings.
 const buyoutPaybackMonths = 48;
+
+/// The key of [format]'s trade, one business for every kind of shop of it,
+/// whatever the countries.
+String tradeKey(FormatDef format) => formatTrades[format.key] ?? format.key;
+
+/// The key of a company's plants of [kind], one business.
+String plantsKey(FactoryKindDef kind) => 'plants:${kind.key}';
+
+/// The key of a company's software, one business.
+const softwareBusiness = 'software';
+
+/// What a boss keeping a plant full takes off the producer price to sell
+/// its spare goods to rivals, when it sold only to its own shops.
+const plantRivalDiscount = Fx.raw(500);
+
+/// What a boss bids under a tender's producer price before any tender for
+/// those goods there has been won, how far under the latest winning share
+/// they bid once one has, and the least over its own cost a unit they bid
+/// at.
+const tenderUnder = Fx.raw(400);
+const tenderStep = Fx.raw(100);
+const tenderMargin = Fx.raw(1000);
+
+/// The size a boss builds a new plant at beside one full at the largest
+/// size: a plant, not a workshop.
+const newPlantSize = 1;
+
+/// How many months of cash, at its loss with them, a software company must
+/// have for its boss to hire someone: growing it, and growing it fast.
+
+/// How full a plant runs, in hundredths of what its shifts can make, before
+/// a boss growing it enlarges it, and growing it fast.
+const growPlantFull = 90;
+const growFastPlantFull = 75;
+
+/// The share of its revenue a boss growing software spends on marketing at
+/// least, and growing it fast; and the months of cash below which growing
+/// it fast they raise a round, of half the most a round may sell.
+const growSoftwareMarketing = Fx.raw(1000);
+const growFastSoftwareMarketing = Fx.raw(2500);
+const roundBelowMonths = 6;
+const hireCashMonths = 12;
+const hireFastCashMonths = 6;
 
 /// The duties of the managers a director hires: all but investing, which is
 /// the director's.
@@ -91,6 +140,9 @@ List<Command> direct(
       ManagerHired(today, store: store.id, grade: director.managerGrade),
     );
   }
+  if (director.goals.isNotEmpty) {
+    _bidTenders(view, content, company, director, commands);
+  }
   if (!today.isFirstOfMonth) return commands;
 
   for (final store in company.stores) {
@@ -146,9 +198,14 @@ List<Command> direct(
   // Works and fitting out are spent, out of the profit kept.
   var retained = company.retainedEarnings;
   ProfitKept? saving;
-  if (director.allows(Growth.invest) && profit > Money.zero) {
+  if (profit > Money.zero) {
     for (final store in company.stores) {
-      if (store.status == StoreStatus.closed || closing.contains(store.id)) {
+      if (store.status == StoreStatus.closed ||
+          closing.contains(store.id) ||
+          !director.allowsIn(
+            tradeKey(content.formats[store.format.index]),
+            Growth.invest,
+          )) {
         continue;
       }
       final plan = StorePlan(
@@ -197,46 +254,70 @@ List<Command> direct(
     }
   }
 
-  if (director.allows(Growth.open) && profit > Money.zero) {
-    final growth = _growth(
-      view,
-      content,
-      company,
-      strategy,
-      judgment,
-      spare,
-      credit,
-    );
-    switch (growth) {
-      case (:final command, :final memo, :final cost, :final borrowed)
-          when cost <= spare + borrowed:
-        // Opening and buying in districts run by formula take no loan of
-        // their own: the company borrows first.
-        if (borrowed > Money.zero &&
-            (command is OpenInDistrict || command is BuyInDistrict)) {
-          commands.add(
-            TakeLoan(
-              view.actor,
-              company: company.id,
-              amount: borrowed,
-              termMonths: term,
-              guarantee: false,
-            ),
-          );
-        }
-        give(command, memo);
-        // A loan takes all there was to spare, and leaves nothing to pay out.
-        spare = borrowed > Money.zero ? Money.zero : spare - cost;
-        if (memo is StoreOpened) retained -= memo.cost;
-        if (memo is DistrictOpened) retained -= memo.cost;
-      case (:final command, :final cost, memo: _, borrowed: _):
+  // The trades the brief grows, each with the strategy its shops follow,
+  // the director's own first; a brief from before goals grows only that.
+  final growing = <(String, StrategyDef)>[
+    if (director.goals.isEmpty)
+      if (director.allows(Growth.open))
+        (tradeKey(content.formats[strategy.format.index]), strategy)
+      else
+        ...[]
+    else
+      for (final trade in _tradesOf(content, view, company, strategy))
+        if (director.allowsIn(trade, Growth.open))
+          if (_strategyOfTrade(content, view, company, strategy, trade)
+              case final own?)
+            (trade, own),
+  ];
+  if (growing.isNotEmpty && profit > Money.zero) {
+    // At most a shop a month in full or in a district for each trade it
+    // grows, where one pays, never two in one spot; what each borrows
+    // leaves the next less credit.
+    final taken = <String>{};
+    for (final (trade, own) in growing) {
+      final growth = _growth(
+        view,
+        content,
+        company,
+        own,
+        judgment,
+        spare,
+        credit,
+        buys: director.allowsIn(trade, Growth.buy),
+        taken: taken,
+      );
+      if (growth == null) continue;
+      final (:command, :memo, :cost, :borrowed) = growth;
+      if (!taken.add(_spot(command))) continue;
+      if (cost > spare + borrowed) {
         saving ??= ProfitKept(
           today,
           site: command is OpenStore ? command.site : null,
           store: command is BuyStore ? command.store : null,
           needed: cost,
         );
-      case null:
+        continue;
+      }
+      // Opening and buying in districts run by formula take no loan of
+      // their own: the company borrows first.
+      if (borrowed > Money.zero &&
+          (command is OpenInDistrict || command is BuyInDistrict)) {
+        commands.add(
+          TakeLoan(
+            view.actor,
+            company: company.id,
+            amount: borrowed,
+            termMonths: term,
+            guarantee: false,
+          ),
+        );
+      }
+      give(command, memo);
+      // A loan takes all there was to spare, and leaves nothing to pay out.
+      spare = borrowed > Money.zero ? Money.zero : spare - cost;
+      credit -= borrowed;
+      if (memo is StoreOpened) retained -= memo.cost;
+      if (memo is DistrictOpened) retained -= memo.cost;
     }
   }
 
@@ -245,19 +326,22 @@ List<Command> direct(
   // years, so a chain growing fast doesn't wait for each year's fitting out
   // to be earned back before the next.
   final earned = profit + company.balance(AccountKind.openingCosts);
-  if (nationalGrowthRate(content, director) > Fx.zero &&
-      director.allows(Growth.open) &&
-      earned > Money.zero) {
+  national:
+  for (final (trade, own) in growing) {
+    if (earned <= Money.zero ||
+        nationalGrowthRate(content, director, trade: trade) <= Fx.zero) {
+      continue;
+    }
     for (final (:command, :memo) in _nationalGrowth(
       view,
       content,
       company,
-      strategy,
+      own,
       judgment,
     )) {
       if (!canPay(memo.cost)) {
         saving ??= ProfitKept(today, needed: memo.cost);
-        break;
+        break national;
       }
       final borrowed = pay(memo.cost);
       give(
@@ -276,6 +360,19 @@ List<Command> direct(
       );
       retained -= memo.cost;
     }
+  }
+
+  if (director.goals.isNotEmpty) {
+    spare = _directPlants(
+      view,
+      content,
+      company,
+      director,
+      commands,
+      spare: spare,
+      credit: director.borrows ? credit : Money.zero,
+    );
+    _directSoftware(view, content, company, director, commands);
   }
 
   if (director.payout) {
@@ -311,11 +408,20 @@ StrategyId _strategyFor(
   ContentDb content,
   StrategyDef strategy,
   StoreView store,
+) => _strategyForFormat(content, strategy, store.format);
+
+/// The strategy a shop of [format] follows under a director of [strategy]:
+/// theirs, if of that format, or else the one that runs it at the market's
+/// prices.
+StrategyId _strategyForFormat(
+  ContentDb content,
+  StrategyDef strategy,
+  FormatId format,
 ) {
-  if (strategy.format == store.format) return strategy.id;
+  if (strategy.format == format) return strategy.id;
   final fitting = [
     for (final option in content.strategies)
-      if (option.format == store.format) option,
+      if (option.format == format) option,
   ];
   return fitting
           .where((option) => option.marketPosition == Fx.zero)
@@ -345,8 +451,10 @@ StrategyId _strategyFor(
   StrategyDef strategy,
   Rng Function(int entity)? judgment,
   Money spare,
-  Money credit,
-) {
+  Money credit, {
+  required bool buys,
+  Set<String> taken = const {},
+}) {
   final director = company.director!;
   final owner = EntrepreneurPolicy(strategy);
   final grade = content.directors!.grades[director.grade.index];
@@ -373,15 +481,23 @@ StrategyId _strategyFor(
     ),
     null => Fx.one,
   };
+  // The company's latest shop of the strategy's trade, each trade waiting
+  // the interval after its own.
+  final trade = tradeKey(content.formats[strategy.format.index]);
+  bool ofTrade(FormatId format) =>
+      tradeKey(content.formats[format.index]) == trade;
   var latest = company.founded.number;
   for (final store in company.stores) {
+    if (!ofTrade(store.format)) continue;
     final since = (store.acquiredOn ?? store.opensOn).number;
     if (since > latest) latest = since;
   }
   // Its shops in districts run by formula count too.
   for (final district in view.districts) {
     for (final shop in district.shops) {
-      if (shop.company == company.id && shop.since.number > latest) {
+      if (shop.company == company.id &&
+          ofTrade(shop.format) &&
+          shop.since.number > latest) {
         latest = shop.since.number;
       }
     }
@@ -407,16 +523,25 @@ StrategyId _strategyFor(
   }
 
   if (content.acquisitions case final terms?
-      when director.allows(Growth.buy) && waited >= terms.intervalDays) {
+      when buys && waited >= terms.intervalDays) {
     Money withReserve(Money price) => price + price.times(terms.buyerReserve);
     // A struggling shop, run in full or in a district run by formula.
-    final struggling = owner.strugglingShop(
+    var struggling = owner.strugglingShop(
       view,
       content,
       passOver: (owner) => owner == view.actor,
       judged: judged,
       judgedAt: judgedAt,
     );
+    // Another trade of the company's took it this month.
+    if (struggling != null &&
+        taken.contains(switch (struggling.district) {
+          (final district, final shop) =>
+            'district ${district.row} ${shop.site}',
+          null => 'store ${struggling.shelf?.id.index}',
+        })) {
+      struggling = null;
+    }
     var best = byFormula ? null : struggling?.shelf;
     var bestPayback = struggling?.paybackMonths ?? 0;
     var price = struggling?.price ?? Money.zero;
@@ -427,7 +552,8 @@ StrategyId _strategyFor(
       if (!director.borrows || byFormula) break;
       if (shelf.status == StoreStatus.closed ||
           shelf.format != strategy.format ||
-          view.companyOwners[shelf.company.index] == view.actor) {
+          view.companyOwners[shelf.company.index] == view.actor ||
+          taken.contains('store ${shelf.id.index}')) {
         continue;
       }
       final value = view.valuations[shelf.id.index];
@@ -505,7 +631,9 @@ StrategyId _strategyFor(
   for (final id in view.vacantSites) {
     if (byFormula) break;
     final site = content.sites[id.index];
-    if (site.area < format.minArea) continue;
+    if (site.area < format.minArea || taken.contains('site ${id.index}')) {
+      continue;
+    }
     final payback = owner.paybackMonths(
       view,
       content,
@@ -522,7 +650,10 @@ StrategyId _strategyFor(
   (DistrictView, DistrictSite)? there;
   for (final district in view.districts) {
     for (final site in district.free) {
-      if (site.area < format.minArea) continue;
+      if (site.area < format.minArea ||
+          taken.contains('district ${district.row} ${site.number}')) {
+        continue;
+      }
       final payback = owner.districtPaybackMonths(view, content, district, (
         location: site.location,
         area: site.area,
@@ -599,11 +730,431 @@ StrategyId _strategyFor(
 /// trade's across a region, known rather than guessed for one site.
 const nationalPaybackMonths = 36;
 
-/// The rate [director] grows their company's shops run by formula at:
-/// their brief's, or, left to judge, what their grade runs well at their
-/// character's pace.
-Fx nationalGrowthRate(ContentDb content, Director director) =>
-    content.directors!.growthRateOf(director);
+/// The rate [director] grows their company's shops run by formula of
+/// [trade], their own strategy's if null, at. With a brief of goals: what
+/// their grade runs well at their character's pace, growing it; twice
+/// that, as far as a brief may go, growing it fast; none otherwise. Before
+/// goals, their brief's rate, or that pace left to judge.
+Fx nationalGrowthRate(ContentDb content, Director director, {String? trade}) {
+  final directors = content.directors!;
+  if (director.goals.isEmpty) return directors.growthRateOf(director);
+  final key =
+      trade ??
+      tradeKey(
+        content.formats[content
+            .strategies[director.strategy.index]
+            .format
+            .index],
+      );
+  final judged =
+      directors.grades[director.grade.index].growth *
+      directors.characterOf(director).pace;
+  return switch (director.goalOf(key)) {
+    Goal.grow => judged,
+    Goal.growFast =>
+      judged.timesInt(2) > maxNationalRate
+          ? maxNationalRate
+          : judged.timesInt(2),
+    Goal.harvest || Goal.hold => Fx.zero,
+  };
+}
+
+/// [company]'s trades: [own]'s first, then those of its shops in full, in
+/// districts run by formula and across countries, in that order.
+List<String> _tradesOf(
+  ContentDb content,
+  Observation view,
+  CompanyView company,
+  StrategyDef own,
+) {
+  final trades = <String>{tradeKey(content.formats[own.format.index])};
+  for (final store in company.stores) {
+    if (store.status != StoreStatus.closed) {
+      trades.add(tradeKey(content.formats[store.format.index]));
+    }
+  }
+  for (final district in view.districts) {
+    for (final shop in district.shops) {
+      if (shop.company == company.id) {
+        trades.add(tradeKey(content.formats[shop.format.index]));
+      }
+    }
+  }
+  for (final country in view.national) {
+    for (final block in country.blocks) {
+      if (block.company == company.id) {
+        trades.add(tradeKey(content.formats[block.format.index]));
+      }
+    }
+  }
+  return [...trades];
+}
+
+/// The strategy [company]'s shops of [trade] follow: [own], if of it; else
+/// that of its first shop of it in full, in a district or across a
+/// country; null if it has none.
+StrategyDef? _strategyOfTrade(
+  ContentDb content,
+  Observation view,
+  CompanyView company,
+  StrategyDef own,
+  String trade,
+) {
+  bool ofTrade(FormatId format) =>
+      tradeKey(content.formats[format.index]) == trade;
+  if (ofTrade(own.format)) return own;
+  for (final store in company.stores) {
+    if (store.status != StoreStatus.closed && ofTrade(store.format)) {
+      return content.strategies[(store.manager?.strategy ??
+              _strategyFor(content, own, store))
+          .index];
+    }
+  }
+  for (final country in view.national) {
+    for (final block in country.blocks) {
+      if (block.company == company.id && ofTrade(block.format)) {
+        return content.strategies[block.strategy.index];
+      }
+    }
+  }
+  for (final district in view.districts) {
+    for (final shop in district.shops) {
+      if (shop.company == company.id && ofTrade(shop.format)) {
+        return content.strategies[_strategyForFormat(
+          content,
+          own,
+          shop.format,
+        ).index];
+      }
+    }
+  }
+  return null;
+}
+
+/// The tenders [director] bids for today, for [company]'s plants whose goal
+/// is to hold or grow: those still open past today that a plant can fill
+/// from what its shifts leave a month, beyond its own shops and its
+/// contracts and the tenders it has bid for, of goods good enough, just
+/// under the producer price and never near its cost. Tenders open and close
+/// within the month, so they look every day.
+void _bidTenders(
+  Observation view,
+  ContentDb content,
+  CompanyView company,
+  Director director,
+  List<Command> commands,
+) {
+  final kinds = content.factories?.kinds;
+  if (kinds == null) return;
+  for (final factory in company.factories) {
+    final sales = factory.sales;
+    if (!factory.making ||
+        sales == null ||
+        director.goalOf(plantsKey(kinds[factory.kind.index])) == Goal.harvest) {
+      continue;
+    }
+    var free = factory.monthCapacity - factory.recentOwnUnits - sales.committed;
+    for (final tender in view.tenders) {
+      if (tender.status == TenderStatus.open &&
+          tender.bidFactory == factory.id) {
+        free -= tender.units;
+      }
+    }
+    for (final tender in view.tenders) {
+      if (free <= 0) break;
+      if (tender.status != TenderStatus.open ||
+          tender.bidFactory != null ||
+          tender.closes.number <= view.today.number ||
+          tender.units > free ||
+          !factory.serves[tender.country.index]) {
+        continue;
+      }
+      final line = sales.lines
+          .where((line) => line.product == tender.product)
+          .firstOrNull;
+      if (line == null || line.lead < tender.floor) continue;
+      final price = tenderBid(view.tenders, tender, line.unitCost);
+      if (price == null) continue;
+      commands.add(
+        BidTender(
+          view.actor,
+          tender: tender.number,
+          factory: factory.id,
+          price: price,
+        ),
+      );
+      free -= tender.units;
+    }
+  }
+}
+
+/// What [director] does with [company]'s plants on the first of the month,
+/// by the goal for each kind, out of the cash [spare] and, if they may
+/// borrow, the bank's [credit]; returns what is left to spare. Harvesting,
+/// they stop its research. From holding on, they sell its spare goods to
+/// rivals (and bid for tenders, see [_bidTenders]). Growing, they enlarge
+/// it once it runs nine tenths full, three quarters growing fast.
+Money _directPlants(
+  Observation view,
+  ContentDb content,
+  CompanyView company,
+  Director director,
+  List<Command> commands, {
+  required Money spare,
+  required Money credit,
+}) {
+  final kinds = content.factories?.kinds;
+  if (kinds == null) return spare;
+  final term = content.finance.maxTermMonths;
+  // The kinds and countries a new plant was ordered for this month.
+  final built = <(FactoryKindId, CountryId)>{};
+  for (final factory in company.factories) {
+    if (!factory.making) continue;
+    final goal = director.goalOf(plantsKey(kinds[factory.kind.index]));
+    if (goal == Goal.harvest) {
+      if (factory.lab case final lab? when lab.budget > Money.zero) {
+        commands.add(
+          SetLab(view.actor, factory: factory.id, budget: Money.zero),
+        );
+      }
+      continue;
+    }
+    if (factory.rivalDiscount == null) {
+      commands.add(
+        SetFactoryTerms(
+          view.actor,
+          factory: factory.id,
+          serves: factory.serves,
+          rivalDiscount: plantRivalDiscount,
+        ),
+      );
+    }
+    final sales = factory.sales;
+    if (sales == null) continue;
+    final full = switch (goal) {
+      Goal.grow => growPlantFull,
+      Goal.growFast => growFastPlantFull,
+      Goal.harvest || Goal.hold => null,
+    };
+    if (full == null || sales.enlargedOn != null) continue;
+    final used =
+        factory.recentOwnUnits + factory.recentRivalUnits + sales.committed;
+    if (used * 100 < factory.monthCapacity * full) continue;
+    final cost = sales.enlargeCost;
+    if (cost == null) {
+      // The largest there is: another plant of its kind beside it, unless
+      // one is being built or enlarged there already.
+      final kind = kinds[factory.kind.index];
+      final mates = [
+        for (final other in company.factories)
+          if (other.kind == factory.kind &&
+              other.country == factory.country &&
+              other.status == FactoryStatus.running)
+            other,
+      ];
+      if (built.contains((factory.kind, factory.country)) ||
+          mates.any(
+            (other) => !other.making || other.sales?.enlargedOn != null,
+          )) {
+        continue;
+      }
+      final size = newPlantSize < content.factories!.sizes.length
+          ? newPlantSize
+          : content.factories!.sizes.length - 1;
+      final price = content.factories!
+          .sized(kind.id, size)
+          .buildCost
+          .times(view.economy(factory.country).priceIndex);
+      final command = BuildFactory(
+        view.actor,
+        kind: kind.id,
+        country: factory.country,
+        name: '${factory.name} ${mates.length + 1}',
+        company: company.id,
+        shifts: factory.shifts,
+        serves: factory.serves,
+        size: size,
+      );
+      if (price <= spare) {
+        commands.add(command);
+        spare -= price;
+      } else if (_thousands(price - spare) case final loan
+          when loan <= credit) {
+        commands.add(
+          BuildFactory(
+            view.actor,
+            kind: kind.id,
+            country: factory.country,
+            name: command.name,
+            company: company.id,
+            borrow: loan,
+            termMonths: term,
+            shifts: factory.shifts,
+            serves: factory.serves,
+            size: size,
+          ),
+        );
+        credit -= loan;
+        spare = Money.zero;
+      } else {
+        continue;
+      }
+      built.add((factory.kind, factory.country));
+      continue;
+    }
+    if (cost <= spare) {
+      commands.add(EnlargeFactory(view.actor, factory: factory.id));
+      spare -= cost;
+    } else if (_thousands(cost - spare) case final loan when loan <= credit) {
+      commands.add(
+        EnlargeFactory(
+          view.actor,
+          factory: factory.id,
+          borrow: loan,
+          termMonths: term,
+        ),
+      );
+      credit -= loan;
+      spare = Money.zero;
+    }
+  }
+  return spare;
+}
+
+/// A boss's bid for [tender], among [tenders] open and lately closed: a
+/// point under what won the latest for its goods in its country, as a share
+/// of that one's producer price, or [tenderUnder] below the producer price
+/// if none has been won yet; null unless that is [tenderMargin] over
+/// [unitCost].
+Money? tenderBid(List<TenderView> tenders, TenderView tender, Money unitCost) {
+  var under = tenderUnder;
+  TenderView? latest;
+  for (final other in tenders) {
+    if (other.product != tender.product ||
+        other.country != tender.country ||
+        other.winningPrice == null ||
+        other.reference <= Money.zero) {
+      continue;
+    }
+    if (latest == null || other.closes.number > latest.closes.number) {
+      latest = other;
+    }
+  }
+  if (latest != null) {
+    final won = Fx.raw(
+      mulDivRound(latest.winningPrice!.cents, Fx.scale, latest.reference.cents),
+    );
+    under = Fx.one - won + tenderStep;
+    if (under < Fx.zero) under = Fx.zero;
+  }
+  final price = tender.reference - tender.reference.times(under);
+  final least = unitCost + unitCost.times(tenderMargin);
+  return price >= least && price > Money.zero ? price : null;
+}
+
+/// The spot [command] opens or buys a shop in, so no two openings of a
+/// month take the same one.
+String _spot(Command command) => switch (command) {
+  OpenStore(:final site) => 'site ${site.index}',
+  OpenInDistrict(:final row, :final site) => 'district $row $site',
+  BuyInDistrict(:final row, :final site) => 'district $row $site',
+  BuyStore(:final store) => 'store ${store.index}',
+  _ => '$command',
+};
+
+/// What [director] does with [company]'s software on the first of the
+/// month, by its goal: harvesting, they stop its marketing; growing, they
+/// spend at least [growSoftwareMarketing] of its revenue on it, and growing
+/// fast [growFastSoftwareMarketing], raising a round when it has less than
+/// [roundBelowMonths] of cash at its loss. Who joins its team stays the
+/// owner's choice.
+void _directSoftware(
+  Observation view,
+  ContentDb content,
+  CompanyView company,
+  Director director,
+  List<Command> commands,
+) {
+  final software = company.software;
+  if (software == null || !software.running) return;
+  final goal = director.goalOf(softwareBusiness);
+  final least = switch (goal) {
+    Goal.harvest => Money.zero,
+    Goal.hold => software.marketing,
+    Goal.grow => software.revenue.times(growSoftwareMarketing),
+    Goal.growFast => software.revenue.times(growFastSoftwareMarketing),
+  };
+  final budget = goal == Goal.harvest
+      ? Money.zero
+      : (least > software.marketing ? least : software.marketing);
+  if (budget != software.marketing) {
+    commands.add(
+      SetSoftwareMarketing(view.actor, software: software.id, budget: budget),
+    );
+  }
+  if (goal == Goal.grow || goal == Goal.growFast) {
+    _hireForSoftware(
+      view,
+      content,
+      company,
+      software,
+      commands,
+      fast: goal == Goal.growFast,
+    );
+  }
+  if (goal != Goal.growFast ||
+      software.monthProfit >= Money.zero ||
+      view.today.number < software.nextRound.number) {
+    return;
+  }
+  final cash = company.cash;
+  final loss = -software.monthProfit;
+  if (cash.cents >= loss.cents * roundBelowMonths) return;
+  final share = Fx.raw(software.maxRoundShare.raw ~/ 2);
+  if (share > Fx.zero) {
+    commands.add(RaiseRound(view.actor, software: software.id, share: share));
+  }
+}
+
+/// Hires the candidate who builds most for their pay into [software], if
+/// its team has room and [company]'s cash covers [hireCashMonths] of its
+/// loss with them ([hireFastCashMonths] growing [fast]), or it still makes
+/// money with them; growing fast, the strongest it can so afford rather
+/// than the best value. One a month.
+void _hireForSoftware(
+  Observation view,
+  ContentDb content,
+  CompanyView company,
+  SoftwareView software,
+  List<Command> commands, {
+  required bool fast,
+}) {
+  final def = content.software;
+  if (def == null || software.team.length >= software.maxPeople) return;
+  final months = fast ? hireFastCashMonths : hireCashMonths;
+  KeyPersonView? best;
+  var bestScore = 0;
+  for (final candidate in view.softwareCandidates) {
+    final pay = candidate.salary.times(software.wageLevel);
+    if (pay <= Money.zero) continue;
+    final after = software.monthProfit - pay;
+    final affordable =
+        after >= Money.zero || company.cash.cents >= -after.cents * months;
+    if (!affordable) continue;
+    final power = def.levels[candidate.level].power;
+    // Power per thousand of pay, or growing fast, power alone.
+    final score = fast ? power.raw : mulDivRound(power.raw, 100000, pay.cents);
+    if (best == null || score > bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  if (best != null) {
+    commands.add(
+      HireSoftwarePerson(view.actor, software: software.id, person: best.id),
+    );
+  }
+}
 
 /// [company]'s shops of [trade] in [country]: run by hand, in districts run
 /// by formula, and across the country, its chains bought among them.
@@ -638,6 +1189,19 @@ int nationalChainShops(
     }
   }
   return shops;
+}
+
+/// [sales] as a share of [market]: in euros, and in coarser units still
+/// once a market passes 400 billion a year, as a country's does in a long
+/// game, to stay safe in the division.
+Fx shareOfMarket(Money sales, Money market) {
+  var sold = sales.cents ~/ 100;
+  var whole = market.cents ~/ 100;
+  while (whole > 400000000000) {
+    sold ~/= 10;
+    whole ~/= 10;
+  }
+  return whole <= 0 ? Fx.zero : Fx.raw(mulDivRound(sold, Fx.scale, whole));
 }
 
 /// How many shops of [trade] a director growing [company] at [rate] opens
@@ -676,11 +1240,7 @@ int nationalBudget(
   final critical = content.directors!.criticalShare;
   var slowed = rate;
   if (market.cents >= 100 && critical > Fx.zero) {
-    // In euros, to stay safe in the division.
-    final share = Fx.raw(
-      mulDivRound(sales.cents ~/ 100, Fx.scale, market.cents ~/ 100),
-    );
-    slowed = rate * critical.div(critical + share);
+    slowed = rate * critical.div(critical + shareOfMarket(sales, market));
   }
   final whole = shops * slowed.raw;
   var count = whole ~/ Fx.scale;
@@ -708,7 +1268,7 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
   final national = format.national;
   if (national == null) return const [];
   final grade = content.directors!.grades[director.grade.index];
-  final rate = nationalGrowthRate(content, director);
+  final rate = nationalGrowthRate(content, director, trade: tradeKey(format));
   if (rate <= Fx.zero) return const [];
   var error = content.directors!.judgmentError * (Fx.one - grade.skill);
   if (grade.growth > Fx.zero && rate > grade.growth) {

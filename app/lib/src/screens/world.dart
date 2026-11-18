@@ -2287,13 +2287,21 @@ List<SiteDef> freeSites(SimulationController game) {
 /// played in full or asleep (which opening there wakes), then a vacant site
 /// big enough for it.
 class NewBusiness extends StatefulWidget {
-  const NewBusiness({super.key, required this.format, this.subsidiary = false});
+  const NewBusiness({
+    super.key,
+    required this.format,
+    this.subsidiary = false,
+    this.company,
+  });
 
   final FormatId format;
 
   /// Whether this is a company of its own for the holding, the first store
   /// offered as such.
   final bool subsidiary;
+
+  /// The company it opens in, picked already.
+  final CompanyId? company;
 
   @override
   State<NewBusiness> createState() => _NewBusinessState();
@@ -2453,6 +2461,7 @@ class _NewBusinessState extends State<NewBusiness> {
               site: site,
               format: widget.format,
               subsidiary: widget.subsidiary,
+              company: widget.company,
               wakeRow: row,
             ),
       ],
@@ -2465,6 +2474,7 @@ class _VacantSite extends StatelessWidget {
     required this.site,
     this.format,
     this.subsidiary = false,
+    this.company,
     this.wakeRow,
   });
 
@@ -2475,6 +2485,9 @@ class _VacantSite extends StatelessWidget {
 
   /// Whether to offer opening it as a company of its own.
   final bool subsidiary;
+
+  /// The company to open it in, picked already.
+  final CompanyId? company;
 
   /// The neighbourhood asleep that opening here would wake, if any.
   final int? wakeRow;
@@ -2513,6 +2526,7 @@ class _VacantSite extends StatelessWidget {
               site: site,
               format: format,
               subsidiary: subsidiary,
+              company: company,
               wakeRow: wakeRow,
             ),
           ),
@@ -2528,6 +2542,7 @@ class _OpenStoreDialog extends StatefulWidget {
     required this.site,
     this.format,
     this.subsidiary = false,
+    this.company,
     this.wakeRow,
   });
 
@@ -2542,6 +2557,9 @@ class _OpenStoreDialog extends StatefulWidget {
   /// Whether it opens as a company of its own unless the player says not.
   final bool subsidiary;
 
+  /// The company it opens in unless the player says not, picked already.
+  final CompanyId? company;
+
   @override
   State<_OpenStoreDialog> createState() => _OpenStoreDialogState();
 }
@@ -2551,7 +2569,11 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
     text: tr('market.defaultStoreName', {'site': widget.site.name}),
   );
   final _capital = TextEditingController();
-  late bool _newCompany = widget.subsidiary;
+
+  /// The company it opens in; a company of its own if null.
+  late CompanyId? _company =
+      widget.company ??
+      (widget.subsidiary ? null : currentCompany(context.game));
   late FormatId _format = widget.format ?? const FormatId(0);
 
   /// The brand picked, once the player has picked; before that, their first
@@ -2573,10 +2595,13 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
   @override
   Widget build(BuildContext context) {
     final game = context.game;
-    final company = game.company;
-    final hasCompany =
-        company != null && company.status == CompanyStatus.active;
-    final separate = _newCompany || !hasCompany;
+    final company = game.activeCompanies
+        .where((each) => each.id == _company)
+        .firstOrNull;
+    // A subsidiary's capital comes from its parent.
+    final parent = game.view.companies
+        .where((each) => each.id == company?.parent)
+        .firstOrNull;
     // The formats this site is big enough for.
     final formats = [
       for (final format in game.content.formats)
@@ -2590,7 +2615,7 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
         : parseMoney(_capital.text);
     final (:short, :amount, :borrow, :terms) = newBusinessFunding(
       game,
-      company: separate ? null : company,
+      company: company,
       cost: cost,
       capital: capital ?? Money.zero,
       borrow: _borrow,
@@ -2658,16 +2683,15 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
                 onChanged: (_) => setState(() {}),
               ),
             ],
-            if (hasCompany)
-              NewCompanySwitch(
-                title: tr('market.asNewCompany'),
-                value: _newCompany,
-                company: game.companyName(company.id),
-                onChanged: (on) => setState(() => _newCompany = on),
+            if (game.activeCompanies.isNotEmpty)
+              CompanyPicker(
+                value: company?.id,
+                onChanged: (id) => setState(() => _company = id),
               ),
             CapitalField(
               controller: _capital,
-              cash: game.view.cash,
+              cash: parent?.cash ?? game.view.cash,
+              from: parent == null ? null : game.companyName(parent.id),
               valid: capital != null,
               onChanged: () => setState(() {}),
             ),
@@ -2706,7 +2730,7 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
                       game.player,
                       site: site,
                       name: brand?.name ?? _name.text.trim(),
-                      company: separate ? null : company.id,
+                      company: company?.id,
                       capital: capital,
                       format: _format,
                       borrow: borrow ? amount : Money.zero,

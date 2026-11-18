@@ -137,7 +137,7 @@ void main() {
     await tester.tap(find.text(star.person.name));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('The profit'),
+      find.text('The company’s money'),
       100,
       scrollable: find.byType(Scrollable).last,
     );

@@ -1,6 +1,7 @@
 import '../accounting/ledger.dart';
 import '../content/content_db.dart';
 import '../core/calendar.dart';
+import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
@@ -10,6 +11,8 @@ import 'factory.dart';
 import 'labs.dart';
 import 'national_value.dart';
 import 'history.dart';
+import 'software_rules.dart' show softwareOf, softwareWorth;
+import 'stocks.dart' show sharesWorth;
 import 'store.dart';
 import 'world_state.dart';
 
@@ -120,10 +123,10 @@ Money? storeEarnings(WorldState world, ContentDb content, Store store) {
           .timesInt(12);
 }
 
-/// What [company] sells for whole: its trading stores and its factories at
-/// their asking prices, [values] if given, indexed by [StoreId], plus its cash, less its
-/// bills and loans; never less than [symbolicPrice]. Null if it has been
-/// liquidated or the scenario sells nothing.
+/// What [company] sells for whole: its businesses at their asking prices
+/// (see [businessesPrice]), plus its cash, less its bills and loans; never
+/// less than [symbolicPrice]. Null if it has been liquidated or the scenario
+/// sells nothing.
 Money? companyPrice(
   WorldState world,
   ContentDb content,
@@ -131,10 +134,25 @@ Money? companyPrice(
   List<Valuation?>? values,
 }) {
   if (content.acquisitions == null || !company.isActive) return null;
-  var price =
+  final price =
       company.accounts[AccountKind.cash] +
       company.accounts[AccountKind.payables] +
-      company.accounts[AccountKind.loans];
+      company.accounts[AccountKind.loans] +
+      businessesPrice(world, content, company, values: values);
+  return price > symbolicPrice ? price : symbolicPrice;
+}
+
+/// What [company]'s shops and plants sell for: its trading stores and its
+/// factories at their asking prices, [values] if given, indexed by
+/// [StoreId], and its shops by formula, across countries and in districts
+/// asleep, at theirs. The scenario must sell businesses.
+Money businessesPrice(
+  WorldState world,
+  ContentDb content,
+  Company company, {
+  List<Valuation?>? values,
+}) {
+  var price = Money.zero;
   for (final store in world.stores) {
     if (store.company != company.id || !store.isTrading) continue;
     final value = values == null
@@ -172,7 +190,61 @@ Money? companyPrice(
           Money.zero;
     }
   }
-  return price > symbolicPrice ? price : symbolicPrice;
+  return price;
+}
+
+/// What [company] is worth whole, the owner's design of 2026-11-17: each of
+/// its businesses at what it would sell for (its shops and plants at their
+/// asking prices, as [businessesPrice] counts them, its software at its
+/// revenue's multiple or its team), plus the shares it holds at their
+/// price, its cash and what it is owed, less what it owes; never less than
+/// nothing, as its owner owes only what they put in. Its book value where
+/// the scenario sells nothing.
+Money companyWorth(
+  WorldState world,
+  ContentDb content,
+  Company company, {
+  List<Valuation?>? values,
+}) {
+  final accounts = company.accounts;
+  final shares = sharesWorth(world.stocks, company.id.index);
+  Money floored(Money worth) => worth > Money.zero ? worth : Money.zero;
+  if (content.acquisitions == null) {
+    return floored(
+      accounts.netAssets -
+          accounts[AccountKind.investments] +
+          shares +
+          subsidiariesWorth(world, content, company),
+    );
+  }
+  var worth =
+      accounts[AccountKind.cash] +
+      accounts[AccountKind.receivables] +
+      accounts[AccountKind.payables] +
+      accounts[AccountKind.loans] +
+      shares +
+      businessesPrice(world, content, company, values: values);
+  if (content.software case final def?) {
+    if (softwareOf(world, company.id) case final software?) {
+      worth += softwareWorth(world, content, def, software).business;
+    }
+  }
+  return floored(worth + subsidiariesWorth(world, content, company));
+}
+
+/// What [company]'s subsidiaries are worth to it: each one's worth times
+/// its share of it, what outside investors own left out.
+Money subsidiariesWorth(WorldState world, ContentDb content, Company company) {
+  var worth = Money.zero;
+  for (final other in world.companies) {
+    if (other.parent != company.id || !other.isActive) continue;
+    final share = switch (softwareOf(world, other.id)) {
+      final software? => software.stake,
+      null => Fx.one,
+    };
+    worth += companyWorth(world, content, other).times(share);
+  }
+  return worth;
 }
 
 /// The company that buys [store] for [price] when its owner sells: one of

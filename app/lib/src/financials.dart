@@ -189,6 +189,16 @@ Financials financialsOf(
     }
     fitOut += _fitOut(game, company);
   }
+  // A group counts what it owns outside itself: the capital a parent put
+  // into a subsidiary of the group is its own money, so neither the
+  // parent's stake nor the subsidiary's capital counts.
+  final ids = {for (final company in companies) company.id};
+  for (final company in companies) {
+    if (company.parent case final parent? when ids.contains(parent)) {
+      balances[AccountKind.investments.index] -= company.injected;
+      balances[AccountKind.equity.index] += company.injected;
+    }
+  }
   final histories = [for (final company in companies) _history(game, company)];
   final reports = [
     for (final history in histories)
