@@ -45,7 +45,10 @@ Node run covers the core and the small test scenario only.
   district and a city woken before clothing (seed 12); and
   `save_v42_holding.bin.gz`, a holding start on the test town written by
   151811b, from before format 43 added mergers, a start's cash and the
-  holding's own name.
+  holding's own name; and `save_v42_between.bin.gz`, the same in format
+  43's layout under the number 42, as the builds after 151811b wrote it
+  until 781c14b (`SaveData.decode` reads a format-42 save that fails as
+  the first as the second).
   [old_saves_test.dart](../packages/engine/test/old_saves_test.dart)
   loads them, plays on and round-trips them. Formats in between are tested
   field by field, by writing a snippet and reading it with

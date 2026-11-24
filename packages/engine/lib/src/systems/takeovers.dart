@@ -15,7 +15,7 @@ import '../state/entities.dart';
 import '../state/stocks.dart';
 import '../state/world_state.dart';
 import 'events.dart';
-import 'national.dart' show tableCountry;
+import 'national.dart' show ownerShops, tableCountry;
 import 'stocks.dart';
 import 'tick_system.dart';
 
@@ -174,6 +174,28 @@ bool _settle(
       ? stock.shares - own
       : bid.accepted - bidderUnits(market, bid);
   final cost = bid.price.timesInt(buying > 0 ? buying : 0);
+  // The competition authority judges a chain as it joins the bidder, by
+  // what its owner holds then.
+  if (listing.kind == ListingKind.chain && economy != null && bidder >= 0) {
+    final chain = chainOf(content, economy, listing)!;
+    final index = economy.countries.indexWhere((c) => c.chains.contains(chain));
+    final held = ownerShops(
+      world,
+      content,
+      economy,
+      index,
+      world.companies[bidder].owner,
+      chain.def.trade,
+    );
+    if (!economy.mayBuy(
+      economy.countries[index],
+      chain.def.trade,
+      held,
+      chain.stores,
+    )) {
+      return false;
+    }
+  }
   if (bid.via < 0) {
     if (isChain(bidder)) {
       final chain = _bidderChain(world, bidder);

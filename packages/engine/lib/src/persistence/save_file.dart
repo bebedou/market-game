@@ -50,6 +50,19 @@ const int _nationalVersion = 29;
 
 const String _magic = 'market-game-save';
 
+/// The format written in two layouts (see [SaveData.decode]).
+const int _twoLayoutsVersion = 42;
+
+/// The format [file] says it is in, or null if it isn't a save.
+int? _formatOf(SaveFile file) {
+  try {
+    final reader = StateReader(file.bytes);
+    return reader.readString() == _magic ? reader.readInt() : null;
+  } on FormatException {
+    return null;
+  }
+}
+
 /// A game whose cities but the player's run by formula from the start, and
 /// the start the player chose: see [withCitiesAsleep].
 typedef CitiesAsleep = ({GameStart? start});
@@ -73,6 +86,23 @@ final class SaveData {
   /// lists changed other than by growing, or is damaged. Changed numbers are
   /// fine: that is how balance tweaks keep saves.
   factory SaveData.decode(ContentDb scenario, SaveFile file) {
+    try {
+      return SaveData._read(scenario, file);
+    } catch (error, stack) {
+      if (_formatOf(file) != _twoLayoutsVersion) rethrow;
+      // Format 42 has two layouts: 151811b's, and that of the builds after
+      // it until 781c14b, which wrote format 43's under the number 42. A save
+      // that doesn't read as the first, to its last byte, reads as the
+      // second.
+      try {
+        return SaveData._read(scenario, file, layout: 43);
+      } catch (_) {
+        Error.throwWithStackTrace(error, stack);
+      }
+    }
+  }
+
+  factory SaveData._read(ContentDb scenario, SaveFile file, {int? layout}) {
     final reader = StateReader(file.bytes);
     String magic;
     try {
@@ -90,7 +120,7 @@ final class SaveData {
         '$oldestReadableVersion to $saveFormatVersion)',
       );
     }
-    reader.version = version;
+    reader.version = layout ?? version;
     final scenarioId = reader.readString();
     final woken = <WokenNeighbourhood>[];
     var content = scenario;

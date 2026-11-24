@@ -14,6 +14,8 @@
  "amplitude": "0.2144",
  "storeResponse": "2.0",
  "fitOut": "0.25",
+ "chainOpenings": 5,
+ "householdGrowthFade": "0.9659",
  "startRegime": "expansion",
  "regimes": [
   {
@@ -1667,7 +1669,8 @@
   "wages": "0.70",
   "rents": "1.50",
   "home": "3.00",
-  "saturation": "0.10"
+  "saturation": "0.10",
+  "ceiling": "0.10"
  },
  "brands": {
   "pull": "0.30",

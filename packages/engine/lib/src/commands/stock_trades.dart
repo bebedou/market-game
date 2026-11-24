@@ -20,7 +20,8 @@ import '../systems/stocks.dart'
 import '../state/credit.dart' show companyEarnings;
 import '../state/software_rules.dart' show softwareOf;
 import '../systems/takeovers.dart' show earningsOf, holdingCredit, openBid;
-import 'apply_command.dart' show wouldLendForTakeover;
+import '../systems/national.dart' show ownerShops;
+import 'apply_command.dart' show ceilingPercent, wouldLendForTakeover;
 import 'command.dart';
 import 'refusal.dart';
 
@@ -276,6 +277,21 @@ Refusal? bidForCompany(
     }
     if (command.strategy < 0 || command.strategy >= content.strategies.length) {
       return const Refusal('unknownStrategy');
+    }
+    final index = national.countries.indexWhere(
+      (country) => country.chains.contains(chain),
+    );
+    final country = national.countries[index];
+    final held = ownerShops(
+      world,
+      content,
+      national,
+      index,
+      world.player,
+      chain.def.trade,
+    );
+    if (!national.mayBuy(country, chain.def.trade, held, chain.stores)) {
+      return Refusal('nationalCeiling', count: ceilingPercent(national));
     }
   }
   final price = stock.price + stock.price.times(command.premium);

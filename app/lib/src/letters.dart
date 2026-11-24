@@ -243,6 +243,17 @@ String memoSentence(Memo memo, ContentDb content, Observation view) {
         'months': paybackMonths,
         'loan': _loan(borrowed, content),
       }),
+    GrowthHeld(:final paced, :final full) => [
+      if (paced != null) tr('letters.heldByPace', {'count': paced}),
+      if (full > 0)
+        tr('letters.heldByCeiling', {
+          'count': full,
+          'percent': percent(
+            content.national?.regional.ceiling ?? Fx.one,
+            decimals: 0,
+          ),
+        }),
+    ].join(' '),
     ProfitPaid(amount: final paid) => tr('letters.paid', {
       'amount': amount(paid),
     }),

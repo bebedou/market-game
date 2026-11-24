@@ -452,6 +452,12 @@ sealed class Memo {
         store: reader.readBool() ? StoreId(reader.readInt()) : null,
         needed: Money(reader.readInt()),
       ),
+      GrowthHeld.tag => GrowthHeld(
+        day,
+        format: FormatId(reader.readInt()),
+        paced: reader.readNullableInt(),
+        full: reader.readInt(),
+      ),
       _ => throw FormatException('Unknown memo tag $tag'),
     };
   }
@@ -782,5 +788,35 @@ final class DistrictBought extends Memo {
       ..writeInt(price.cents)
       ..writeInt(paybackMonths)
       ..writeInt(borrowed.cents);
+  }
+}
+
+/// Opened no more shops of [format] run by formula this month, though more
+/// would have paid back in time: having opened [paced], all its head office
+/// opens in a month (see `DirectorsDef.openingsOf`), or null if that wasn't
+/// what held it; and in [full] regions where its owner already holds all the
+/// competition authority allows.
+final class GrowthHeld extends Memo {
+  const GrowthHeld(
+    super.day, {
+    required this.format,
+    this.paced,
+    this.full = 0,
+  });
+
+  static const int tag = 12;
+
+  final FormatId format;
+  final int? paced;
+  final int full;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(day.number)
+      ..writeInt(format.index)
+      ..writeNullableInt(paced)
+      ..writeInt(full);
   }
 }

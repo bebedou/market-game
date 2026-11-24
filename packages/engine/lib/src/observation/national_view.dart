@@ -121,6 +121,7 @@ final class NationalCountryView {
     required this.rentLevels,
     required this.costLevels,
     required CountryEconomy economy,
+    this.held = const [],
     this.offers = const [],
     Map<int, Fx> discounts = const {},
   }) : _economy = economy,
@@ -160,6 +161,10 @@ final class NationalCountryView {
   /// What a shop of each trade costs to run and fit out in each region
   /// against the country's, by trade then region.
   final List<List<Fx>> costLevels;
+
+  /// The owner's shops of each trade, by trade then region, as the
+  /// competition authority counts them (see `ownerShopGrid`).
+  final List<List<int>> held;
   final CountryEconomy _economy;
 
   /// The actor's companies' buying terms, by company index.
@@ -205,6 +210,19 @@ final class NationalCountryView {
       extra: extra,
     );
   }
+
+  /// How many more shops of [trade] the owner may open in [region] and hold
+  /// no more of the region's than the competition authority allows: all
+  /// their companies' shops count, in districts too.
+  int roomIn(int trade, int region) => _economy.roomIn(
+    _economy.countries[index],
+    trade,
+    region,
+    held.isEmpty ? 0 : held[trade][region],
+  );
+
+  /// The region the national table keys [key], or the most populous.
+  int regionOf(String? key) => regionNamed(def, key);
 
   /// The national trade [format] counts under, if its shops can run by
   /// formula.
@@ -321,8 +339,9 @@ List<NationalCountryView> nationalViews(
                   value: valueBlock(content, economy, country, block),
                   buyer: switch (valueBlock(content, economy, country, block)) {
                     final value? => nationalBuyer(
+                      economy,
                       country,
-                      block.trade,
+                      block,
                       value.price,
                     )?.def.name,
                     null => null,
@@ -334,6 +353,7 @@ List<NationalCountryView> nationalViews(
           rentLevels: List.unmodifiable(country.rentLevels),
           costLevels: List.unmodifiable(country.costLevels),
           economy: economy,
+          held: ownerShopGrid(world, content, economy, i, actor),
           discounts: discounts,
           offers: [
             for (final offer in economy.offers)

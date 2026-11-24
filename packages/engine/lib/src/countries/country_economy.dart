@@ -866,9 +866,19 @@ final class CountryEconomy {
 
   void _newYear(CountryState country) {
     final def = country.def;
+    // Slower each year since the start, by the table's fade.
+    var left = Fx.one;
+    for (var year = 1; year < monthsRun ~/ 12; year++) {
+      left *= table.householdGrowthFade;
+    }
     for (final (c, count) in country.households.indexed) {
       country.households[c] =
-          count + mulDivRound(count, def.householdGrowth.raw, Fx.scale);
+          count +
+          mulDivRound(
+            count,
+            def.householdGrowth.raw * left.raw,
+            Fx.scale * Fx.scale,
+          );
     }
     final real = Fx.raw(mulDivRound(country.realGrowthThisYear.raw, 1, 12));
     for (final row in country.spendIndex) {
@@ -1004,6 +1014,46 @@ final class CountryEconomy {
       total += block.regions[r].trading;
     }
     return total;
+  }
+
+  /// Every shop of [trade] in region [r] of [country]: the chains' and the
+  /// companies', those being fitted out counted.
+  static int shopsIn(CountryState country, int trade, int r) {
+    var total = 0;
+    for (final chain in country.chains) {
+      if (chain.def.trade == trade) total += chain.regional[r];
+    }
+    for (final block in country.blocks) {
+      if (block.trade == trade) total += block.regions[r].stores;
+    }
+    return total;
+  }
+
+  /// How many more shops of [trade] an owner holding [held] of them in
+  /// region [r] of [country] may open there and still hold no more than the
+  /// competition authority allows ([RegionalTuning.ceiling]); none at or
+  /// past it.
+  int roomIn(CountryState country, int trade, int r, int held) {
+    final ceiling = table.regional.ceiling;
+    if (ceiling >= Fx.one) return maxSafeInt;
+    // (held + n) ≤ ceiling × (all + n).
+    final room =
+        (shopsIn(country, trade, r) * ceiling.raw - held * Fx.scale) ~/
+        (Fx.scale - ceiling.raw);
+    return room < 0 ? 0 : room;
+  }
+
+  /// Whether an owner holding [held] of [trade]'s shops in [country] may buy
+  /// [more] there, as the competition authority judges it across the
+  /// country: holding no more than [RegionalTuning.ceiling] of them after.
+  bool mayBuy(CountryState country, int trade, int held, int more) {
+    final ceiling = table.regional.ceiling;
+    if (ceiling >= Fx.one) return true;
+    var all = 0;
+    for (var r = 0; r < country.regionCount; r++) {
+      all += shopsIn(country, trade, r);
+    }
+    return (held + more) * Fx.scale <= all * ceiling.raw;
   }
 
   /// What [drawMilli] thousandths of a company's shops draw in a region of
@@ -1191,7 +1241,11 @@ final class CountryEconomy {
       start.number,
       countryIndex * 1000 + country.chains.indexOf(chain) + 1,
     );
-    final gap = _margin(profit, sales) - row.normalMargin;
+    // Its shops open and close on what they earn themselves: what its own
+    // plants save repays the plants, and says nothing of whether the trade
+    // wants more shops.
+    final saved = sales.times(row.goods).times(cheaper) - goods;
+    final gap = _margin(profit - saved, sales) - row.normalMargin;
     final due = Fx.raw(
       mulDivRound(
         chain.stores * gap.abs().raw,
@@ -1207,8 +1261,20 @@ final class CountryEconomy {
       closed = moved > chain.stores ? chain.stores : moved;
       if (chain.def.independent && closed == chain.stores) closed--;
     } else if (!chain.cash.isNegative) {
-      opened = moved;
+      // A chain's head office opens so many a month; the independents are
+      // many owners.
+      opened = !chain.def.independent && moved > table.chainOpenings
+          ? table.chainOpenings
+          : moved;
     }
+    final stores = chain.stores;
+    opened = _place(
+      country,
+      chain,
+      regionSales,
+      opened: opened,
+      closed: closed,
+    );
     final fitOut = chain.perStore
         .times(table.fitOut)
         .times(country.priceIndex)
@@ -1216,7 +1282,7 @@ final class CountryEconomy {
     chain.months.add(
       ChainMonth(
         start: start,
-        stores: chain.stores,
+        stores: stores,
         sales: sales,
         goods: goods,
         staff: staff,
@@ -1228,7 +1294,6 @@ final class CountryEconomy {
       ),
     );
     if (chain.months.length > countryMonthsKept) chain.months.removeAt(0);
-    _place(country, chain, regionSales, opened: opened, closed: closed);
     chain.cash += profit - tax - fitOut;
     chain.monthsShort = chain.cash.isNegative ? chain.monthsShort + 1 : 0;
     if (chain.monthsShort >= 12 && !chain.def.independent) {
@@ -1251,17 +1316,18 @@ final class CountryEconomy {
   /// from, by its sales in each region last month ([regionSales]): each new
   /// one where it would pay back soonest, at what it would add once it takes
   /// its share from the chain's own shops there and its fitting out at the
-  /// region's cost level; each closing where a shop earns least. So rivals
-  /// open where shops pay, the player's included, and leave where they
-  /// don't.
-  void _place(
+  /// region's cost level, among the regions where it holds less than the
+  /// competition authority allows; each closing where a shop earns least.
+  /// So rivals open where shops pay, the player's included, and leave where
+  /// they don't. Returns how many it opened.
+  int _place(
     CountryState country,
     Chain chain,
     List<Money> regionSales, {
     required int opened,
     required int closed,
   }) {
-    if (opened == 0 && closed == 0) return;
+    if (opened == 0 && closed == 0) return 0;
     final t = chain.def.trade;
     final trade = table.trades[t];
     final row = country.def.trades[t];
@@ -1312,11 +1378,16 @@ final class CountryEconomy {
       sold[worst] -= perShop(worst);
       chain.regional[worst]--;
     }
-    for (var k = 0; k < opened; k++) {
-      var best = 0;
+    var placed = 0;
+    for (; placed < opened; placed++) {
+      var best = -1;
       var bestValue = 0;
       Money bestAdds = Money.zero;
       for (var r = 0; r < regions; r++) {
+        if (!chain.def.independent &&
+            roomIn(country, t, r, chain.regional[r]) == 0) {
+          continue;
+        }
         final spend = country.regionSpend[t][r].fold(
           Money.zero,
           (sum, m) => sum + m,
@@ -1329,15 +1400,17 @@ final class CountryEconomy {
               );
         final adds = perShop(r).times(Fx.one - (kept > Fx.one ? Fx.one : kept));
         final value = perLevel(adds.times(margin) - fixed(r), r);
-        if (r == 0 || value > bestValue) {
+        if (best < 0 || value > bestValue) {
           best = r;
           bestValue = value;
           bestAdds = adds;
         }
       }
+      if (best < 0) break;
       sold[best] += bestAdds;
       chain.regional[best]++;
     }
+    return placed;
   }
 
   static Fx _margin(Money profit, Money sales) {

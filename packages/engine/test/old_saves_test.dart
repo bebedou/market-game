@@ -171,4 +171,16 @@ void main() {
     expect(invariantViolations(game.world), isEmpty);
     playOn(game, scenario);
   });
+
+  test("a save of format 42 in format 43's layout, as the builds after "
+      '151811b wrote it, loads with what it holds', () {
+    // Written as those builds did: a holding start named Mid Holding with
+    // 250,000, renamed Renamed Holding on the first day, seed 7, 40 days.
+    final scenario = loadScenario(testScenarioJson);
+    final game = Simulation.load(scenario, fixture('save_v42_between'));
+    expect(game.world.holdingName, 'Renamed Holding');
+    expect(game.world.start!.cash, Money.parse('250000.00'));
+    expect(invariantViolations(game.world), isEmpty);
+    playOn(game, scenario);
+  });
 }

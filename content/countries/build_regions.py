@@ -157,12 +157,15 @@ def main():
     # country's (a region a tenth richer pays wages 7% and rents 15% higher),
     # how much thicker a chain's shops are in its home regions, and how
     # crowded a region gets for one chain: its per-shop draw halves once it
-    # has this share of the trade's shops there.
+    # has this share of the trade's shops there; and the most of them one
+    # owner may hold before the competition authority refuses more, about
+    # what the biggest grocers hold of their home markets.
     table['regional'] = {
         'wages': '0.70',
         'rents': '1.50',
         'home': '3.00',
         'saturation': '0.10',
+        'ceiling': '0.10',
     }
     # How a company's marketing across a country builds its pull: up to 30%
     # more shoppers, half that once its goodwill is 0.05% of the trade's

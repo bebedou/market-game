@@ -93,6 +93,29 @@ Simulation _earning() {
   return game;
 }
 
+/// The prototype as [_content] has it, the competition authority's ceiling
+/// at [ceiling].
+ContentDb _withCeiling(String ceiling) => loadScenario(
+  File('../../content/scenarios/prototype.json')
+      .readAsStringSync()
+      .replaceFirst(
+        '"name": "You", "cash": "20000.00"',
+        '"name": "You", "cash": "500000000.00"',
+      )
+      .replaceFirst(
+        '"name": "Corner Shop", "owner": "player", "cash": "15000.00"',
+        '"name": "Corner Shop", "owner": "player", "cash": "3000000000.00"',
+      ),
+  national: loadCountryTable(
+    File('../../content/countries/euro.json').readAsStringSync().replaceFirst(
+      '"ceiling": "0.10"',
+      '"ceiling": "$ceiling"',
+    ),
+    File('../../content/countries/calibration.json').readAsStringSync(),
+  ),
+  stocks: File('../../content/stocks/companies.json').readAsStringSync(),
+);
+
 void main() {
   test('a bid well over the price wins control of a company by formula', () {
     final game = _game();
@@ -188,6 +211,94 @@ void main() {
     );
     expect(country.chains[listing.link].boughtBy, 0);
     expect(invariantViolations(game.world), isEmpty);
+  });
+
+  test('a bid for a chain is judged again as it closes: one that would take '
+      "its owner past the competition authority's ceiling lapses", () {
+    // The listed clothing chain with the fewest shops, and its country's.
+    final probe = _game();
+    var i = -1;
+    var shops = 0;
+    var all = 0;
+    for (final (n, listing) in _def.listings.indexed) {
+      if (listing.kind != ListingKind.chain ||
+          _def.sectors[listing.sector].trade != 'clothing') {
+        continue;
+      }
+      final country = probe.national!.countries.firstWhere(
+        (c) => c.def.key == _content.countries[listing.country.index].national,
+      );
+      final chain = country.chains[listing.link];
+      if (i >= 0 && chain.stores >= shops) continue;
+      i = n;
+      shops = chain.stores;
+      all = 0;
+      for (var r = 0; r < country.regionCount; r++) {
+        all += CountryEconomy.shopsIn(country, chain.def.trade, r);
+      }
+    }
+    String share(int held) =>
+        ((held * 10000 + all - 1) ~/ all / 10000).toStringAsFixed(4);
+    final listing = _def.listings[i];
+    final clothing = _content.formats.indexWhere((f) => f.key == 'clothing');
+    final strategy = _content.strategies.firstWhere(
+      (s) => s.format.index == clothing,
+    );
+    BidForCompany bid(Simulation game) => BidForCompany(
+      game.world.player,
+      stock: i,
+      premium: Fx.parse('0.40'),
+      bidder: 0,
+      format: clothing,
+      strategy: strategy.id.index,
+    );
+    // Too small a ceiling for the chain itself: refused at once.
+    final tight = Simulation.newGame(_withCeiling(share(shops ~/ 2)), seed: 1);
+    expect(_submit(tight, bid(tight))?.key, 'nationalCeiling');
+    // Room for the chain and a few more shops as it closes.
+    final room = _withCeiling(share(shops + 12));
+    BidStatus close({required bool openFirst}) {
+      final game = Simulation.newGame(room, seed: 1);
+      expect(_submit(game, bid(game)), isNull);
+      if (openFirst) {
+        final country = game.national!.countries.firstWhere(
+          (c) => c.def.key == room.countries[listing.country.index].national,
+        );
+        final trade = country.chains[listing.link].def.trade;
+        // Twenty shops of the trade, wherever there is room.
+        var left = 20;
+        for (var r = 0; r < country.regionCount && left > 0; r++) {
+          final fits = game.national!.roomIn(country, trade, r, 0);
+          final count = fits < left ? fits : left;
+          if (count == 0) continue;
+          expect(
+            _submit(
+              game,
+              OpenNational(
+                game.world.player,
+                company: const CompanyId(0),
+                country: listing.country,
+                region: r,
+                format: FormatId(clothing),
+                strategy: strategy.id,
+                count: count,
+              ),
+            ),
+            isNull,
+          );
+          left -= count;
+        }
+        expect(left, 0);
+      }
+      final market = game.world.stocks!;
+      final open = market.bids.single;
+      _untilClosed(game, open.number);
+      expect(invariantViolations(game.world), isEmpty);
+      return open.status;
+    }
+
+    expect(close(openFirst: false), BidStatus.won);
+    expect(close(openFirst: true), BidStatus.lapsed);
   });
 
   test('a controlled company takes its levers and director', () {
@@ -310,9 +421,7 @@ void main() {
     final player = game.world.player;
     final market = game.world.stocks!;
     final stock = market.stocks[i];
-    final cost = stock.price
-        .times(Fx.parse('1.4'))
-        .timesInt(stock.shares);
+    final cost = stock.price.times(Fx.parse('1.4')).timesInt(stock.shares);
     // Borrow a tenth of it.
     final borrow = Money(cost.cents ~/ 10);
     expect(

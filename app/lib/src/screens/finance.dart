@@ -1202,7 +1202,8 @@ class _CandidateTile extends StatelessWidget {
 }
 
 /// What a director growing [company]'s shops of [format] at [rate] opens
-/// this month across [countries], and its shops of that trade there.
+/// this month across [countries], as far as their head office goes, and its
+/// shops of that trade there.
 ({int opens, int shops}) _planned(
   SimulationController game,
   CompanyView company,
@@ -1220,6 +1221,11 @@ class _CandidateTile extends StatelessWidget {
     shops += nationalChainShops(view, content, company, country, trade);
     opens += nationalBudget(view, content, company, country, trade, rate);
   }
+  final most = switch (company.director) {
+    final director? => content.directors?.openingsOf(director),
+    null => null,
+  };
+  if (most != null && opens > most) opens = most;
   return (opens: opens, shops: shops);
 }
 

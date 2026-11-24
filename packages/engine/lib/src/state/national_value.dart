@@ -98,16 +98,23 @@ NationalValue? _value(
   );
 }
 
-/// The chain of [trade] in [country] with the most cash, that can pay
-/// [price]: none of a trade's independents, nor one that has failed or been
-/// bought.
-Chain? nationalBuyer(CountryState country, int trade, Money price) {
+/// The chain of [block]'s trade in [country] with the most cash, that can
+/// pay [price] and that the competition authority lets hold its shops too
+/// (see [CountryEconomy.mayBuy]): none of a trade's independents, nor one
+/// that has failed or been bought.
+Chain? nationalBuyer(
+  CountryEconomy economy,
+  CountryState country,
+  CompanyBlock block,
+  Money price,
+) {
   Chain? best;
   for (final chain in country.chains) {
-    if (chain.def.trade != trade ||
+    if (chain.def.trade != block.trade ||
         chain.def.independent ||
         !chain.isTrading ||
-        chain.cash < price) {
+        chain.cash < price ||
+        !economy.mayBuy(country, block.trade, chain.stores, block.stores)) {
       continue;
     }
     if (best == null || chain.cash > best.cash) best = chain;

@@ -6,6 +6,7 @@ import '../core/money.dart';
 import '../core/rng.dart';
 import '../core/safe_int.dart';
 import '../countries/country_economy.dart';
+import '../countries/country_table.dart' show NationalCountry;
 import '../countries/shop_bridge.dart' show formatTrades;
 import '../state/buying_terms.dart';
 import '../state/director.dart';
@@ -247,15 +248,91 @@ bool absorbable(WorldState world, ContentDb content, Store store) {
 
 /// The region of the table's country at [index] that [market] is in: the
 /// one the scenario names, or else the most populous.
-int marketRegion(CountryState country, MarketDef market) {
-  final regions = country.def.regions;
-  final named = regions.indexWhere((r) => r.key == market.region);
+int marketRegion(CountryState country, MarketDef market) =>
+    regionNamed(country.def, market.region);
+
+/// The region of [country] the national table keys [key], or its most
+/// populous without one.
+int regionNamed(NationalCountry country, String? key) {
+  final regions = country.regions;
+  final named = regions.indexWhere((r) => r.key == key);
   if (named >= 0) return named;
   var best = 0;
   for (var r = 1; r < regions.length; r++) {
     if (regions[r].population > regions[best].population) best = r;
   }
   return best;
+}
+
+/// The shops [owner]'s companies hold in the table's country at [index], by
+/// trade then region: by formula, those being fitted out counted, and in
+/// districts, asleep and played in full. The competition authority counts
+/// them all as one owner's.
+List<List<int>> ownerShopGrid(
+  WorldState world,
+  ContentDb content,
+  CountryEconomy economy,
+  int index,
+  PersonId owner,
+) {
+  final country = economy.countries[index];
+  final trades = economy.table.trades;
+  final grid = [for (final _ in trades) List.filled(country.regionCount, 0)];
+  for (final block in country.blocks) {
+    if (world.companies[block.company].owner != owner) continue;
+    for (var r = 0; r < country.regionCount; r++) {
+      grid[block.trade][r] += block.regions[r].stores;
+    }
+  }
+  final game = gameCountry(content, index);
+  if (game == null) return grid;
+  int? tradeOf(FormatId format) {
+    final key = formatTrades[content.formats[format.index].key];
+    final t = trades.indexWhere((trade) => trade.key == key);
+    return t < 0 ? null : t;
+  }
+
+  for (final store in world.stores) {
+    if (store.status == StoreStatus.closed ||
+        world.companies[store.company.index].owner != owner) {
+      continue;
+    }
+    final market = content.markets[store.market.index];
+    final t = tradeOf(store.format);
+    if (market.country != game || t == null) continue;
+    grid[t][marketRegion(country, market)]++;
+  }
+  for (final sleeper in world.sleepers) {
+    final row = content.neighbourhoods[sleeper.row];
+    if (row.country != game) continue;
+    final r = regionNamed(country.def, row.region);
+    for (final shop in sleeper.shops) {
+      final company = shop.company;
+      final t = tradeOf(shop.format);
+      if (company == null ||
+          t == null ||
+          world.companies[company.index].owner != owner) {
+        continue;
+      }
+      grid[t][r]++;
+    }
+  }
+  return grid;
+}
+
+/// The shops of [trade] [owner]'s companies hold in the table's country at
+/// [index] (see [ownerShopGrid]): in [region], or across it if null.
+int ownerShops(
+  WorldState world,
+  ContentDb content,
+  CountryEconomy economy,
+  int index,
+  PersonId owner,
+  int trade, {
+  int? region,
+}) {
+  final held = ownerShopGrid(world, content, economy, index, owner)[trade];
+  return region == null ? held.fold(0, (sum, n) => sum + n) : held[region];
 }
 
 /// A director runs a company by formula: on the first of each month, every
@@ -424,7 +501,7 @@ final class NationalSystem implements TickSystem {
         if (value == null || value.price <= Money.zero) continue;
         final premium = Fx.raw(1000 + rng.nextInt(2001));
         final price = value.price.times(Fx.one + premium);
-        final buyer = nationalBuyer(country, block.trade, price);
+        final buyer = nationalBuyer(economy, country, block, price);
         if (buyer == null) continue;
         economy.offers.add(
           NationalOffer(

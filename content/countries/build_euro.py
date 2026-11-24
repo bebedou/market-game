@@ -328,6 +328,11 @@ def main():
         'amplitude': fx(amplitude),
         'storeResponse': '2.0',
         'fitOut': '0.25',
+        # The most shops a chain opens a month, as a seasoned CEO's head
+        # office could, and what each year leaves of the year before's
+        # household growth: it halves in twenty years as populations age.
+        'chainOpenings': 5,
+        'householdGrowthFade': '0.9659',
         'startRegime': 'expansion',
         'regimes': [
             {'id': r['id'], 'name': r['name'], 'meanMonths': r['meanMonths'], 'inflation': r['inflation'], 'realWageGrowth': r['realWageGrowth'], 'demand': r['demand']}

@@ -215,6 +215,18 @@ Refusal? _openInDistrict(
   final person = world.persons[command.actor.index];
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
+  final row = content.neighbourhoods[sleeper.row];
+  if (_ceilingFor(
+        world,
+        content,
+        company.owner,
+        row.country,
+        row.region,
+        format.id,
+      )
+      case final refusal?) {
+    return refusal;
+  }
   final (holder, short) = _capitalFrom(world, person, company, command.capital);
   if (short != null) return short;
   final cost = site.openingCost
@@ -316,6 +328,18 @@ Refusal? _buyInDistrict(
     null => null,
   };
   if (seller?.owner == command.actor) return const Refusal('alreadyOwnStore');
+  final row = content.neighbourhoods[sleeper.row];
+  if (_ceilingFor(
+        world,
+        content,
+        company.owner,
+        row.country,
+        row.region,
+        shop.format,
+      )
+      case final refusal?) {
+    return refusal;
+  }
   final month = monthsSinceStart(content, world.today);
   if (shop.acquiredMonth == month) return const Refusal('justChangedHands');
   final sites = sitesOf(world, content, sleeper);
@@ -988,6 +1012,18 @@ Refusal? _openStore(
     if (owned == null) return error;
     company = owned;
   }
+  final market = content.markets[site.market.index];
+  if (_ceilingFor(
+        world,
+        content,
+        company?.owner ?? command.actor,
+        market.country,
+        market.region,
+        format.id,
+      )
+      case final refusal?) {
+    return refusal;
+  }
   // A subsidiary's capital comes from its parent, any other's from the
   // holding.
   final (holder, short) = _capitalFrom(world, person, company, command.capital);
@@ -1507,6 +1543,18 @@ Refusal? _buyStore(
   if (owner == world.player) return const Refusal('ownerNotSelling');
   if (store.acquiredOn == world.today) {
     return const Refusal('justChangedHands');
+  }
+  final market = content.markets[store.market.index];
+  if (_ceilingFor(
+        world,
+        content,
+        company.owner,
+        market.country,
+        market.region,
+        store.format,
+      )
+      case final refusal?) {
+    return refusal;
   }
   final (brand, brandError) = _actorsBrand(
     world,
@@ -2028,6 +2076,44 @@ const maxNationalRate = Fx.raw(1000);
 /// The most shops run by formula one command opens.
 const maxNationalOpenings = 20;
 
+/// The competition authority's ceiling, in whole percent.
+int ceilingPercent(CountryEconomy economy) =>
+    economy.table.regional.ceiling.timesInt(100).roundToInt();
+
+/// The competition authority's refusal of one more shop of [format] for
+/// [owner] in the region keyed [region] of [country], if their shops of its
+/// trade there already reach its ceiling; none without countries by formula
+/// yet, or for a kind of shop they don't run.
+Refusal? _ceilingFor(
+  WorldState world,
+  ContentDb content,
+  PersonId owner,
+  CountryId country,
+  String? region,
+  FormatId format,
+) {
+  final economy = world.national;
+  final index = tableCountry(content, country);
+  if (economy == null || index == null) return null;
+  final key = formatTrades[content.formats[format.index].key];
+  final trade = economy.table.trades.indexWhere((t) => t.key == key);
+  if (trade < 0) return null;
+  final state = economy.countries[index];
+  final r = regionNamed(state.def, region);
+  final held = ownerShops(
+    world,
+    content,
+    economy,
+    index,
+    owner,
+    trade,
+    region: r,
+  );
+  return economy.roomIn(state, trade, r, held) < 1
+      ? Refusal('regionCeiling', count: ceilingPercent(economy))
+      : null;
+}
+
 Refusal? _openNational(
   WorldState world,
   ContentDb content,
@@ -2064,6 +2150,18 @@ Refusal? _openNational(
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
+  final held = ownerShops(
+    world,
+    content,
+    economy,
+    index,
+    company.owner,
+    trade,
+    region: command.region,
+  );
+  if (command.count > economy.roomIn(country, trade, command.region, held)) {
+    return Refusal('regionCeiling', count: ceilingPercent(economy));
+  }
   final cost = nationalFitOut(
     national,
     country,
@@ -2147,6 +2245,17 @@ Refusal? _buyNationalChain(
   }
   final (company, error) = _ownedCompany(world, command.actor, command.company);
   if (company == null) return error;
+  final held = ownerShops(
+    world,
+    content,
+    economy,
+    index,
+    company.owner,
+    chain.def.trade,
+  );
+  if (!economy.mayBuy(country, chain.def.trade, held, chain.stores)) {
+    return Refusal('nationalCeiling', count: ceilingPercent(economy));
+  }
   final price = value.price;
   if (company.accounts[AccountKind.cash] + command.borrow < price) {
     return Refusal('cannotPayPrice', amount: price);
@@ -2211,7 +2320,7 @@ Refusal? _sellNational(
   if (company == null) return error;
   final value = valueBlock(content, economy, country, block);
   if (value == null) return const Refusal('nothingForSale');
-  final buyer = nationalBuyer(country, block.trade, value.price);
+  final buyer = nationalBuyer(economy, country, block, value.price);
   if (buyer == null) return const Refusal('noChainBuyer');
   _sellBlock(world, ledger, economy, index, block, company, buyer, value.price);
   return null;
@@ -2270,7 +2379,14 @@ Refusal? _acceptOffer(
     CompanyId(offer.block.company),
   );
   if (company == null) return error;
-  if (offer.chain.cash < offer.price || !offer.chain.isTrading) {
+  if (offer.chain.cash < offer.price ||
+      !offer.chain.isTrading ||
+      !economy.mayBuy(
+        economy.countries[offer.country],
+        offer.block.trade,
+        offer.chain.stores,
+        offer.block.stores,
+      )) {
     return const Refusal('offerWithdrawn');
   }
   _sellBlock(

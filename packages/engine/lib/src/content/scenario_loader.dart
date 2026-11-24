@@ -604,6 +604,9 @@ ContentDb loadScenario(
           growth: grade.has('growth')
               ? grade.fraction('growth')
               : grade.fraction('skill') * Fx.raw(600),
+          openings: grade.has('openings')
+              ? grade.positiveInt('openings')
+              : null,
         ),
       );
       grade.finish();

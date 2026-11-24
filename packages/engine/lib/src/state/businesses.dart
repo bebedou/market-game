@@ -234,7 +234,7 @@ Producer? plantBuyer(WorldState world, Factory factory) {
       final value = valueBlock(content, national, country, block);
       if (value == null) continue;
       worth += value.price;
-      if (nationalBuyer(country, block.trade, value.price) == null) {
+      if (nationalBuyer(national, country, block, value.price) == null) {
         buyer = false;
       }
     }

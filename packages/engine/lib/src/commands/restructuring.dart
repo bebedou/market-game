@@ -557,7 +557,7 @@ Refusal? _sellBusiness(
       final country = national.countries[i];
       final value = valueBlock(content, national, country, block);
       if (value == null) continue;
-      final buyer = nationalBuyer(country, block.trade, value.price);
+      final buyer = nationalBuyer(national, country, block, value.price);
       if (buyer == null) continue;
       _sellBlock(
         world,

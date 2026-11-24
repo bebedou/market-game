@@ -1542,6 +1542,16 @@ final class DirectorsDef {
       ? grades[director.grade.index].growth * characterOf(director).pace
       : director.nationalRate;
 
+  /// The most shops run by formula [director] opens in a month in one
+  /// trade across every country: their grade's, at their character's pace,
+  /// at least one; null for no limit.
+  int? openingsOf(Director director) {
+    final openings = grades[director.grade.index].openings;
+    if (openings == null) return null;
+    final paced = characterOf(director).pace.timesInt(openings).roundToInt();
+    return paced < 1 ? 1 : paced;
+  }
+
   /// What [director] is paid a day at a wage index of 1: their grade's
   /// salary, as their character asks.
   Money salaryOf(Director director) =>
@@ -1585,6 +1595,7 @@ final class DirectorGradeDef {
     required this.skill,
     required this.salary,
     required this.growth,
+    this.openings,
   });
 
   final DirectorGradeId id;
@@ -1592,6 +1603,11 @@ final class DirectorGradeDef {
   /// The most of a chain's shops they open in a month and still choose
   /// well: pushed faster, they misjudge where in proportion.
   final Fx growth;
+
+  /// The most shops run by formula they open in a month in one trade,
+  /// across every country, at a plain character's pace: what one head
+  /// office finds sites for, fits out and staffs. No limit without one.
+  final int? openings;
   final String key;
   final String name;
 

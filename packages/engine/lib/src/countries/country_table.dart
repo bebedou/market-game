@@ -155,6 +155,7 @@ final class RegionalTuning {
     required this.rents,
     required this.home,
     required this.saturation,
+    required this.ceiling,
   });
 
   /// How far a region's wages and rents move, against the country's, when its
@@ -169,11 +170,17 @@ final class RegionalTuning {
   /// draw half what each would alone.
   final Fx saturation;
 
+  /// The most of a trade's shops in a region one owner may hold: past it,
+  /// the competition authority lets them open no more there, and buy no
+  /// chain that would take them past it across the country.
+  final Fx ceiling;
+
   static const none = RegionalTuning(
     wages: Fx.zero,
     rents: Fx.zero,
     home: Fx.one,
     saturation: Fx.one,
+    ceiling: Fx.one,
   );
 }
 
@@ -288,6 +295,8 @@ final class CountryTable {
     required this.amplitude,
     required this.storeResponse,
     required this.fitOut,
+    required this.chainOpenings,
+    required this.householdGrowthFade,
     required this.startRegime,
     required this.regimes,
     required this.classes,
@@ -313,6 +322,15 @@ final class CountryTable {
 
   /// What a new store costs to fit out, as a share of a store's yearly sales.
   final Fx fitOut;
+
+  /// The most shops a chain opens in a month, however well it earns: what
+  /// one head office finds sites for, fits out and staffs.
+  final int chainOpenings;
+
+  /// What each year leaves of the year before's household growth in every
+  /// country, so that it slows as populations age: 0.9659 halves it in
+  /// twenty years.
+  final Fx householdGrowthFade;
   final int startRegime;
   final List<CycleRegime> regimes;
   final List<IncomeClass> classes;
@@ -469,6 +487,8 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
     amplitude: root.fx('amplitude'),
     storeResponse: root.fx('storeResponse'),
     fitOut: root.fx('fitOut'),
+    chainOpenings: root.positiveInt('chainOpenings'),
+    householdGrowthFade: root.fraction('householdGrowthFade'),
     startRegime: startRegime,
     regimes: regimes,
     classes: classes,
@@ -481,6 +501,7 @@ CountryTable loadCountryTable(String tableJson, String calibrationJson) {
           rents: node.fx('rents'),
           home: node.fx('home'),
           saturation: node.fx('saturation'),
+          ceiling: node.fraction('ceiling'),
         );
         node.finish();
         return tuning;

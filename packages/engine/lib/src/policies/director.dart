@@ -259,6 +259,8 @@ List<Command> direct(
               case final own?)
             (trade, own),
   ];
+  // Shops opened this month by trade, which its head office counts.
+  final opened = <String, int>{};
   if (growing.isNotEmpty && profit > Money.zero) {
     // At most a shop a month in full or in a district for each trade it
     // grows, where one pays, never two in one spot; what each borrows
@@ -303,6 +305,9 @@ List<Command> direct(
         );
       }
       give(command, memo);
+      if (command is OpenStore || command is OpenInDistrict) {
+        opened[trade] = (opened[trade] ?? 0) + 1;
+      }
       // A loan takes all there was to spare, and leaves nothing to pay out.
       spare = borrowed > Money.zero ? Money.zero : spare - cost;
       credit -= borrowed;
@@ -322,13 +327,15 @@ List<Command> direct(
         nationalGrowthRate(content, director, trade: trade) <= Fx.zero) {
       continue;
     }
-    for (final (:command, :memo) in _nationalGrowth(
+    final (:picks, :held) = _nationalGrowth(
       view,
       content,
       company,
       own,
       judgment,
-    )) {
+      opened: opened[trade] ?? 0,
+    );
+    for (final (:command, :memo) in picks) {
       if (!canPay(memo.cost)) {
         saving ??= ProfitKept(today, needed: memo.cost);
         break national;
@@ -350,6 +357,7 @@ List<Command> direct(
       );
       retained -= memo.cost;
     }
+    if (held != null) give(null, held);
   }
 
   if (director.goals.isNotEmpty) {
@@ -501,6 +509,17 @@ StrategyId _strategyForFormat(
   final byFormula =
       view.national.isNotEmpty &&
       content.formats[strategy.format.index].national != null;
+  // Whether its owner may hold one more shop of the trade in the region of
+  // district [row], as the competition authority allows.
+  bool roomAt(int row) {
+    final def = content.neighbourhoods[row];
+    for (final country in view.national) {
+      if (country.country != def.country) continue;
+      final t = country.tradeOf(content, strategy.format);
+      return t == null || country.roomIn(t, country.regionOf(def.region)) > 0;
+    }
+    return true;
+  }
 
   // What the company borrows towards [cost], with [earnings] of a store it
   // buys counted: zero if it has the cash, may not borrow or the bank won't
@@ -523,6 +542,12 @@ StrategyId _strategyForFormat(
       judged: judged,
       judgedAt: judgedAt,
     );
+    if (struggling?.district case (
+      final district,
+      _,
+    ) when !roomAt(district.row)) {
+      struggling = null;
+    }
     // Another trade of the company's took it this month.
     if (struggling != null &&
         taken.contains(switch (struggling.district) {
@@ -639,6 +664,7 @@ StrategyId _strategyForFormat(
   // Free sites in districts run by formula, weighed the same way.
   (DistrictView, DistrictSite)? there;
   for (final district in view.districts) {
+    if (!roomAt(district.row)) continue;
     for (final site in district.free) {
       if (site.area < format.minArea ||
           taken.contains('district ${district.row} ${site.number}')) {
@@ -1241,25 +1267,37 @@ int nationalBudget(
 
 /// The shops run by formula [company]'s director would open this month, the
 /// soonest paid back first: in each country, as many as [nationalBudget]
-/// allows at the rate they grow it, each in the region allowed where one
-/// more would pay back soonest as they judge it, counting those placed
-/// before it this month, within [nationalPaybackMonths] or the strategy's
-/// payback period if longer, as their character stretches it. Growing
-/// faster than their grade runs well, they misjudge in proportion.
-List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
+/// allows at the rate they grow it, and in all, as many as their head office
+/// opens in a month (see [DirectorsDef.openingsOf]); each in the region of
+/// the countries allowed where one more would pay back soonest as they judge
+/// it, counting those placed before it this month, within
+/// [nationalPaybackMonths] or the strategy's payback period if longer, as
+/// their character stretches it, and where its owner holds less than the
+/// competition authority allows. Growing faster than their grade runs well,
+/// they misjudge in proportion. The [opened] shops of the trade they opened
+/// in districts this month count against their head office's pace. With
+/// them, [held] if their pace or the competition authority kept them from
+/// more that would have paid.
+({List<({OpenNational command, NationalOpened memo})> picks, GrowthHeld? held})
+_nationalGrowth(
   Observation view,
   ContentDb content,
   CompanyView company,
   StrategyDef strategy,
-  Rng Function(int entity)? judgment,
-) {
+  Rng Function(int entity)? judgment, {
+  int opened = 0,
+}) {
+  const none = (
+    picks: <({OpenNational command, NationalOpened memo})>[],
+    held: null,
+  );
   final director = company.director!;
   final format = content.formats[strategy.format.index];
   final national = format.national;
-  if (national == null) return const [];
+  if (national == null) return none;
   final grade = content.directors!.grades[director.grade.index];
   final rate = nationalGrowthRate(content, director, trade: tradeKey(format));
-  if (rate <= Fx.zero) return const [];
+  if (rate <= Fx.zero) return none;
   var error = content.directors!.judgmentError * (Fx.one - grade.skill);
   if (grade.growth > Fx.zero && rate > grade.growth) {
     error = error * rate.div(grade.growth);
@@ -1278,7 +1316,7 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
         : nationalPaybackMonths,
     content.directors!.characterOf(director).payback,
   );
-  final picks = <({OpenNational command, NationalOpened memo})>[];
+  final plans = <_NationalPlan>[];
   for (final country in view.national) {
     final game = country.country;
     if (game == null || country.def.regions.isEmpty) continue;
@@ -1293,61 +1331,97 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
           r,
     ];
     if (regions.isEmpty) continue;
-    // How far off they are about each region, this month.
-    final judged = {
-      for (final r in regions)
-        r: judgment == null
-            ? Fx.one
-            : judgmentFactor(
-                judgment(
-                  company.id.index * 100000 + 90000 + country.index * 100 + r,
-                ),
-                error,
-              ),
-    };
-    final placed = List.filled(country.def.regions.length, 0);
-    final first = <int, ({Money earns, int payback})>{};
-    var budget = nationalBudget(
-      view,
-      content,
-      company,
-      country,
-      trade,
-      rate,
-      rng: judgment?.call(company.id.index * 100000 + 95000 + country.index),
+    plans.add(
+      _NationalPlan(
+        country: country,
+        game: game,
+        regions: regions,
+        room: {for (final r in regions) r: country.roomIn(trade, r)},
+        // How far off they are about each region, this month.
+        judged: {
+          for (final r in regions)
+            r: judgment == null
+                ? Fx.one
+                : judgmentFactor(
+                    judgment(
+                      company.id.index * 100000 +
+                          90000 +
+                          country.index * 100 +
+                          r,
+                    ),
+                    error,
+                  ),
+        },
+        budget: nationalBudget(
+          view,
+          content,
+          company,
+          country,
+          trade,
+          rate,
+          rng: judgment?.call(
+            company.id.index * 100000 + 95000 + country.index,
+          ),
+        ),
+      ),
     );
-    while (budget-- > 0) {
-      var best = -1;
-      var bestPayback = 0;
-      var bestProfit = Money.zero;
-      for (final r in regions) {
-        final profit = country
+  }
+  final pace = content.directors!.openingsOf(director);
+  var left = (pace ?? maxSafeInt) - opened;
+  // Regions where one more would pay but its owner holds all they may.
+  final full = <(int, int)>{};
+  var paced = false;
+  while (true) {
+    _NationalPlan? bestPlan;
+    var best = -1;
+    var bestPayback = 0;
+    var bestProfit = Money.zero;
+    for (final (p, plan) in plans.indexed) {
+      if (plan.budget == 0) continue;
+      for (final r in plan.regions) {
+        final profit = plan.country
             .newShop(
               content,
               company: company.id,
               format: format.id,
               strategy: strategy.id,
               region: r,
-              extra: placed[r] * 1000,
+              extra: plan.placed[r] * 1000,
             )
             .profit
-            .times(judged[r]!);
+            .times(plan.judged[r]!);
         if (profit <= Money.zero) continue;
-        final cost = country.fitOut(content, format.id, r);
+        final cost = plan.country.fitOut(content, format.id, r);
         final payback = (cost.cents * 12 + profit.cents - 1) ~/ profit.cents;
         if (payback > limit) continue;
+        if (plan.placed[r] >= plan.room[r]!) {
+          full.add((p, r));
+          continue;
+        }
         if (best < 0 || payback < bestPayback) {
+          bestPlan = plan;
           best = r;
           bestPayback = payback;
           bestProfit = profit;
         }
       }
-      if (best < 0) break;
-      placed[best]++;
-      first[best] ??= (earns: bestProfit, payback: bestPayback);
     }
-    for (final r in regions) {
-      var left = placed[r];
+    if (bestPlan == null) break;
+    if (left <= 0) {
+      paced = true;
+      break;
+    }
+    bestPlan
+      ..placed[best] += 1
+      ..budget -= 1;
+    bestPlan.first[best] ??= (earns: bestProfit, payback: bestPayback);
+    left--;
+  }
+  final picks = <({OpenNational command, NationalOpened memo})>[];
+  for (final plan in plans) {
+    final country = plan.country;
+    for (final r in plan.regions) {
+      var left = plan.placed[r];
       final cost = country.fitOut(content, format.id, r);
       while (left > 0) {
         final count = left < maxNationalOpenings ? left : maxNationalOpenings;
@@ -1356,7 +1430,7 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
           command: OpenNational(
             view.actor,
             company: company.id,
-            country: game,
+            country: plan.game,
             region: r,
             format: format.id,
             strategy: strategy.id,
@@ -1364,13 +1438,13 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
           ),
           memo: NationalOpened(
             view.today,
-            country: game,
+            country: plan.game,
             region: country.def.regions[r].key,
             format: format.id,
             count: count,
             cost: cost.timesInt(count),
-            earns: first[r]!.earns,
-            paybackMonths: first[r]!.payback,
+            earns: plan.first[r]!.earns,
+            paybackMonths: plan.first[r]!.payback,
           ),
         ));
       }
@@ -1379,5 +1453,39 @@ List<({OpenNational command, NationalOpened memo})> _nationalGrowth(
   // Soonest paid back first, so what the cash runs short of is the least
   // good.
   picks.sort((a, b) => a.memo.paybackMonths.compareTo(b.memo.paybackMonths));
-  return picks;
+  return (
+    picks: picks,
+    held: paced || full.isNotEmpty
+        ? GrowthHeld(
+            view.today,
+            format: format.id,
+            paced: paced ? pace : null,
+            full: full.length,
+          )
+        : null,
+  );
+}
+
+/// What a director growing shops run by formula weighs in one country this
+/// month: the regions allowed, how many more its owner may hold in each,
+/// how far off they are about each, how many more its pace there allows,
+/// and those placed so far, with the first's earnings and payback.
+final class _NationalPlan {
+  _NationalPlan({
+    required this.country,
+    required this.game,
+    required this.regions,
+    required this.room,
+    required this.judged,
+    required this.budget,
+  }) : placed = List.filled(country.def.regions.length, 0);
+
+  final NationalCountryView country;
+  final CountryId game;
+  final List<int> regions;
+  final Map<int, int> room;
+  final Map<int, Fx> judged;
+  int budget;
+  final List<int> placed;
+  final first = <int, ({Money earns, int payback})>{};
 }

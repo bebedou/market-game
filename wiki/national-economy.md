@@ -64,6 +64,41 @@ It runs without dice in demand. Sales add up exactly to spending; chains'
 openings and closings follow the gap between their margin and the trade's
 normal one.
 
+**What keeps growth in bounds** (2026-11-24):
+
+- **A head office's pace.** A chain opens at most `chainOpenings` (5) shops
+  a month, as a seasoned CEO's head office could; the independents, many
+  owners, are not held to it.
+- **Plants pay for plants.** A chain opens and closes shops on its margin
+  before what its own plants save (`ownSaving`): the saving is its plants'
+  return and stays in its cash. Counted in, it kept chains above the
+  trade's normal margin for good, so they opened at their pace for decades
+  and their big shops, each drawing some 25 independents' trade, emptied
+  the independents (Italy's fell from 168,000 to 92,000 by 2055).
+- **The competition authority.** No owner holds more than
+  `RegionalTuning.ceiling` (a tenth) of a trade's shops in a region:
+  `roomIn` says how many more one may open there, `mayBuy` whether a
+  purchase would take them past it across the country, and `shopsIn` counts
+  a region's shops, those being fitted out included.
+  - A player's companies count as one owner, their shops in districts,
+    asleep and played in full, with those by formula: `ownerShopGrid` and
+    `ownerShops` in [systems/national.dart](../packages/engine/lib/src/systems/national.dart),
+    and `NationalCountryView.held` for directors.
+  - Refused past it, as `regionCeiling`: `OpenNational`, `OpenStore`,
+    `BuyStore`, `OpenInDistrict` and `BuyInDistrict` (`_ceilingFor` in
+    apply_command, only once `world.national` exists). As
+    `nationalCeiling`: `BuyNationalChain` and a bid for a listed chain,
+    which is judged again when it closes and lapses if it would pass
+    (`_settle` in takeovers).
+  - A chain opens only where it has room (`_place`) and buys a company's
+    shops only if it may (`nationalBuyer`, so offers, `SellNational`,
+    `AcceptNationalOffer` and a restructuring's sale check it).
+  - Shops already past it stay.
+- **Households slow.** Each year leaves `householdGrowthFade` (0.9659) of
+  the year before's household growth (`_newYear`), so it halves in twenty
+  years from the start: France reaches about 41 million households by 2074,
+  not 53. Real income growth and inflation are unchanged.
+
 ## How the national level runs in a game
 
 - **Made lazily.** `currentNational(world, content)` in
@@ -101,13 +136,22 @@ In [policies/director.dart](../packages/engine/lib/src/policies/director.dart):
   3.5%, 6%), and `nationalRegions`.
 - `nationalChainShops` counts the company's shops of the trade in a
   country, played in full, asleep and by formula.
-- `nationalBudget` is the month's openings: the rate times those shops,
-  slowed by `criticalShare / (criticalShare + share)` as the chain nears
-  critical mass, with a fractional shop opened by chance. At least one a
-  month.
-- Each opening goes to the allowed region that pays back soonest, within
-  `nationalPaybackMonths` (36), as far as cash and loans go; a
-  `NationalOpened` memo per region.
+- `nationalBudget` is the month's openings in a country: the rate times
+  those shops, slowed by `criticalShare / (criticalShare + share)` as the
+  chain nears critical mass, with a fractional shop opened by chance. At
+  least one a month.
+- **A head office's pace.** In all, across every country, a director opens
+  at most `DirectorsDef.openingsOf` shops a month in a trade: the grade's
+  `openings` (2, 5 and 10) times their character's pace, rounded, less any
+  they opened in a district that month. Below it growth compounds; past it,
+  it is steady (a star: 120 a year). A company of its own, with its own CEO,
+  adds another head office. When the pace or the ceiling kept them from
+  more that would have paid, a `GrowthHeld` memo says so in their letter.
+  The brief's "this month" count is capped the same way.
+- Each opening goes to the allowed region, in any country, that pays back
+  soonest (`_NationalPlan` per country), within `nationalPaybackMonths`
+  (36), where the owner has room under the ceiling (`NationalCountryView.roomIn`),
+  as far as cash and loans go; a `NationalOpened` memo per region.
 - **Strain.** A brief faster than the grade runs well gives the block a
   `strain`; `strainFactor` divides its pull by `1 + strainCost × strain`
   (0.6). Set in `_strain` in `systems/national.dart`.
