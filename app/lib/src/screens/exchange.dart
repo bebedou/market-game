@@ -507,7 +507,10 @@ class ExchangePage extends StatelessWidget {
       for (final stock in view.stocks)
         if (stock.listed && stock.country == exchange.country) stock,
     ]..sort((a, b) => b.cap.cents.compareTo(a.cap.cents));
-    final total = members.fold(Money.zero, (sum, s) => sum + s.cap);
+    // Only shown: past 2^53 cents (90 trillion), as an exchange gets in a
+    // long game, the total needn't be exact, so it isn't checked as the
+    // game's sums are.
+    final total = Money(members.fold(0, (sum, s) => sum + s.cap.cents));
     final holding = view.holdings
         .where((h) => h.index && h.of == exchange.index)
         .firstOrNull;

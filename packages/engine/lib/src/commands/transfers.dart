@@ -184,12 +184,6 @@ void transferCompany(
     ..injected = price - financed;
 }
 
-/// Sells [software]'s company whole to the rival making [offer], beyond the
-/// simulation: its loans and bills are settled, the buyer making up any
-/// shortfall, and its cash goes with it; its owner gets their share of the
-/// price and books the gain over what they put in, taxed as a dividend;
-/// outside investors get theirs beyond the simulation. Its customers go to
-/// the buyer, its people leave, and the company is [CompanyStatus.sold].
 /// Sells [software] alone to the rival making [offer], out of a company
 /// that holds other businesses: the company is paid the price, a gain taxed
 /// with its profit, and trades on without it; its investors keep their
@@ -218,6 +212,12 @@ void sellSoftwareBusiness(
   );
 }
 
+/// Sells [software]'s company whole to the rival making [offer], beyond the
+/// simulation: its loans and bills are settled, the buyer making up any
+/// shortfall, and its cash goes with it; its owner gets their share of the
+/// price and books the gain over what they put in, taxed as a dividend;
+/// outside investors get theirs beyond the simulation. Its customers go to
+/// the buyer, its people leave, and the company is [CompanyStatus.sold].
 void sellSoftware(
   WorldState world,
   ContentDb content,

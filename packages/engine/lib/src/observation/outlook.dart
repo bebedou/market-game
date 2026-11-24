@@ -331,7 +331,9 @@ ShopOutlook shopOutlook(
   );
   Fx pull(Fx location, int area) => shopPull(content, location, area);
   final channel = content.formatChannels[format.id.index];
-  final mine = pull(site.location, site.area) * habits.draw;
+  // A site with room opens it enlarged, at that floor's rent.
+  final area = site.openingArea(format) ?? site.area;
+  final mine = pull(site.location, area) * habits.draw;
   var total = mine;
   var rivals = 0;
   // Shops of a neighbourhood asleep are in its plan alone.
@@ -375,7 +377,7 @@ ShopOutlook shopOutlook(
     unitsPerVisit: habits.unitsPerVisit,
     peak: habits.peakStaff,
   );
-  final premises = (site.rent + format.overheadsFor(site.area))
+  final premises = (site.rentFor(area) + format.overheadsFor(area))
       .times(macro.priceIndex)
       .timesInt(12);
   final profit =

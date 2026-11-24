@@ -27,6 +27,10 @@ import 'stocks.dart';
 import 'store.dart';
 import 'taxation.dart';
 
+/// The save version from which the holding's name is saved apart from the
+/// start.
+const holdingNameVersion = 43;
+
 /// All mutable truth about the world. Only commands and tick systems change
 /// it, and nothing outside the engine reads it.
 final class WorldState {
@@ -99,6 +103,10 @@ final class WorldState {
 
   /// The holding's own months, the player's books, oldest first.
   final holdingMonths = <HoldingMonth>[];
+
+  /// What the player calls their holding: as they named it at the start, or
+  /// since; null for one never named.
+  String? holdingName;
 
   /// The stock market; null until first run, and without a table for one.
   /// Kept beside the world, as the national economy is.
@@ -262,76 +270,84 @@ final class WorldState {
         newCohorts(content, seed, market, cohorts.length, content.startDay),
       );
     }
-    final world = WorldState._(
-      seed: seed,
-      today: content.startDay,
-      player: content.player,
-      moneySupply: openingCash.fold(Money.zero, (sum, cash) => sum + cash),
-      nextOrderNumber: 1,
-      nextLoanNumber: 1,
-      nextReportNumber: 1,
-      macro: MacroState.initial(content.macro),
-      persons: [
-        for (final (i, person) in content.persons.indexed)
-          Person(
-            id: PersonId(i),
-            name: person.name,
-            accounts: Accounts.opening(
-              personCash[i],
-              investments: terms != null && i == content.player.index
-                  ? terms.capital
-                  : Money.zero,
+    final world =
+        WorldState._(
+            seed: seed,
+            today: content.startDay,
+            player: content.player,
+            moneySupply: openingCash.fold(
+              Money.zero,
+              (sum, cash) => sum + cash,
             ),
-          ),
-      ],
-      companies: [
-        for (final (i, company) in content.companies.indexed)
-          Company(
-            id: CompanyId(i),
-            name: start != null && i == setup!.company
-                ? start.name
-                : company.name,
-            owner: company.owner,
-            accounts: Accounts.opening(companyCash[i]),
-            founded: content.startDay,
-            injected: terms != null && i == setup!.company
-                ? terms.capital
-                : Money.zero,
-            status: start != null && start.holding && i == setup!.company
-                ? CompanyStatus.dormant
-                : CompanyStatus.active,
-          ),
-      ],
-      stores: [],
-      suppliers: [
-        for (final supplier in content.suppliers)
-          Supplier(id: supplier.id, accounts: Accounts()),
-      ],
-      households: [
-        for (final market in content.markets)
-          Households(market: market.id, accounts: Accounts()),
-      ],
-      bank: Bank(accounts: Accounts.opening(content.finance.bankReserves)),
-      landlords: Landlords(accounts: Accounts()),
-      services: Services(accounts: Accounts()),
-      government: Government(accounts: Accounts()),
-      filings: [],
-      economicHistory: [],
-      cohorts: cohorts,
-      orders: [],
-      loans: [],
-      reports: [],
-      periodReports: [],
-      markets: [
-        for (final market in content.markets)
-          MarketState.initial(
-            market.id,
-            content.startDay,
-            market.households.fold(0, (sum, count) => sum + count),
-          ),
-      ],
-      start: start,
-    )..growEconomies(content);
+            nextOrderNumber: 1,
+            nextLoanNumber: 1,
+            nextReportNumber: 1,
+            macro: MacroState.initial(content.macro),
+            persons: [
+              for (final (i, person) in content.persons.indexed)
+                Person(
+                  id: PersonId(i),
+                  name: person.name,
+                  accounts: Accounts.opening(
+                    personCash[i],
+                    investments: terms != null && i == content.player.index
+                        ? terms.capital
+                        : Money.zero,
+                  ),
+                ),
+            ],
+            companies: [
+              for (final (i, company) in content.companies.indexed)
+                Company(
+                  id: CompanyId(i),
+                  name: start != null && i == setup!.company
+                      ? start.name
+                      : company.name,
+                  owner: company.owner,
+                  accounts: Accounts.opening(companyCash[i]),
+                  founded: content.startDay,
+                  injected: terms != null && i == setup!.company
+                      ? terms.capital
+                      : Money.zero,
+                  status: start != null && start.holding && i == setup!.company
+                      ? CompanyStatus.dormant
+                      : CompanyStatus.active,
+                ),
+            ],
+            stores: [],
+            suppliers: [
+              for (final supplier in content.suppliers)
+                Supplier(id: supplier.id, accounts: Accounts()),
+            ],
+            households: [
+              for (final market in content.markets)
+                Households(market: market.id, accounts: Accounts()),
+            ],
+            bank: Bank(
+              accounts: Accounts.opening(content.finance.bankReserves),
+            ),
+            landlords: Landlords(accounts: Accounts()),
+            services: Services(accounts: Accounts()),
+            government: Government(accounts: Accounts()),
+            filings: [],
+            economicHistory: [],
+            cohorts: cohorts,
+            orders: [],
+            loans: [],
+            reports: [],
+            periodReports: [],
+            markets: [
+              for (final market in content.markets)
+                MarketState.initial(
+                  market.id,
+                  content.startDay,
+                  market.households.fold(0, (sum, count) => sum + count),
+                ),
+            ],
+            start: start,
+          )
+          ..growEconomies(content)
+          ..holdingName = start != null && start.holding ? start.name : null;
     for (final (i, store) in content.stores.indexed) {
       if (start != null && i == setup!.store) {
         final (chosen, format) = (start.site, start.format);
@@ -483,6 +499,11 @@ final class WorldState {
       world.holdingMonths.addAll(
         _readList(reader, (_) => HoldingMonth.read(reader)),
       );
+    }
+    if (reader.version >= holdingNameVersion) {
+      world.holdingName = reader.readBool() ? reader.readString() : null;
+    } else if (world.start case final start? when start.holding) {
+      world.holdingName = start.name;
     }
     return world;
   }
@@ -711,6 +732,8 @@ final class WorldState {
     writer.writeInt(nextTenderNumber);
     _writeList(writer, chainPlants, (plant) => plant.write(writer));
     _writeList(writer, holdingMonths, (month) => month.write(writer));
+    writer.writeBool(holdingName != null);
+    if (holdingName case final name?) writer.writeString(name);
   }
 }
 

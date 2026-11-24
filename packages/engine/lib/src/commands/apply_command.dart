@@ -32,10 +32,14 @@ import 'command.dart';
 import 'refusal.dart';
 import 'stock_trades.dart';
 import '../systems/stocks.dart' show ownListing;
+import '../state/businesses.dart';
+import '../state/stocks.dart' show Holding;
 import 'transfers.dart';
 import '../state/factory_sales.dart';
 import '../systems/factory_sales.dart'
     show breakContract, mostAccepted, retender;
+
+part 'restructuring.dart';
 
 /// Validates and applies [command]. Returns null when it was applied, or the
 /// reason it was rejected. The rules are the same for every actor.
@@ -109,6 +113,12 @@ Refusal? applyCommand(
     SellControlled() => sellControlled(world, content, command),
     ListCompany() => listCompany(world, content, ledger, command),
     FoundCompany() => _foundCompany(world, ledger, command),
+    MoveBusiness() => _moveBusiness(world, content, ledger, command),
+    MoveCompany() => _moveCompany(world, content, ledger, command),
+    MergeCompany() => _mergeCompany(world, content, ledger, command),
+    SellBusiness() => _sellBusiness(world, content, ledger, command),
+    SellCompany() => _sellCompany(world, content, ledger, command),
+    RenameHolding() => _renameHolding(world, command),
     SetSoftwarePrice() => _setSoftwarePrice(world, content, command),
     SetSoftwareMarketing() => _setSoftwareMarketing(world, content, command),
     HireSoftwarePerson() => _hireSoftwarePerson(world, content, command),
@@ -377,6 +387,14 @@ Refusal? _renameCompany(WorldState world, RenameCompany command) {
   final problem = _nameProblem(command.name);
   if (problem != null) return problem;
   company.name = command.name;
+  return null;
+}
+
+Refusal? _renameHolding(WorldState world, RenameHolding command) {
+  if (command.actor != world.player) return const Refusal('notYourCompany');
+  final problem = _nameProblem(command.name);
+  if (problem != null) return problem;
+  world.holdingName = command.name;
   return null;
 }
 
@@ -958,9 +976,10 @@ Refusal? _openStore(
     format.id,
   );
   if (brandError != null) return brandError;
-  if (format.minArea > site.area) {
-    return Refusal('siteTooSmall', format: format.id);
-  }
+  // A site with room opens a bigger kind of shop at once, enlarged as it is
+  // fitted out.
+  final area = site.openingArea(format);
+  if (area == null) return Refusal('siteTooSmall', format: format.id);
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
   Company? company;
@@ -977,9 +996,12 @@ Refusal? _openStore(
       (company?.accounts[AccountKind.cash] ?? Money.zero) +
       command.capital +
       command.borrow;
-  final openingCost = site.openingCost
-      .times(format.fitOut)
-      .times(world.macroAt(content, site.market).priceIndex);
+  final openingCost = shopOpeningCost(
+    content,
+    site,
+    format,
+    world.macroAt(content, site.market).priceIndex,
+  );
   if (cash < openingCost) {
     return Refusal('cannotPayOpening', amount: openingCost);
   }
@@ -1013,6 +1035,7 @@ Refusal? _openStore(
     staff: List.filled(DaySlot.values.length, 0),
     opensOn: world.today + site.buildDays,
     format: format.id,
+    area: area,
   );
   if (brand != null) brandStore(world, content, store, brand);
   if (openingCost > Money.zero) {

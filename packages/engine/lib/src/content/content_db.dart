@@ -495,6 +495,30 @@ final class SiteDef {
   /// The monthly rent for [area] square metres here, at a price index of 1:
   /// in proportion to the site's rent for its own area.
   Money rentFor(int area) => Money(mulDivRound(rent.cents, area, this.area));
+
+  /// The floor a new [format] shop opens with here: the site's own, or, on
+  /// a site with room to be enlarged to it, the format's least, the works
+  /// done as it is fitted out. Null if the site hasn't the room.
+  int? openingArea(FormatDef format) => format.minArea <= area
+      ? area
+      : format.minArea <= maxArea
+      ? format.minArea
+      : null;
+}
+
+/// What opening a [format] shop on [site] costs at [priceIndex]: fitting it
+/// out, and the works to its [SiteDef.openingArea] where it is enlarged to
+/// open, at what enlarging costs.
+Money shopOpeningCost(
+  ContentDb content,
+  SiteDef site,
+  FormatDef format,
+  Fx priceIndex,
+) {
+  final extra = (site.openingArea(format) ?? site.area) - site.area;
+  return (site.openingCost.times(format.fitOut) +
+          content.expansion.costPerSqm.timesInt(extra))
+      .times(priceIndex);
 }
 
 /// How stores grow: one step of floor area at a time.

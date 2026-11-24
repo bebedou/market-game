@@ -73,7 +73,9 @@ void liquidate(WorldState world, TickContext context, Company company) {
     for (final payable in payables)
       owed <= cash
           ? payable.amount
-          : Money(checkedSafe(payable.amount.cents * cash.cents) ~/ owed.cents),
+          : Money(
+              mulDivTruncated(payable.amount.cents, cash.cents, owed.cents),
+            ),
   ];
   // Rounding leaves a few cents; they go to the first creditors.
   var leftover = owed <= cash

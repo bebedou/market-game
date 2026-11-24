@@ -175,13 +175,11 @@ void _open(
     market.raiders.add(Raider(cash: def.raiders[r].funds));
   }
   for (var e = market.exchanges.length; e < def.exchanges.length; e++) {
-    final total = _indexWorth(def, market, e);
+    final (:sum, :unit) = _indexWorth(def, market, e);
     final base = Money(rules.indexBase.raw ~/ 100);
     market.exchanges.add(
       Exchange(
-        divisor: Money(
-          total.cents <= 0 ? 1 : mulDivRound(total.cents, 100, base.cents),
-        ),
+        divisor: Money(sum <= 0 ? 1 : mulDivRound(sum, 100 * unit, base.cents)),
         level: base,
       ),
     );
@@ -316,7 +314,7 @@ final class StockMarketSystem implements TickSystem {
     final paid = List.filled(def.exchanges.length, Money.zero);
     final limits = [
       for (var e = 0; e < def.exchanges.length; e++)
-        _listedCap(def, market, e).times(_indexCap),
+        _capLimit(_listedCap(def, market, e)),
     ];
     for (final (i, stock) in market.stocks.indexed) {
       if (!stock.running || stock.quarterMonths == 0) continue;
@@ -514,10 +512,10 @@ final class StockMarketSystem implements TickSystem {
           ..previous = stock.price
           ..price = _price(stock, mood, rules);
       }
-      final total = _indexWorth(def, market, e);
+      final (:sum, :unit) = _indexWorth(def, market, e);
       exchange
         ..previous = exchange.level
-        ..level = Money(mulDivRound(total.cents, 100, exchange.divisor.cents));
+        ..level = Money(mulDivRound(sum, 100 * unit, exchange.divisor.cents));
     }
   }
 }
@@ -595,8 +593,8 @@ void joinExchange(StocksDef def, StockMarket market, int i) {
   final before = _indexWorth(def, market, e);
   stock.listed = true;
   final after = _indexWorth(def, market, e);
-  if (before > Money.zero && after > Money.zero) {
-    exchange.divisor = exchange.divisor.times(moneyRatio(after, before));
+  if (before.sum > 0 && after.sum > 0) {
+    exchange.divisor = exchange.divisor.times(_worthRatio(after, before));
   }
 }
 
@@ -610,8 +608,8 @@ void leaveExchange(StocksDef def, StockMarket market, int i) {
   final before = _indexWorth(def, market, e);
   stock.listed = false;
   final after = _indexWorth(def, market, e);
-  if (before > Money.zero && after > Money.zero) {
-    exchange.divisor = exchange.divisor.times(moneyRatio(after, before));
+  if (before.sum > 0 && after.sum > 0) {
+    exchange.divisor = exchange.divisor.times(_worthRatio(after, before));
   }
 }
 
@@ -888,29 +886,68 @@ bool _failed(WorldState world, ContentDb content, ListingDef listing) =>
       _ => false,
     };
 
-/// What its listed companies on exchange [e] are worth together.
-Money _listedCap(StocksDef def, StockMarket market, int e) {
-  var total = Money.zero;
-  for (final (i, stock) in market.stocks.indexed) {
-    if (stock.listed && exchangeOfStock(def, market, i) == e) {
-      total += stock.cap;
+/// A sum of what companies are worth, in [unit] cents. An exchange's
+/// companies together pass 2^53 cents (90 trillion) once a long game's
+/// economy has grown, as the owner's did in 2073; its index only divides
+/// one such sum by another, so past that it counts in thousands of cents,
+/// or more. While the sum fits, the unit is a cent and nothing changes.
+typedef _Worth = ({int sum, int unit});
+
+/// [caps] added up, in the smallest unit the sum fits in.
+_Worth _summed(List<Money> caps) {
+  for (var unit = 1; ; unit *= 1000) {
+    var sum = 0;
+    var fits = true;
+    for (final cap in caps) {
+      final part = cap.cents ~/ unit;
+      if (sum > maxSafeInt - part) {
+        fits = false;
+        break;
+      }
+      sum += part;
     }
+    if (fits) return (sum: sum, unit: unit);
   }
-  return total;
+}
+
+/// What its listed companies on exchange [e] are worth together.
+_Worth _listedCap(StocksDef def, StockMarket market, int e) => _summed([
+  for (final (i, stock) in market.stocks.indexed)
+    if (stock.listed && exchangeOfStock(def, market, i) == e) stock.cap,
+]);
+
+/// The most one company counts for in an index on [total]: [_indexCap] of
+/// it, in cents, and never past what any one company can be worth.
+Money _capLimit(_Worth total) {
+  final limit = mulDivRound(total.sum, _indexCap.raw, Fx.scale);
+  return Money(
+    limit > maxSafeInt ~/ total.unit ? maxSafeInt : limit * total.unit,
+  );
 }
 
 /// What exchange [e]'s index stands on: its listed companies' worth, each
-/// counting for at most [_indexCap] of all of them.
-Money _indexWorth(StocksDef def, StockMarket market, int e) {
+/// counting for at most [_indexCap] of all of them, in the unit their
+/// worth together is counted in.
+_Worth _indexWorth(StocksDef def, StockMarket market, int e) {
   final total = _listedCap(def, market, e);
-  final limit = total.times(_indexCap);
-  var counted = Money.zero;
+  final unit = total.unit;
+  final limit = mulDivRound(total.sum, _indexCap.raw, Fx.scale);
+  var counted = 0;
   for (final (i, stock) in market.stocks.indexed) {
     if (!stock.listed || exchangeOfStock(def, market, i) != e) continue;
-    final cap = stock.cap;
+    final cap = stock.cap.cents ~/ unit;
     counted += cap > limit ? limit : cap;
   }
-  return counted;
+  return (sum: counted, unit: unit);
+}
+
+/// [after] over [before], in one unit.
+Fx _worthRatio(_Worth after, _Worth before) {
+  final unit = after.unit > before.unit ? after.unit : before.unit;
+  return moneyRatio(
+    Money(after.sum ~/ (unit ~/ after.unit)),
+    Money(before.sum ~/ (unit ~/ before.unit)),
+  );
 }
 
 /// [listing]'s sales and its profit after interest and tax for a month at
@@ -1299,8 +1336,15 @@ int _clampMood(int mood, StockRulesDef rules) {
 Money _price(Listing stock, int market, StockRulesDef rules) {
   final mood = _clampMood(market + stock.mood, rules);
   final factor = expSigned(Fx.raw(mood ~/ 100), rules.maxMood);
-  final each = Money(mulDivRound(stock.worth.cents, factor.raw, Fx.scale));
-  final price = Money(each.cents ~/ stock.shares);
+  final worth = stock.worth.cents;
+  // A company worth so much its mood would carry it past 2^53 cents, as
+  // the owner's biggest rivals were by 2074, is priced a share at once.
+  final fits =
+      factor <= Fx.one ||
+      worth.abs() < mulDivRound(maxSafeInt, Fx.scale, factor.raw) - 1;
+  final price = fits
+      ? Money(mulDivRound(worth, factor.raw, Fx.scale) ~/ stock.shares)
+      : Money(mulDivRound(worth, factor.raw, Fx.scale * stock.shares));
   return price > Money.zero ? price : const Money(1);
 }
 

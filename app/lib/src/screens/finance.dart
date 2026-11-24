@@ -190,7 +190,7 @@ void openCompanyPage(BuildContext context, CompanyView company) =>
             if (current.status == CompanyStatus.active)
               ExchangeEntry(company: current),
             _CompanyCard(company: current),
-            if (current.memos.isNotEmpty) _Letters(company: current),
+            if (current.memos.isNotEmpty) LettersSection(company: current),
           ],
       ],
     );
@@ -1224,11 +1224,19 @@ class _CandidateTile extends StatelessWidget {
 }
 
 /// The director's monthly letters, newest first: the latest two, or [all].
-class _Letters extends StatelessWidget {
-  const _Letters({required this.company, this.all = false});
+class LettersSection extends StatelessWidget {
+  const LettersSection({
+    super.key,
+    required this.company,
+    this.all = false,
+    this.titled = false,
+  });
 
   final CompanyView company;
   final bool all;
+
+  /// Whether it is titled by its company, among others' letters.
+  final bool titled;
 
   static const _shown = 2;
 
@@ -1245,7 +1253,7 @@ class _Letters extends StatelessWidget {
       since: director?.hiredOn,
     );
     return Section(
-      title: tr('finance.letters'),
+      title: titled ? game.companyName(company.id) : tr('finance.letters'),
       icon: Icons.mail_outline,
       children: [
         for (final letter in all ? letters : letters.take(_shown))
@@ -1259,7 +1267,7 @@ class _Letters extends StatelessWidget {
               (context) => [
                 for (final current in context.game.view.companies)
                   if (current.id == company.id)
-                    _Letters(company: current, all: true),
+                    LettersSection(company: current, all: true),
               ],
             ),
           ),

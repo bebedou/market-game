@@ -51,9 +51,16 @@ final class TaxSystem implements TickSystem {
             .where((store) => store.company == company.id && store.isTrading)
             .length,
       ));
-      if (!company.isActive) continue;
+      // A company merged into another is taxed on its last year, billed to
+      // the one it went into.
+      final payer = switch (company.mergedInto) {
+        final into? when company.status == CompanyStatus.merged =>
+          world.companies[into.index],
+        _ => company,
+      };
+      if (!payer.isActive) continue;
       if (world.cycle != null) {
-        _taxByCountry(world, context, company, year);
+        _taxByCountry(world, context, company, year, payer: payer);
         continue;
       }
       if (taxes == null) continue;
@@ -70,7 +77,7 @@ final class TaxSystem implements TickSystem {
       if (tax == Money.zero) continue;
       bill(
         context.ledger,
-        company,
+        payer,
         AccountKind.taxes,
         Payable(
           creditor: world.government.partyRef,
@@ -91,8 +98,9 @@ final class TaxSystem implements TickSystem {
     WorldState world,
     TickContext context,
     Company company,
-    int year,
-  ) {
+    int year, {
+    required Company payer,
+  }) {
     var tax = Money.zero;
     for (final due in companyTaxes(world, context.content, company, year)) {
       final carried = due.base <= Money.zero
@@ -106,7 +114,7 @@ final class TaxSystem implements TickSystem {
     if (tax == Money.zero) return;
     bill(
       context.ledger,
-      company,
+      payer,
       AccountKind.taxes,
       Payable(
         creditor: world.government.partyRef,

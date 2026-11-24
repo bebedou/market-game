@@ -209,7 +209,9 @@ final class Loan {
 
   /// Loan numbers count up from 1 across the whole world.
   final int number;
-  final CompanyId company;
+
+  /// Whose debt it is: the company it merged into, after a merger.
+  CompanyId company;
 
   /// The amount borrowed.
   final Money principal;

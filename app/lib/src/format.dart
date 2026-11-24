@@ -151,7 +151,7 @@ String managersOf(ManagerGradeDef grade) =>
     trMaybe('scenario.managers.grades.${grade.key}.many') ??
     grade.name.toLowerCase();
 
-/// "a promoted manager", "a star director": one director of [grade].
+/// "a promoted manager", "a star CEO": one director of [grade].
 String aDirector(DirectorGradeDef grade) =>
     trMaybe('scenario.directors.grades.${grade.key}.a') ??
     grade.name.toLowerCase();

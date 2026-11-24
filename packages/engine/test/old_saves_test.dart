@@ -9,6 +9,8 @@ import 'package:engine/engine.dart';
 import 'package:engine/src/state/invariants.dart';
 import 'package:test/test.dart';
 
+import 'support/fixtures.dart';
+
 /// The prototype the fixtures were played on: the player rich enough for
 /// shops across France and a drinks plant, with the national figures.
 ContentDb content({String Function(String)? national}) => loadScenario(
@@ -152,5 +154,21 @@ void main() {
         ),
       ),
     );
+  });
+
+  test("a holding saved at format 42, before mergers, a start's cash and "
+      "the holding's own name, loads with the name it started with", () {
+    // Written by 151811b on the test town: a holding start named Old
+    // Holding, seed 7, 40 days.
+    final scenario = loadScenario(testScenarioJson);
+    final game = Simulation.load(scenario, fixture('save_v42_holding'));
+    expect(game.world.holdingName, 'Old Holding');
+    expect(game.world.start!.cash, isNull);
+    expect(
+      game.world.companies.where((company) => company.mergedInto != null),
+      isEmpty,
+    );
+    expect(invariantViolations(game.world), isEmpty);
+    playOn(game, scenario);
   });
 }

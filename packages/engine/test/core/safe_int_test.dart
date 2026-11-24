@@ -61,6 +61,58 @@ void main() {
       expect(checked, greaterThan(5000));
     });
 
+    test('stays exact where the smaller factor is too large to divide '
+        'at once, as a big empire’s sums are', () {
+      // The case that stopped a game on 1 July 2053: a country's spending
+      // shared by a new shop's weight against all the others'.
+      final spend = 3000000000000;
+      expect(
+        mulDivRound(spend, 14886197, 302547369),
+        referenceMulDivRound(spend, 14886197, 302547369),
+      );
+      var checked = 0;
+      for (var i = 0; i < 20000; i++) {
+        final rng = Rng.keyed(2, 1, 0, i);
+        final d = 1 + randomBits(rng, 1 + rng.nextInt(52));
+        final limit = (maxSafeInt - d) ~/ (2 * d);
+        final large = randomBits(rng, rng.nextInt(54));
+        var small = randomBits(rng, rng.nextInt(54));
+        if (small <= limit) small = limit + 1 + small % (limit + 1);
+        final a = rng.nextInt(2) == 0 ? -large : large;
+        final b = rng.nextInt(2) == 0 ? -small : small;
+        if (!isSafeInt(b)) continue;
+        final expected = referenceMulDivRound(a, b, d);
+        if (!isSafeInt(expected)) continue;
+        expect(mulDivRound(a, b, d), expected, reason: '$a × $b ÷ $d');
+        expect(mulDivRound(b, a, d), expected, reason: '$b × $a ÷ $d');
+        checked++;
+      }
+      expect(checked, greaterThan(2000));
+    });
+
+    test('truncated, matches (a × b) ~/ d exactly, past the safe range '
+        'of the product too', () {
+      int reference(int a, int b, int d) =>
+          (BigInt.from(a) * BigInt.from(b) ~/ BigInt.from(d)).toInt();
+      // A bankrupt company's creditor, a share of 3 billion owed out of 2.
+      expect(
+        mulDivTruncated(150000000000, 200000000000, 300000000000),
+        reference(150000000000, 200000000000, 300000000000),
+      );
+      var checked = 0;
+      for (var i = 0; i < 20000; i++) {
+        final rng = Rng.keyed(3, 1, 0, i);
+        final d = 1 + randomBits(rng, 1 + rng.nextInt(52));
+        final a = randomBits(rng, rng.nextInt(54)) * (rng.nextInt(2) * 2 - 1);
+        final b = randomBits(rng, rng.nextInt(54)) * (rng.nextInt(2) * 2 - 1);
+        final expected = BigInt.from(a) * BigInt.from(b) ~/ BigInt.from(d);
+        if (!expected.isValidInt || !isSafeInt(expected.toInt())) continue;
+        expect(mulDivTruncated(a, b, d), expected.toInt(), reason: '$a $b $d');
+        checked++;
+      }
+      expect(checked, greaterThan(5000));
+    });
+
     test('asserts when the result leaves the safe range', () {
       expect(
         () => mulDivRound(maxSafeInt, 2, 1),

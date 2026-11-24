@@ -15,8 +15,8 @@ Future<void> _openSheet(WidgetTester tester) async {
   await tester.tap(find.text('Finance'));
   await tester.pumpAndSettle();
   await openIndex(tester, 'Corner Shop');
-  await scrollTo(tester, find.text('Hire a director'));
-  await tester.tap(find.text('Hire a director'));
+  await scrollTo(tester, find.text('Hire a CEO'));
+  await tester.tap(find.text('Hire a CEO'));
   await tester.pumpAndSettle();
 }
 
@@ -103,7 +103,7 @@ void main() {
     useStrings(stringsFromFiles('fr', fallback: stringsFromFiles('en')));
     expect(
       directorLine(prototype, prototype.directors!.grades[1], person),
-      'Directrice chevronnée · audacieuse',
+      'PDG chevronnée · audacieuse',
     );
     useStrings(stringsFromFiles('en'));
   });

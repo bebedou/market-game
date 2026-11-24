@@ -178,8 +178,8 @@ final class Software {
 
   final SoftwareId id;
 
-  /// Its company, which it belongs to for good.
-  final CompanyId company;
+  /// Its company, until the owner moves it to another.
+  CompanyId company;
 
   /// Where it works from: its people are paid at that country's wages and
   /// it pays tax there.

@@ -157,7 +157,10 @@ void main() {
         ),
       );
       expect(game.step().rejections, isEmpty);
-      final order = game.world.orders.last;
+      // Rivals order the same day too: this is the shop's own.
+      final order = game.world.orders.lastWhere(
+        (order) => order.store == store.id,
+      );
       // At the Spanish wholesaler's own price, at Spain's prices.
       final spain = game.content.countryOf(store.market);
       expect(

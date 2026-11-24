@@ -18,8 +18,8 @@ import 'package:market_game/src/widgets.dart';
 import 'support.dart';
 
 void main() {
-  testWidgets('the holding leads with a verdict, its figures and what needs '
-      'the player', (tester) async {
+  testWidgets('the holding leads with a verdict, its figures and the mail '
+      'waiting', (tester) async {
     final game = newController();
     await pumpGame(tester, game);
     expect(
@@ -29,7 +29,8 @@ void main() {
     expect(find.text('Thu 1 Jan 2026'), findsOneWidget);
     expect(find.textContaining('Too new to judge'), findsOneWidget);
     expect(find.text('Profit a month'), findsOneWidget);
-    expect(find.text('Needs you'), findsOneWidget);
+    // The desk: the mail first, the shop's to-dos ruled with it.
+    expect(find.text('Mail'), findsOneWidget);
     expect(find.text('Your shelves are empty.'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Your company'), 300);
     expect(find.widgetWithText(IndexRow, 'Corner Shop'), findsOneWidget);
@@ -692,8 +693,8 @@ void main() {
     await tester.tap(find.text('Finance'));
     await tester.pumpAndSettle();
     await openIndex(tester, 'Corner Shop');
-    await scrollTo(tester, find.text('Hire a director'));
-    await tester.tap(find.text('Hire a director'));
+    await scrollTo(tester, find.text('Hire a CEO'));
+    await tester.tap(find.text('Hire a CEO'));
     await tester.pumpAndSettle();
     final sheet = find.byType(Scrollable).last;
     await tester.scrollUntilVisible(
@@ -959,8 +960,8 @@ void main() {
     await tester.tap(find.text('Finance'));
     await tester.pumpAndSettle();
     await openIndex(tester, 'Corner Shop');
-    await scrollTo(tester, find.text('Hire a director'));
-    await tester.tap(find.text('Hire a director'));
+    await scrollTo(tester, find.text('Hire a CEO'));
+    await tester.tap(find.text('Hire a CEO'));
     await tester.pumpAndSettle();
     final sheet = find.byType(Scrollable).last;
     await tester.scrollUntilVisible(find.text('Grow'), 100, scrollable: sheet);
@@ -1058,8 +1059,9 @@ void main() {
     expect(find.textContaining('Continue'), findsNothing);
     await tester.tap(find.text('New game'));
     await tester.pumpAndSettle();
-    // The holding's name is all it asks.
-    expect(find.byType(TextField), findsOneWidget);
+    // The holding's name, and the money to start with, the scenario's
+    // unless changed.
+    expect(find.byType(TextField), findsNWidgets(2));
     // 20,000 of their own, the company's 15,000, the corner's 30,000.
     expect(
       find.textContaining('The holding starts with 65,000'),
@@ -1069,7 +1071,7 @@ void main() {
       tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
       isNull,
     );
-    await tester.enterText(find.byType(TextField), 'Rayan Holding');
+    await tester.enterText(find.byType(TextField).first, 'Rayan Holding');
     await tester.pump();
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
@@ -1127,6 +1129,46 @@ void main() {
     game.step();
     await tester.pumpAndSettle();
     expect(game.view.companies.single.stores.single.market, woken.id);
+  });
+
+  testWidgets('a supermarket opens at once on a site with room for it, '
+      'enlarged as it is fitted out', (tester) async {
+    final game = SimulationController.newGame(
+      prototype,
+      seed: 7,
+      start: GameStart.holding(
+        'Rayan Holding',
+        cash: Money.parse('1000000.00'),
+      ),
+      citiesAsleep: true,
+    );
+    await pumpGame(tester, game);
+    await tester.tap(find.text('You have no company trading.'));
+    await tester.pumpAndSettle();
+    await openIndex(tester, 'Groceries');
+    await openIndex(tester, 'Supermarket');
+    final enlarged = find.textContaining('enlarged to 220 m²').first;
+    await scrollTo(tester, enlarged);
+    final open = find.descendant(
+      of: find.ancestor(of: enlarged, matching: find.byType(ListTile)),
+      matching: find.widgetWithText(OutlinedButton, 'Open'),
+    );
+    await tester.tap(open);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('It opens enlarged to 220 m²'), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Capital from the holding’s cash'),
+      '200000',
+    );
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Open').last);
+    await tester.pumpAndSettle();
+    final opening = game.pending.whereType<OpenStore>().single;
+    expect(game.content.formats[opening.format.index].key, 'supermarket');
+    game.step();
+    final store = game.view.companies.single.stores.single;
+    expect(game.content.formats[store.format.index].key, 'supermarket');
+    expect(store.area, 220);
   });
 
   testWidgets('a game that cannot be loaded is set aside and frees its slot', (
@@ -1357,8 +1399,8 @@ void main() {
     await tester.tap(find.text('Finance'));
     await tester.pumpAndSettle();
     await openIndex(tester, 'Corner Shop');
-    await scrollTo(tester, find.text('Hire a director'));
-    await tester.tap(find.text('Hire a director'));
+    await scrollTo(tester, find.text('Hire a CEO'));
+    await tester.tap(find.text('Hire a CEO'));
     await tester.pumpAndSettle();
     // The month's seasoned director, picked to begin with.
     final seasoned = _seasoned(game);
@@ -1389,7 +1431,7 @@ void main() {
       ..step();
     expect(
       game.alerts.first.message,
-      'Director of Corner Shop: I hired an experienced manager for Corner '
+      'CEO of Corner Shop: I hired an experienced manager for Corner '
       'Shop.',
     );
     expect(game.alerts.first.kind, AlertKind.director);
@@ -1410,7 +1452,7 @@ void main() {
     await scrollTo(tester, find.text('Your company'));
     expect(find.text('run by you'), findsOneWidget);
     await openRow(tester, 'Corner Shop');
-    await openIndex(tester, 'Hire a director');
+    await openIndex(tester, 'Hire a CEO');
     final seasoned = _seasoned(game);
     expect(find.text(seasoned.person.name), findsOneWidget);
     await tester.scrollUntilVisible(
@@ -1422,7 +1464,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(game.pending.single, isA<HireDirector>());
     expect(find.widgetWithText(IndexRow, seasoned.person.name), findsOneWidget);
-    expect(find.widgetWithText(IndexRow, 'Hire a director'), findsNothing);
+    expect(find.widgetWithText(IndexRow, 'Hire a CEO'), findsNothing);
   });
 
   testWidgets("the holding opens each company's page", (tester) async {
@@ -1432,8 +1474,8 @@ void main() {
     await openRow(tester, 'Corner Shop');
     // Its businesses, its boss, and the owner's levers.
     expect(find.widgetWithText(IndexRow, 'Groceries'), findsOneWidget);
-    await scrollTo(tester, find.text('Boss'));
-    expect(find.text('Hire a director'), findsOneWidget);
+    await scrollTo(tester, find.text('CEO'));
+    expect(find.text('Hire a CEO'), findsOneWidget);
     // Its money is a tap away, on its page in Finance.
     await scrollTo(tester, find.text('Cash, loans and books'));
     await tester.tap(find.text('Cash, loans and books'));

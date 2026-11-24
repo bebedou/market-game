@@ -439,27 +439,38 @@ class _ClockBar extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Row(
-                        children: [
-                          TradeMark(regimeColor(regime), size: 7),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              regime.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall,
-                            ),
+                      if (game.stopped case (:final day, error: _))
+                        Text(
+                          tr('home.stopped', {'date': shortDate(day)}),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Ledger.of(context).loss,
                           ),
-                        ],
-                      ),
+                        )
+                      else
+                        Row(
+                          children: [
+                            TradeMark(regimeColor(regime), size: 7),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                regime.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
                 IconButton.filled(
                   tooltip: running ? tr('home.pause') : tr('home.play'),
-                  onPressed: () =>
-                      game.setSpeed(running ? Speed.paused : Speed.normal),
+                  onPressed: game.stopped != null
+                      ? null
+                      : () => game.setSpeed(
+                          running ? Speed.paused : Speed.normal,
+                        ),
                   icon: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     transitionBuilder: (child, animation) =>

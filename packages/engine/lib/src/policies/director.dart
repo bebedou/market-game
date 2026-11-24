@@ -8,11 +8,11 @@ import '../core/ids.dart';
 import '../core/money.dart';
 import '../core/rng.dart';
 import '../core/safe_int.dart';
-import '../countries/shop_bridge.dart' show formatTrades;
 import '../observation/factory_sales_view.dart' show TenderView;
 import '../observation/national_view.dart';
 import '../observation/observation.dart';
 import '../state/director.dart';
+import '../state/businesses.dart' show plantsKey, softwareBusiness, tradeKey;
 import '../state/districts.dart';
 import '../observation/software_view.dart' show SoftwareView;
 import '../state/factory.dart' show FactoryStatus;
@@ -29,16 +29,6 @@ typedef Directive = ({CompanyId company, Command? command, Memo memo});
 /// The most months a director allowed to borrow lets a rival's profitable
 /// store take to repay its asking price, at its present earnings.
 const buyoutPaybackMonths = 48;
-
-/// The key of [format]'s trade, one business for every kind of shop of it,
-/// whatever the countries.
-String tradeKey(FormatDef format) => formatTrades[format.key] ?? format.key;
-
-/// The key of a company's plants of [kind], one business.
-String plantsKey(FactoryKindDef kind) => 'plants:${kind.key}';
-
-/// The key of a company's software, one business.
-const softwareBusiness = 'software';
 
 /// What a boss keeping a plant full takes off the producer price to sell
 /// its spare goods to rivals, when it sold only to its own shops.

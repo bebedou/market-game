@@ -459,6 +459,39 @@ sealed class Command {
         capital: Money(reader.readInt()),
         parent: reader.readBool() ? CompanyId(reader.readInt()) : null,
       ),
+      MoveBusiness.tag => MoveBusiness(
+        actor,
+        company: CompanyId(reader.readInt()),
+        business: reader.readString(),
+        to: switch (reader.readNullableInt()) {
+          final index? => CompanyId(index),
+          null => null,
+        },
+        name: reader.readString(),
+      ),
+      MoveCompany.tag => MoveCompany(
+        actor,
+        company: CompanyId(reader.readInt()),
+        under: switch (reader.readNullableInt()) {
+          final index? => CompanyId(index),
+          null => null,
+        },
+      ),
+      MergeCompany.tag => MergeCompany(
+        actor,
+        company: CompanyId(reader.readInt()),
+        into: CompanyId(reader.readInt()),
+      ),
+      SellBusiness.tag => SellBusiness(
+        actor,
+        company: CompanyId(reader.readInt()),
+        business: reader.readString(),
+      ),
+      SellCompany.tag => SellCompany(
+        actor,
+        company: CompanyId(reader.readInt()),
+      ),
+      RenameHolding.tag => RenameHolding(actor, name: reader.readString()),
       _ => throw FormatException('Unknown command tag $tag'),
     };
   }
@@ -2553,4 +2586,163 @@ final class FoundCompany extends Command {
   String toString() =>
       'FoundCompany(actor: ${actor.index}, name: $name, '
       'capital: ${capital.toDecimalString()}, parent: ${parent?.index})';
+}
+
+/// Moves [company]'s business [business] (see `tradeKey`, `plantsKey` and
+/// `softwareBusiness`), all its parts, into the owner's company [to], or
+/// with none into a new company of its own, [name], under [company]: at its
+/// book value, the owner's design of 2026-11-18 (see `MoveBusiness` in the
+/// restructuring rules).
+final class MoveBusiness extends Command {
+  const MoveBusiness(
+    super.actor, {
+    required this.company,
+    required this.business,
+    this.to,
+    this.name = '',
+  });
+
+  static const int tag = 66;
+
+  final CompanyId company;
+  final String business;
+  final CompanyId? to;
+  final String name;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(company.index)
+      ..writeString(business)
+      ..writeNullableInt(to?.index)
+      ..writeString(name);
+  }
+
+  @override
+  String toString() =>
+      'MoveBusiness(actor: ${actor.index}, company: ${company.index}, '
+      'business: $business, to: ${to?.index}, name: $name)';
+}
+
+/// Moves [company] under another of the owner's companies, [under], or with
+/// none back under their holding, at what its holder put in it.
+final class MoveCompany extends Command {
+  const MoveCompany(super.actor, {required this.company, this.under});
+
+  static const int tag = 67;
+
+  final CompanyId company;
+  final CompanyId? under;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(company.index)
+      ..writeNullableInt(under?.index);
+  }
+
+  @override
+  String toString() =>
+      'MoveCompany(actor: ${actor.index}, company: ${company.index}, '
+      'under: ${under?.index})';
+}
+
+/// Merges [company] into [into], its parent or a company beside it, which
+/// takes all it has, owes and holds.
+final class MergeCompany extends Command {
+  const MergeCompany(super.actor, {required this.company, required this.into});
+
+  static const int tag = 68;
+
+  final CompanyId company;
+  final CompanyId into;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(company.index)
+      ..writeInt(into.index);
+  }
+
+  @override
+  String toString() =>
+      'MergeCompany(actor: ${actor.index}, company: ${company.index}, '
+      'into: ${into.index})';
+}
+
+/// Sells [company]'s business [business] on the spot, each part to the
+/// buyer best able to pay (see `businessSale`).
+final class SellBusiness extends Command {
+  const SellBusiness(
+    super.actor, {
+    required this.company,
+    required this.business,
+  });
+
+  static const int tag = 69;
+
+  final CompanyId company;
+  final String business;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(company.index)
+      ..writeString(business);
+  }
+
+  @override
+  String toString() =>
+      'SellBusiness(actor: ${actor.index}, company: ${company.index}, '
+      'business: $business)';
+}
+
+/// Sells [company] whole on the spot to the owner best able to pay: one
+/// holding shops alone.
+final class SellCompany extends Command {
+  const SellCompany(super.actor, {required this.company});
+
+  static const int tag = 70;
+
+  final CompanyId company;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeInt(company.index);
+  }
+
+  @override
+  String toString() =>
+      'SellCompany(actor: ${actor.index}, company: ${company.index})';
+}
+
+/// Renames the actor's holding.
+final class RenameHolding extends Command {
+  const RenameHolding(super.actor, {required this.name});
+
+  static const int tag = 71;
+
+  final String name;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(actor.index)
+      ..writeString(name);
+  }
+
+  @override
+  String toString() => 'RenameHolding(actor: ${actor.index}, name: $name)';
 }

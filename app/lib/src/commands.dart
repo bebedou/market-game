@@ -1,5 +1,6 @@
 import 'package:engine/engine.dart';
 
+import 'business.dart' show businessName;
 import 'format.dart';
 import 'l10n.dart';
 
@@ -46,6 +47,33 @@ String describeCommand(Command command, ContentDb content, Observation view) {
         'company': company(c),
       }),
     },
+    MoveBusiness(company: final c, :final business, :final to, :final name) =>
+      to == null
+          ? tr('commands.spinOff', {
+              'business': businessName(content, business),
+              'company': company(c),
+              'name': name,
+            })
+          : tr('commands.moveBusiness', {
+              'business': businessName(content, business),
+              'company': company(c),
+              'to': company(to),
+            }),
+    MoveCompany(company: final c, :final under) => tr('commands.moveCompany', {
+      'company': company(c),
+      'under': under == null ? tr('common.theHolding') : company(under),
+    }),
+    MergeCompany(company: final c, :final into) => tr('commands.merge', {
+      'company': company(c),
+      'into': company(into),
+    }),
+    SellBusiness(company: final c, :final business) => tr(
+      'commands.sellBusiness',
+      {'business': businessName(content, business), 'company': company(c)},
+    ),
+    SellCompany(company: final c) => tr('commands.sellCompany', {
+      'company': company(c),
+    }),
     FoundCompany(:final name, :final capital, :final parent) =>
       tr('commands.foundCompany', {
         'name': name,
@@ -152,6 +180,7 @@ String describeCommand(Command command, ContentDb content, Observation view) {
       'store': store(s),
       'name': name,
     }),
+    RenameHolding(:final name) => tr('commands.renameHolding', {'name': name}),
     RenameCompany(company: final c, :final name) => tr(
       'commands.renameCompany',
       {'company': company(c), 'name': name},

@@ -264,11 +264,15 @@ class SimulationController extends ChangeNotifier {
   /// How the player chose to start, if they did.
   GameStart? get start => _simulation.world.start;
 
-  /// The holding's name, if the player started with a holding alone.
-  String? get holdingName => switch (start) {
-    GameStart(holding: true, :final name) => name,
-    _ => null,
-  };
+  /// The holding's name, as it will be once a pending rename applies; null
+  /// if the player never named it.
+  String? get holdingName {
+    var name = _view.holdingName;
+    for (final command in _pending) {
+      if (command case RenameHolding(name: final next)) name = next;
+    }
+    return name;
+  }
 
   String describe(Command command) => describeCommand(command, content, _view);
 
@@ -821,6 +825,12 @@ class SimulationController extends ChangeNotifier {
     },
   );
 
+  /// The day that couldn't be played, and why, if one couldn't: the clock
+  /// stays stopped there and nothing more is saved, as the day was left
+  /// half done, until the game is loaded again.
+  ({Day day, String error})? get stopped => _stopped;
+  ({Day day, String error})? _stopped;
+
   void setSpeed(Speed speed) {
     _runUntil = null;
     _run(speed);
@@ -837,11 +847,28 @@ class SimulationController extends ChangeNotifier {
   void _run(Speed speed) {
     _timer?.cancel();
     _timer = null;
-    _speed = speed;
-    if (speed != Speed.paused) {
-      _timer = Timer.periodic(speed.interval, (_) => step());
+    _speed = _stopped == null ? speed : Speed.paused;
+    if (_speed != Speed.paused) {
+      _timer = Timer.periodic(speed.interval, (_) => _tick());
     }
     notifyListeners();
+  }
+
+  /// A day of the running clock: one that fails has stopped it, and is
+  /// reported for whoever is debugging, not thrown into the timer.
+  void _tick() {
+    try {
+      step();
+    } on Object catch (error, stack) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'market game',
+          context: ErrorDescription('while playing a day'),
+        ),
+      );
+    }
   }
 
   /// Simulates one day with the pending changes, and gathers the news.
@@ -851,7 +878,16 @@ class SimulationController extends ChangeNotifier {
     final submitted = List.of(_pending);
     submitted.forEach(_simulation.submit);
     _pending.clear();
-    final result = _simulation.step();
+    final TickResult result;
+    try {
+      result = _simulation.step();
+    } on Object catch (error) {
+      // Not again: the day is half done.
+      _stopped = (day: today, error: '$error');
+      _runUntil = null;
+      _run(Speed.paused);
+      rethrow;
+    }
     _view = _simulation.observe(player);
     final news = _news(result, before, _view, submitted);
     _alerts.insertAll(0, news.reversed);
@@ -869,6 +905,8 @@ class SimulationController extends ChangeNotifier {
   /// Saves the game, without the pending changes, with what the main menu
   /// shows of it.
   Future<void> save() async {
+    // A day left half done isn't saved over the last good one.
+    if (_stopped != null) return;
     final company = this.company;
     await saves?.write(
       _simulation.save(),
@@ -918,6 +956,7 @@ class SimulationController extends ChangeNotifier {
     ExpandStore(:final store) => 'enlarge ${store.index}',
     RenameStore(:final store) => 'store name ${store.index}',
     RenameCompany(:final company) => 'company name ${company.index}',
+    RenameHolding() => 'holding name',
     SetCushion(:final company) => 'cushion ${company.index}',
     HireDirector(:final company) ||
     FireDirector(:final company) => 'director ${company.index}',
@@ -989,6 +1028,7 @@ class SimulationController extends ChangeNotifier {
       FireManager(:final store) => find(store)?.manager == null,
       RenameStore(:final store, :final name) =>
         _view.shelves[store.index].name == name,
+      RenameHolding(:final name) => _view.holdingName == name,
       RenameCompany(:final company, :final name) =>
         _view.companyNames[company.index] == name,
       SetCushion(:final company, :final days) => _view.companies.any(

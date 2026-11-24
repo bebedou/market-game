@@ -778,7 +778,7 @@ void main() {
     await tester.pumpAndSettle();
     // Flutter's own words come over too: the way back is "Retour".
     expect(find.byTooltip('Retour'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), 'Holding');
+    await tester.enterText(find.byType(TextField).first, 'Holding');
     await tester.pump();
     await tester.tap(find.text('Commencer'));
     await tester.pumpAndSettle();

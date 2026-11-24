@@ -255,6 +255,10 @@ enum EntryReason {
 
   /// A listed company's dividend to its shareholders.
   stockDividend,
+
+  /// A business or company moving between companies of one owner, or one
+  /// merging into another.
+  restructuring,
 }
 
 /// One double-entry posting in one party's books. [store], [product] and

@@ -7,18 +7,16 @@ import '../directors.dart';
 import '../format.dart';
 import '../home.dart';
 import '../l10n.dart';
+import '../mail.dart';
 import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
-import 'books.dart';
 import 'business_page.dart' show arrow, toneColor;
+import 'desk.dart' show DeskMail, DeskNews, answeredWith;
 import 'company.dart';
-import 'exchange.dart' show HoldingRow, PortfolioPage, openStock;
-import 'sales_desk.dart' show openSalesDesk, openTendersFor;
+import 'exchange.dart' show HoldingRow, PortfolioPage;
 import 'shop.dart';
-import 'software.dart' show openSoftwarePage;
 import 'start.dart';
-import 'world.dart' show openCountryPage;
 
 /// The holding, the owner's layout B (2026-11-17): a company like the
 /// others, the player its boss. Its name is in the top bar; then a verdict,
@@ -48,11 +46,21 @@ class HoldingScreen extends StatelessWidget {
       game.shareLoans,
       (sum, company) => sum + debtOf(company),
     );
+    // The desk: what waits on the player, said in the verdict too.
+    final waiting = [
+      for (final mail in mailOf(game))
+        if (answeredWith(game, mail) == null) mail,
+    ].length;
     return ListView(
       key: const PageStorageKey('dashboard'),
       padding: const EdgeInsets.only(bottom: 12),
       children: [
-        VerdictBox(verdict.text, color: toneColor(context, verdict.tone)),
+        VerdictBox(
+          waiting == 0
+              ? verdict.text
+              : '${verdict.text} ${tr('mail.verdict', {'count': waiting})}',
+          color: toneColor(context, verdict.tone),
+        ),
         FigureGrid([
           (
             label: tr('common.netWorth'),
@@ -77,11 +85,20 @@ class HoldingScreen extends StatelessWidget {
             values: null,
           ),
         ]),
-        _NeedsYou(onOpen: onOpen, national: national),
+        DeskMail(
+          onOpen: onOpen,
+          toDo: toDoItems(context, game, onOpen, inSection: true),
+        ),
+        DeskNews(
+          allNews: () => context.openPage(
+            tr('common.news'),
+            (context) => [_News(game: context.game)],
+          ),
+        ),
         _Companies(onOpen: onOpen),
         const _HoldingBooks(),
         _Portfolio(onOpen: onOpen),
-        const _Reading(),
+        const _Profits(),
       ],
     );
   }
@@ -213,89 +230,6 @@ String _at(SimulationController game, StoreView store) =>
     ? tr('common.namePrefix', {'name': game.storeName(store.id)})
     : '';
 
-/// What waits on the player, first on the holding: what needs doing at the
-/// shops they run, offers for what they own, bids for their companies or
-/// shares, and tenders their plants could win.
-class _NeedsYou extends StatelessWidget {
-  const _NeedsYou({required this.onOpen, required this.national});
-
-  final OpenTab onOpen;
-  final List<NationalCountryView> national;
-
-  @override
-  Widget build(BuildContext context) {
-    final game = context.game;
-    final content = game.content;
-    final mine = {for (final company in game.view.companies) company.id};
-    final stocks = game.view.stocks;
-    bool concerns(StockView stock) =>
-        (stock.company != null && mine.contains(stock.company)) ||
-        (stocks?.holdings.any(
-              (holding) => !holding.index && holding.of == stock.index,
-            ) ??
-            false);
-    final lines = <Widget>[
-      for (final company in game.activeCompanies)
-        if (company.software case final software?)
-          if (software.offer case final offer?)
-            IndexRow(
-              icon: Icons.handshake_outlined,
-              title: tr('needs.softwareOffer', {
-                'software': software.name,
-                'price': compactMoney(offer.price),
-              }),
-              subtitle: tr('needs.until', {'date': shortDate(offer.expires)}),
-              onTap: () => openSoftwarePage(context, software),
-            ),
-      for (final country in national)
-        if (country.country case final id?)
-          for (final offer in country.offers)
-            IndexRow(
-              icon: Icons.handshake_outlined,
-              title: tr('needs.chainOffer', {
-                'chain': offer.chain,
-                'price': compactMoney(offer.price),
-              }),
-              subtitle: tr('needs.untilIn', {
-                'date': shortDate(offer.expires),
-                'country': content.countries[id.index].name,
-              }),
-              onTap: () =>
-                  openCountryPage(context, content.countries[id.index]),
-            ),
-      if (stocks != null)
-        for (final bid in stocks.bids)
-          if (bid.status == BidStatus.open &&
-              concerns(stocks.stocks[bid.stock]))
-            IndexRow(
-              icon: Icons.gavel_outlined,
-              title: tr('needs.bid', {
-                'company': stocks.stocks[bid.stock].name,
-                'price': money(bid.price),
-              }),
-              subtitle: tr('needs.closes', {'date': shortDate(bid.closes)}),
-              onTap: () => openStock(context, stocks.stocks[bid.stock]),
-            ),
-      for (final (_, factory) in game.myFactories)
-        if (openTendersFor(game, factory).length case final open when open > 0)
-          IndexRow(
-            icon: Icons.request_quote_outlined,
-            title: tr('needs.tenders', {'count': open, 'plant': factory.name}),
-            onTap: () => openSalesDesk(context, factory),
-          ),
-    ];
-    final toDo = toDoItems(context, game, onOpen, inSection: true);
-    return Section(
-      title: tr('needs.title'),
-      children: [
-        ...toDo,
-        ...lines,
-        if (toDo.isEmpty && lines.isEmpty) Hint(tr('needs.nothing')),
-      ],
-    );
-  }
-}
-
 /// The holding's companies, a line each with who runs it, what it is
 /// worth and whether its profit rose last month, opening its page; then
 /// the way to start another business.
@@ -383,30 +317,6 @@ class _News extends StatelessWidget {
   );
 }
 
-/// How last week went at the store picked, in a few sentences: profit
-/// against the week before, what moved it, where shoppers went.
-class _LastWeek extends StatelessWidget {
-  const _LastWeek();
-
-  @override
-  Widget build(BuildContext context) {
-    final game = context.game;
-    final weeks = game.reports(ReportPeriod.week);
-    final week = weeks[weeks.length - 2];
-    final before = weeks.length > 2 ? weeks[weeks.length - 3] : null;
-    return Section(
-      title: periodName(week),
-      children: [
-        for (final line in explainChange(game, week, before))
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Text(line),
-          ),
-      ],
-    );
-  }
-}
-
 /// The holding's own books: its cash, its shares at their price, what its
 /// companies are worth, less what it owes on its shares, coming to its net
 /// worth.
@@ -455,6 +365,18 @@ class _HoldingBooks extends StatelessWidget {
           strong: true,
         ),
         ..._results(context, game),
+        IndexRow(
+          icon: Icons.edit_outlined,
+          title: tr('dashboard.renameHolding'),
+          subtitle: game.holdingName ?? tr('home.yourHolding'),
+          onTap: () => showDialog<void>(
+            context: context,
+            builder: (_) => GameScope(
+              controller: game,
+              child: const _RenameHoldingDialog(),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -583,56 +505,28 @@ class _Portfolio extends StatelessWidget {
   }
 }
 
-/// What there is to read: how last week went, the news, and profit over
-/// time, each a page.
-class _Reading extends StatelessWidget {
-  const _Reading();
+/// All the companies' profit, week by week or month by month, a line away.
+class _Profits extends StatelessWidget {
+  const _Profits();
 
   @override
   Widget build(BuildContext context) {
     final game = context.game;
-    final weeks = game.reports(ReportPeriod.week);
     final profits = game.holdingProfits(ReportPeriod.week);
-    final story = weeks.length > 1
-        ? explainChange(
-            game,
-            weeks[weeks.length - 2],
-            weeks.length > 2 ? weeks[weeks.length - 3] : null,
-          )
-        : null;
-    final latest = game.alerts.firstOrNull;
+    if (profits.length < 2) return const SizedBox.shrink();
     return Section(
-      title: tr('dashboard.toRead'),
+      title: tr('common.profit'),
       children: [
-        if (story != null)
-          IndexRow(
-            title: periodName(weeks[weeks.length - 2]),
-            subtitle: story.first,
-            onTap: () => context.openPage(
-              tr('dashboard.lastWeek'),
-              (_) => [const _LastWeek()],
-            ),
-          ),
         IndexRow(
-          title: tr('common.news'),
-          subtitle: latest == null ? tr('dashboard.pressPlay') : latest.message,
-          value: game.alerts.isEmpty ? null : '${game.alerts.length}',
+          title: tr('dashboard.profitPeriods'),
+          subtitle: tr('dashboard.allCompanies'),
+          value: signedMoney(profits.last.trading, cents: false),
+          valueColor: gainColor(context, profits.last.trading.cents.sign),
           onTap: () => context.openPage(
-            tr('common.news'),
-            (context) => [_News(game: context.game)],
+            tr('common.profit'),
+            (_) => [const _HoldingProfit()],
           ),
         ),
-        if (profits.length > 1)
-          IndexRow(
-            title: tr('dashboard.profitPeriods'),
-            subtitle: tr('dashboard.allCompanies'),
-            value: signedMoney(profits.last.trading, cents: false),
-            valueColor: gainColor(context, profits.last.trading.cents.sign),
-            onTap: () => context.openPage(
-              tr('common.profit'),
-              (_) => [const _HoldingProfit()],
-            ),
-          ),
       ],
     );
   }
@@ -746,4 +640,56 @@ class _HoldingProfitState extends State<_HoldingProfit> {
       change.sign,
     ),
   );
+}
+
+/// A new name for the holding.
+class _RenameHoldingDialog extends StatefulWidget {
+  const _RenameHoldingDialog();
+
+  @override
+  State<_RenameHoldingDialog> createState() => _RenameHoldingDialogState();
+}
+
+class _RenameHoldingDialogState extends State<_RenameHoldingDialog> {
+  late final _name = TextEditingController(
+    text: context.game.holdingName ?? '',
+  );
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final game = context.game;
+    final name = _name.text.trim();
+    return AlertDialog(
+      title: Text(tr('dashboard.renameHolding')),
+      content: TextField(
+        controller: _name,
+        autofocus: true,
+        maxLength: maxNameLength,
+        textCapitalization: TextCapitalization.words,
+        decoration: InputDecoration(labelText: tr('newGame.holdingLabel')),
+        onChanged: (_) => setState(() {}),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(tr('common.cancel')),
+        ),
+        FilledButton(
+          onPressed: name.isEmpty
+              ? null
+              : () {
+                  game.submit(RenameHolding(game.player, name: name));
+                  Navigator.pop(context);
+                },
+          child: Text(tr('store.rename')),
+        ),
+      ],
+    );
+  }
 }

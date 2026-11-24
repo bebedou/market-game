@@ -5,6 +5,7 @@
 // average of each strategy against the other trades' shops.
 //
 //   dart run tool/clothing_balance.dart [--seeds 1-3] [--days 730] [--shops]
+//       [--scenario path]
 import 'dart:io';
 
 import 'package:engine/engine.dart';
@@ -17,7 +18,10 @@ void main(List<String> args) {
   final root = Platform.script.resolve('../../../content/');
   final content = loadScenario(
     File(
-      root.resolve('scenarios/prototype.json').toFilePath(),
+      option(
+        '--scenario',
+        root.resolve('scenarios/prototype.json').toFilePath(),
+      ),
     ).readAsStringSync(),
   );
   final clothing = content.formats.firstWhere((f) => f.key == 'clothing');

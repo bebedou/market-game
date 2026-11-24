@@ -326,7 +326,7 @@ class _WhereToOpenState extends State<_WhereToOpen> {
     final vacant = freeSites(game);
     final formats = [
       for (final format in content.formats)
-        if (vacant.any((site) => site.area >= format.minArea)) format,
+        if (vacant.any((site) => site.openingArea(format) != null)) format,
     ];
     if (formats.isEmpty) return const SizedBox.shrink();
     // The player's own trade to begin with, while there's room for it.
@@ -400,7 +400,9 @@ Iterable<(MarketDef, SiteDef, ShopOutlook)> _prospects(
     ShopOutlook? outlook;
     for (final id in view.vacantSites) {
       final site = content.sites[id.index];
-      if (site.market != market.id || site.area < format.minArea) continue;
+      if (site.market != market.id || site.openingArea(format) == null) {
+        continue;
+      }
       final here = shopOutlook(view, content, site, format);
       if (outlook == null || here.profit > outlook.profit) {
         best = site;
@@ -432,7 +434,9 @@ Iterable<(MarketDef, SiteDef, ShopOutlook)> _plannedProspects(
     SiteDef? best;
     ShopOutlook? outlook;
     for (final site in vacant) {
-      if (site.market != market.id || site.area < format.minArea) continue;
+      if (site.market != market.id || site.openingArea(format) == null) {
+        continue;
+      }
       final here = shopOutlook(view, plan, site, format);
       if (outlook == null || here.profit > outlook.profit) {
         best = site;
@@ -2356,7 +2360,7 @@ class _NewBusinessState extends State<NewBusiness> {
     final format = content.formats[widget.format.index];
     final vacant = [
       for (final site in freeSites(game))
-        if (site.area >= format.minArea) site,
+        if (site.openingArea(format) != null) site,
     ];
     final places = [
       for (final market in source.markets)
@@ -2496,26 +2500,35 @@ class _VacantSite extends StatelessWidget {
   Widget build(BuildContext context) {
     final game = context.game;
     final level = game.economyAt(site.market).priceIndex;
-    // Fitting it out for the kind of shop, once chosen.
-    final fitOut = format == null
-        ? Fx.one
-        : game.content.formats[format!.index].fitOut;
+    // Fitting it out for the kind of shop, once chosen, and enlarging the
+    // site to it where it needs more floor.
+    final kind = format == null ? null : game.content.formats[format!.index];
+    final opening = kind == null ? null : site.openingArea(kind);
+    final cost = kind == null
+        ? site.openingCost.times(level)
+        : shopOpeningCost(game.content, site, kind, level);
     return ListTile(
       contentPadding: EdgeInsets.zero,
       dense: true,
       title: Text(site.name),
       subtitle: Text(
-        tr('market.vacantDetails', {
-          'area': site.area,
-          'most': site.maxArea,
-          'location': percent(site.location, decimals: 0),
-          'rent': money(site.rent.times(level), cents: false),
-          'cost': money(
-            site.openingCost.times(fitOut).times(level),
-            cents: false,
-          ),
-          'days': site.buildDays,
-        }),
+        opening != null && opening > site.area
+            ? tr('market.vacantEnlarged', {
+                'area': site.area,
+                'opening': opening,
+                'location': percent(site.location, decimals: 0),
+                'rent': money(site.rentFor(opening).times(level), cents: false),
+                'cost': money(cost, cents: false),
+                'days': site.buildDays,
+              })
+            : tr('market.vacantDetails', {
+                'area': site.area,
+                'most': site.maxArea,
+                'location': percent(site.location, decimals: 0),
+                'rent': money(site.rent.times(level), cents: false),
+                'cost': money(cost, cents: false),
+                'days': site.buildDays,
+              }),
       ),
       trailing: OutlinedButton(
         onPressed: () => showDialog<void>(
@@ -2602,14 +2615,19 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
     final parent = game.view.companies
         .where((each) => each.id == company?.parent)
         .firstOrNull;
-    // The formats this site is big enough for.
+    // The formats this site has room for, enlarged to open where need be.
     final formats = [
       for (final format in game.content.formats)
-        if (format.minArea <= widget.site.area) format,
+        if (widget.site.openingArea(format) != null) format,
     ];
-    final cost = widget.site.openingCost
-        .times(game.content.formats[_format.index].fitOut)
-        .times(game.economyAt(widget.site.market).priceIndex);
+    final kind = game.content.formats[_format.index];
+    final opening = widget.site.openingArea(kind) ?? widget.site.area;
+    final cost = shopOpeningCost(
+      game.content,
+      widget.site,
+      kind,
+      game.economyAt(widget.site.market).priceIndex,
+    );
     final capital = _capital.text.isEmpty
         ? Money.zero
         : parseMoney(_capital.text);
@@ -2648,6 +2666,13 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
                 'days': widget.site.buildDays,
               }),
             ),
+            if (opening > widget.site.area)
+              Hint(
+                tr('market.opensEnlarged', {
+                  'opening': opening,
+                  'area': widget.site.area,
+                }),
+              ),
             if (widget.format == null && formats.length > 1) ...[
               const SizedBox(height: 12),
               Wrap(

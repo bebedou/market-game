@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:market_game/src/controller.dart';
 import 'package:market_game/src/financials.dart';
 import 'package:market_game/src/home.dart';
+import 'package:market_game/src/screens/new_game.dart';
 import 'package:market_game/src/widgets.dart';
 
 import 'support.dart';
@@ -182,7 +183,81 @@ void main() {
     await scrollTo(tester, find.text('Cash, loans and books'));
     await tester.tap(find.text('Cash, loans and books'));
     await tester.pumpAndSettle();
-    expect(find.text('Director'), findsWidgets);
+    expect(find.text('CEO'), findsWidgets);
+  });
+
+  testWidgets('a company is renamed from its page, the holding from its '
+      'books, each from tomorrow', (tester) async {
+    final game = newController();
+    await pumpGame(tester, game);
+    await openCompany(tester, game, playerCompany);
+    await openRow(tester, 'Rename the company');
+    await tester.enterText(find.byType(TextField), 'Rayan & Co');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Rename'));
+    await tester.pumpAndSettle();
+    expect(game.pending.whereType<RenameCompany>(), hasLength(1));
+    game.step();
+    await tester.pumpAndSettle();
+    expect(game.view.companyNames[playerCompany.index], 'Rayan & Co');
+
+    final investor = _investor();
+    await tester.pumpWidget(const SizedBox());
+    await pumpGame(tester, investor);
+    await tester.scrollUntilVisible(find.text('Rename the holding'), 200);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -200));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rename the holding'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Berkshire Bebedou');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Rename'));
+    await tester.pumpAndSettle();
+    investor.step();
+    await tester.pumpAndSettle();
+    expect(investor.view.holdingName, 'Berkshire Bebedou');
+    expect(find.text('Berkshire Bebedou'), findsWidgets);
+  });
+
+  testWidgets('a new game takes the money to start with, within bounds, and '
+      'starts with it', (tester) async {
+    GameStart? chosen;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async =>
+                chosen = await Navigator.of(context).push<GameStart>(
+                  MaterialPageRoute(
+                    builder: (_) => NewGameScreen(content: _content),
+                  ),
+                ),
+            child: const Text('New'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('New'));
+    await tester.pumpAndSettle();
+    final name = find.byType(TextField).first;
+    final cash = find.byType(TextField).last;
+    await tester.enterText(name, 'Bebedou');
+    await tester.enterText(cash, '500');
+    await tester.pump();
+    expect(
+      find.text('Start with between 10,000 and 1,000,000,000.'),
+      findsOneWidget,
+    );
+    await tester.enterText(cash, '250000');
+    await tester.pump();
+    expect(find.textContaining('Start with between'), findsNothing);
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+    expect(chosen?.name, 'Bebedou');
+    expect(chosen?.cash, Money.parse('250000.00'));
+    final game = SimulationController.newGame(_content, seed: 7, start: chosen);
+    expect(game.view.cash, Money.parse('250000.00'));
+    expect(game.holdingName, 'Bebedou');
   });
 
   testWidgets('a company founds a subsidiary from its page, which the '

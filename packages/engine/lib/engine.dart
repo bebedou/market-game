@@ -33,6 +33,11 @@ export 'src/commands/command.dart'
         CloseStore,
         Command,
         FoundCompany,
+        MergeCompany,
+        MoveBusiness,
+        MoveCompany,
+        SellBusiness,
+        SellCompany,
         ListCompany,
         RunListed,
         SellControlled,
@@ -67,6 +72,7 @@ export 'src/commands/command.dart'
         BuyResearch,
         RaiseRound,
         RenameCompany,
+        RenameHolding,
         RenameStore,
         RepayLoan,
         SellNational,
@@ -120,6 +126,7 @@ export 'src/core/ids.dart';
 export 'src/core/money.dart' show Money;
 export 'src/observation/observation.dart'
     show
+        BusinessDeal,
         CompanyView,
         BillView,
         FactoryOffer,
@@ -182,11 +189,9 @@ export 'src/policies/director.dart'
         nationalChainShops,
         nationalGrowthRate,
         nationalPaybackMonths,
-        plantsKey,
         scaledMonths,
         shareOfMarket,
-        softwareBusiness,
-        tradeKey;
+        tenderBid;
 export 'src/policies/entrepreneur_policy.dart' show EntrepreneurPolicy;
 export 'src/policies/policy.dart'
     show CombinedPolicy, Policy, ownerPolicy, standardPolicies;
@@ -203,6 +208,16 @@ export 'src/reports/period_report.dart'
         SwitchKey;
 export 'src/simulation.dart' show CommandRejection, Simulation, TickResult;
 export 'src/state/credit.dart' show lendingRate, splitLoan;
+export 'src/state/businesses.dart'
+    show
+        BusinessParts,
+        businessBook,
+        businessKeysOf,
+        businessParts,
+        businessSale,
+        plantsKey,
+        softwareBusiness,
+        tradeKey;
 export 'src/state/director.dart';
 export 'src/state/entities.dart'
     show CompanyStatus, defaultCushionDays, maxCushionDays;
@@ -210,7 +225,13 @@ export 'src/state/factories.dart'
     show factoryLeadTime, factoryPrice, marketQuote, materialsCost;
 export 'src/state/factory.dart' show FactoryStatus, factoryHistoryDays;
 export 'src/state/game_start.dart'
-    show GameStart, StartTerms, minStartingCash, startTerms, startingSites;
+    show
+        GameStart,
+        StartTerms,
+        maxStartingCash,
+        minStartingCash,
+        startTerms,
+        startingSites;
 export 'src/state/history.dart' show SalesCount, salesHistoryDays;
 export 'src/state/market.dart' show Census;
 export 'src/state/orders.dart' show OrderLine;

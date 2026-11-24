@@ -156,12 +156,12 @@
         "a": "un gerente ascendido"
       },
       "seasoned": {
-        "name": "Director veterano",
-        "a": "un director veterano"
+        "name": "CEO veterano",
+        "a": "un CEO veterano"
       },
       "star": {
-        "name": "Director estrella",
-        "a": "un director estrella"
+        "name": "CEO estrella",
+        "a": "un CEO estrella"
       }
     }
   },

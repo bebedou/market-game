@@ -19,7 +19,7 @@ DirectorPerson? directorPerson(
   director,
 );
 
-/// "Seasoned director", "Directrice chevronnée": [grade] as [person]'s title.
+/// "Seasoned CEO", "PDG chevronnée": [grade] as [person]'s title.
 String directorTitle(DirectorGradeDef grade, DirectorPerson? person) =>
     trMaybe('directors.titles.${grade.key}.${_form(person)}') ?? grade.name;
 
@@ -32,7 +32,7 @@ String? characterName(ContentDb content, DirectorPerson? person) {
       character.name.toLowerCase();
 }
 
-/// "Seasoned director · bold": [person]'s title and character.
+/// "Seasoned CEO · bold": [person]'s title and character.
 String directorLine(
   ContentDb content,
   DirectorGradeDef grade,

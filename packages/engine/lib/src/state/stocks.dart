@@ -559,8 +559,9 @@ final class Holding {
           ? reader.readInt()
           : holdingOwner;
 
-  /// Who holds it: see [holdingOwner].
-  final int owner;
+  /// Who holds it: see [holdingOwner]; a merged company's go to the one it
+  /// merged into.
+  int owner;
 
   /// Whether it is of an exchange's index rather than a company.
   final bool index;

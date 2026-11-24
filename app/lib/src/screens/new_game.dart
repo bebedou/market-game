@@ -5,9 +5,9 @@ import '../format.dart';
 import '../l10n.dart';
 import '../widgets.dart';
 
-/// Sets up a new game: only the holding's name, the player starting their
-/// first business from the dashboard. Returns the [GameStart] chosen, or
-/// null if the player goes back.
+/// Sets up a new game: the holding's name and the money it starts with,
+/// the player starting their first business from the dashboard. Returns the
+/// [GameStart] chosen, or null if the player goes back.
 class NewGameScreen extends StatefulWidget {
   const NewGameScreen({super.key, required this.content});
 
@@ -19,20 +19,40 @@ class NewGameScreen extends StatefulWidget {
 
 class _NewGameScreenState extends State<NewGameScreen> {
   final _name = TextEditingController();
+  final _cash = TextEditingController();
 
   @override
   void dispose() {
     _name.dispose();
+    _cash.dispose();
     super.dispose();
   }
 
-  GameStart get _start => GameStart.holding(_name.text.trim());
+  /// What the scenario starts a holding with.
+  late final Money? _usual = startTerms(
+    widget.content,
+    const GameStart.holding('-'),
+  ).$1?.personalCash;
+
+  /// The money typed, or the scenario's if none; null if not an amount.
+  Money? get _money =>
+      _cash.text.trim().isEmpty ? _usual : parseMoney(_cash.text);
+
+  GameStart get _start => GameStart.holding(
+    _name.text.trim(),
+    // The scenario's own amount stays the scenario's.
+    cash: _money == _usual ? null : _money,
+  );
 
   @override
   Widget build(BuildContext context) {
-    final (terms, _) = startTerms(widget.content, _start);
-    // What the player starts with, whatever the name.
-    final (cash, _) = startTerms(widget.content, const GameStart.holding('-'));
+    final money_ = _money;
+    final (terms, refusal) = money_ == null
+        ? (null, null)
+        : startTerms(widget.content, _start);
+    if (_cash.text.isEmpty && _usual != null) {
+      _cash.text = moneyInput(_usual);
+    }
     return Scaffold(
       appBar: AppBar(title: Text(tr('common.newGame'))),
       body: ListView(
@@ -55,12 +75,26 @@ class _NewGameScreenState extends State<NewGameScreen> {
                   if (terms != null) Navigator.of(context).pop(_start);
                 },
               ),
-              if (cash != null)
-                Hint(
-                  tr('newGame.holdingHint', {
-                    'cash': money(cash.personalCash, cents: false),
-                  }),
+              TextField(
+                controller: _cash,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
+                decoration: InputDecoration(
+                  labelText: tr('newGame.cashLabel'),
+                  errorText: money_ == null
+                      ? tr('common.notAnAmount')
+                      : refusal?.key == 'startCashRange'
+                      ? tr('refusals.startCashRange')
+                      : null,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              Hint(
+                tr('newGame.holdingHint', {
+                  'cash': money(money_ ?? Money.zero, cents: false),
+                }),
+              ),
             ],
           ),
           Padding(

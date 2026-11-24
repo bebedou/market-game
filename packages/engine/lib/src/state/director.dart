@@ -165,6 +165,23 @@ final class Director {
     return allowed.index >= step.index;
   }
 
+  /// The same director with the goals [goals].
+  Director withGoals(Map<String, Goal> goals) => Director(
+    grade: grade,
+    strategy: strategy,
+    managerGrade: managerGrade,
+    growth: growth,
+    payout: payout,
+    hiredOn: hiredOn,
+    borrows: borrows,
+    nationalRate: nationalRate,
+    nationalAuto: nationalAuto,
+    nationalRegions: nationalRegions,
+    person: person,
+    record: record,
+    goals: Map.unmodifiable(goals),
+  );
+
   /// The same director, with [memo] counted in their record.
   Director noting(Memo memo) {
     final noted = record.noting(memo);

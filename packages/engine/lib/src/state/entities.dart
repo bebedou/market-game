@@ -58,16 +58,20 @@ final class Person implements LedgerParty {
 
 /// Append only. A company [dormant] never trades and no one sees it: the
 /// scenario's company for a player who starts with a holding alone. A
-/// software company [sold] went to a rival, beyond the simulation.
-enum CompanyStatus { active, liquidated, dormant, sold }
+/// software company [sold] went to a rival, beyond the simulation. A
+/// company [merged] went into another of its owner's, its [Company.mergedInto].
+enum CompanyStatus { active, liquidated, dormant, sold, merged }
 
-/// A company, wholly owned by one person: held by their holding, or by
-/// another of their companies, its [parent].
 /// The days of wages a company's cash cushion holds unless its owner says
 /// otherwise, and the most it may.
 const defaultCushionDays = 14;
 const maxCushionDays = 90;
 
+/// The save version from which a company remembers the one it merged into.
+const mergedVersion = 43;
+
+/// A company, wholly owned by one person: held by their holding, or by
+/// another of their companies, its [parent].
 final class Company implements LedgerParty {
   Company({
     required this.id,
@@ -117,6 +121,9 @@ final class Company implements LedgerParty {
           : null,
       parent = reader.version >= parentVersion && reader.readBool()
           ? CompanyId(reader.readInt())
+          : null,
+      mergedInto = reader.version >= mergedVersion && reader.readBool()
+          ? CompanyId(reader.readInt())
           : null {
     // Older saves count from now.
     goodsMark ??= accounts[AccountKind.costOfGoods];
@@ -131,6 +138,9 @@ final class Company implements LedgerParty {
   /// The company of its owner's that holds it, which puts capital in and
   /// takes its dividends; null when their holding holds it directly.
   CompanyId? parent;
+
+  /// The company it merged into, which pays the tax on its last year.
+  CompanyId? mergedInto;
 
   @override
   final Accounts accounts;
@@ -199,6 +209,8 @@ final class Company implements LedgerParty {
       ..writeInt(goodsMark!.cents)
       ..writeBool(parent != null);
     if (parent case final parent?) writer.writeInt(parent.index);
+    writer.writeBool(mergedInto != null);
+    if (mergedInto case final merged?) writer.writeInt(merged.index);
   }
 
   /// Keeps [memo], dropping the oldest beyond [maxMemos], and counts it in

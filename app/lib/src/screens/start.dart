@@ -70,13 +70,17 @@ List<_Sector> _sectors(
   final content = game.content;
   final sites = freeSites(game);
   _Kind shop(FormatDef format) {
-    // Its fitting out on the cheapest vacant site big enough for it.
+    // Its fitting out on the cheapest vacant site with room for it, the
+    // works to enlarge it included.
     Money? from;
     for (final site in sites) {
-      if (site.area < format.minArea) continue;
-      final cost = site.openingCost
-          .times(format.fitOut)
-          .times(game.economyAt(site.market).priceIndex);
+      if (site.openingArea(format) == null) continue;
+      final cost = shopOpeningCost(
+        content,
+        site,
+        format,
+        game.economyAt(site.market).priceIndex,
+      );
       if (from == null || cost < from) from = cost;
     }
     return (

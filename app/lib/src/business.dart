@@ -81,6 +81,19 @@ final class Business {
 /// [format]'s trade: one business for every kind of shop of it.
 String tradeOf(FormatDef format) => tradeKey(format);
 
+/// The name of the business keyed [key] (see `tradeKey`, `plantsKey`): its
+/// trade's, its kind of plant's, or software.
+String businessName(ContentDb content, String key) {
+  if (key == softwareBusiness) return tr('business.software');
+  for (final kind in content.factories?.kinds ?? const <FactoryKindDef>[]) {
+    if (plantsKey(kind) == key) return kind.name;
+  }
+  return tradeName(key, [
+    for (final format in content.formats)
+      if (tradeKey(format) == key) format,
+  ]);
+}
+
 /// [business]'s key in its boss's brief (see `Director.goals`).
 String briefKey(ContentDb content, Business business) =>
     switch (business.kind) {

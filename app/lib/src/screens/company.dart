@@ -13,6 +13,7 @@ import 'business_page.dart';
 import 'finance.dart' show DirectorSection, openCompanyPage, showDirectorSheet;
 import 'holding.dart' show toDoItems;
 import 'businesses.dart' show companySummary, holdsLine;
+import 'restructure.dart' show companyRestructureRows;
 import 'start.dart' show openStartBusiness;
 
 /// Opens [company]'s page within the current tab.
@@ -171,6 +172,7 @@ class CompanyDashboard extends StatelessWidget {
                   ),
                 ),
               ),
+            ...companyRestructureRows(context, company),
           ],
         ),
       ],

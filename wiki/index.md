@@ -18,6 +18,7 @@ Start with the overview, then go to the page for the part you are touching.
 | [Testing](testing.md) | VM and Node engine tests, goldens, fixtures, app widget tests, l10n checks, the device tour |
 | [Tools and scripts](tools-and-scripts.md) | The headless runner and balance tools, the Eurostat build scripts, how content data is regenerated |
 | [Where to find X](where-to-find.md) | A lookup from "I want to change…" to the file and symbol |
+| [Numbers and limits](limits.md) | How big each kind of number can get, debug against release, what grows as a game ages, where the limits bite first |
 | [Technical debt](tech-debt.md) | Known problems in the code, each with its file and why it matters |
 
 ## How to read the links

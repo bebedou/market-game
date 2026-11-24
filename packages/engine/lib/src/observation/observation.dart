@@ -5,6 +5,8 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../reports/period_report.dart' show HoldingMonth, ReportPeriod;
+import '../state/businesses.dart'
+    show businessBook, businessKeysOf, businessParts, businessSale, companySale;
 import '../state/districts.dart';
 import 'national_view.dart';
 import 'stocks_view.dart';
@@ -44,6 +46,7 @@ final class Observation {
     required this.cash,
     this.balances = const [],
     this.holdingMonths = const [],
+    this.holdingName,
     required this.lastBankruptcy,
     required this.macro,
     this.economies = const [],
@@ -121,6 +124,9 @@ final class Observation {
   /// For the player, the holding's own months, oldest first, as copies;
   /// empty for anyone else.
   final List<HoldingMonth> holdingMonths;
+
+  /// For the player, what they call their holding, if they named it.
+  final String? holdingName;
 
   /// When a company of the actor's was last liquidated, if ever.
   final Day? lastBankruptcy;
@@ -551,6 +557,22 @@ typedef BillView = ({
   Day due,
 });
 
+/// One of a company's businesses as a deal: its book value, what it is
+/// asked on the spot, and whether every part has a buyer.
+typedef BusinessDeal = ({Money book, Money worth, bool buyer});
+
+BusinessDeal _deal(
+  WorldState world,
+  ContentDb content,
+  CompanyId company,
+  String business,
+) {
+  final parts = businessParts(world, content, company, business);
+  final (:stock, :bought) = businessBook(parts);
+  final (:worth, :buyer) = businessSale(world, content, parts);
+  return (book: stock + bought, worth: worth, buyer: buyer);
+}
+
 /// A company as its owner sees it.
 final class CompanyView {
   const CompanyView({
@@ -576,6 +598,8 @@ final class CompanyView {
     this.worth = Money.zero,
     this.parent,
     this.injected = Money.zero,
+    this.deals = const {},
+    this.sale,
   });
 
   final CompanyId id;
@@ -594,6 +618,14 @@ final class CompanyView {
 
   /// The capital whoever holds it has put in, less what came back.
   final Money injected;
+
+  /// Each of its businesses by its key (see `tradeKey`): what it stands at
+  /// in the books, what it is asked on the spot, and whether every part has
+  /// a buyer.
+  final Map<String, BusinessDeal> deals;
+
+  /// What it sells for whole on the spot, or why it can't; null once gone.
+  final ({Money price, String? refusal})? sale;
 
   /// What it bought of goods over its latest twelve months, and what its
   /// suppliers take off them for it (see `buyingDiscount`).
@@ -1087,6 +1119,7 @@ Observation observe(
     actor: actor,
     cash: person.accounts[AccountKind.cash],
     balances: [for (final kind in AccountKind.values) person.accounts[kind]],
+    holdingName: actor == world.player ? world.holdingName : null,
     holdingMonths: actor == world.player
         ? List.unmodifiable([
             for (final month in world.holdingMonths) month.copy(),
@@ -1117,6 +1150,24 @@ Observation observe(
             ),
             parent: company.parent,
             injected: company.injected,
+            deals: company.isActive
+                ? {
+                    for (final key in businessKeysOf(
+                      world,
+                      content,
+                      company.id,
+                    ))
+                      key: _deal(world, content, company.id, key),
+                  }
+                : const {},
+            sale: company.isActive
+                ? switch (companySale(world, content, company)) {
+                    (:final price, :final refusal, buyer: _) => (
+                      price: price,
+                      refusal: refusal,
+                    ),
+                  }
+                : null,
             balances: List.unmodifiable([
               for (final kind in AccountKind.values) company.accounts[kind],
             ]),

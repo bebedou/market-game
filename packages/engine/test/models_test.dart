@@ -111,9 +111,10 @@ void main() {
 
     test('joins its owner\'s brand of the new format, or leaves its own', () {
       Simulation converted({required bool supermarkets}) {
-        final simulation =
-            Simulation.newGame(loadScenario(withSupermarkets()), seed: 1)
-              ..submit(CreateBrand(player, name: 'Kwik', format: convenience));
+        final simulation = Simulation.newGame(
+          loadScenario(withSupermarkets()),
+          seed: 1,
+        )..submit(CreateBrand(player, name: 'Kwik', format: convenience));
         if (supermarkets) {
           simulation.submit(
             CreateBrand(player, name: 'MegaMart', format: supermarket),
@@ -136,6 +137,61 @@ void main() {
       final alone = converted(supermarkets: false).world;
       expect(alone.stores[playerStore.index].format, supermarket);
       expect(alone.stores[playerStore.index].brand, isNull);
+    });
+
+    test('a site with room opens a supermarket at once, enlarged as it is '
+        'fitted out, paying for both', () {
+      final content = loadScenario(withSupermarkets());
+      final lane = content.sites[2];
+      expect((lane.area, lane.maxArea), (80, 120));
+      expect(lane.openingArea(content.formats[supermarket.index]), 120);
+      expect(lane.openingArea(content.formats[convenience.index]), 80);
+      final simulation = Simulation.newGame(content, seed: 1);
+      final world = simulation.world;
+      final cash =
+          world.companies[playerCompany.index].accounts[AccountKind.cash];
+      simulation.submit(
+        OpenStore(
+          player,
+          site: lane.id,
+          name: 'Lane Market',
+          company: playerCompany,
+          format: supermarket,
+          capital: Money.parse('1000.00'),
+        ),
+      );
+      expect(simulation.step().rejections.map((r) => r.reason.key), isEmpty);
+      // The fit-out, 250.00 times 1.5, 40 m² of works at 10.00, and the
+      // first month's rent, for 120 m² of a site let at 100.00 for 80.
+      expect(
+        cash +
+            Money.parse('1000.00') -
+            world.companies[playerCompany.index].accounts[AccountKind.cash],
+        Money.parse('375.00') + Money.parse('400.00') + Money.parse('150.00'),
+      );
+      final store = world.stores.last;
+      expect(store.format, supermarket);
+      expect(store.area, 120);
+      // Two slots, two for the 40 m² and two for the format; storage the
+      // same way.
+      expect(store.shelfSlots, 6);
+      expect(store.storageUnits, 300 + 200 + 300);
+      // Where the site hasn't the room, it is refused.
+      final small = loadScenario(
+        withSupermarkets().replaceFirst('"minArea": 120', '"minArea": 200'),
+      );
+      final refused = Simulation.newGame(small, seed: 1)
+        ..submit(
+          OpenStore(
+            player,
+            site: lane.id,
+            name: 'Lane Market',
+            company: playerCompany,
+            format: supermarket,
+            capital: Money.parse('1000.00'),
+          ),
+        );
+      expect(refused.step().rejections.single.reason.key, 'siteTooSmall');
     });
 
     test('is refused across channels, on a small site, or twice', () {

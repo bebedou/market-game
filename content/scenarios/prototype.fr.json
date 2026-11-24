@@ -156,12 +156,12 @@
         "a": "un gérant promu"
       },
       "seasoned": {
-        "name": "Directeur chevronné",
-        "a": "un directeur chevronné"
+        "name": "PDG chevronné",
+        "a": "un PDG chevronné"
       },
       "star": {
-        "name": "Directeur vedette",
-        "a": "un directeur vedette"
+        "name": "PDG vedette",
+        "a": "un PDG vedette"
       }
     }
   },

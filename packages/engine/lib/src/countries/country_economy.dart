@@ -418,8 +418,9 @@ final class CompanyBlock {
     }
   }
 
-  /// Whose they are, by the game's company index.
-  final int company;
+  /// Whose they are, by the game's company index: it changes when they
+  /// move to another of their owner's companies.
+  int company;
   final int trade;
 
   /// The kind of shop, by the game's format index.

@@ -15,12 +15,12 @@ final class GameStart {
     required SiteId this.site,
     required FormatId this.format,
     required this.name,
-  });
+  }) : cash = null;
 
   /// The player starts with a holding named [name] and no business: the
   /// scenario's company for them sleeps, its cash theirs, and they start
-  /// their first business where they like.
-  const GameStart.holding(this.name) : site = null, format = null;
+  /// their first business where they like; with [cash], that much instead.
+  const GameStart.holding(this.name, {this.cash}) : site = null, format = null;
 
   GameStart.read(StateReader reader)
     : site = switch (reader.readInt()) {
@@ -31,12 +31,22 @@ final class GameStart {
         < 0 => null,
         final index => FormatId(index),
       },
-      name = reader.readString();
+      name = reader.readString(),
+      cash = reader.version >= startCashVersion
+          ? switch (reader.readNullableInt()) {
+              final cents? => Money(cents),
+              null => null,
+            }
+          : null;
 
   /// The first store's site and format; null for a holding start.
   final SiteId? site;
   final FormatId? format;
   final String name;
+
+  /// What a holding start begins with, if the player chose; else as the
+  /// scenario sets out.
+  final Money? cash;
 
   /// Whether the player starts with only a holding, named [name].
   bool get holding => site == null;
@@ -45,12 +55,13 @@ final class GameStart {
     writer
       ..writeInt(site?.index ?? -1)
       ..writeInt(format?.index ?? -1)
-      ..writeString(name);
+      ..writeString(name)
+      ..writeNullableInt(cash?.cents);
   }
 
   @override
   String toString() => holding
-      ? 'GameStart.holding($name)'
+      ? 'GameStart.holding($name, cash: ${cash?.toDecimalString()})'
       : 'GameStart(site: ${site!.index}, format: ${format!.index}, '
             'name: $name)';
 }
@@ -74,6 +85,12 @@ typedef StartTerms = ({
 
 /// The least cash the player's company starts with.
 const Money minStartingCash = Money(1000000);
+
+/// The save version from which a holding start may set its cash.
+const startCashVersion = 43;
+
+/// The most a holding start may begin with.
+const Money maxStartingCash = Money(100000000000);
 
 /// The scenario's first store for the player, and its company: what a
 /// [GameStart] replaces. Null if the scenario gives the player none.
@@ -117,11 +134,16 @@ List<SiteId> startingSites(ContentDb content) {
   final player = content.persons[content.player.index];
   final (chosenSite, chosenFormat) = (start.site, start.format);
   if (chosenSite == null || chosenFormat == null) {
+    if (start.cash case final cash?
+        when cash < minStartingCash || cash > maxStartingCash) {
+      return (null, const Refusal('startCashRange'));
+    }
     return (
       (
         fitOut: Money.zero,
         companyCash: Money.zero,
         personalCash:
+            start.cash ??
             player.cash + content.companies[setup.company].cash + usualFitOut,
         capital: Money.zero,
       ),

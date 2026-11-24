@@ -51,8 +51,8 @@
   "directors": {
     "grades": {
       "promoted": { "a": "a promoted manager" },
-      "seasoned": { "a": "a seasoned director" },
-      "star": { "a": "a star director" }
+      "seasoned": { "a": "a seasoned CEO" },
+      "star": { "a": "a star CEO" }
     }
   },
   "macro": {

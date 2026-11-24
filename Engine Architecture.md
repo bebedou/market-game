@@ -1628,6 +1628,21 @@ A long expansion lifts the indices to twice their start, and the recession after
 
 How it got there. Prices first followed the central bank's rate, which swings from 0.25% to 5% in this cycle, so every index halved and doubled within a year or two; valuing on a long rate that follows it over two years calmed that. A software rival on Madrid grew to a trillion and tripled its index, so an index counts no company for more than 15% of it. Results were first judged against the same quarter a year before grown by the sector's trend, so a chain opening shops kept beating it and stayed dear for good; expectations now grow as the latest quarter did. The opening day booked a month before the game began, cutting every company's first quarter to a month. Spotting value then paid far too well: the 20 cheapest against their usual returned 37% a year against 10%, and strong buys 35%. Narrower moods of a company's own, a weaker reaction to results and analysts who follow 80% of the mood brought strong buys to 14%. Two years' profit as earnings made it worse (prices lagged profits), and so did the latest quarter's pace alone; what helped most was valuing a company by formula half on what it earns in a normal year, as its management runs it, as the market saw companies' margins drift back to normal before. The cheapest against their usual still beat the market by about 16 points a year, the dearest by 5, which says some of it is picking the companies that move most; how much spotting value should pay is the owner's call. The table's caps started about 12% above what the engine values the companies at, as the build script left out tax; it no longer does.
 
+### A newcomer's shop (2026-11-18)
+
+The owner found restaurants and clothing shops impossible to make money with. `tool/new_shop_balance.dart` starts a holding with 500,000, opens each format at the vacant site that pays back soonest with 150,000 of capital, under an expert manager on every duty, and plays two years on three seeds. What it found: restaurants overstaffed (a fast food's 25 visits a member of staff, at five times a grocer's wage, put wages over half of sales), threw away food (ordering every two days for three-day shelves), and ran out when the cash squeezed; clothing paid a dear fit-out and wages for a vacant site's few shoppers, and a first collection sixty days ahead left the rails empty. Changes: fast food serves 32 visits a member of staff and steakhouses 15; fine dining's overheads are 10 a day, not 13; restaurants order every day; clothing's wage factor is 1.0 (was 1.6) and its fit-out 1.4 (was 2.0); and clothes cost 10% less from the wholesaler. Filling a new clothing shop's empty rails from the quick supplier was tried and dropped: it saved the newcomer most of its second month's loss but added only 1.7k over two years, and the shops at the start of a game, which open empty too, then priced their first stock dearer and lost shoppers to their rival, enough for one to take over 70% of Madrid's.
+
+| Format | Month 2 | Month 6 | Month 12 | Month 24 | Two years | Fit-out | Last year's sales |
+|---|---|---|---|---|---|---|---|
+| Fast food | −7.5k | −1.6k | 1.0k | 2.5k | 6.0k | 70.4k | 324.2k |
+| Steakhouse | −0.4k | 1.5k | 2.9k | 2.5k | 34.1k | 40.0k | 174.8k |
+| Fine dining | −1.0k | 2.2k | 1.4k | 0.3k | 17.6k | 44.8k | 159.7k |
+| Electronics | 0.7k | 0.1k | 1.0k | 0.5k | 14.9k | 44.0k | 148.1k |
+| Clothing | −4.2k | 2.1k | 0.4k | 1.3k | 4.3k | 42.0k | 78.1k |
+| Corner shop | −0.6k | −0.7k | −0.8k | −0.5k | −16.7k | 20.0k | 93.9k |
+
+Steakhouses and fine dining make money from their third month; fast food, the dearest to fit out, loses its first half-year and earns 1 to 2.5k a month from its second year, and the rivals' restaurants earn about 19% of sales. Letting every trade's empty lines come from the quickest supplier added about 12k to fast food's two years, but changed how every rival grocer buys. Clothing makes a little once its first collection is in, from its third month: a vacant site draws too few shoppers to carry the shop, so its volume, not its margin, is what holds it back. A newcomer's corner shop still loses a little against the town's settled grocers (not part of the request); the prototype has no vacant site big enough for a supermarket.
+
 ## Build order
 
 Each step ends with something you can test headlessly.

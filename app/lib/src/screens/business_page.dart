@@ -12,6 +12,7 @@ import 'factory.dart';
 import 'holding.dart' show recentAverage;
 import 'shop.dart';
 import 'software.dart' show openSoftwarePage;
+import 'restructure.dart' show MoveOrSellSection;
 import 'start.dart' show openSector;
 import 'world.dart' show openCountryPage;
 
@@ -109,6 +110,7 @@ class BusinessPage extends StatelessWidget {
           if (game.directorOf(owner) == null) _Shops(business: business),
         ],
         if (business.kind == BusinessKind.works) _Plants(business: business),
+        MoveOrSellSection(company: owner, business: business),
       ],
     );
   }

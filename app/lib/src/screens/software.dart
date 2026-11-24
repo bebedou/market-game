@@ -3,12 +3,14 @@ import 'dart:math' as math;
 import 'package:engine/engine.dart';
 import 'package:flutter/material.dart';
 
+import '../business.dart';
 import '../controller.dart';
 import '../format.dart';
 import '../l10n.dart';
 import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
+import 'restructure.dart' show MoveOrSellSection;
 import 'lab.dart' show PersonRow, points;
 
 /// The shares a round may sell, as choices.
@@ -378,6 +380,14 @@ class SoftwarePage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(tr('software.gone'), style: theme.textTheme.bodySmall),
           ),
+        if (software.running)
+          if (businessesOf(
+                game,
+                company,
+                game.view.national,
+              ).where((each) => each.kind == BusinessKind.software).firstOrNull
+              case final business?)
+            MoveOrSellSection(company: company, business: business),
       ],
     );
   }

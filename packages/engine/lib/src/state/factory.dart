@@ -146,8 +146,8 @@ final class Factory {
   final FactoryId id;
   final FactoryKindId kind;
 
-  /// Whose it is: it belongs to its company for good.
-  final CompanyId company;
+  /// Whose it is: its company, until the owner moves it to another.
+  CompanyId company;
 
   /// Where it stands: its staff are paid at that country's wages, and it
   /// pays tax there.
