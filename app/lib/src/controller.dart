@@ -953,7 +953,6 @@ class SimulationController extends ChangeNotifier {
     SetStaffing(:final store) => 'staff ${store.index}',
     HireManager(:final store) ||
     FireManager(:final store) => 'manager ${store.index}',
-    ExpandStore(:final store) => 'enlarge ${store.index}',
     RenameStore(:final store) => 'store name ${store.index}',
     RenameCompany(:final company) => 'company name ${company.index}',
     RenameHolding() => 'holding name',
@@ -961,7 +960,6 @@ class SimulationController extends ChangeNotifier {
     HireDirector(:final company) ||
     FireDirector(:final company) => 'director ${company.index}',
     SetMarketing(:final store) => 'marketing ${store.index}',
-    ConvertStore(:final store) => 'enlarge ${store.index}',
     BuyStore(:final store) || SellStore(:final store) => 'deal ${store.index}',
     BuyCompany(:final company) => 'company deal ${company.index}',
     SetFactoryShifts(:final factory) => 'factory shifts ${factory.index}',

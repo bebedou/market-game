@@ -212,25 +212,6 @@ void main() {
       );
     });
 
-    test('leaves a shop that becomes another type of business', () {
-      final game = _game();
-      _apply(
-        game,
-        CreateBrand(player, name: 'Coin Malin', format: _format('grocery')),
-      );
-      final corner = game.world.stores.first;
-      brandStore(game.world, _content, corner, game.world.brands.single);
-      corner.works = (
-        area: corner.area,
-        done: game.today,
-        format: _format('supermarket'),
-      );
-      game.step();
-      expect(corner.format, _format('supermarket'));
-      expect(corner.brand, isNull);
-      expect(corner.name, 'Coin Malin Croix-Rousse');
-    });
-
     test('is saved, loaded and replayed with the game', () {
       final game = _game();
       _apply(

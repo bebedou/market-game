@@ -101,8 +101,7 @@ void main() {
       hire(strategy: const StrategyId(3)): 'unknownStrategy',
       hire(managerGrade: const ManagerGradeId(5)): 'unknownManagerGrade',
       hire(company: const CompanyId(1)): 'notYourCompany',
-      FireDirector(player, company: playerCompany):
-          'noDirector',
+      FireDirector(player, company: playerCompany): 'noDirector',
     };
     invalid.keys.forEach(simulation.submit);
     simulation.submit(hire(grade: novice));
@@ -188,7 +187,6 @@ void main() {
     expect(manager.grade, clerk);
     expect(manager.strategy, steady);
     expect(manager.duties, directorManagerDuties);
-    expect(manager.duties[ManagerDuty.investing.index], isFalse);
     expect(memos(simulation), [
       isA<ManagerHired>()
           .having((memo) => memo.day, 'day', start + 1)
@@ -233,24 +231,6 @@ void main() {
     expect(closed.store, playerStore);
     expect(closed.sales, Money.zero);
     expect(closed.loss.cents, greaterThan(120000));
-  });
-
-  test('enlarge stores only if the brief allows it', () {
-    (int, List<Memo>) run(Growth growth) {
-      final simulation = Simulation.newGame(growing, seed: 1)
-        ..submit(hire(growth: growth));
-      for (var i = 0; i < 120; i++) {
-        simulation.step();
-      }
-      return (simulation.world.stores[playerStore.index].area, memos(simulation));
-    }
-
-    final (kept, quiet) = run(Growth.none);
-    expect(kept, 100);
-    expect(quiet.whereType<StoreEnlarged>(), isEmpty);
-    final (enlarged, said) = run(Growth.invest);
-    expect(enlarged, greaterThan(100));
-    expect(said.whereType<StoreEnlarged>(), isNotEmpty);
   });
 
   group('on the first of the month', () {
@@ -445,14 +425,14 @@ void main() {
       final (simulation, _) = firstOfFebruary(brief());
       simulation.step();
       final view = simulation.observe(player);
-      expect(
-        view.companies.first.stores.map((store) => store.site),
-        [corner, lane],
-      );
-      expect(
-        memos(simulation).map((memo) => memo.runtimeType),
-        [ManagerHired, StoreOpened],
-      );
+      expect(view.companies.first.stores.map((store) => store.site), [
+        corner,
+        lane,
+      ]);
+      expect(memos(simulation).map((memo) => memo.runtimeType), [
+        ManagerHired,
+        StoreOpened,
+      ]);
       // The new store gets its manager the next day.
       simulation.step();
       expect(memos(simulation).last, isA<ManagerHired>());
@@ -532,44 +512,6 @@ void main() {
       );
       expect(commands.whereType<BuyStore>(), isEmpty);
       expect(directives.map((d) => d.memo).whereType<ProfitKept>(), isEmpty);
-    });
-
-    test('borrow for works they would otherwise save for', () {
-      final simulation = Simulation.newGame(growing, seed: 1)
-        ..submit(hire(growth: Growth.invest, payout: true, borrows: true));
-      final directives = <Directive>[];
-      // The first first of the month with works worth doing.
-      List<Command> commands = const [];
-      for (var i = 0; i < 800 && commands.isEmpty; i++) {
-        simulation.step();
-        final view = simulation.observe(player);
-        final company = view.companies.first;
-        if (!view.today.isFirstOfMonth ||
-            view.companyCredits[playerCompany.index]! <
-                Money.parse('2000.00')) {
-          continue;
-        }
-        directives.clear();
-        final reserve = operatingReserve(
-          view,
-          company,
-          growing.strategies.single.reserveDays,
-        )!;
-        commands = direct(view, growing, company, reserve, const {}, directives)
-            .where((command) => command is TakeLoan || command is ExpandStore)
-            .toList();
-      }
-      final loan = commands.first as TakeLoan;
-      expect(commands.last, isA<ExpandStore>());
-      expect(loan.guarantee, isFalse);
-      expect(loan.termMonths, growing.finance.maxTermMonths);
-      expect(loan.amount.cents % 100000, 0, reason: 'a round thousand');
-      final memo = directives
-          .map((directive) => directive.memo)
-          .whereType<StoreEnlarged>()
-          .single;
-      expect(memo.borrowed, loan.amount);
-      expect(memo.cost <= loan.amount, isTrue);
     });
 
     test('leave profitable rivals alone otherwise', () {
@@ -658,7 +600,8 @@ void main() {
       ..writeInt(Growth.open.index)
       ..writeBool(true);
     expect(
-      (Command.read(StateReader(command.toBytes(), version: 21)) as HireDirector)
+      (Command.read(StateReader(command.toBytes(), version: 21))
+              as HireDirector)
           .borrows,
       isFalse,
     );
@@ -710,8 +653,9 @@ void main() {
   test('of full skill and full coaching leave their managers judging '
       "exactly, as the owner's policy does", () {
     final coached = loadScenario(
-      withDirectors(testScenarioJson)
-          .replaceFirst('"coaching": "0.50"', '"coaching": "1.00"'),
+      withDirectors(
+        testScenarioJson,
+      ).replaceFirst('"coaching": "0.50"', '"coaching": "1.00"'),
     );
     final simulation = Simulation.newGame(coached, seed: 1)
       ..submit(
@@ -720,7 +664,7 @@ void main() {
           store: playerStore,
           grade: clerk,
           strategy: steady,
-          duties: const [true, true, true, true, true],
+          duties: const [true, true, true, true],
         ),
       )
       ..submit(hire())

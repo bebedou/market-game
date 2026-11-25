@@ -198,13 +198,19 @@ enum StoreStatus {
   closed,
 }
 
-/// Building works enlarging a store to [area] square metres, in use from
-/// [done].
-/// Building works on a store: the area it will have, when they finish,
-/// and the format it becomes, if it changes.
+/// The save version from which a shop's floor is set when it opens, with
+/// no works to enlarge or convert it, and a grocer's supermarket is its
+/// large size rather than a format of its own.
+const shopSizesVersion = 45;
+
+/// Building works an older save had under way on a store: the area it was
+/// to have, when they were to finish, and the format it was to become, if
+/// it changed.
 typedef Works = ({int area, Day done, FormatId? format});
 
-/// What a store manager is asked to look after. Append only.
+/// What a store manager is asked to look after. Append only: the fifth,
+/// investing (enlarging and converting), went with [shopSizesVersion], and
+/// older saves' lists drop it as they are read.
 enum ManagerDuty {
   ordering,
 
@@ -212,10 +218,15 @@ enum ManagerDuty {
   pricing,
   assortment,
   staffing,
+}
 
-  /// Enlarging the store and converting it to a dearer format of its
-  /// channel, from the company's cash beyond a reserve, as an owner would.
-  investing,
+/// A store's format as [reader] has it: after the day an older save
+/// kept of its last enlargement, and mapped to today's formats.
+FormatId _readFormat(StateReader reader) {
+  if (reader.version < shopSizesVersion) reader.readNullableInt();
+  return reader.version >= 10
+      ? FormatId(reader.mapFormat(reader.readInt()))
+      : const FormatId(0);
 }
 
 /// [duties] given for the duties there were when they were recorded,
@@ -239,7 +250,10 @@ final class Manager {
       strategy = StrategyId(reader.readInt()),
       duties = List.unmodifiable(
         allDuties([
-          for (var i = 0, n = reader.readInt(); i < n; i++) reader.readBool(),
+          for (var i = 0, n = reader.readInt(); i < n; i++)
+            if (reader.readBool() case final on
+                when i < 4 || reader.version >= shopSizesVersion)
+              on,
         ]),
       ),
       hiredOn = Day(reader.readInt());
@@ -286,8 +300,6 @@ final class Store {
     required this.area,
     this.format = const FormatId(0),
     this.manager,
-    this.works,
-    this.enlargedOn,
     this.brand,
     this.marketingShare = Fx.zero,
     this.goodwill = Money.zero,
@@ -326,25 +338,19 @@ final class Store {
       ],
       manager = reader.readBool() ? Manager.read(reader) : null,
       area = reader.readInt(),
-      works = reader.readBool()
+      oldWorks = reader.version < shopSizesVersion && reader.readBool()
           ? (
               area: reader.readInt(),
               done: Day(reader.readInt()),
               format: reader.version >= 11
                   ? switch (reader.readNullableInt()) {
-                      final format? => FormatId(format),
+                      final format? => FormatId(reader.mapFormat(format)),
                       null => null,
                     }
                   : null,
             )
           : null,
-      enlargedOn = switch (reader.readNullableInt()) {
-        final day? => Day(day),
-        null => null,
-      },
-      format = reader.version >= 10
-          ? FormatId(reader.readInt())
-          : const FormatId(0),
+      format = _readFormat(reader),
       // Format 10 kept a daily budget in money, which goodwill replaced.
       marketingShare = reader.version >= 11
           ? Fx.raw(reader.readInt())
@@ -395,14 +401,11 @@ final class Store {
   /// pay more rent.
   int area;
 
-  /// Enlargement under way, if any.
-  Works? works;
+  /// Works an older save had under way on it, finished as the save loads
+  /// (see `finishOldWorks`); never saved.
+  Works? oldWorks;
 
-  /// When the store last grew, if ever.
-  Day? enlargedOn;
-
-  /// What kind of business it is, which sets what it may sell. Works can
-  /// change it.
+  /// What kind of business it is, which sets what it may sell.
   FormatId format;
 
   /// The share of its recent sales it spends on marketing each day.
@@ -514,15 +517,6 @@ final class Store {
     manager?.write(writer);
     writer
       ..writeInt(area)
-      ..writeBool(works != null);
-    if (works case (:final area, :final done, :final format)) {
-      writer
-        ..writeInt(area)
-        ..writeInt(done.number)
-        ..writeNullableInt(format?.index);
-    }
-    writer
-      ..writeNullableInt(enlargedOn?.number)
       ..writeInt(format.index)
       ..writeInt(marketingShare.raw)
       ..writeInt(goodwill.cents)

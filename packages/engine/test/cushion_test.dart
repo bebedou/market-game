@@ -9,7 +9,7 @@ import 'package:test/test.dart';
 import 'support/fixtures.dart';
 
 const clerk = ManagerGradeId(0);
-const ordering = [true, false, false, false, false];
+const ordering = [true, false, false, false];
 
 void main() {
   // Staff earn 1.00 a slot, and the corner's rent is 100.00 a month.
@@ -58,12 +58,9 @@ void main() {
   test('is set by the owner and kept in saves', () {
     final simulation = Simulation.newGame(content, seed: 1);
     final invalid = {
-      SetCushion(player, company: playerCompany, days: -1):
-          'cushionRange',
-      SetCushion(player, company: playerCompany, days: 91):
-          'cushionRange',
-      SetCushion(rival, company: playerCompany, days: 7):
-          'notYourCompany',
+      SetCushion(player, company: playerCompany, days: -1): 'cushionRange',
+      SetCushion(player, company: playerCompany, days: 91): 'cushionRange',
+      SetCushion(rival, company: playerCompany, days: 7): 'notYourCompany',
     };
     invalid.keys.forEach(simulation.submit);
     simulation.submit(SetCushion(player, company: playerCompany, days: 28));

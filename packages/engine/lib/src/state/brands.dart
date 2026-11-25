@@ -20,7 +20,7 @@ final class Brand {
 
   Brand.read(this.id, StateReader reader)
     : name = reader.readString(),
-      format = FormatId(reader.readInt()),
+      format = FormatId(reader.mapFormat(reader.readInt())),
       owner = PersonId(reader.readInt());
 
   final BrandId id;

@@ -215,6 +215,6 @@ void main() {
   test('a scripted year produces the committed state hash', () {
     final simulation = newGame(seed: 20261026);
     runScripted(simulation, 365);
-    expect(simulation.stateHash(), 0x6e0e2a38);
+    expect(simulation.stateHash(), 0x32b5d713);
   });
 }

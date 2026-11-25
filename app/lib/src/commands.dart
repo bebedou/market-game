@@ -102,10 +102,16 @@ String describeCommand(Command command, ContentDb content, Observation view) {
       :final format,
       :final borrow,
       :final termMonths,
+      :final area,
     ) =>
       tr('commands.open', {
         'name': name,
-        'format': aFormat(content.formats[format.index]),
+        'format': aKind(
+          kindOf(
+            content.formats[format.index],
+            area ?? content.sites[site.index].area,
+          ),
+        ),
         'site': content.sites[site.index].name,
         'loan': _loan(borrow, termMonths),
       }),
@@ -134,10 +140,6 @@ String describeCommand(Command command, ContentDb content, Observation view) {
               'share': percent(share),
               'store': store(s),
             }),
-    ConvertStore(store: final s, :final format) => tr('commands.convert', {
-      'store': store(s),
-      'format': aFormat(content.formats[format.index]),
-    }),
     CloseStore(store: final s) => tr('commands.close', {'store': store(s)}),
     SetStaffing(store: final s, :final staff) => tr('commands.staff', {
       'store': store(s),
@@ -188,10 +190,6 @@ String describeCommand(Command command, ContentDb content, Observation view) {
     SetCushion(company: final c, :final days) => tr('commands.cushion', {
       'length': cushionLength(days),
       'company': company(c),
-    }),
-    ExpandStore(store: final s) => tr('commands.expand', {
-      'store': store(s),
-      'area': content.expansion.stepArea,
     }),
     BuyStore(
       store: final s,

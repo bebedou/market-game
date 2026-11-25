@@ -63,10 +63,9 @@ const roundBelowMonths = 6;
 const hireCashMonths = 12;
 const hireFastCashMonths = 6;
 
-/// The duties of the managers a director hires: all but investing, which is
-/// the director's.
+/// The duties of the managers a director hires: all of them.
 final directorManagerDuties = List<bool>.unmodifiable([
-  for (final duty in ManagerDuty.values) duty != ManagerDuty.investing,
+  for (final _ in ManagerDuty.values) true,
 ]);
 
 /// The stores of [company] its director closes today: see [losingStore].
@@ -185,65 +184,9 @@ List<Command> direct(
 
   final profit =
       company.retainedEarnings + company.balance(AccountKind.dividends);
-  // Works and fitting out are spent, out of the profit kept.
+  // Fitting out is spent, out of the profit kept.
   var retained = company.retainedEarnings;
   ProfitKept? saving;
-  if (profit > Money.zero) {
-    for (final store in company.stores) {
-      if (store.status == StoreStatus.closed ||
-          closing.contains(store.id) ||
-          !director.allowsIn(
-            tradeKey(content.formats[store.format.index]),
-            Growth.invest,
-          )) {
-        continue;
-      }
-      final plan = StorePlan(
-        switch (store.manager) {
-          final manager? => content.strategies[manager.strategy.index],
-          null => strategy,
-        },
-        content,
-        view,
-        company,
-        store,
-      );
-      if (plan.conversion() case (
-        :final format,
-        :final cost,
-      ) when canPay(cost)) {
-        final borrowed = pay(cost);
-        give(
-          ConvertStore(view.actor, store: store.id, format: format),
-          StoreConverted(
-            today,
-            store: store.id,
-            format: format,
-            cost: cost,
-            borrowed: borrowed,
-          ),
-        );
-        retained -= cost;
-      } else if (plan.enlargementCost() case final cost?) {
-        if (canPay(cost)) {
-          final borrowed = pay(cost);
-          give(
-            ExpandStore(view.actor, store: store.id),
-            StoreEnlarged(
-              today,
-              store: store.id,
-              cost: cost,
-              borrowed: borrowed,
-            ),
-          );
-          retained -= cost;
-        } else {
-          saving ??= ProfitKept(today, store: store.id, needed: cost);
-        }
-      }
-    }
-  }
-
   // The trades the brief grows, each with the strategy its shops follow,
   // the director's own first; a brief from before goals grows only that.
   final growing = <(String, StrategyDef)>[
@@ -646,9 +589,7 @@ StrategyId _strategyForFormat(
   for (final id in view.vacantSites) {
     if (byFormula) break;
     final site = content.sites[id.index];
-    if (site.area < format.minArea || taken.contains('site ${id.index}')) {
-      continue;
-    }
+    if (taken.contains('site ${id.index}')) continue;
     final payback = owner.paybackMonths(
       view,
       content,
@@ -666,8 +607,7 @@ StrategyId _strategyForFormat(
   for (final district in view.districts) {
     if (!roomAt(district.row)) continue;
     for (final site in district.free) {
-      if (site.area < format.minArea ||
-          taken.contains('district ${district.row} ${site.number}')) {
+      if (taken.contains('district ${district.row} ${site.number}')) {
         continue;
       }
       final payback = owner.districtPaybackMonths(view, content, district, (
@@ -703,7 +643,7 @@ StrategyId _strategyForFormat(
         site: site.number,
         format: strategy.format,
         cost: site.openingCost
-            .times(format.fitOut)
+            .times(format.fitOutAt(site.area))
             .times(view.economy(district.country).priceIndex),
         paybackMonths: bestPayback,
         borrowed: borrowed,
@@ -730,7 +670,7 @@ StrategyId _strategyForFormat(
       site: best.id,
       format: strategy.format,
       cost: best.openingCost
-          .times(format.fitOut)
+          .times(format.fitOutAt(best.area))
           .times(view.economyAt(content, best.market).priceIndex),
       paybackMonths: bestPayback,
       borrowed: borrowed,

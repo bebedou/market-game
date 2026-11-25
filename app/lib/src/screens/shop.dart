@@ -167,14 +167,6 @@ class _Running extends StatelessWidget {
         .timesInt(staff.fold(0, (sum, count) => sum + count));
     final manager = game.managerOf(store);
     final share = game.marketingOf(store);
-    final channel = content.formatChannels[format.id.index];
-    final target = content.formats
-        .where(
-          (other) =>
-              content.formatChannels[other.id.index] == channel &&
-              other.fitOut > format.fitOut,
-        )
-        .firstOrNull;
     return Section(
       title: tr('store.runningIt'),
       children: [
@@ -224,18 +216,6 @@ class _Running extends StatelessWidget {
             onTap: () => context.openPage(
               tr('store.reputation'),
               _page((store) => _Reputation(store: store)),
-            ),
-          ),
-        if (target != null)
-          IndexRow(
-            title: tr('store.become', {'format': aFormat(target)}),
-            subtitle: tr('store.becomeSummary', {
-              'slots': target.slotBonus,
-              'storage': target.storageBonus,
-            }),
-            onTap: () => context.openPage(
-              tr('store.become', {'format': aFormat(target)}),
-              _page((store) => _Conversion(store: store)),
             ),
           ),
       ],
@@ -399,7 +379,7 @@ class _StoreHeader extends StatelessWidget {
             Pill(status, color: statusColor),
             Text(
               [
-                format.name,
+                kindName(kindOf(format, store.area)),
                 site.name,
                 if (game.content.markets.length > 1)
                   game.content.markets[store.market.index].name,
@@ -1101,7 +1081,6 @@ class _ManagerSheetState extends State<ManagerSheet> {
               ManagerDuty.pricing => tr('store.dutyHints.pricing'),
               ManagerDuty.assortment => tr('store.dutyHints.assortment'),
               ManagerDuty.staffing => tr('store.dutyHints.staffing'),
-              ManagerDuty.investing => tr('store.dutyHints.investing'),
             }),
             onChanged: (on) => setState(
               () => _duties = [
@@ -1151,118 +1130,15 @@ class _ManagerSheetState extends State<ManagerSheet> {
   }
 }
 
-/// The store's floor area, works under way, and the way to enlarge it.
+/// The store's floor area, set when it opened.
 class _Size extends StatelessWidget {
   const _Size({required this.store});
 
   final StoreView store;
 
   @override
-  Widget build(BuildContext context) {
-    final game = context.game;
-    final content = game.content;
-    final expansion = content.expansion;
-    final site = content.sites[store.site.index];
-    final works = store.works;
-    final pending = game.pending.any(
-      (command) => command is ExpandStore && command.store == store.id,
-    );
-    final room = store.area + expansion.stepArea <= site.maxArea;
-    final canEnlarge =
-        works == null &&
-        !pending &&
-        room &&
-        store.status != StoreStatus.closed &&
-        game.company?.status == CompanyStatus.active;
-    return Row(
-      children: [
-        Expanded(
-          child: Line(
-            tr('store.floorArea'),
-            tr('common.areaM2', {'area': store.area}),
-            hint: switch (works) {
-              (:final area, :final done, format: final next?) =>
-                tr('store.becoming', {
-                  'format': aFormat(game.content.formats[next.index]),
-                  'area': area,
-                  'date': shortDate(done),
-                }),
-              (:final area, :final done, format: null) => tr('store.growing', {
-                'area': area,
-                'date': shortDate(done),
-              }),
-              null when pending => tr('store.worksTomorrow'),
-              null when !room => tr('store.asBigAsAllowed'),
-              null => tr('store.roomFor', {'area': site.maxArea}),
-            },
-          ),
-        ),
-        if (canEnlarge)
-          TextButton(
-            onPressed: () => _confirmEnlarge(context, game),
-            child: Text(tr('store.enlarge')),
-          ),
-      ],
-    );
-  }
-
-  Future<void> _confirmEnlarge(
-    BuildContext context,
-    SimulationController game,
-  ) async {
-    final content = game.content;
-    final expansion = content.expansion;
-    final site = content.sites[store.site.index];
-    final level = game.economyAt(store.market).priceIndex;
-    final area = store.area + expansion.stepArea;
-    final format = content.formats[store.format.index];
-    final rent = (site.rentFor(store.area) + format.overheadsFor(store.area))
-        .times(level);
-    final newRent = (site.rentFor(area) + format.overheadsFor(area)).times(
-      level,
-    );
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(tr('store.enlargeTo', {'area': area})),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Line(tr('store.worksPaidNow'), money(expansion.cost(level))),
-            Line(
-              tr('store.readyIn'),
-              tr('common.nDays', {'days': expansion.buildDays}),
-            ),
-            Line(
-              tr('store.rentUpkeep'),
-              tr('common.perMonth', {'amount': money(newRent, cents: false)}),
-              hint: tr('store.rentNow', {'amount': money(rent, cents: false)}),
-            ),
-            Line(tr('store.shelfSlots'), '+${expansion.shelfSlots}'),
-            Line(
-              tr('store.storage'),
-              tr('store.plusUnits', {'units': expansion.storageUnits}),
-            ),
-            Hint(tr('store.keepsTrading')),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(tr('common.notNow')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(tr('store.enlarge')),
-          ),
-        ],
-      ),
-    );
-    if (confirmed ?? false) {
-      game.submit(ExpandStore(game.player, store: store.id));
-    }
-  }
+  Widget build(BuildContext context) =>
+      Line(tr('store.floorArea'), tr('common.areaM2', {'area': store.area}));
 }
 
 /// Asks for a new name for [store], and for its company too if it shares
@@ -1500,108 +1376,6 @@ class _Reputation extends StatelessWidget {
           }),
         ),
         Hint(tr('store.reputationAdvice')),
-      ],
-    );
-  }
-}
-
-/// Turning the store into the bigger format of its kind: a convenience
-/// store into a supermarket.
-class _Conversion extends StatelessWidget {
-  const _Conversion({required this.store});
-
-  final StoreView store;
-
-  @override
-  Widget build(BuildContext context) {
-    final game = context.game;
-    final content = game.content;
-    final current = content.formats[store.format.index];
-    final channel = content.formatChannels[current.id.index];
-    final target = content.formats
-        .where(
-          (format) =>
-              content.formatChannels[format.id.index] == channel &&
-              format.fitOut > current.fitOut,
-        )
-        .firstOrNull;
-    if (target == null) return const SizedBox.shrink();
-    final site = content.sites[store.site.index];
-    final level = game.economyAt(store.market).priceIndex;
-    final cost = conversionCost(
-      content,
-      site,
-      store.format,
-      store.area,
-      target,
-      level,
-    );
-    final company = game.company;
-    final free = company == null
-        ? Money.zero
-        : company.cash - company.committed;
-    final pending = game.pending.any(
-      (command) => command is ConvertStore && command.store == store.id,
-    );
-    final area = target.minArea > store.area ? target.minArea : store.area;
-    final reason = target.minArea > site.maxArea
-        ? tr('store.siteTooSmall', {
-            'format': aFormat(target),
-            'area': target.minArea,
-            'most': site.maxArea,
-          })
-        : store.works != null
-        ? tr('store.worksAreUnderWay')
-        : store.status != StoreStatus.open
-        ? tr('store.onlyOpen')
-        : free < cost
-        ? tr('store.needMoreCash', {'amount': money(cost - free, cents: false)})
-        : null;
-    // The brand it will join, as the engine picks it: the player's of the
-    // format with the most shops, the oldest of equals.
-    BrandView? brand;
-    for (final option in game.myBrands) {
-      if (option.format == target.id &&
-          (brand == null || option.shops > brand.shops)) {
-        brand = option;
-      }
-    }
-    return Section(
-      title: tr('store.become', {'format': aFormat(target)}),
-      icon: formatIcon(target),
-      children: [
-        Line(
-          tr('store.worksPaidNow'),
-          money(cost, cents: false),
-          hint: tr('store.conversionDetails', {
-            'area': area,
-            'slots': target.slotBonus,
-            'storage': target.storageBonus,
-            'days': site.buildDays,
-          }),
-        ),
-        Hint(reason ?? tr('store.conversionPitch')),
-        if (brand != null)
-          Hint(tr('store.convertBrand', {'brand': brand.name})),
-        if (pending)
-          Hint(tr('store.worksStartTomorrow'))
-        else
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              icon: Icon(formatIcon(target), size: 18),
-              onPressed: reason != null
-                  ? null
-                  : () => game.submit(
-                      ConvertStore(
-                        game.player,
-                        store: store.id,
-                        format: target.id,
-                      ),
-                    ),
-              label: Text(tr('store.convertTo', {'format': aFormat(target)})),
-            ),
-          ),
       ],
     );
   }

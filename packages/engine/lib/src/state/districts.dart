@@ -170,7 +170,7 @@ Valuation? valueSleepingShop(
   if (terms == null) return null;
   final format = content.formats[shop.format.index];
   final fittings = site.openingCost
-      .times(format.fitOut)
+      .times(format.fitOutAt(shop.area))
       .times(world.macroOf(country).priceIndex)
       .times(terms.fittingsLeft((month - shop.openedMonth) * 30));
   if (shop.sales.length < sleepingMonthsKept) {

@@ -422,7 +422,7 @@ class StoreLine extends StatelessWidget {
       mark: Ledger.of(context).trade(format),
       title: game.storeName(store.id),
       subtitle: [
-        format.name,
+        kindName(kindOf(format, store.area)),
         if (content.markets.length > 1)
           content.markets[store.market.index].name,
         if (store.status == StoreStatus.building)
@@ -431,7 +431,6 @@ class StoreLine extends StatelessWidget {
           tr('dashboard.shoppersLine', {'shoppers': shoppers}),
         if (store.manager case final manager?)
           managerOf(content.managers.grades[manager.grade.index]),
-        if (store.works != null) tr('dashboard.worksUnderWay'),
       ].join(' · '),
       stamp: trouble.firstOrNull,
       value: store.status == StoreStatus.building

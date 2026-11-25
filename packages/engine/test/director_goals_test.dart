@@ -107,21 +107,6 @@ void main() {
     expect(briefed.goalOf('d'), Goal.harvest);
   });
 
-  test('harvesting leaves the shops as they are; holding keeps them up to '
-      'date', () {
-    int area(Goal goal) {
-      final game = Simulation.newGame(growing, seed: 1);
-      game.submit(_brief({_tradeOf(game): goal}));
-      for (var i = 0; i < 120; i++) {
-        game.step();
-      }
-      return game.world.stores[playerStore.index].area;
-    }
-
-    expect(area(Goal.harvest), 100);
-    expect(area(Goal.hold), greaterThan(100));
-  });
-
   test('growing opens a shop where one pays back; holding opens none', () {
     List<Command> firstOfFebruary(Goal goal) {
       final game = Simulation.newGame(opening, seed: 1);

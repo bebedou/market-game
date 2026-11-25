@@ -9,7 +9,6 @@ import '../core/safe_int.dart';
 /// The trade each of the shop-level game's formats counts under.
 const formatTrades = {
   'grocery': 'grocery',
-  'supermarket': 'grocery',
   'fastfood': 'restaurants',
   'steakhouse': 'restaurants',
   'finedining': 'restaurants',

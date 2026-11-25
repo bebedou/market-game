@@ -489,63 +489,58 @@ final class SiteDef {
   /// [storageUnits] are for this area.
   final int area;
 
-  /// The most a store here can be enlarged to.
+  /// The most floor a shop here may open with, built out as it is fitted.
   final int maxArea;
 
   /// The monthly rent for [area] square metres here, at a price index of 1:
   /// in proportion to the site's rent for its own area.
   Money rentFor(int area) => Money(mulDivRound(rent.cents, area, this.area));
 
-  /// The floor a new [format] shop opens with here: the site's own, or, on
-  /// a site with room to be enlarged to it, the format's least, the works
-  /// done as it is fitted out. Null if the site hasn't the room.
-  int? openingArea(FormatDef format) => format.minArea <= area
-      ? area
-      : format.minArea <= maxArea
-      ? format.minArea
-      : null;
+  /// The floors a new [format] shop may open with here: the site's own,
+  /// and, on a site with room to be built out to it, the format's large
+  /// size, the works done as it is fitted out. A shop keeps its floor.
+  List<int> openingAreas(FormatDef format) => [
+    area,
+    if (format.large case final large?
+        when area < large.area && large.area <= maxArea)
+      large.area,
+  ];
 }
 
-/// What opening a [format] shop on [site] costs at [priceIndex]: fitting it
-/// out, and the works to its [SiteDef.openingArea] where it is enlarged to
-/// open, at what enlarging costs.
+/// What opening a [format] shop of [area] square metres, the site's own if
+/// null, on [site] costs at [priceIndex]: fitting it out, and building the
+/// site out to that floor (see [ExpansionDef]).
 Money shopOpeningCost(
   ContentDb content,
   SiteDef site,
   FormatDef format,
-  Fx priceIndex,
-) {
-  final extra = (site.openingArea(format) ?? site.area) - site.area;
-  return (site.openingCost.times(format.fitOut) +
-          content.expansion.costPerSqm.timesInt(extra))
+  Fx priceIndex, {
+  int? area,
+}) {
+  final floor = area ?? site.area;
+  return (site.openingCost.times(format.fitOutAt(floor)) +
+          content.expansion.costPerSqm.timesInt(floor - site.area))
       .times(priceIndex);
 }
 
-/// How stores grow: one step of floor area at a time.
+/// What floor beyond a site's own gives a shop that opens with it, and
+/// what building it out costs.
 final class ExpansionDef {
   const ExpansionDef({
     required this.stepArea,
     required this.shelfSlots,
     required this.storageUnits,
     required this.costPerSqm,
-    required this.buildDays,
   });
 
-  /// Square metres added by one enlargement.
+  /// Each [stepArea] square metres beyond the site's own adds [shelfSlots]
+  /// and [storageUnits].
   final int stepArea;
-
-  /// Shelf slots and storage one enlargement adds.
   final int shelfSlots;
   final int storageUnits;
 
   /// Building cost per square metre, at a price index of 1.
   final Money costPerSqm;
-
-  /// Days of works before the new space is in use. The store keeps trading.
-  final int buildDays;
-
-  /// What one enlargement costs at [priceLevel].
-  Money cost(Fx priceLevel) => costPerSqm.timesInt(stepArea).times(priceLevel);
 }
 
 /// The labour market. Unemployment follows the output gap by Okun's law
@@ -936,9 +931,7 @@ final class FormatDef {
     required this.fitOut,
     required this.visitsPerStaff,
     this.wageFactor = Fx.one,
-    this.minArea = 0,
-    this.slotBonus = 0,
-    this.storageBonus = 0,
+    this.large,
     this.overheads = Money.zero,
     this.national,
     this.edition = 0,
@@ -961,14 +954,29 @@ final class FormatDef {
   /// crew, kitchen and floor, costs more.
   final Fx wageFactor;
 
-  /// The least selling area it trades in: a store converted to it is
-  /// enlarged to this, and it can't open on a smaller site.
-  final int minArea;
+  /// Its shops from a size on, laid out and run differently: a grocer's
+  /// supermarket. Null for a format whose shops are all alike.
+  final LargeFormatDef? large;
 
-  /// Shelf slots and storage a store gains on becoming this format, beyond
-  /// what its area adds.
-  final int slotBonus;
-  final int storageBonus;
+  /// Whether a shop of [area] square metres is its [large] kind.
+  bool isLargeAt(int area) => large != null && area >= large!.area;
+
+  /// What fitting out a shop of [area] costs against the site's opening
+  /// cost.
+  Fx fitOutAt(int area) => isLargeAt(area) ? large!.fitOut : fitOut;
+
+  /// Customers one member of staff of a shop of [area] serves in a slot.
+  int visitsPerStaffAt(int area) =>
+      isLargeAt(area) ? large!.visitsPerStaff : visitsPerStaff;
+
+  /// Shelf slots and storage a shop of [area] has beyond its site's and
+  /// what its floor beyond the site's adds.
+  int slotBonusAt(int area) => isLargeAt(area) ? large!.shelfSlots : 0;
+  int storageBonusAt(int area) => isLargeAt(area) ? large!.storageUnits : 0;
+
+  /// The key a shop of [area] goes by in words and names: its [large]
+  /// kind's, or the format's.
+  String keyAt(int area) => isLargeAt(area) ? large!.key : key;
 
   /// Energy, insurance, upkeep and card fees per square metre a month, at a
   /// price index of 1: what a store pays however much it sells.
@@ -988,6 +996,30 @@ final class FormatDef {
   /// What its shops run by formula across a country are sized on; null if
   /// it has none.
   final FormatNational? national;
+}
+
+/// A format's shops from [area] square metres on: a grocer's supermarket,
+/// fitted out at [fitOut] times the site's opening cost, its staff serving
+/// [visitsPerStaff] customers each, with [shelfSlots] and [storageUnits]
+/// more than the site and its floor give.
+final class LargeFormatDef {
+  const LargeFormatDef({
+    required this.key,
+    required this.name,
+    required this.area,
+    required this.fitOut,
+    required this.visitsPerStaff,
+    required this.shelfSlots,
+    required this.storageUnits,
+  });
+
+  final String key;
+  final String name;
+  final int area;
+  final Fx fitOut;
+  final int visitsPerStaff;
+  final int shelfSlots;
+  final int storageUnits;
 }
 
 /// A format's shops run by formula across a country: what fitting one out

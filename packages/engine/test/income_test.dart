@@ -1,5 +1,4 @@
 import 'package:engine/engine.dart';
-import 'package:engine/src/policies/retail_policy.dart';
 import 'package:engine/src/state/cohort.dart';
 import 'package:test/test.dart';
 
@@ -132,56 +131,6 @@ void main() {
     expect(
       after.segments.single.priceSensitivity.raw,
       lessThan(before.segments.single.priceSensitivity.raw * 8 ~/ 10),
-    );
-  });
-
-  test('owners hold dividends while they save for works that pay', () {
-    // The rival's one slot is full and organic milk waits, so enlarging
-    // pays; but the works cost more than it can spare at once.
-    final content = loadScenario(
-      testScenarioJson
-          .replaceFirst(
-            '"cash": "2000.00" }',
-            '"cash": "2000.00", "strategy": "steady" }',
-          )
-          .replaceFirst(
-            '"expansionPaybackMonths": 0,\n      "expansionIntervalDays": 365',
-            '"expansionPaybackMonths": 120,\n      "expansionIntervalDays": 30',
-          )
-          .replaceFirst('"costPerSqm": "10.00"', '"costPerSqm": "40.00"'),
-    );
-    final simulation = Simulation.newGame(content, seed: 1);
-    final strategy = content.strategies.single;
-    Day? wanted;
-    Day? enlarged;
-    final dividends = <Day>[];
-    for (var day = 0; day < 400 && enlarged == null; day++) {
-      final view = simulation.observe(rival);
-      if (wanted == null && view.today.isFirstOfMonth) {
-        final company = view.companies.single;
-        final plan = StorePlan(
-          strategy,
-          content,
-          view,
-          company,
-          company.stores.single,
-        );
-        if (plan.enlargementCost() != null) wanted = view.today;
-      }
-      for (final entry in simulation.step().entries) {
-        if (entry.party.type != PartyType.company || entry.party.index != 1) {
-          continue;
-        }
-        if (entry.reason == EntryReason.dividend) dividends.add(entry.day);
-        if (entry.reason == EntryReason.expansion) enlarged = entry.day;
-      }
-    }
-    expect(wanted, isNotNull);
-    expect(enlarged, isNotNull);
-    expect(enlarged! > wanted!, isTrue, reason: 'it had to save first');
-    expect(
-      dividends.where((day) => day >= wanted! && day <= enlarged!),
-      isEmpty,
     );
   });
 }

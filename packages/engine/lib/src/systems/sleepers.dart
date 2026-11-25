@@ -28,12 +28,6 @@ const _settlingDraw = Fx.raw(8000);
 const _openingChance = Fx.raw(300);
 const _openingHouseholds = 2000;
 
-/// What a shop must have earned in a year, beyond what the extra room would
-/// cost, against the works' cost, to enlarge the first time. It takes more each
-/// time, by the square: each round of shelves holds what sells less than the
-/// last.
-const _enlargingReturn = 2;
-
 /// What the shops of a neighbourhood do once settled: unlike a new shop's habits
 /// ([ShopHabits]), these were fitted to the same places simulated in full for
 /// ten years.
@@ -64,9 +58,11 @@ Fx _beyondPrices(StrategyDef strategy) => switch (strategy.key) {
 /// What a shop of [format] run by formula pays for its goods beyond the
 /// list, as a share of it: what shops run by formula across a country pay
 /// too.
-Fx formulaGoodsExtra(FormatDef format) => _settled(format).goodsExtra;
+Fx formulaGoodsExtra(FormatDef format) => _settled(format.key).goodsExtra;
 
-_Settled _settled(FormatDef format) => switch (format.key) {
+/// What a settled shop going by [key] does: its format's, or, from its
+/// format's large size on, that kind's (see `FormatDef.keyAt`).
+_Settled _settled(String key) => switch (key) {
   'supermarket' => const (
     capture: Fx.raw(9500),
     draw: Fx.raw(19000),
@@ -123,8 +119,7 @@ const _shakyChance = Fx.raw(300);
 /// households come and go; what they spend, at the economy of the day, is shared
 /// among the shops of each trade by location, size and price; each shop books
 /// its month; those losing money for a year close, as an AI owner would close
-/// them, those doing well enlarge, and someone opens on a free site when it
-/// would pay back soon enough. The neighbourhoods touch nothing else: no shop
+/// them, and someone opens on a free site when it would pay back soon enough. The neighbourhoods touch nothing else: no shop
 /// in the simulated world feels them, nor any account.
 final class SleeperSystem implements TickSystem {
   const SleeperSystem();
@@ -141,7 +136,7 @@ final class SleeperSystem implements TickSystem {
       final rng = context.rng(RngStream.neighbourhoods, 1000 + sleeper.row);
       _grow(world, content, sleeper);
       _trade(world, content, context.ledger, sleeper, context.day, month);
-      _closeAndEnlarge(world, content, context.ledger, sleeper, month, rng);
+      _close(world, sleeper, month, rng);
       _open(world, content, sleeper, month, rng);
     }
   }
@@ -230,7 +225,7 @@ final class SleeperSystem implements TickSystem {
             shopPull(content, site.location, shop.area) *
             priceDraw(pricing(shop) - Fx.one) *
             _beyondPrices(content.strategies[shop.strategy.index]) *
-            _settled(content.formats[shop.format.index]).draw;
+            _settled(content.formats[shop.format.index].keyAt(shop.area)).draw;
         if (month - shop.openedMonth < _settlingMonths &&
             !_knownNearby(world, content, sleeper, shop)) {
           draw *= _settlingDraw;
@@ -245,7 +240,7 @@ final class SleeperSystem implements TickSystem {
       for (final shop in shops) {
         final format = content.formats[shop.format.index];
         final strategy = content.strategies[shop.strategy.index];
-        final habits = _settled(format);
+        final habits = _settled(format.keyAt(shop.area));
         final site = sites[shop.site];
         final served = weight(shop).div(total) * habits.capture * cycle;
         final bought = demand.goods.times(served);
@@ -256,6 +251,7 @@ final class SleeperSystem implements TickSystem {
           content,
           format,
           strategy,
+          area: shop.area,
           wageIndex: macro.wageIndex,
           wageLevel: row.wageLevel,
           unitsServed: demand.units * served,
@@ -406,23 +402,14 @@ final class SleeperSystem implements TickSystem {
     return false;
   }
 
-  void _closeAndEnlarge(
+  void _close(
     WorldState world,
-    ContentDb content,
-    Ledger ledger,
     SleepingNeighbourhood sleeper,
     int month,
     Rng rng,
   ) {
-    final sites = sleeper.sites!;
-    final expansion = content.expansion;
-    final priceIndex = world
-        .macroOf(content.neighbourhoods[sleeper.row].country)
-        .priceIndex;
     final closing = <SleepingShop>[];
     for (final shop in sleeper.shops) {
-      final format = content.formats[shop.format.index];
-      final strategy = content.strategies[shop.strategy.index];
       final age = month - shop.openedMonth;
       // A chain's shop goes with its company.
       final chain = switch (shop.company) {
@@ -439,49 +426,6 @@ final class SleeperSystem implements TickSystem {
       if (broke || losing || _gaveUp(shop, age, rng)) {
         closing.add(shop);
         continue;
-      }
-      // Enlarging is for shelves: only a grocer ever runs out of them.
-      final sold = content.products
-          .where((product) => format.sells[product.category.index])
-          .length;
-      final site = sites[shop.site];
-      final steps = (shop.area - site.area) ~/ expansion.stepArea;
-      final slots =
-          site.shelfSlots + format.slotBonus + steps * expansion.shelfSlots;
-      final cost = expansion.cost(priceIndex);
-      // What it must have earned leaves out what the extra room would cost.
-      final extra =
-          (site.rentFor(shop.area + expansion.stepArea) -
-                  site.rentFor(shop.area) +
-                  format.overheadsFor(expansion.stepArea))
-              .times(priceIndex)
-              .timesInt(12);
-      if (slots < sold &&
-          shop.area + expansion.stepArea <= site.maxArea &&
-          (month - shop.enlargedMonth) * 30 >= strategy.expansionIntervalDays &&
-          shop.yearProfit - extra >=
-              cost.timesInt(_enlargingReturn * (steps + 1) * (steps + 1)) &&
-          (chain != null
-              ? chain.accounts[AccountKind.cash] >= cost
-              : shop.cash + shop.ownerCash >= cost)) {
-        shop.area += expansion.stepArea;
-        shop.enlargedMonth = month;
-        if (chain != null) {
-          ledger.pay(
-            payer: chain,
-            payerAccount: AccountKind.openingCosts,
-            payee: world.elsewhere,
-            payeeAccount: AccountKind.revenue,
-            amount: cost,
-            reason: EntryReason.expansion,
-          );
-          continue;
-        }
-        shop.cash -= cost;
-        if (shop.cash.isNegative) {
-          shop.ownerCash += shop.cash;
-          shop.cash = Money.zero;
-        }
       }
     }
     for (final shop in closing) {
@@ -529,7 +473,7 @@ final class SleeperSystem implements TickSystem {
       final strategy = usualStrategy(content, format);
       if (strategy.expansionPaybackMonths == 0) continue;
       for (final site in sites) {
-        if (taken.contains(site.number) || site.area < format.minArea) continue;
+        if (taken.contains(site.number)) continue;
         // Each draws by location and size, as shoppers weigh size.
         final mine = shopPull(content, site.location, site.area);
         var pull = mine;
@@ -579,13 +523,12 @@ final class SleeperSystem implements TickSystem {
         site: bestSite.number,
         format: bestFormat!.id,
         strategy: bestStrategy!.id,
-        name: newShopName(content, row.country, bestFormat, rng),
+        name: newShopName(content, row.country, bestFormat, bestSite.area, rng),
         owner: newOwnerName(content, row.country, rng),
         area: bestSite.area,
         cash: fitting,
         ownerCash: fitting,
         openedMonth: month,
-        enlargedMonth: month,
       ),
     );
     sleeper.opened++;

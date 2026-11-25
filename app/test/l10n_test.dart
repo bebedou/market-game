@@ -308,8 +308,14 @@ void main() {
   group('the scenario words', () {
     final scenario = _read('scenarios/prototype.json');
 
+    // Things' ids, and those of things inside them: a format's large size.
     Set<String> idsOf(Object? list) => {
-      for (final item in list! as List<Object?>) (item! as Map)['id'] as String,
+      for (final item
+          in (list! as List<Object?>).cast<Map<Object?, Object?>>()) ...[
+        item['id']! as String,
+        for (final inner in item.values)
+          if (inner case {'id': final String id}) id,
+      ],
     };
 
     for (final code in ['en', 'fr', 'es']) {
@@ -575,10 +581,10 @@ void main() {
       );
       expect(
         refusalText(
-          Refusal('cannotPayWorks', amount: Money.parse('200')),
+          Refusal('cannotPayOpening', amount: Money.parse('200')),
           content,
         ),
-        'the company cannot pay the 200.00 of works',
+        'the company cannot pay the opening cost of 200.00',
       );
       expect(
         refusalText(
@@ -594,17 +600,14 @@ void main() {
       useStrings(stringsFromFiles('fr', fallback: stringsFromFiles('en')));
       expect(
         refusalText(
-          Refusal('cannotPayWorks', amount: Money.parse('200')),
+          Refusal('cannotPayOpening', amount: Money.parse('200')),
           content,
         ),
-        'la société ne peut pas payer les 200,00 de travaux',
+        'la société ne peut pas payer le coût d’ouverture de 200,00',
       );
       expect(
-        refusalText(
-          Refusal('siteTooSmall', format: format('supermarket')),
-          content,
-        ),
-        "l’emplacement est trop petit pour un supermarché",
+        refusalText(const Refusal('floorNotOffered', count: 220), content),
+        'l’emplacement ne peut pas accueillir un magasin de 220 m²',
       );
     });
   });

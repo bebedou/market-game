@@ -165,8 +165,9 @@ List<String> trList(String key) => _current?.list(key) ?? const [];
 /// [scenario], a scenario's JSON, with the names [words] gives in place of its
 /// own. [words] mirrors the scenario: under a list of things with ids, each id
 /// maps to its name, or to an object with its `name` and other forms the
-/// interface uses. Whatever it doesn't mention keeps its name, so a scenario
-/// without a translation still plays.
+/// interface uses; a thing with an id inside one of them, a format's large
+/// size, is named from the same list. Whatever it doesn't mention keeps its
+/// name, so a scenario without a translation still plays.
 String localizedScenario(String scenario, Map<String, Object?> words) {
   final root = jsonDecode(scenario);
   _applyNames(root, words);
@@ -183,6 +184,9 @@ void _applyNames(Object? node, Object? words) {
           item['name'] = name;
         case {'name': final String name}:
           item['name'] = name;
+      }
+      for (final inner in item.values) {
+        if (inner case {'id': _}) _applyNames([inner], words);
       }
     }
   } else if (node is Map<String, Object?>) {

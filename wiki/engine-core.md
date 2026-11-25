@@ -152,7 +152,7 @@ commands. Policies are stateless; what they remember is in the world.
 | File | Symbols | Role |
 |---|---|---|
 | [policy.dart](../packages/engine/lib/src/policies/policy.dart) | `Policy`, `standardPolicies`, `ownerPolicy`, `CombinedPolicy` | The interface, and a policy for every person the scenario gives a strategy |
-| [retail_policy.dart](../packages/engine/lib/src/policies/retail_policy.dart) | `RetailPolicy`, `StorePlan`, `closingLoss` | Running a store: forecast, supplier, orders, prices, assortment, staff, enlarging, dividends |
+| [retail_policy.dart](../packages/engine/lib/src/policies/retail_policy.dart) | `RetailPolicy`, `StorePlan`, `closingLoss` | Running a store: forecast, supplier, orders, prices, assortment, staff, dividends |
 | [entrepreneur_policy.dart](../packages/engine/lib/src/policies/entrepreneur_policy.dart) | `EntrepreneurPolicy` | Monthly: where to open or buy, including districts asleep |
 | [manager.dart](../packages/engine/lib/src/policies/manager.dart) | `manage` | Store managers and directors acting for an owner, within their duties |
 | [director.dart](../packages/engine/lib/src/policies/director.dart) | `Directive`, `nationalBudget`, `nationalChainShops`, `nationalPaybackMonths`, `scaledMonths` | A company's director: hiring managers, closing, growing, borrowing, national openings, as their character scales the brief |

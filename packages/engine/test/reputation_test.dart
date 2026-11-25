@@ -39,7 +39,9 @@ void main() {
     expect(reputation(rivalStore), Fx.parse('0.80'));
     expect(reputation(playerStore), Fx.parse('0.20'));
     simulation
-      ..submit(OpenStore(player, site: lane, name: 'Lane', company: playerCompany))
+      ..submit(
+        OpenStore(player, site: lane, name: 'Lane', company: playerCompany),
+      )
       ..step();
     expect(reputation(const StoreId(2)), Fx.parse('0.20'));
     expect(
@@ -59,15 +61,21 @@ void main() {
           store: playerStore,
           grade: const ManagerGradeId(1),
           strategy: steady,
-          duties: const [true, true, true, true, true],
+          duties: const [true, true, true, true],
         ),
       );
     for (var i = 0; i < 60; i++) {
       simulation.step();
     }
     final stores = simulation.world.stores;
-    expect(stores[playerStore.index].reputation.raw, greaterThan(Fx.parse('0.60').raw));
-    expect(stores[rivalStore.index].reputation.raw, lessThan(Fx.parse('0.20').raw));
+    expect(
+      stores[playerStore.index].reputation.raw,
+      greaterThan(Fx.parse('0.60').raw),
+    );
+    expect(
+      stores[rivalStore.index].reputation.raw,
+      lessThan(Fx.parse('0.20').raw),
+    );
     expect(
       simulation.observe(player).companies.first.stores.first.reputation,
       stores[playerStore.index].reputation,

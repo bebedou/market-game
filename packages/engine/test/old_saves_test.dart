@@ -183,4 +183,47 @@ void main() {
     expect(invariantViolations(game.world), isEmpty);
     playOn(game, scenario);
   });
+
+  test('a save from before shops were sized as they open (format 44) loads '
+      'with its works done, its supermarkets as grocers, and those by '
+      'formula with its other grocers', () {
+    // Written by c2eec76: seed 13, the other cities asleep, a shop being
+    // made a supermarket and the corner shop being enlarged, its manager
+    // trusted with investing, both works in the log, and in France ten
+    // grocers and five supermarkets by formula being fitted out. Its works
+    // finished, that build had the first at 220 m², 18 slots and 5,500 of
+    // storage, and the corner shop at 160 m², 10 slots and 2,000.
+    final scenario = content();
+    final game = Simulation.load(scenario, fixture('save_v44_sizes'));
+    final grocery = scenario.formats.firstWhere((f) => f.key == 'grocery');
+    final big = game.world.stores.firstWhere((s) => s.name == 'To Be Big');
+    expect(
+      (big.format, big.area, big.shelfSlots, big.storageUnits),
+      (grocery.id, 220, 18, 5500),
+    );
+    expect(grocery.isLargeAt(big.area), isTrue);
+    final corner = game.world.stores.firstWhere((s) => s.name == 'Corner Shop');
+    expect(
+      (corner.area, corner.shelfSlots, corner.storageUnits),
+      (160, 10, 2000),
+    );
+    expect(
+      corner.manager!.duties,
+      List.filled(ManagerDuty.values.length, true),
+    );
+    final france = game.national!.countries.firstWhere(
+      (country) => country.def.key == 'fr',
+    );
+    expect(
+      [
+        for (final block in france.blocks)
+          if (block.company == 0) (block.format, block.stores),
+      ],
+      [(grocery.id.index, 15)],
+    );
+    // Enlarging and converting are gone from the log.
+    expect(game.commandLog, hasLength(5));
+    expect(invariantViolations(game.world), isEmpty);
+    playOn(game, scenario);
+  });
 }

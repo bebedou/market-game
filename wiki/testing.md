@@ -48,7 +48,11 @@ Node run covers the core and the small test scenario only.
   holding's own name; and `save_v42_between.bin.gz`, the same in format
   43's layout under the number 42, as the builds after 151811b wrote it
   until 781c14b (`SaveData.decode` reads a format-42 save that fails as
-  the first as the second).
+  the first as the second); and `save_v44_sizes.bin.gz`, written by
+  c2eec76 on the prototype (seed 13, other cities asleep): a shop being
+  converted to a supermarket, the corner shop being enlarged, a manager
+  trusted with investing, and French grocers and supermarkets by formula,
+  from before format 45 sized shops as they open.
   [old_saves_test.dart](../packages/engine/test/old_saves_test.dart)
   loads them, plays on and round-trips them. Formats in between are tested
   field by field, by writing a snippet and reading it with

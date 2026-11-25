@@ -432,7 +432,9 @@ void main() {
       expect(
         stores.first.shelfSlots,
         site.shelfSlots +
-            content.formats[stores.first.format.index].slotBonus +
+            content.formats[stores.first.format.index].slotBonusAt(
+              enlarged.area,
+            ) +
             steps * content.expansion.shelfSlots,
       );
       expect(

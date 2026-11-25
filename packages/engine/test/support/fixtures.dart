@@ -62,8 +62,7 @@ const testScenarioJson = '''
     ] },
   "operations": { "slotWage": "0.00", "visitsPerStaff": 30, "maxStaffPerSlot": 4 },
   "research": [{ "id": "survey", "name": "Survey", "cost": "50.00", "error": "0.10" }],
-  "expansion": { "stepArea": 20, "shelfSlots": 1, "storageUnits": 100, "costPerSqm": "10.00",
-    "buildDays": 3 },
+  "expansion": { "stepArea": 20, "shelfSlots": 1, "storageUnits": 100, "costPerSqm": "10.00" },
   "managers": { "forecastError": "0.50", "priceError": "0.20", "grades": [
     { "id": "clerk", "name": "Clerk", "skill": "0.50", "salary": "5.00" },
     { "id": "ace", "name": "Ace", "skill": "1.00", "salary": "9.00" }

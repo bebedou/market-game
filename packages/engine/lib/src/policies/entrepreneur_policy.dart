@@ -88,11 +88,9 @@ final class EntrepreneurPolicy implements Policy {
         .firstOrNull;
     // A chain may do better in a district run by formula.
     if (company != null && _trades(view, company)) {
-      final format = content.formats[strategy.format.index];
       (DistrictView, DistrictSite)? there;
       for (final district in view.districts) {
         for (final site in district.free) {
-          if (site.area < format.minArea) continue;
           final payback = districtPaybackMonths(view, content, district, (
             location: site.location,
             area: site.area,
@@ -184,7 +182,7 @@ final class EntrepreneurPolicy implements Policy {
           district.wageLevel,
         ).timesInt(30);
     return site.openingCost
-            .times(content.formats[strategy.format.index].fitOut)
+            .times(content.formats[strategy.format.index].fitOutAt(site.area))
             .times(level) +
         monthly.timesInt(startingMonths);
   }
@@ -198,8 +196,9 @@ final class EntrepreneurPolicy implements Policy {
       rent + content.formats[strategy.format.index].overheadsFor(area);
 
   /// What fitting out [site] costs for the strategy's format.
-  Money _fitOut(ContentDb content, SiteDef site) =>
-      site.openingCost.times(content.formats[strategy.format.index].fitOut);
+  Money _fitOut(ContentDb content, SiteDef site) => site.openingCost.times(
+    content.formats[strategy.format.index].fitOutAt(site.area),
+  );
 
   /// One member of staff in each slot the strategy opens, at [site]'s wages
   /// for the strategy's format.
@@ -494,7 +493,7 @@ final class EntrepreneurPolicy implements Policy {
     final opening =
         cost ??
         site.openingCost
-            .times(content.formats[strategy.format.index].fitOut)
+            .times(content.formats[strategy.format.index].fitOutAt(site.area))
             .times(level);
     return (opening.cents + monthly.cents - 1) ~/ monthly.cents;
   }

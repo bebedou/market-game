@@ -246,12 +246,10 @@ void main() {
     }
     expect(_apply(game, [_open(count: 1, region: frk)]), ['regionCeiling']);
     final content = game.content;
-    final format = content.formats[_grocer.format.index];
     final site = content.sites.firstWhere(
       (site) =>
           content.markets[site.market.index].region == 'FRK' &&
-          game.world.storeAt(site.id) == null &&
-          site.openingArea(format) != null,
+          game.world.storeAt(site.id) == null,
     );
     expect(
       _apply(game, [

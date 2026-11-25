@@ -75,7 +75,7 @@ Map<String, int> _grocerySales(String json) {
       for (final store in reports[reports.length - 2].stores) {
         final state = world.stores[store.store.index];
         final format = content.formats[state.format.index].key;
-        if (format != 'grocery' && format != 'supermarket') continue;
+        if (format != 'grocery') continue;
         final market = content.markets[state.market.index].key;
         sold[market] = sold[market]! + store.totalRevenue.cents;
       }
@@ -230,13 +230,23 @@ void main() {
     });
 
     test('only a neighbourhood with the space starts with a supermarket', () {
+      // A grocer of 220 m² or more is one.
+      int supermarkets(Map<String, dynamic> world) {
+        final areas = {
+          for (final site in world['sites'] as List)
+            site['id']: site['area'] as int,
+        };
+        return [
+          for (final store in world['stores'] as List)
+            if (store['format'] == 'grocery' && areas[store['site']]! >= 220)
+              store,
+        ].length;
+      }
+
+      expect(supermarkets(_world([_row('a', households: 300)])), 0);
       expect(
-        _formats(_world([_row('a', households: 300)]), 'a'),
-        isNot(contains('supermarket')),
-      );
-      expect(
-        _formats(_world([_row('a', households: 300, largestArea: 220)]), 'a'),
-        contains('supermarket'),
+        supermarkets(_world([_row('a', households: 300, largestArea: 220)])),
+        1,
       );
     });
 

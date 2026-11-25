@@ -295,11 +295,11 @@ void main() {
       strategy: strategy('balanced'),
       duties: duties,
     );
-    game.submit(hire('trainee', const [true, false, false, false, false]));
+    game.submit(hire('trainee', const [true, false, false, false]));
     expect(game.managerOf(store)?.grade, grade('trainee'));
     expect(game.delegates(store, ManagerDuty.ordering), isTrue);
     expect(game.delegates(store, ManagerDuty.pricing), isFalse);
-    game.submit(hire('expert', const [true, true, false, false, false]));
+    game.submit(hire('expert', const [true, true, false, false]));
     expect(game.pending, hasLength(1));
     expect(game.delegates(store, ManagerDuty.pricing), isTrue);
     game.submit(FireManager(player, store: playerStore));
@@ -315,7 +315,7 @@ void main() {
           store: playerStore,
           grade: grade('experienced'),
           strategy: strategy('discount'),
-          duties: const [true, true, false, false, false],
+          duties: const [true, true, false, false],
         ),
       );
     for (var i = 0; i < 45; i++) {
@@ -332,22 +332,6 @@ void main() {
     expect(
       game.alerts.where((alert) => alert.kind == AlertKind.refused),
       isEmpty,
-    );
-  });
-
-  test('enlarging the store shows as works, then as news', () {
-    final game = newController()
-      ..submit(ExpandStore(player, store: playerStore));
-    game.step();
-    expect(game.store!.works?.area, 160);
-    for (var i = 0; i < 14; i++) {
-      game.step();
-    }
-    expect(game.store!.area, 160);
-    expect(game.store!.shelfSlots, 10);
-    expect(
-      game.alerts.map((alert) => alert.message),
-      contains('Corner Shop has grown to 160 m².'),
     );
   });
 

@@ -435,6 +435,8 @@ ContentDb loadScenario(
   // Without formats, every store sells everything.
   final formats = <FormatDef>[];
   final formatKeys = _Keys();
+  // The keys of formats' large kinds, a supermarket's, and their format.
+  final largeKeys = <String, FormatId>{};
   if (!root.has('formats')) {
     formatKeys.add('store', 'formats');
     formats.add(
@@ -474,11 +476,23 @@ ContentDb loadScenario(
         wageFactor: node.has('wageFactor')
             ? node.nonNegativeFx('wageFactor')
             : Fx.one,
-        minArea: node.has('minArea') ? node.nonNegativeInt('minArea') : 0,
-        slotBonus: node.has('slotBonus') ? node.nonNegativeInt('slotBonus') : 0,
-        storageBonus: node.has('storageBonus')
-            ? node.nonNegativeInt('storageBonus')
-            : 0,
+        large: switch (node.optionalObject('large')) {
+          final large? => () {
+            final def = LargeFormatDef(
+              key: large.string('id'),
+              name: large.string('name'),
+              area: large.positiveInt('area'),
+              fitOut: large.nonNegativeFx('fitOut'),
+              visitsPerStaff: large.positiveInt('visitsPerStaff'),
+              shelfSlots: large.nonNegativeInt('shelfSlots'),
+              storageUnits: large.nonNegativeInt('storageUnits'),
+            );
+            largeKeys[def.key] = id;
+            large.finish();
+            return def;
+          }(),
+          null => null,
+        },
         overheads: node.has('overheads') ? node.money('overheads') : Money.zero,
         edition: node.has('edition') ? node.nonNegativeInt('edition') : 0,
         national: switch (node.optionalObject('national')) {
@@ -562,7 +576,6 @@ ContentDb loadScenario(
     shelfSlots: expansionNode.nonNegativeInt('shelfSlots'),
     storageUnits: expansionNode.nonNegativeInt('storageUnits'),
     costPerSqm: expansionNode.money('costPerSqm'),
-    buildDays: expansionNode.positiveInt('buildDays'),
   );
   expansionNode.finish();
 
@@ -872,6 +885,7 @@ ContentDb loadScenario(
   };
   for (final (i, country) in countries.indexed) {
     for (final format in country.names?.shops.keys ?? const <String>[]) {
+      if (largeKeys.containsKey(format)) continue;
       formatKeys.resolve(format, 'countries[$i].names.shops.$format');
     }
   }

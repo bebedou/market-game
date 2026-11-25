@@ -79,13 +79,11 @@ HireDirector _hire({Growth growth = Growth.open, bool borrows = false}) =>
 int _freeSite(Simulation game) {
   final sleeper = game.world.sleepers.single;
   final taken = {for (final shop in sleeper.shops) shop.site};
-  return sitesOf(game.world, _content, sleeper)
-      .firstWhere(
-        (site) =>
-            !taken.contains(site.number) &&
-            site.area >= _content.formats[_grocer.format.index].minArea,
-      )
-      .number;
+  return sitesOf(
+    game.world,
+    _content,
+    sleeper,
+  ).firstWhere((site) => !taken.contains(site.number)).number;
 }
 
 OpenInDistrict _openThere(Simulation game) => OpenInDistrict(

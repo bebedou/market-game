@@ -358,7 +358,9 @@ final class WorldState {
           content,
           format,
           site.market,
-          shelfSlots: site.shelfSlots + content.formats[format.index].slotBonus,
+          shelfSlots:
+              site.shelfSlots +
+              content.formats[format.index].slotBonusAt(site.area),
         );
         world.addStore(
           content,
@@ -635,9 +637,11 @@ final class WorldState {
     FormatId format = const FormatId(0),
     int? area,
   }) {
-    // Each round of works already done adds what it would have.
+    // Floor beyond the site's own adds what it would have.
     final expansion = content.expansion;
-    final rounds = area == null ? 0 : (area - site.area) ~/ expansion.stepArea;
+    final floor = area ?? site.area;
+    final rounds = (floor - site.area) ~/ expansion.stepArea;
+    final kind = content.formats[format.index];
     final store = Store(
       id: StoreId(stores.length),
       name: name,
@@ -650,13 +654,13 @@ final class WorldState {
       location: site.location,
       shelfSlots:
           site.shelfSlots +
-          content.formats[format.index].slotBonus +
+          kind.slotBonusAt(floor) +
           rounds * expansion.shelfSlots,
       storageUnits:
           site.storageUnits +
-          content.formats[format.index].storageBonus +
+          kind.storageBonusAt(floor) +
           rounds * expansion.storageUnits,
-      area: area ?? site.area,
+      area: floor,
       prices: List.of(prices),
       stock: [for (final _ in content.products) Stock()],
       history: SalesHistory(content.products.length),

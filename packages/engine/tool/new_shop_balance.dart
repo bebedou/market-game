@@ -25,14 +25,20 @@ void main(List<String> args) {
       ),
     ).readAsStringSync(),
   );
+  // Each format, and each one's large size by its own key: a supermarket.
   final formats = option(
     '--formats',
-    content.formats.map((f) => f.key).join(','),
+    [
+      for (final f in content.formats) ...[f.key, ?f.large?.key],
+    ].join(','),
   ).split(',');
   final expert = content.managers.grades.last.id;
   String k(num cents) => '${(cents / 100000).toStringAsFixed(1)}k';
   for (final key in formats) {
-    final format = content.formats.firstWhere((f) => f.key == key);
+    final format = content.formats.firstWhere(
+      (f) => f.key == key || f.large?.key == key,
+    );
+    final large = format.key != key;
     final strategies = [
       for (final s in content.strategies)
         if (s.format == format.id) s,
@@ -51,6 +57,7 @@ void main(List<String> args) {
     final totals = <int>[];
     final fitOuts = <int>[];
     final sales = <int>[];
+    final lastYears = <int>[];
     for (var seed = seeds.first; seed <= seeds.last; seed++) {
       final game = Simulation.newGame(
         content,
@@ -63,13 +70,19 @@ void main(List<String> args) {
       // The vacant site big enough that would repay the shop soonest.
       final owner = EntrepreneurPolicy(strategy);
       SiteDef? best;
+      var bestArea = 0;
       var bestPayback = 1 << 30;
       for (final id in view.vacantSites) {
         final site = content.sites[id.index];
-        if (site.area < format.minArea) continue;
+        final area = site
+            .openingAreas(format)
+            .where((area) => format.isLargeAt(area) == large)
+            .firstOrNull;
+        if (area == null) continue;
         final payback = owner.paybackMonths(view, content, site) ?? 1 << 29;
         if (best == null || payback < bestPayback) {
           best = site;
+          bestArea = area;
           bestPayback = payback;
         }
       }
@@ -81,6 +94,7 @@ void main(List<String> args) {
           name: '${format.name} ${best.name}',
           format: format.id,
           capital: Money.parse('150000.00'),
+          area: bestArea,
         ),
       );
       final opening = game.step();
@@ -124,11 +138,19 @@ void main(List<String> args) {
         if (m - 1 < monthly.length) profits[m]!.add(monthly[m - 1]);
       }
       totals.add(result().cents);
+      lastYears.add(
+        monthly
+            .skip(monthly.length > 12 ? monthly.length - 12 : 0)
+            .fold(0, (sum, m) => sum + m),
+      );
       fitOuts.add(
-        best.openingCost
-            .times(format.fitOut)
-            .times(view.economyAt(content, best.market).priceIndex)
-            .cents,
+        shopOpeningCost(
+          content,
+          best,
+          format,
+          view.economyAt(content, best.market).priceIndex,
+          area: bestArea,
+        ).cents,
       );
       view = game.observe(player);
       final shop = view.companies
@@ -248,6 +270,7 @@ void main(List<String> args) {
       '${key.padRight(12)} ${strategy.key.padRight(11)} '
       '${[for (final m in checkpoints) 'm$m ${k(mean(profits[m]!))}'].join('  ')}'
       '  | all ${k(mean(totals))} vs fit-out ${k(mean(fitOuts))}'
+      '  | last year ${k(mean(lastYears))}'
       '  | last year sales ${k(mean(sales))}',
     );
   }

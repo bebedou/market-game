@@ -136,6 +136,44 @@ String cushionLength(int days) => days > 0 && days % 7 == 0
 String aFormat(FormatDef format) =>
     trMaybe('scenario.formats.${format.key}.a') ?? format.name.toLowerCase();
 
+/// A kind of shop the player picks: a format at its usual size, or at its
+/// large size where it has one, a grocer's supermarket.
+typedef ShopKind = ({FormatDef format, bool large});
+
+/// Every kind of shop [content] has: each format, then its large size.
+List<ShopKind> shopKinds(ContentDb content) => [
+  for (final format in content.formats) ...[
+    (format: format, large: false),
+    if (format.large != null) (format: format, large: true),
+  ],
+];
+
+/// The kind a shop of [format] with [area] square metres is.
+ShopKind kindOf(FormatDef format, int area) =>
+    (format: format, large: format.isLargeAt(area));
+
+/// The floor [kind] opens with on [site], or null if the site can't host it.
+int? kindArea(ShopKind kind, SiteDef site) {
+  for (final area in site.openingAreas(kind.format)) {
+    if (kind.format.isLargeAt(area) == kind.large) return area;
+  }
+  return null;
+}
+
+/// What [kind] goes by in the scenario's words: its large size's key, or
+/// its format's.
+String kindKey(ShopKind kind) =>
+    kind.large ? kind.format.large!.key : kind.format.key;
+
+/// "Supermarket", "Convenience store": [kind]'s name.
+String kindName(ShopKind kind) =>
+    kind.large ? kind.format.large!.name : kind.format.name;
+
+/// "a supermarket": one shop of [kind].
+String aKind(ShopKind kind) =>
+    trMaybe('scenario.formats.${kindKey(kind)}.a') ??
+    kindName(kind).toLowerCase();
+
 /// "a trainee manager": one manager of [grade].
 String aManager(ManagerGradeDef grade) =>
     trMaybe('scenario.managers.grades.${grade.key}.a') ??

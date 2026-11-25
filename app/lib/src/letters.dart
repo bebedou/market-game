@@ -162,7 +162,7 @@ String memoSentence(Memo memo, ContentDb content, Observation view) {
     ) =>
       tr('letters.converted', {
         'store': store(s),
-        'format': aFormat(content.formats[format.index]),
+        'format': _convertedInto(content.formats[format.index]),
         'cost': amount(cost),
         'loan': _loan(borrowed, content),
       }),
@@ -267,6 +267,11 @@ String memoSentence(Memo memo, ContentDb content, Observation view) {
     }),
   };
 }
+
+/// What an older save's store was being converted into: a format's large
+/// size, a supermarket, which is what conversions made.
+String _convertedInto(FormatDef into) =>
+    into.large == null ? aFormat(into) : aKind((format: into, large: true));
 
 /// The name of the shop on [site] of the district run by formula in [row],
 /// while it sleeps.

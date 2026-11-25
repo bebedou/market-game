@@ -4,19 +4,22 @@ import 'package:test/test.dart';
 import 'support/fixtures.dart';
 
 const convenience = FormatId(0);
-const supermarket = FormatId(1);
 
-/// The test scenario where milk sells at convenience stores and at
-/// supermarkets, which need 120 m² and add two slots and 300 units of
-/// storage, and cost half as much again to fit out.
-String withSupermarkets({String demand = ''}) => testScenarioJson
+/// The test scenario where milk sells at convenience stores, whose large
+/// size, a supermarket, starts at [large] m², adds two slots and 300 units
+/// of storage, serves 45 shoppers a member of staff and costs half as much
+/// again to fit out.
+String withSupermarkets({
+  String demand = '',
+  int large = 120,
+}) => testScenarioJson
     .replaceFirst(
       '"categories": [{ "id": "milk", "name": "Milk" }],',
       '"categories": [{ "id": "milk", "name": "Milk" }],\n'
           '  "formats": [\n'
-          '    { "id": "convenience", "name": "Convenience store", "categories": ["milk"] },\n'
-          '    { "id": "supermarket", "name": "Supermarket", "categories": ["milk"], "fitOut": "1.5",\n'
-          '      "visitsPerStaff": 45, "minArea": 120, "slotBonus": 2, "storageBonus": 300 }\n'
+          '    { "id": "convenience", "name": "Convenience store", "categories": ["milk"],\n'
+          '      "large": { "id": "supermarket", "name": "Supermarket", "area": $large,\n'
+          '        "fitOut": "1.5", "visitsPerStaff": 45, "shelfSlots": 2, "storageUnits": 300 } }\n'
           '  ],',
     )
     .replaceFirst('"halfSizeArea": 100 }', '"halfSizeArea": 100$demand }');
@@ -80,72 +83,20 @@ void main() {
     expect(playerVisits('2.5'), lessThan(playerVisits('1')));
   });
 
-  group('converting a store', () {
-    test('turns a convenience store into a supermarket through works', () {
+  group("a grocer's sizes", () {
+    test('a site with room opens a supermarket at once, built out as it is '
+        'fitted, paying for both', () {
       final content = loadScenario(withSupermarkets());
-      expect(content.formatChannels, [0, 0]);
-      final simulation = Simulation.newGame(content, seed: 1);
-      final world = simulation.world;
-      final store = world.stores[playerStore.index];
-      expect(store.area, 100);
-      final cash =
-          world.companies[playerCompany.index].accounts[AccountKind.cash];
-      simulation.submit(
-        ConvertStore(player, store: playerStore, format: supermarket),
-      );
-      expect(simulation.step().rejections, isEmpty);
-      // Half the 300.00 fit-out again, and 20 m² at 10.00.
-      expect(
-        cash - world.companies[playerCompany.index].accounts[AccountKind.cash],
-        Money.parse('350.00'),
-      );
-      expect(store.works?.format, supermarket);
-      expect(store.format, convenience);
-      advance(simulation, 7);
-      expect(store.format, supermarket);
-      expect(store.area, 120);
-      // Two slots to start, one for the extra 20 m², two for the format.
-      expect(store.shelfSlots, 5);
-      expect(store.storageUnits, 400 + 100 + 300);
-    });
-
-    test('joins its owner\'s brand of the new format, or leaves its own', () {
-      Simulation converted({required bool supermarkets}) {
-        final simulation = Simulation.newGame(
-          loadScenario(withSupermarkets()),
-          seed: 1,
-        )..submit(CreateBrand(player, name: 'Kwik', format: convenience));
-        if (supermarkets) {
-          simulation.submit(
-            CreateBrand(player, name: 'MegaMart', format: supermarket),
-          );
-        }
-        simulation.submit(
-          ConvertStore(player, store: playerStore, format: supermarket),
-        );
-        advance(simulation, 8);
-        return simulation;
-      }
-
-      final world = converted(supermarkets: true).world;
-      final store = world.stores[playerStore.index];
-      final brand = world.brands.firstWhere((b) => b.name == 'MegaMart');
-      expect(store.format, supermarket);
-      expect(store.brand, brand.id);
-      expect(store.name, startsWith('MegaMart'));
-      // With no brand of supermarkets, it trades under no brand.
-      final alone = converted(supermarkets: false).world;
-      expect(alone.stores[playerStore.index].format, supermarket);
-      expect(alone.stores[playerStore.index].brand, isNull);
-    });
-
-    test('a site with room opens a supermarket at once, enlarged as it is '
-        'fitted out, paying for both', () {
-      final content = loadScenario(withSupermarkets());
+      final format = content.formats[convenience.index];
       final lane = content.sites[2];
       expect((lane.area, lane.maxArea), (80, 120));
-      expect(lane.openingArea(content.formats[supermarket.index]), 120);
-      expect(lane.openingArea(content.formats[convenience.index]), 80);
+      expect(lane.openingAreas(format), [80, 120]);
+      expect(format.isLargeAt(120), isTrue);
+      expect(format.isLargeAt(80), isFalse);
+      expect(
+        (format.visitsPerStaffAt(80), format.visitsPerStaffAt(120)),
+        (30, 45),
+      );
       final simulation = Simulation.newGame(content, seed: 1);
       final world = simulation.world;
       final cash =
@@ -156,8 +107,9 @@ void main() {
           site: lane.id,
           name: 'Lane Market',
           company: playerCompany,
-          format: supermarket,
+          format: convenience,
           capital: Money.parse('1000.00'),
+          area: 120,
         ),
       );
       expect(simulation.step().rejections.map((r) => r.reason.key), isEmpty);
@@ -170,69 +122,45 @@ void main() {
         Money.parse('375.00') + Money.parse('400.00') + Money.parse('150.00'),
       );
       final store = world.stores.last;
-      expect(store.format, supermarket);
+      expect(store.format, convenience);
       expect(store.area, 120);
-      // Two slots, two for the 40 m² and two for the format; storage the
+      // Two slots, two for the 40 m² and two for its size; storage the
       // same way.
       expect(store.shelfSlots, 6);
       expect(store.storageUnits, 300 + 200 + 300);
-      // Where the site hasn't the room, it is refused.
-      final small = loadScenario(
-        withSupermarkets().replaceFirst('"minArea": 120', '"minArea": 200'),
-      );
-      final refused = Simulation.newGame(small, seed: 1)
+    });
+
+    test('a floor the site does not offer is refused, and a shop keeps the '
+        "site's own without one", () {
+      final content = loadScenario(withSupermarkets(large: 200));
+      final lane = content.sites[2];
+      expect(lane.openingAreas(content.formats[convenience.index]), [80]);
+      final simulation = Simulation.newGame(content, seed: 1)
         ..submit(
           OpenStore(
             player,
             site: lane.id,
             name: 'Lane Market',
             company: playerCompany,
-            format: supermarket,
+            format: convenience,
             capital: Money.parse('1000.00'),
+            area: 120,
           ),
         );
-      expect(refused.step().rejections.single.reason.key, 'siteTooSmall');
-    });
-
-    test('is refused across channels, on a small site, or twice', () {
-      final content = loadScenario(
-        withSupermarkets().replaceFirst('"minArea": 120', '"minArea": 200'),
-      );
-      final simulation = Simulation.newGame(content, seed: 1)
-        ..submit(ConvertStore(player, store: playerStore, format: supermarket))
-        ..submit(ConvertStore(player, store: playerStore, format: convenience));
-      expect(simulation.step().rejections.map((r) => r.reason.key), [
-        'siteTooSmall',
-        'alreadyFormat',
-      ]);
-      expect(
-        Simulation.newGame(
-          loadScenario(withSupermarkets()),
-          seed: 1,
-        ).step().rejections,
-        isEmpty,
-      );
-    });
-
-    test('a supermarket competes for the same grocery trips', () {
-      final content = loadScenario(withSupermarkets());
-      final simulation = Simulation.newGame(content, seed: 1)
-        ..submit(ConvertStore(player, store: playerStore, format: supermarket));
-      advance(simulation, 8);
+      expect(simulation.step().rejections.single.reason.key, 'floorNotOffered');
       simulation.submit(
-        PlaceOrder(
+        OpenStore(
           player,
-          store: playerStore,
-          supplier: fresh,
-          lines: [(product: milkBudget, quantity: 48)],
+          site: lane.id,
+          name: 'Lane Shop',
+          company: playerCompany,
+          format: convenience,
+          capital: Money.parse('1000.00'),
         ),
       );
-      var visits = 0;
-      for (final day in advance(simulation, 10)) {
-        visits += day.attribution.visits[playerStore.index];
-      }
-      expect(simulation.world.stores[playerStore.index].format, supermarket);
-      expect(visits, greaterThan(0));
+      expect(simulation.step().rejections, isEmpty);
+      final store = simulation.world.stores.last;
+      expect((store.area, store.shelfSlots), (80, 2));
     });
   });
 }

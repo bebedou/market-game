@@ -230,10 +230,9 @@ Money nationalFitOut(
     .times(country.costLevels[trade][region]);
 
 /// Whether [store], of a company its director runs, goes to formula: open,
-/// with no works under way, of a kind the countries by formula have, in a
-/// country the table plays.
+/// of a kind the countries by formula have, in a country the table plays.
 bool absorbable(WorldState world, ContentDb content, Store store) {
-  if (store.status != StoreStatus.open || store.works != null) return false;
+  if (store.status != StoreStatus.open) return false;
   final company = world.companies[store.company.index];
   if (company.director == null || !company.isActive) return false;
   final format = content.formats[store.format.index];

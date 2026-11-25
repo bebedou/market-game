@@ -349,15 +349,14 @@ String generateScenario(
     );
     final site = content.sites[chosen.index];
     json['site'] = site.key;
-    final fitOut =
-        content.formats[content.stores[setup.store].format.index].fitOut;
+    final format = content.formats[content.stores[setup.store].format.index];
     final company = list('companies').firstWhere(
       (company) => company['id'] == content.companies[setup.company].key,
     );
     company['cash'] =
         (Money.parse(company['cash']! as String) +
-                playerSite.openingCost.times(fitOut) -
-                site.openingCost.times(fitOut))
+                playerSite.openingCost.times(format.fitOutAt(playerSite.area)) -
+                site.openingCost.times(format.fitOutAt(site.area)))
             .toDecimalString();
   }
   for (final market in content.markets) {
@@ -527,15 +526,17 @@ List<PlannedSite> plannedSites(
   seed,
 )..add(row, content.neighbourhoods[row])).plannedSites;
 
-/// A name for a shop of [format] opening later on in [country].
+/// A name for a shop of [format] and [area] square metres opening later on
+/// in [country].
 String newShopName(
   ContentDb content,
   CountryId country,
   FormatDef format,
+  int area,
   Rng rng,
 ) {
   final names = _namesIn(content, country);
-  final kinds = names.shopWords(format.key);
+  final kinds = names.shopWords(format.keyAt(area));
   return PlaceNames.fill(
     kinds[rng.nextInt(kinds.length)],
     names.streets[rng.nextInt(names.streets.length)],
@@ -771,7 +772,6 @@ final class _World {
           cash: Money.zero,
           ownerCash: Money.zero,
           openedMonth: _veteran,
-          enlargedMonth: 0,
           company: CompanyId(company),
         ),
       );
@@ -780,9 +780,7 @@ final class _World {
 
   /// The key of the strategy a shop of [format] follows by default.
   static String _usualKey(FormatDef format) =>
-      format.key == 'grocery' || format.key == 'supermarket'
-      ? 'balanced'
-      : format.key;
+      format.key == 'grocery' ? 'balanced' : format.key;
 
   /// A place generated from its figures.
   void _addGenerated(int index, NeighbourhoodRow row, List<int> people) {
@@ -878,8 +876,9 @@ final class _World {
         'site': made[playerAt].key,
       });
     }
-    final supermarket = _format('supermarket');
-    final bigEnough = made.first.area >= supermarket.minArea;
+    final grocery = _format('grocery');
+    // A first site big enough holds a supermarket, which a discounter runs.
+    final bigEnough = grocery.isLargeAt(made.first.area);
     final strategies = List.of(_grocerStrategies);
     _shuffle(strategies, rng);
     if (bigEnough) {
@@ -901,7 +900,7 @@ final class _World {
       _addShop(
         row,
         site,
-        bigEnough && n == 0 ? supermarket : _format('grocery'),
+        grocery,
         _strategy(playerAt >= 0 && wanted == 'discount' ? 'balanced' : wanted),
       );
     }
@@ -1108,13 +1107,13 @@ final class _World {
     StrategyDef strategy,
   ) {
     final opening = _opening(row, site.area, site.location, _siteRule(format));
-    final grocer = format.key == 'grocery' || format.key == 'supermarket';
+    final grocer = format.key == 'grocery';
     final cash =
         (grocer
                 ? opening.times(_grocerCash)
-                : opening.times(format.fitOut).times(_shopCash))
+                : opening.times(format.fitOutAt(site.area)).times(_shopCash))
             .times(_prices);
-    final kinds = _words.shopWords(format.key);
+    final kinds = _words.shopWords(format.keyAt(site.area));
     final name = PlaceNames.fill(
       kinds[_names.nextInt(kinds.length)],
       _street(),
@@ -1133,7 +1132,6 @@ final class _World {
         ownerCash: Money(_rounded(cash.times(_ownerCash).cents, 100000)),
         // They have traded here for years.
         openedMonth: _veteran,
-        enlargedMonth: 0,
       ),
     );
   }
@@ -1215,7 +1213,7 @@ final class _World {
   }
 
   Fx _siteRule(FormatDef format) => switch (format.key) {
-    'grocery' || 'supermarket' => Fx.one,
+    'grocery' => Fx.one,
     'electronics' => _techSite.opening,
     'clothing' => _clothesSite.opening,
     _ => _foodSite.opening,

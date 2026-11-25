@@ -1,8 +1,6 @@
-import '../accounting/ledger.dart';
 import '../commands/command.dart';
 import '../content/content_db.dart';
 import '../core/fx.dart';
-import '../core/money.dart';
 import '../core/rng.dart';
 import '../core/safe_int.dart';
 import '../observation/observation.dart';
@@ -24,10 +22,7 @@ import 'retail_policy.dart';
 /// Orders share each company's uncommitted cash, store by store, in full
 /// only beyond the company's [cashCushion]; within it, managers buy only
 /// enough of their best sellers to keep selling, as long as there is
-/// [cashForEssentials]. A manager trusted with investing enlarges or
-/// converts the store as an owner would, once the company has made a
-/// profit overall, from cash beyond the strategy's reserve and the year's
-/// tax.
+/// [cashForEssentials].
 ///
 /// A company's director then acts with what its managers left (see
 /// [direct]), their memos added to [directives], their site estimates
@@ -46,8 +41,6 @@ List<Command> manage(
     var budget = company.cash - company.committed;
     final cushion = cashCushion(view, content, company);
     var essentials = cashForEssentials(view, company);
-    final profit =
-        company.retainedEarnings + company.balance(AccountKind.dividends);
     final closing = closingStores(view, company);
     for (final store in company.stores) {
       final manager = store.manager;
@@ -87,28 +80,6 @@ List<Command> manage(
         commands.addAll(orders);
         budget -= spent;
         essentials -= spent;
-      }
-      final reserve = operatingReserve(
-        view,
-        company,
-        content.strategies[manager.strategy.index].reserveDays,
-      );
-      if (does(ManagerDuty.investing) &&
-          reserve != null &&
-          profit > Money.zero) {
-        if (plan.conversion() case (
-          :final format,
-          :final cost,
-        ) when cost <= budget - reserve - company.taxAccrued) {
-          commands.add(
-            ConvertStore(view.actor, store: store.id, format: format),
-          );
-          budget -= cost;
-        } else if (plan.enlargementCost() case final cost?
-            when cost <= budget - reserve - company.taxAccrued) {
-          commands.add(ExpandStore(view.actor, store: store.id));
-          budget -= cost;
-        }
       }
     }
     if (company.director != null) {

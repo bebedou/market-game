@@ -89,19 +89,19 @@ String _roughly(Money amount) =>
 void _openNeighbourhood(
   BuildContext context,
   MarketDef market,
-  FormatDef format,
+  ShopKind kind,
 ) => context.openPage(
   market.name,
-  (context) => [_Neighbourhood(marketKey: market.key, format: format)],
+  (context) => [_Neighbourhood(marketKey: market.key, kind: kind)],
 );
 
 /// A neighbourhood's page: from its plan while it sleeps, from the game once
 /// it wakes, which the player opening there does.
 class _Neighbourhood extends StatelessWidget {
-  const _Neighbourhood({required this.marketKey, required this.format});
+  const _Neighbourhood({required this.marketKey, required this.kind});
 
   final String marketKey;
-  final FormatDef format;
+  final ShopKind kind;
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +115,7 @@ class _Neighbourhood extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Prospect(market: market, format: format, plan: plan),
+        _Prospect(market: market, kind: kind, plan: plan),
         Section(
           title: tr('market.whoIsHere'),
           children: [
@@ -293,7 +293,11 @@ class _YourPatch extends StatelessWidget {
                   ? Ledger.of(context).loss
                   : null,
               mark: Ledger.of(context).trade(format),
-              onTap: () => _openNeighbourhood(context, market, format),
+              onTap: () => _openNeighbourhood(
+                context,
+                market,
+                kindOf(format, store.area),
+              ),
             );
           }(),
       ],
@@ -314,7 +318,7 @@ class _WhereToOpenState extends State<_WhereToOpen> {
   /// The most places shown before the player asks for them all.
   static const _shown = 8;
 
-  FormatId? _format;
+  ShopKind? _kind;
   bool _all = false;
 
   @override
@@ -324,16 +328,24 @@ class _WhereToOpenState extends State<_WhereToOpen> {
     final content = game.content;
     final plan = game.plan;
     final vacant = freeSites(game);
-    final formats = [
-      for (final format in content.formats)
-        if (vacant.any((site) => site.openingArea(format) != null)) format,
+    final kinds = [
+      for (final kind in shopKinds(content))
+        if (vacant.any((site) => kindArea(kind, site) != null)) kind,
     ];
-    if (formats.isEmpty) return const SizedBox.shrink();
-    // The player's own trade to begin with, while there's room for it.
-    final wanted = _format ?? game.myStores.firstOrNull?.$2.format;
-    final chosen = formats.firstWhere(
-      (format) => format.id == wanted,
-      orElse: () => formats.first,
+    if (kinds.isEmpty) return const SizedBox.shrink();
+    // The player's own kind of shop to begin with, while there's room for it.
+    final wanted =
+        _kind ??
+        switch (game.myStores.firstOrNull?.$2) {
+          final store? => kindOf(
+            content.formats[store.format.index],
+            store.area,
+          ),
+          null => null,
+        };
+    final chosen = kinds.firstWhere(
+      (kind) => kind == wanted,
+      orElse: () => kinds.first,
     );
     final prospects = [
       ..._prospects(view, content, chosen),
@@ -348,11 +360,11 @@ class _WhereToOpenState extends State<_WhereToOpen> {
           spacing: 6,
           runSpacing: 6,
           children: [
-            for (final format in formats)
+            for (final kind in kinds)
               ChoiceChip(
-                label: Text(format.name),
-                selected: format.id == chosen.id,
-                onSelected: (_) => setState(() => _format = format.id),
+                label: Text(kindName(kind)),
+                selected: kind == chosen,
+                onSelected: (_) => setState(() => _kind = kind),
               ),
           ],
         ),
@@ -388,22 +400,21 @@ class _WhereToOpenState extends State<_WhereToOpen> {
   }
 }
 
-/// For each market with a free site big enough for [format], that site which
+/// For each market with a free site that can host [kind], that site which
 /// would do best and what a new shop might do on it.
 Iterable<(MarketDef, SiteDef, ShopOutlook)> _prospects(
   Observation view,
   ContentDb content,
-  FormatDef format,
+  ShopKind kind,
 ) sync* {
   for (final market in content.markets) {
     SiteDef? best;
     ShopOutlook? outlook;
     for (final id in view.vacantSites) {
       final site = content.sites[id.index];
-      if (site.market != market.id || site.openingArea(format) == null) {
-        continue;
-      }
-      final here = shopOutlook(view, content, site, format);
+      final area = kindArea(kind, site);
+      if (site.market != market.id || area == null) continue;
+      final here = shopOutlook(view, content, site, kind.format, area: area);
       if (outlook == null || here.profit > outlook.profit) {
         best = site;
         outlook = here;
@@ -421,23 +432,22 @@ Iterable<SiteDef> _plannedVacant(ContentDb plan, ContentDb content) sync* {
   }
 }
 
-/// For each neighbourhood asleep with a free site big enough for [format], that
+/// For each neighbourhood asleep with a free site that can host [kind], that
 /// site which would do best and what a new shop might do on it.
 Iterable<(MarketDef, SiteDef, ShopOutlook)> _plannedProspects(
   Observation view,
   ContentDb plan,
   ContentDb content,
-  FormatDef format,
+  ShopKind kind,
 ) sync* {
   final vacant = _plannedVacant(plan, content).toList();
   for (final market in plan.markets.skip(content.markets.length)) {
     SiteDef? best;
     ShopOutlook? outlook;
     for (final site in vacant) {
-      if (site.market != market.id || site.openingArea(format) == null) {
-        continue;
-      }
-      final here = shopOutlook(view, plan, site, format);
+      final area = kindArea(kind, site);
+      if (site.market != market.id || area == null) continue;
+      final here = shopOutlook(view, plan, site, kind.format, area: area);
       if (outlook == null || here.profit > outlook.profit) {
         best = site;
         outlook = here;
@@ -447,13 +457,13 @@ Iterable<(MarketDef, SiteDef, ShopOutlook)> _plannedProspects(
   }
 }
 
-/// What a new shop of [format] might do in [market], by estimate; [plan] holds
+/// What a new shop of [kind] might do in [market], by estimate; [plan] holds
 /// the neighbourhood if it's still asleep.
 class _Prospect extends StatelessWidget {
-  const _Prospect({required this.market, required this.format, this.plan});
+  const _Prospect({required this.market, required this.kind, this.plan});
 
   final MarketDef market;
-  final FormatDef format;
+  final ShopKind kind;
   final ContentDb? plan;
 
   @override
@@ -463,12 +473,13 @@ class _Prospect extends StatelessWidget {
     final content = game.content;
     final prospect =
         (plan == null
-                ? _prospects(view, content, format)
-                : _plannedProspects(view, plan!, content, format))
+                ? _prospects(view, content, kind)
+                : _plannedProspects(view, plan!, content, kind))
             .where((prospect) => prospect.$1.id == market.id)
             .firstOrNull;
+    final format = kind.format;
     return Section(
-      title: tr('market.prospectTitle', {'format': format.name}),
+      title: tr('market.prospectTitle', {'format': kindName(kind)}),
       mark: Ledger.of(context).trade(format),
       children: [
         Line(
@@ -898,10 +909,11 @@ class _CountryPlaces extends StatelessWidget {
         if (row.country == country.id && game.sleeper(i) != null)
           (key: row.key, name: row.name, awake: false),
     ];
-    final format =
-        content.formats[(game.myStores.firstOrNull?.$2.format ??
-                content.formats.first.id)
-            .index];
+    // The player's own kind of shop, or the first.
+    final kind = switch (game.myStores.firstOrNull?.$2) {
+      final store? => kindOf(content.formats[store.format.index], store.area),
+      null => shopKinds(content).first,
+    };
     final cities = <String, List<({String key, String name, bool awake})>>{};
     for (final place in places) {
       (cities[_cityPart(place.name)] ??= []).add(place);
@@ -925,9 +937,7 @@ class _CountryPlaces extends StatelessWidget {
               ].join(' · '),
               onTap: () => context.openPage(
                 place.name,
-                (context) => [
-                  _Neighbourhood(marketKey: place.key, format: format),
-                ],
+                (context) => [_Neighbourhood(marketKey: place.key, kind: kind)],
               ),
             ),
         ],
@@ -2293,12 +2303,12 @@ List<SiteDef> freeSites(SimulationController game) {
 class NewBusiness extends StatefulWidget {
   const NewBusiness({
     super.key,
-    required this.format,
+    required this.kind,
     this.subsidiary = false,
     this.company,
   });
 
-  final FormatId format;
+  final ShopKind kind;
 
   /// Whether this is a company of its own for the holding, the first store
   /// offered as such.
@@ -2357,10 +2367,11 @@ class _NewBusinessState extends State<NewBusiness> {
     // The cities asleep follow those played in full, in the plan.
     final plan = game.plan;
     final source = plan ?? content;
-    final format = content.formats[widget.format.index];
+    final kind = widget.kind;
+    final format = kind.format;
     final vacant = [
       for (final site in freeSites(game))
-        if (site.openingArea(format) != null) site,
+        if (kindArea(kind, site) != null) site,
     ];
     final places = [
       for (final market in source.markets)
@@ -2404,7 +2415,7 @@ class _NewBusinessState extends State<NewBusiness> {
     );
     return Section(
       // A page shows no title of its own: its section names the kind.
-      title: format.name,
+      title: kindName(kind),
       mark: Ledger.of(context).trade(format),
       children: [
         Hint(
@@ -2463,7 +2474,7 @@ class _NewBusinessState extends State<NewBusiness> {
           if (site.market == market)
             _VacantSite(
               site: site,
-              format: widget.format,
+              kind: kind,
               subsidiary: widget.subsidiary,
               company: widget.company,
               wakeRow: row,
@@ -2476,7 +2487,7 @@ class _NewBusinessState extends State<NewBusiness> {
 class _VacantSite extends StatelessWidget {
   const _VacantSite({
     required this.site,
-    this.format,
+    this.kind,
     this.subsidiary = false,
     this.company,
     this.wakeRow,
@@ -2485,7 +2496,7 @@ class _VacantSite extends StatelessWidget {
   final SiteDef site;
 
   /// The kind of shop to open there, if already chosen.
-  final FormatId? format;
+  final ShopKind? kind;
 
   /// Whether to offer opening it as a company of its own.
   final bool subsidiary;
@@ -2500,13 +2511,19 @@ class _VacantSite extends StatelessWidget {
   Widget build(BuildContext context) {
     final game = context.game;
     final level = game.economyAt(site.market).priceIndex;
-    // Fitting it out for the kind of shop, once chosen, and enlarging the
-    // site to it where it needs more floor.
-    final kind = format == null ? null : game.content.formats[format!.index];
-    final opening = kind == null ? null : site.openingArea(kind);
+    // Fitting it out for the kind of shop, once chosen, and building the
+    // site out to it where it needs more floor.
+    final kind = this.kind;
+    final opening = kind == null ? null : kindArea(kind, site);
     final cost = kind == null
         ? site.openingCost.times(level)
-        : shopOpeningCost(game.content, site, kind, level);
+        : shopOpeningCost(
+            game.content,
+            site,
+            kind.format,
+            level,
+            area: opening,
+          );
     return ListTile(
       contentPadding: EdgeInsets.zero,
       dense: true,
@@ -2537,7 +2554,7 @@ class _VacantSite extends StatelessWidget {
             controller: game,
             child: _OpenStoreDialog(
               site: site,
-              format: format,
+              kind: kind,
               subsidiary: subsidiary,
               company: company,
               wakeRow: wakeRow,
@@ -2553,7 +2570,7 @@ class _VacantSite extends StatelessWidget {
 class _OpenStoreDialog extends StatefulWidget {
   const _OpenStoreDialog({
     required this.site,
-    this.format,
+    this.kind,
     this.subsidiary = false,
     this.company,
     this.wakeRow,
@@ -2562,7 +2579,7 @@ class _OpenStoreDialog extends StatefulWidget {
   final SiteDef site;
 
   /// The kind of shop, if already chosen; else the player picks it here.
-  final FormatId? format;
+  final ShopKind? kind;
 
   /// The neighbourhood asleep that opening here wakes, if any.
   final int? wakeRow;
@@ -2587,7 +2604,11 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
   late CompanyId? _company =
       widget.company ??
       (widget.subsidiary ? null : currentCompany(context.game));
-  late FormatId _format = widget.format ?? const FormatId(0);
+  late ShopKind _kind =
+      widget.kind ??
+      shopKinds(
+        context.game.content,
+      ).firstWhere((kind) => kindArea(kind, widget.site) != null);
 
   /// The brand picked, once the player has picked; before that, their first
   /// for the type of business.
@@ -2615,18 +2636,18 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
     final parent = game.view.companies
         .where((each) => each.id == company?.parent)
         .firstOrNull;
-    // The formats this site has room for, enlarged to open where need be.
-    final formats = [
-      for (final format in game.content.formats)
-        if (widget.site.openingArea(format) != null) format,
+    // The kinds this site can host, built out to open where need be.
+    final kinds = [
+      for (final kind in shopKinds(game.content))
+        if (kindArea(kind, widget.site) != null) kind,
     ];
-    final kind = game.content.formats[_format.index];
-    final opening = widget.site.openingArea(kind) ?? widget.site.area;
+    final opening = kindArea(_kind, widget.site) ?? widget.site.area;
     final cost = shopOpeningCost(
       game.content,
       widget.site,
-      kind,
+      _kind.format,
       game.economyAt(widget.site.market).priceIndex,
+      area: opening,
     );
     final capital = _capital.text.isEmpty
         ? Money.zero
@@ -2648,7 +2669,7 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
     final market = source.markets[widget.site.market.index];
     final brands = [
       for (final brand in game.myBrands)
-        if (brand.format == _format) brand,
+        if (brand.format == _kind.format.id) brand,
     ];
     final brand = _brandPicked
         ? brands.where((brand) => brand.id == _brand).firstOrNull
@@ -2673,18 +2694,21 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
                   'area': widget.site.area,
                 }),
               ),
-            if (widget.format == null && formats.length > 1) ...[
+            if (widget.kind == null && kinds.length > 1) ...[
               const SizedBox(height: 12),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  for (final format in formats)
+                  for (final kind in kinds)
                     ChoiceChip(
-                      avatar: Icon(formatIcon(format), size: 18),
-                      label: Text(format.name),
-                      selected: format.id == _format,
-                      onSelected: (_) => setState(() => _format = format.id),
+                      avatar: Icon(
+                        kindIcon(kind.format, large: kind.large),
+                        size: 18,
+                      ),
+                      label: Text(kindName(kind)),
+                      selected: kind == _kind,
+                      onSelected: (_) => setState(() => _kind = kind),
                     ),
                 ],
               ),
@@ -2757,10 +2781,11 @@ class _OpenStoreDialogState extends State<_OpenStoreDialog> {
                       name: brand?.name ?? _name.text.trim(),
                       company: company?.id,
                       capital: capital,
-                      format: _format,
+                      format: _kind.format.id,
                       borrow: borrow ? amount : Money.zero,
                       termMonths: borrow ? _months : 0,
                       brand: brand?.id,
+                      area: opening,
                     ),
                   );
                   Navigator.pop(context);

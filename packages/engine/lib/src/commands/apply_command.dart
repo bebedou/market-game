@@ -73,14 +73,12 @@ Refusal? applyCommand(
     BuyResearch() => _buyResearch(world, content, ledger, command),
     HireManager() => _hireManager(world, content, command),
     FireManager() => _fireManager(world, command),
-    ExpandStore() => _expandStore(world, content, ledger, command),
     RenameStore() => _renameStore(world, command),
     RenameCompany() => _renameCompany(world, command),
     SetCushion() => _setCushion(world, command),
     HireDirector() => _hireDirector(world, content, command),
     FireDirector() => _fireDirector(world, command),
     SetMarketing() => _setMarketing(world, command),
-    ConvertStore() => _convertStore(world, content, ledger, command),
     BuyStore() => _buyStore(world, content, ledger, command),
     SellStore() => _sellStore(world, content, ledger, command),
     BuyCompany() => _buyCompany(world, content, ledger, command),
@@ -208,9 +206,6 @@ Refusal? _openInDistrict(
   }
   final format = content.formats[command.format.index];
   final site = sites[command.site];
-  if (format.minArea > site.area) {
-    return Refusal('siteTooSmall', format: format.id);
-  }
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
   final (company, error) = _ownedCompany(world, command.actor, command.company);
@@ -230,7 +225,7 @@ Refusal? _openInDistrict(
   final (holder, short) = _capitalFrom(world, person, company, command.capital);
   if (short != null) return short;
   final cost = site.openingCost
-      .times(format.fitOut)
+      .times(format.fitOutAt(site.area))
       .times(
         world.macroOf(content.neighbourhoods[sleeper.row].country).priceIndex,
       );
@@ -263,7 +258,6 @@ Refusal? _openInDistrict(
       cash: Money.zero,
       ownerCash: Money.zero,
       openedMonth: month,
-      enlargedMonth: month,
       company: company.id,
       brand: brand.id,
     ),
@@ -1000,10 +994,11 @@ Refusal? _openStore(
     format.id,
   );
   if (brandError != null) return brandError;
-  // A site with room opens a bigger kind of shop at once, enlarged as it is
-  // fitted out.
-  final area = site.openingArea(format);
-  if (area == null) return Refusal('siteTooSmall', format: format.id);
+  // A site with room may open a bigger shop, built out as it is fitted.
+  final area = command.area ?? site.area;
+  if (!site.openingAreas(format).contains(area)) {
+    return Refusal('floorNotOffered', count: area);
+  }
   if (command.capital.isNegative) return const Refusal('capitalNegative');
   final person = world.persons[command.actor.index];
   Company? company;
@@ -1037,6 +1032,7 @@ Refusal? _openStore(
     site,
     format,
     world.macroAt(content, site.market).priceIndex,
+    area: area,
   );
   if (cash < openingCost) {
     return Refusal('cannotPayOpening', amount: openingCost);
@@ -1185,44 +1181,6 @@ Refusal? _fireManager(WorldState world, FireManager command) {
   if (store == null) return error;
   if (store.manager == null) return const Refusal('noManager');
   store.manager = null;
-  return null;
-}
-
-Refusal? _expandStore(
-  WorldState world,
-  ContentDb content,
-  Ledger ledger,
-  ExpandStore command,
-) {
-  final (store, error) = _ownedStore(world, command.actor, command.store);
-  if (store == null) return error;
-  if (store.works != null) return const Refusal('alreadyEnlarging');
-  final expansion = content.expansion;
-  final area = store.area + expansion.stepArea;
-  if (area > content.sites[store.site.index].maxArea) {
-    return const Refusal('noRoomToGrow');
-  }
-  final company = world.companies[store.company.index];
-  final cost = expansion.cost(world.macroAt(content, store.market).priceIndex);
-  if (company.accounts[AccountKind.cash] < cost) {
-    return Refusal('cannotPayWorks', amount: cost);
-  }
-  if (cost > Money.zero) {
-    ledger.pay(
-      payer: company,
-      payerAccount: AccountKind.openingCosts,
-      payee: world.landlords,
-      payeeAccount: AccountKind.revenue,
-      amount: cost,
-      reason: EntryReason.expansion,
-      store: store.id,
-    );
-  }
-  store.works = (
-    area: area,
-    done: world.today + expansion.buildDays,
-    format: null,
-  );
   return null;
 }
 
@@ -1441,84 +1399,6 @@ Refusal? _setMarketing(WorldState world, SetMarketing command) {
     return const Refusal('marketingCap');
   }
   store.marketingShare = command.share;
-  return null;
-}
-
-/// What turning a store of [from] with [area] on [site] into [to] costs at
-/// [priceIndex]: the difference in fitting out, never less than nothing,
-/// and the works to bring it to the format's least area.
-Money conversionCost(
-  ContentDb content,
-  SiteDef site,
-  FormatId from,
-  int area,
-  FormatDef to,
-  Fx priceIndex,
-) {
-  final extraFit = to.fitOut - content.formats[from.index].fitOut;
-  final fitting = extraFit.isNegative
-      ? Money.zero
-      : site.openingCost.times(extraFit);
-  final extraArea = to.minArea > area ? to.minArea - area : 0;
-  return (fitting + content.expansion.costPerSqm.timesInt(extraArea)).times(
-    priceIndex,
-  );
-}
-
-Refusal? _convertStore(
-  WorldState world,
-  ContentDb content,
-  Ledger ledger,
-  ConvertStore command,
-) {
-  final (store, error) = _ownedStore(world, command.actor, command.store);
-  if (store == null) return error;
-  if (store.status != StoreStatus.open) {
-    return const Refusal('onlyOpenConverts');
-  }
-  if (store.works != null) return const Refusal('worksUnderWay');
-  if (!_inRange(command.format.index, content.formats.length)) {
-    return const Refusal('unknownFormat');
-  }
-  final from = content.formats[store.format.index];
-  final to = content.formats[command.format.index];
-  if (to.id == from.id) return Refusal('alreadyFormat', format: to.id);
-  if (content.formatChannels[to.id.index] !=
-      content.formatChannels[from.id.index]) {
-    return Refusal('cannotBecome', format: from.id, toFormat: to.id);
-  }
-  final site = content.sites[store.site.index];
-  if (to.minArea > site.maxArea) {
-    return Refusal('siteTooSmall', format: to.id);
-  }
-  final cost = conversionCost(
-    content,
-    site,
-    store.format,
-    store.area,
-    to,
-    world.macroAt(content, store.market).priceIndex,
-  );
-  final company = world.companies[store.company.index];
-  if (company.accounts[AccountKind.cash] < cost) {
-    return Refusal('cannotPayWorks', amount: cost);
-  }
-  if (cost > Money.zero) {
-    ledger.pay(
-      payer: company,
-      payerAccount: AccountKind.openingCosts,
-      payee: world.landlords,
-      payeeAccount: AccountKind.revenue,
-      amount: cost,
-      reason: EntryReason.expansion,
-      store: store.id,
-    );
-  }
-  store.works = (
-    area: to.minArea > store.area ? to.minArea : store.area,
-    done: world.today + site.buildDays,
-    format: to.id,
-  );
   return null;
 }
 

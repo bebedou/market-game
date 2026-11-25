@@ -1146,6 +1146,8 @@ void main() {
     await tester.tap(find.text('You have no company trading.'));
     await tester.pumpAndSettle();
     await openIndex(tester, 'Groceries');
+    // One grocer, at the site's floor or as a supermarket built out to 220 m².
+    expect(find.widgetWithText(IndexRow, 'Convenience store'), findsOneWidget);
     await openIndex(tester, 'Supermarket');
     final enlarged = find.textContaining('enlarged to 220 m²').first;
     await scrollTo(tester, enlarged);
@@ -1164,11 +1166,13 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Open').last);
     await tester.pumpAndSettle();
     final opening = game.pending.whereType<OpenStore>().single;
-    expect(game.content.formats[opening.format.index].key, 'supermarket');
+    expect(game.content.formats[opening.format.index].key, 'grocery');
+    expect(opening.area, 220);
     game.step();
     final store = game.view.companies.single.stores.single;
-    expect(game.content.formats[store.format.index].key, 'supermarket');
-    expect(store.area, 220);
+    final format = game.content.formats[store.format.index];
+    expect((format.key, store.area), ('grocery', 220));
+    expect(format.isLargeAt(store.area), isTrue);
   });
 
   testWidgets('a game that cannot be loaded is set aside and frees its slot', (
@@ -1370,7 +1374,7 @@ void main() {
     final hire = game.pending.single as HireManager;
     expect(hire.grade, grade('experienced'));
     expect(hire.strategy, strategy('discount'));
-    expect(hire.duties, [true, true, false, false, false]);
+    expect(hire.duties, [true, true, false, false]);
 
     game.step();
     await tester.pump();
@@ -1571,18 +1575,31 @@ void main() {
         '"owner": "player", "cash": "90000.00"',
       ),
     );
-    final game = SimulationController.newGame(rich, seed: 7)
-      ..submit(
-        ConvertStore(
-          rich.player,
-          store: playerStore,
-          format: rich.formats.firstWhere((f) => f.key == 'supermarket').id,
-        ),
-      );
+    final game = SimulationController.newGame(rich, seed: 7);
+    final grocery = rich.formats.firstWhere((f) => f.key == 'grocery');
+    // A free site in the player's neighbourhood with room for 220 m².
+    final site = rich.sites.firstWhere(
+      (s) =>
+          s.market == game.store!.market &&
+          game.view.vacantSites.contains(s.id) &&
+          s.openingAreas(grocery).contains(220),
+    );
+    game.submit(
+      OpenStore(
+        rich.player,
+        site: site.id,
+        name: 'Big Market',
+        company: playerCompany,
+        format: grocery.id,
+        area: 220,
+      ),
+    );
     for (var i = 0; i < 40; i++) {
       game.step();
     }
-    expect(rich.formats[game.store!.format.index].key, 'supermarket');
+    game.selectStore(game.myStores.last.$2.id);
+    final format = rich.formats[game.store!.format.index];
+    expect(format.isLargeAt(game.store!.area), isTrue);
     await pumpGame(tester, game);
     await openRunning(tester, game);
     await openIndex(tester, 'Manager');
@@ -1693,48 +1710,6 @@ void main() {
     await openStore(tester, game);
     await tester.scrollUntilVisible(find.text('Burger menu'), 300);
     expect(find.text('Value Milk 1 L'), findsNothing);
-  });
-
-  testWidgets('the store offers to become a supermarket once affordable', (
-    tester,
-  ) async {
-    final game = newController();
-    await pumpGame(tester, game);
-    await openRunning(tester, game);
-    await openIndex(tester, 'Become a supermarket');
-    // A supermarket costs 1.8 times the 30,000 fit-out, so 24,000 more, and
-    // 100 m² of works at 150.00 to reach its 220 m².
-    expect(find.text('39,000'), findsOneWidget);
-    expect(
-      find.text('You need 24,000 more free cash in the company'),
-      findsOneWidget,
-    );
-    final convert = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Convert to a supermarket'),
-    );
-    expect(convert.onPressed, isNull);
-  });
-
-  testWidgets('the store is enlarged from its header', (tester) async {
-    final game = newController();
-    await pumpGame(tester, game);
-    await openRunning(tester, game);
-    expect(find.text('120 m²'), findsOneWidget);
-    await tester.tap(find.widgetWithText(TextButton, 'Enlarge'));
-    await tester.pumpAndSettle();
-    expect(find.text('Enlarge to 160 m²?'), findsOneWidget);
-    expect(find.text('6,000'), findsOneWidget); // 40 m² at 150.00
-    // Rent of 880 and overheads of 6.00 a m² for 160 m²; 1,380 for 120 m².
-    expect(find.text('1,840 a month'), findsOneWidget);
-    expect(find.text('Now 1,380'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Enlarge'));
-    await tester.pumpAndSettle();
-    expect(game.pending.single, isA<ExpandStore>());
-    expect(find.text('Works start tomorrow'), findsOneWidget);
-
-    game.step();
-    await tester.pump();
-    expect(find.text('Growing to 160 m², ready 15 Jan'), findsOneWidget);
   });
 
   testWidgets('the store and its company are renamed from the store', (
@@ -1963,31 +1938,6 @@ void main() {
     final game = managedGame(days: 400);
     final first = Money.parse('30000.00');
     var company = game.view.companies.single;
-    expect(
-      financialsOf(game, [company]).fitOut,
-      first + company.balance(AccountKind.openingCosts),
-    );
-    game
-      ..submit(
-        InjectCapital(
-          prototype.player,
-          company: company.id,
-          amount: game.view.cash,
-        ),
-      )
-      ..submit(
-        ConvertStore(
-          prototype.player,
-          store: playerStore,
-          format: format('supermarket'),
-        ),
-      );
-    // The store changes once the works are done.
-    for (var i = 0; i < 40; i++) {
-      game.step();
-    }
-    company = game.view.companies.single;
-    expect(company.stores.single.format, format('supermarket'));
     expect(
       financialsOf(game, [company]).fitOut,
       first + company.balance(AccountKind.openingCosts),

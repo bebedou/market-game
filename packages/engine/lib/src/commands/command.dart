@@ -14,7 +14,16 @@ import '../state/director.dart'
         writeGoals;
 import '../state/factory_sales.dart' show factorySalesVersion;
 import '../state/software.dart' show softwareBesideVersion;
-import '../state/store.dart' show allDuties;
+import '../state/store.dart' show allDuties, shopSizesVersion;
+
+/// The tags of the commands to enlarge a store and to convert it to another
+/// format, which went with `shopSizesVersion`: never to be used again.
+const _expandStoreTag = 15;
+const _convertStoreTag = 19;
+
+/// What a command the game no longer has reads as, once its [fields] are
+/// read past.
+Command? _retired(List<int> fields) => null;
 
 /// A command as it was applied: the day it took effect, and the command.
 typedef LoggedCommand = ({Day day, Command command});
@@ -38,11 +47,20 @@ BrandId? _readBrand(StateReader reader) => reader.version >= 25
 sealed class Command {
   const Command(this.actor);
 
-  /// Reads a command written by [write].
-  factory Command.read(StateReader reader) {
+  /// Reads a command written by [write]; throws for one the game no longer
+  /// has.
+  factory Command.read(StateReader reader) =>
+      readOrRetired(reader) ??
+      (throw const FormatException('A command the game no longer has'));
+
+  /// Reads a command written by [write], or, for one the game no longer has
+  /// (enlarging or converting a store), skips its fields and gives null.
+  static Command? readOrRetired(StateReader reader) {
     final tag = reader.readInt();
     final actor = PersonId(reader.readInt());
     return switch (tag) {
+      _expandStoreTag => _retired([reader.readInt()]),
+      _convertStoreTag => _retired([reader.readInt(), reader.readInt()]),
       WakeNeighbourhood.tag => WakeNeighbourhood(actor, row: reader.readInt()),
       SetPrice.tag => SetPrice(
         actor,
@@ -102,23 +120,26 @@ sealed class Command {
         },
         capital: Money(reader.readInt()),
         format: reader.version >= 10
-            ? FormatId(reader.readInt())
+            ? FormatId(reader.mapFormat(reader.readInt()))
             : const FormatId(0),
         borrow: reader.version >= 21 ? Money(reader.readInt()) : Money.zero,
         termMonths: reader.version >= 21 ? reader.readInt() : 0,
         brand: _readBrand(reader),
+        area: reader.version >= shopSizesVersion
+            ? reader.readNullableInt()
+            : null,
       ),
       CreateBrand.tag => CreateBrand(
         actor,
         name: reader.readString(),
-        format: FormatId(reader.readInt()),
+        format: FormatId(reader.mapFormat(reader.readInt())),
       ),
       OpenInDistrict.tag => OpenInDistrict(
         actor,
         row: reader.readInt(),
         site: reader.readInt(),
         company: CompanyId(reader.readInt()),
-        format: FormatId(reader.readInt()),
+        format: FormatId(reader.mapFormat(reader.readInt())),
         capital: Money(reader.readInt()),
       ),
       BuyInDistrict.tag => BuyInDistrict(
@@ -151,7 +172,6 @@ sealed class Command {
         ]),
       ),
       FireManager.tag => FireManager(actor, store: StoreId(reader.readInt())),
-      ExpandStore.tag => ExpandStore(actor, store: StoreId(reader.readInt())),
       RenameStore.tag => RenameStore(
         actor,
         store: StoreId(reader.readInt()),
@@ -166,11 +186,6 @@ sealed class Command {
         actor,
         company: CompanyId(reader.readInt()),
         days: reader.readInt(),
-      ),
-      ConvertStore.tag => ConvertStore(
-        actor,
-        store: StoreId(reader.readInt()),
-        format: FormatId(reader.readInt()),
       ),
       SetMarketing.tag => SetMarketing(
         actor,
@@ -265,7 +280,7 @@ sealed class Command {
         company: CompanyId(reader.readInt()),
         country: CountryId(reader.readInt()),
         chain: reader.readInt(),
-        format: FormatId(reader.readInt()),
+        format: FormatId(reader.mapFormat(reader.readInt())),
         strategy: StrategyId(reader.readInt()),
         borrow: Money(reader.readInt()),
         termMonths: reader.readInt(),
@@ -289,7 +304,7 @@ sealed class Command {
         company: CompanyId(reader.readInt()),
         country: CountryId(reader.readInt()),
         region: reader.readInt(),
-        format: FormatId(reader.readInt()),
+        format: FormatId(reader.mapFormat(reader.readInt())),
         strategy: StrategyId(reader.readInt()),
         count: reader.readInt(),
         borrow: Money(reader.readInt()),
@@ -418,7 +433,10 @@ sealed class Command {
         bidder: reader.readInt(),
         borrow: Money(reader.readInt()),
         termMonths: reader.readInt(),
-        format: reader.readInt(),
+        format: switch (reader.readInt()) {
+          < 0 => -1,
+          final format => reader.mapFormat(format),
+        },
         strategy: reader.readInt(),
       ),
       AnswerBid.tag => AnswerBid(
@@ -767,6 +785,7 @@ final class OpenStore extends Command {
     this.borrow = Money.zero,
     this.termMonths = 0,
     this.brand,
+    this.area,
   });
 
   static const int tag = 9;
@@ -787,6 +806,10 @@ final class OpenStore extends Command {
   /// owner's shops always trade under its brand.
   final BrandId? brand;
 
+  /// The floor it opens with, one the site offers its format (see
+  /// `SiteDef.openingAreas`); the site's own if null.
+  final int? area;
+
   @override
   void write(StateWriter writer) {
     writer
@@ -799,7 +822,8 @@ final class OpenStore extends Command {
       ..writeInt(format.index)
       ..writeInt(borrow.cents)
       ..writeInt(termMonths)
-      ..writeNullableInt(brand?.index);
+      ..writeNullableInt(brand?.index)
+      ..writeNullableInt(area);
   }
 
   @override
@@ -807,7 +831,7 @@ final class OpenStore extends Command {
       'OpenStore(actor: ${actor.index}, site: ${site.index}, name: $name, '
       'company: ${company?.index}, capital: ${capital.toDecimalString()}, '
       'format: ${format.index}, borrow: ${borrow.toDecimalString()}, '
-      'termMonths: $termMonths, brand: ${brand?.index})';
+      'termMonths: $termMonths, brand: ${brand?.index}, area: $area)';
 }
 
 /// Opens a shop of [company]'s in a district run by formula, under the
@@ -1057,29 +1081,6 @@ final class FireManager extends Command {
       'FireManager(actor: ${actor.index}, store: ${store.index})';
 }
 
-/// Enlarges a store by one step of floor area, paid now. The works take some
-/// days, during which the store keeps trading; then it has more shelf slots
-/// and storage, draws more shoppers, and pays more rent.
-final class ExpandStore extends Command {
-  const ExpandStore(super.actor, {required this.store});
-
-  static const int tag = 15;
-
-  final StoreId store;
-
-  @override
-  void write(StateWriter writer) {
-    writer
-      ..writeInt(tag)
-      ..writeInt(actor.index)
-      ..writeInt(store.index);
-  }
-
-  @override
-  String toString() =>
-      'ExpandStore(actor: ${actor.index}, store: ${store.index})';
-}
-
 /// Gives a store a new name, which everyone sees.
 final class RenameStore extends Command {
   const RenameStore(super.actor, {required this.store, required this.name});
@@ -1274,32 +1275,6 @@ final class SetMarketing extends Command {
   String toString() =>
       'SetMarketing(actor: ${actor.index}, store: ${store.index}, '
       'share: ${share.toDecimalString()})';
-}
-
-/// Turns a store into another format of its channel, a convenience store
-/// into a supermarket: paid at once, and the store keeps trading through the
-/// works, enlarged to the format's least area if need be.
-final class ConvertStore extends Command {
-  const ConvertStore(super.actor, {required this.store, required this.format});
-
-  static const int tag = 19;
-
-  final StoreId store;
-  final FormatId format;
-
-  @override
-  void write(StateWriter writer) {
-    writer
-      ..writeInt(tag)
-      ..writeInt(actor.index)
-      ..writeInt(store.index)
-      ..writeInt(format.index);
-  }
-
-  @override
-  String toString() =>
-      'ConvertStore(actor: ${actor.index}, store: ${store.index}, '
-      'format: ${format.index})';
 }
 
 /// Buys another owner's store at its asking price, paid by the actor's

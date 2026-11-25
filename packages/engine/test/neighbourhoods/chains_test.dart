@@ -68,13 +68,11 @@ void _advance(Simulation game, int days) {
 int _freeSite(Simulation game) {
   final sleeper = game.world.sleepers.single;
   final taken = {for (final shop in sleeper.shops) shop.site};
-  return sitesOf(game.world, _content, sleeper)
-      .firstWhere(
-        (site) =>
-            !taken.contains(site.number) &&
-            site.area >= _content.formats[_format('grocery').index].minArea,
-      )
-      .number;
+  return sitesOf(
+    game.world,
+    _content,
+    sleeper,
+  ).firstWhere((site) => !taken.contains(site.number)).number;
 }
 
 /// The game with QuickStop Market's shop opened in Part-Dieu.

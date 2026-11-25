@@ -1,5 +1,4 @@
 import '../accounting/ledger.dart';
-import '../commands/apply_command.dart' show conversionCost;
 import '../commands/command.dart';
 import '../content/content_db.dart';
 import '../core/fx.dart';
@@ -55,7 +54,6 @@ final class RetailPolicy implements Policy {
           ? Money.zero
           : _rescue(view, company, budget, reserve);
       // Whether a store worth enlarging waits for the cash to pay for it.
-      var saving = false;
       if (rescue > Money.zero) {
         commands.add(
           InjectCapital(view.actor, company: company.id, amount: rescue),
@@ -83,30 +81,9 @@ final class RetailPolicy implements Policy {
         commands.addAll(orders);
         budget -= spent;
         essentials -= spent;
-        final profit =
-            company.retainedEarnings + company.balance(AccountKind.dividends);
-        if (reserve != null && profit > Money.zero) {
-          if (plan.conversion() case (
-            :final format,
-            :final cost,
-          ) when cost <= budget - reserve - company.taxAccrued) {
-            commands.add(
-              ConvertStore(view.actor, store: store.id, format: format),
-            );
-            budget -= cost;
-          } else if (plan.enlargementCost() case final cost?) {
-            if (cost <= budget - reserve - company.taxAccrued) {
-              commands.add(ExpandStore(view.actor, store: store.id));
-              budget -= cost;
-            } else {
-              saving = true;
-            }
-          }
-        }
       }
-      // The stores' needs come first, works being saved for included; the
-      // owner takes what is left.
-      if (reserve != null && view.today.isFirstOfMonth && !saving) {
+      // The stores' needs come first; the owner takes what is left.
+      if (reserve != null && view.today.isFirstOfMonth) {
         final dividend = _dividend(
           company,
           budget - reserve - company.taxAccrued,
@@ -591,152 +568,6 @@ final class StorePlan {
       );
     }
     return commands;
-  }
-
-  /// On the first of the month, a bigger format of the store's channel the
-  /// site can host and what converting to it costs, if the store's shelves
-  /// are full, it has products left to stock, and what the new slots would
-  /// earn (see [_newSlotsMargin]), less the extra rent and overheads, pays
-  /// the works back within the strategy's payback; null otherwise. Like
-  /// enlarging, owners count only the new slots.
-  ({FormatId format, Money cost})? conversion() {
-    if (strategy.expansionPaybackMonths == 0 ||
-        !view.today.isFirstOfMonth ||
-        store.status != StoreStatus.open ||
-        store.works != null) {
-      return null;
-    }
-    final site = content.sites[store.site.index];
-    final current = content.formats[store.format.index];
-    final channel = content.formatChannels[current.id.index];
-    FormatDef? target;
-    for (final format in content.formats) {
-      if (content.formatChannels[format.id.index] == channel &&
-          format.fitOut > current.fitOut &&
-          format.minArea <= site.maxArea) {
-        target = format;
-        break;
-      }
-    }
-    if (target == null) return null;
-    var listed = 0;
-    var unlisted = 0;
-    for (final product in content.products) {
-      final i = product.id.index;
-      if (!target.sells[product.category.index]) continue;
-      if (_prices[i] == null) {
-        if (_suppliers[i] != null) unlisted++;
-        continue;
-      }
-      listed++;
-    }
-    if (listed < store.shelfSlots || unlisted == 0) return null;
-    final expansion = content.expansion;
-    final area = target.minArea > store.area ? target.minArea : store.area;
-    var slots =
-        target.slotBonus +
-        (area - store.area) ~/ expansion.stepArea * expansion.shelfSlots;
-    if (slots > unlisted) slots = unlisted;
-    final level = _macro.priceIndex;
-    final extraRent =
-        (site.rentFor(area) -
-                site.rentFor(store.area) +
-                target.overheadsFor(area) -
-                current.overheadsFor(store.area))
-            .times(level);
-    final monthly =
-        _newSlotsMargin(
-          slots,
-          (product) => target!.sells[product.category.index],
-        ) -
-        extraRent;
-    final cost = conversionCost(
-      content,
-      site,
-      store.format,
-      store.area,
-      target,
-      level,
-    );
-    if (monthly <= Money.zero ||
-        cost > monthly.timesInt(strategy.expansionPaybackMonths)) {
-      return null;
-    }
-    return (format: target.id, cost: cost);
-  }
-
-  /// On the first of the month, what enlarging the store would cost, if its
-  /// shelves are full, it has products left to stock, and what the new slots
-  /// would earn (see [_newSlotsMargin]), less the extra rent and overheads,
-  /// pays the works back within the strategy's payback; null otherwise.
-  /// Owners count only the new slots, not the pull of a bigger store. At
-  /// most once per expansion interval.
-  Money? enlargementCost() {
-    if (strategy.expansionPaybackMonths == 0 ||
-        !view.today.isFirstOfMonth ||
-        store.status != StoreStatus.open ||
-        store.works != null) {
-      return null;
-    }
-    final expansion = content.expansion;
-    final site = content.sites[store.site.index];
-    final area = store.area + expansion.stepArea;
-    final since = store.enlargedOn ?? store.opensOn;
-    if (area > site.maxArea ||
-        view.today.number - since.number < strategy.expansionIntervalDays) {
-      return null;
-    }
-    var listed = 0;
-    var unlisted = 0;
-    for (final product in content.products) {
-      final i = product.id.index;
-      if (_suppliers[i] == null) continue;
-      if (_prices[i] == null) {
-        unlisted++;
-      } else {
-        listed++;
-      }
-    }
-    if (listed < store.shelfSlots || unlisted == 0) return null;
-    final slots = unlisted < expansion.shelfSlots
-        ? unlisted
-        : expansion.shelfSlots;
-    final level = _macro.priceIndex;
-    final extraRent =
-        (site.rentFor(area) -
-                site.rentFor(store.area) +
-                content.formats[store.format.index].overheadsFor(
-                  area - store.area,
-                ))
-            .times(level);
-    final monthly = _newSlotsMargin(slots, (_) => true) - extraRent;
-    final cost = expansion.cost(level);
-    if (monthly <= Money.zero ||
-        cost > monthly.timesInt(strategy.expansionPaybackMonths)) {
-      return null;
-    }
-    return cost;
-  }
-
-  /// What [slots] more shelf slots would earn in a month: the products off
-  /// the shelves that shoppers ask for most, among those [sells] allows, at
-  /// their target margin on the units asked for, as judged.
-  Money _newSlotsMargin(int slots, bool Function(ProductDef product) sells) {
-    final margins = <int>[];
-    for (final product in content.products) {
-      final i = product.id.index;
-      if (!sells(product) || _prices[i] != null || _suppliers[i] == null) {
-        continue;
-      }
-      final cost = _cost(product);
-      margins.add((_targetPrice(product, cost) - cost).times(_demand[i]).cents);
-    }
-    margins.sort((a, b) => b - a);
-    var total = 0;
-    for (final margin in margins.take(slots)) {
-      if (margin > 0) total += margin;
-    }
-    return Money(total * 30);
   }
 
   /// The share of sales a manager spends on marketing, rounded to half a

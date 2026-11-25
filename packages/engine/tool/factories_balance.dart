@@ -88,7 +88,7 @@ void main(List<String> args) {
             strategy: content.strategies
                 .firstWhere((s) => s.key == 'balanced')
                 .id,
-            duties: const [true, true, true, true, false],
+            duties: const [true, true, true, true],
           ),
         );
       }

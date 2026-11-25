@@ -49,7 +49,7 @@ void main() {
     expect((laneSite.area, laneSite.maxArea), (80, 120));
     expect(laneSite.rentFor(100), Money.parse('125.00'));
     expect(content.expansion.stepArea, 20);
-    expect(content.expansion.cost(Fx.one), Money.parse('200.00'));
+    expect(content.expansion.costPerSqm, Money.parse('10.00'));
     expect(content.demand.halfSizeArea, 100);
     expect(content.segments.single.sizeWeight, Fx.zero);
     expect(content.stores.map((store) => store.site), [corner, square]);

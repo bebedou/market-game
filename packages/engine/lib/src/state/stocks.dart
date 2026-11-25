@@ -378,7 +378,10 @@ final class Bid {
       reference = Money(reader.readInt()),
       borrow = Money(reader.readInt()),
       termMonths = reader.readInt(),
-      format = reader.readInt(),
+      format = switch (reader.readInt()) {
+        < 0 => -1,
+        final format => reader.mapFormat(format),
+      },
       strategy = reader.readInt(),
       status = BidStatus.values[reader.readInt()],
       tender = reader.readBool(),

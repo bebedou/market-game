@@ -127,7 +127,7 @@ The generator is [neighbourhoods/neighbourhood_generator.dart](../packages/engin
 
 `SleeperSystem` ([systems/sleepers.dart](../packages/engine/lib/src/systems/sleepers.dart))
 runs the rows each month: households, spending shared among shops, closings,
-enlargements, newcomers. Chains' shops in districts book into their
+newcomers (since format 45, none enlarge). Chains' shops in districts book into their
 companies' accounts against `world.elsewhere`.
 
 Waking (`WakeNeighbourhood`, applied at once by `Simulation._wake`):

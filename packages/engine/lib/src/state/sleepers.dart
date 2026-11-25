@@ -2,9 +2,18 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../persistence/state_io.dart';
+import 'store.dart' show shopSizesVersion;
 
 /// The months of a sleeping shop's figures kept.
 const sleepingMonthsKept = 12;
+
+/// A sleeping shop's month of opening as [reader] has it, past the month an
+/// older save kept of its last enlargement.
+int _readOpened(StateReader reader) {
+  final opened = reader.readInt();
+  if (reader.version < shopSizesVersion) reader.readInt();
+  return opened;
+}
 
 /// A site of a sleeping neighbourhood, as the generator lays it out: always the
 /// same from the same row and seed, so it isn't saved.
@@ -51,7 +60,6 @@ final class SleepingShop {
     required this.cash,
     required this.ownerCash,
     required this.openedMonth,
-    required this.enlargedMonth,
     this.company,
     this.brand,
     this.acquiredMonth,
@@ -62,15 +70,14 @@ final class SleepingShop {
 
   SleepingShop.read(StateReader reader)
     : site = reader.readInt(),
-      format = FormatId(reader.readInt()),
+      format = FormatId(reader.mapFormat(reader.readInt())),
       strategy = StrategyId(reader.readInt()),
       name = reader.readString(),
       owner = reader.readString(),
       area = reader.readInt(),
       cash = Money(reader.readInt()),
       ownerCash = Money(reader.readInt()),
-      openedMonth = reader.readInt(),
-      enlargedMonth = reader.readInt(),
+      openedMonth = _readOpened(reader),
       sales = [
         for (var i = 0, n = reader.readInt(); i < n; i++)
           Money(reader.readInt()),
@@ -121,9 +128,6 @@ final class SleepingShop {
   /// already there.
   final int openedMonth;
 
-  /// When it last enlarged, likewise.
-  int enlargedMonth;
-
   /// Each of its latest months' sales and profit before tax, oldest first.
   final List<Money> sales;
   final List<Money> profits;
@@ -151,7 +155,6 @@ final class SleepingShop {
       ..writeInt(cash.cents)
       ..writeInt(ownerCash.cents)
       ..writeInt(openedMonth)
-      ..writeInt(enlargedMonth)
       ..writeInt(sales.length);
     for (final month in sales) {
       writer.writeInt(month.cents);

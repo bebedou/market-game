@@ -48,7 +48,7 @@ Valuation? valueStore(WorldState world, ContentDb content, Store store) {
     stock += product.value;
   }
   final fittings = site.openingCost
-      .times(format.fitOut)
+      .times(format.fitOutAt(store.area))
       .times(level)
       .times(terms.fittingsLeft(world.today.number - store.opensOn.number));
   final held = stock + fittings;

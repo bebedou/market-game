@@ -106,26 +106,29 @@ void main() {
       'fastfood',
       'steakhouse',
       'finedining',
-      'supermarket',
       'electronics',
       'clothing',
     ]);
-    // Convenience stores and supermarkets compete for the same trips.
-    expect(content.formatChannels, [0, 1, 2, 3, 0, 4, 5]);
-    // 39 convenience stores, a supermarket, 25 restaurants and 8
-    // electronics shops, 21, 1, 15 and 4 of them in France.
+    // A grocer from 220 m² is a supermarket.
+    final grocery = content.formats.first;
+    expect((grocery.large?.key, grocery.large?.area), ('supermarket', 220));
+    expect(content.formatChannels, [0, 1, 2, 3, 4, 5]);
+    // 40 grocers, of them a supermarket, 25 restaurants and 8 electronics
+    // shops, 22, 1, 15 and 4 of them in France.
+    final grocers = content.stores.where((s) => s.format == grocery.id);
+    expect(grocers, hasLength(40));
     expect(
-      content.stores.where((s) => s.format == const FormatId(0)),
-      hasLength(39),
+      grocers.where((s) => grocery.isLargeAt(content.sites[s.site.index].area)),
+      hasLength(1),
     );
     expect(
-      content.stores.where((s) => s.format == const FormatId(5)),
+      content.stores.where((s) => s.format == const FormatId(4)),
       hasLength(8),
     );
     // Two clothing shops in each city, and four clothing categories that go
     // out of fashion.
     expect(
-      content.stores.where((s) => s.format == const FormatId(6)),
+      content.stores.where((s) => s.format == const FormatId(5)),
       hasLength(26),
     );
     expect(content.categories.where((c) => c.fashion != null), hasLength(4));

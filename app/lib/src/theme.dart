@@ -75,7 +75,6 @@ class Ledger extends ThemeExtension<Ledger> {
   /// show.
   Color trade(FormatDef format) {
     final (light, dark) = switch (format.key) {
-      'supermarket' => (const Color(0xFF2F7D4F), const Color(0xFF6DB88A)),
       'fastfood' => (const Color(0xFFC98A12), const Color(0xFFE3AE45)),
       'steakhouse' => (const Color(0xFF7A2E2A), const Color(0xFFC8716A)),
       'finedining' => (const Color(0xFF1F3A5F), const Color(0xFF94ADD8)),
@@ -395,11 +394,14 @@ IconData formatIcon(FormatDef format) => switch (format.key) {
   'fastfood' => Icons.lunch_dining_outlined,
   'steakhouse' => Icons.outdoor_grill_outlined,
   'finedining' => Icons.restaurant_outlined,
-  'supermarket' => Icons.local_grocery_store_outlined,
   'electronics' => Icons.devices_outlined,
   'clothing' => Icons.checkroom_outlined,
   _ => Icons.storefront_outlined,
 };
+
+/// [format]'s icon, or a trolley for its large size, a supermarket.
+IconData kindIcon(FormatDef format, {required bool large}) =>
+    large ? Icons.local_grocery_store_outlined : formatIcon(format);
 
 IconData slotIcon(DaySlot slot) => switch (slot) {
   DaySlot.morning => Icons.wb_twilight,

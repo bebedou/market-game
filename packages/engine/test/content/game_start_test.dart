@@ -72,7 +72,6 @@ void main() {
         ).$2?.key;
     expect(problem('par_clichy', 'grocery'), 'fitOutTooDear');
     expect(problem('prime', 'grocery'), 'siteTaken');
-    expect(problem('backstreet', 'supermarket'), 'siteTooSmall');
     expect(problem('backstreet', 'grocery', ' Mine'), 'nameRule');
   });
 

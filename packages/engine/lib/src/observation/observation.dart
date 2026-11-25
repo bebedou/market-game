@@ -715,8 +715,6 @@ final class StoreView {
     this.goodwill = Money.zero,
     this.reputation = Fx.zero,
     this.manager,
-    this.works,
-    this.enlargedOn,
     this.boughtFor = Money.zero,
     this.acquiredOn,
     this.buyer,
@@ -791,12 +789,6 @@ final class StoreView {
 
   /// Selling area in square metres.
   final int area;
-
-  /// Enlargement under way, if any.
-  final Works? works;
-
-  /// When the store last grew, if ever.
-  final Day? enlargedOn;
 
   /// What its owner paid for it beyond its stock; zero if they opened it.
   final Money boughtFor;
@@ -1525,8 +1517,6 @@ StoreView _storeView(
     marketingShare: store.marketingShare,
     goodwill: store.goodwill,
     reputation: store.reputation,
-    works: store.works,
-    enlargedOn: store.enlargedOn,
     boughtFor: store.boughtFor,
     acquiredOn: store.acquiredOn,
     quality: _shelfQuality(store),

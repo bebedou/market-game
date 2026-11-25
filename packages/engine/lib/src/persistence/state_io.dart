@@ -45,7 +45,7 @@ final class StateWriter {
 /// The newest layout of saved state. Bump it whenever the layout or the
 /// simulation rules change, and have readers of older layouts fill in what
 /// they lack: see [StateReader.version].
-const int currentStateVersion = 44;
+const int currentStateVersion = 45;
 
 /// Reads what [StateWriter] wrote. Malformed or truncated data throws a
 /// [FormatException].
@@ -55,6 +55,17 @@ final class StateReader {
   /// The layout version being read. Readers check it for fields added after
   /// it and use defaults for them.
   int version;
+
+  /// Today's format for each format an older save numbered, by its number
+  /// there, when formats have gone since (see `SaveData.decode`); null when
+  /// they are numbered alike.
+  List<int>? formatMap;
+
+  /// Today's number for the format [saved] numbers in what is being read.
+  int mapFormat(int saved) => switch (formatMap) {
+    final map? when saved >= 0 && saved < map.length => map[saved],
+    _ => saved,
+  };
 
   final Uint8List _bytes;
   int _position = 0;

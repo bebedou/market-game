@@ -90,7 +90,7 @@ void main() {
         store: store.id,
         grade: _content.managers.grades.last.id,
         strategy: _content.strategies.first.id,
-        duties: const [true, true, true, true, false],
+        duties: const [true, true, true, true],
       ),
     );
     for (var day = 0; day < 200; day++) {

@@ -503,7 +503,6 @@ void main() {
           ),
           SetMarketing(player, store: store, share: Fx.zero),
           SetMarketing(player, store: store, share: Fx.parse('0.05')),
-          ConvertStore(player, store: store, format: content.formats.last.id),
           CloseStore(player, store: store),
           SetStaffing(player, store: store, staff: const [1, 2, 3, 0]),
           HireManager(
@@ -529,7 +528,6 @@ void main() {
           RenameStore(player, store: store, name: 'Mail'),
           RenameCompany(player, company: company, name: 'Mail'),
           SetCushion(player, company: company, days: 14),
-          ExpandStore(player, store: store),
           BuyStore(
             player,
             store: const StoreId(1),

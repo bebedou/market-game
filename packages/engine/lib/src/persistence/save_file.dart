@@ -12,6 +12,7 @@ import '../state/game_start.dart';
 import '../state/growth.dart';
 import '../state/sleepers.dart';
 import '../state/stocks.dart';
+import '../state/store.dart' show shopSizesVersion;
 import '../state/world_state.dart';
 import 'state_io.dart';
 
@@ -121,46 +122,43 @@ final class SaveData {
       );
     }
     reader.version = layout ?? version;
-    final scenarioId = reader.readString();
-    final woken = <WokenNeighbourhood>[];
+    // A save from before formats went numbers its shops' formats as they
+    // were: its header says how, so it is read once for that, then for
+    // good with their numbers mapped to today's.
+    if (version >= _structureVersion && version < shopSizesVersion) {
+      final probe = StateReader(file.bytes, version: layout ?? version)
+        ..readString()
+        ..readInt();
+      reader.formatMap = _formatMap(
+        _readHeader(probe, version).structure,
+        scenario,
+      );
+    }
+    final (:scenarioId, :seed, :asleep, :woken, :structure) = _readHeader(
+      reader,
+      version,
+    );
     var content = scenario;
-    CitiesAsleep? asleep;
-    if (version >= _wokenVersion) {
-      final seed = reader.readInt();
-      if (version >= _asleepVersion && reader.readBool()) {
-        asleep = (start: reader.readBool() ? GameStart.read(reader) : null);
-        (content, _) = withCitiesAsleep(content, start: asleep.start);
+    if (asleep != null) {
+      (content, _) = withCitiesAsleep(content, start: asleep.start);
+    }
+    if (woken.isNotEmpty) {
+      if (woken.any((w) => w.row >= content.neighbourhoods.length)) {
+        throw const FormatException(
+          'The save was made with different content (neighbourhoods)',
+        );
       }
-      for (var i = 0, n = reader.readInt(); i < n; i++) {
-        woken.add((
-          row: reader.readInt(),
-          day: Day(reader.readInt()),
-          priceIndex: Fx.raw(reader.readInt()),
-          households: [
-            for (var h = 0, m = reader.readInt(); h < m; h++) reader.readInt(),
-          ],
-          shops: [
-            for (var s = 0, m = reader.readInt(); s < m; s++)
-              SleepingShop.read(reader),
-          ],
-          // Saves before editions woke everything in the first.
-          edition: version >= _editionVersion ? reader.readInt() : 0,
-        ));
-      }
-      if (woken.isNotEmpty) {
-        if (woken.any((w) => w.row >= content.neighbourhoods.length)) {
-          throw const FormatException(
-            'The save was made with different content (neighbourhoods)',
-          );
-        }
-        for (final wake in woken) {
-          content = withNeighbourhoods(content, [wake], seed: seed);
-        }
+      for (final wake in woken) {
+        content = withNeighbourhoods(content, [wake], seed: seed);
       }
     }
     String? problem;
-    if (version >= _structureVersion) {
-      final saved = _readStructure(reader);
+    if (structure != null) {
+      // Formats that went are matched by the map, not by their places.
+      final saved = [
+        for (final list in structure)
+          if (reader.formatMap == null || list.name != 'formats') list,
+      ];
       problem = _structureProblem(saved, content.structure);
       if (problem != null) {
         // Entries the scenario gained since come before the districts woken
@@ -171,10 +169,6 @@ final class SaveData {
           problem = null;
         }
       }
-    } else {
-      // A fingerprint of all the content or of its structure, which growth
-      // changes; the world itself is checked once read.
-      reader.readInt();
     }
     if (scenarioId != content.scenarioId) {
       problem = 'scenario "$scenarioId"';
@@ -185,12 +179,18 @@ final class SaveData {
       );
     }
     final world = WorldState.read(reader);
+    // Commands the game no longer has drop out.
     final log = [
       for (var i = 0, n = reader.readInt(); i < n; i++)
-        (day: Day(reader.readInt()), command: Command.read(reader)),
+        if ((Day(reader.readInt()), Command.readOrRetired(reader)) case (
+          final day,
+          final command?,
+        ))
+          (day: day, command: command),
     ];
     final pending = [
-      for (var i = 0, n = reader.readInt(); i < n; i++) Command.read(reader),
+      for (var i = 0, n = reader.readInt(); i < n; i++)
+        ?Command.readOrRetired(reader),
     ];
     if (version >= _wokenVersion) {
       for (var i = 0, n = reader.readInt(); i < n; i++) {
@@ -201,6 +201,7 @@ final class SaveData {
     if (version >= _nationalVersion) readNational(reader, world, content);
     if (version >= stocksVersion) readStocks(reader, world);
     reader.expectEnd();
+    if (version < shopSizesVersion) _settleShopSizes(world, content);
     if (version < _structureVersion) {
       if (growthProblem(world, content) case final problem?) {
         throw FormatException(
@@ -283,6 +284,124 @@ final class SaveData {
     writeNational(writer, world);
     writeStocks(writer, world);
     return SaveFile(writer.toBytes());
+  }
+}
+
+/// What a save holds before its world: its scenario, seed, how its cities
+/// sleep, the neighbourhoods woken in it, and the content's lists as it
+/// knew them (null before saves kept them).
+typedef _Header = ({
+  String scenarioId,
+  int seed,
+  CitiesAsleep? asleep,
+  List<WokenNeighbourhood> woken,
+  List<ContentList>? structure,
+});
+
+/// Reads a save's [_Header], [version] being its format.
+_Header _readHeader(StateReader reader, int version) {
+  final scenarioId = reader.readString();
+  var seed = 0;
+  CitiesAsleep? asleep;
+  final woken = <WokenNeighbourhood>[];
+  if (version >= _wokenVersion) {
+    seed = reader.readInt();
+    if (version >= _asleepVersion && reader.readBool()) {
+      asleep = (start: reader.readBool() ? GameStart.read(reader) : null);
+    }
+    for (var i = 0, n = reader.readInt(); i < n; i++) {
+      woken.add((
+        row: reader.readInt(),
+        day: Day(reader.readInt()),
+        priceIndex: Fx.raw(reader.readInt()),
+        households: [
+          for (var h = 0, m = reader.readInt(); h < m; h++) reader.readInt(),
+        ],
+        shops: [
+          for (var s = 0, m = reader.readInt(); s < m; s++)
+            SleepingShop.read(reader),
+        ],
+        // Saves before editions woke everything in the first.
+        edition: version >= _editionVersion ? reader.readInt() : 0,
+      ));
+    }
+  }
+  List<ContentList>? structure;
+  if (version >= _structureVersion) {
+    structure = _readStructure(reader);
+  } else {
+    // A fingerprint of all the content or of its structure, which growth
+    // changes; the world itself is checked once read.
+    reader.readInt();
+  }
+  return (
+    scenarioId: scenarioId,
+    seed: seed,
+    asleep: asleep,
+    woken: woken,
+    structure: structure,
+  );
+}
+
+/// Formats that went, and the format whose shops they became: a
+/// supermarket is a grocer's large size since [shopSizesVersion].
+const _retiredFormats = {'supermarket': 'grocery'};
+
+/// Today's number in [content] for each format a save's [saved] lists
+/// knew, by its number there, when some of them went (see
+/// [_retiredFormats]); null when none did, or one is unknown, which the
+/// lists' check then refuses.
+List<int>? _formatMap(List<ContentList>? saved, ContentDb content) {
+  final keys = saved?.where((list) => list.name == 'formats').firstOrNull?.keys;
+  if (keys == null || !keys.any(_retiredFormats.containsKey)) return null;
+  final now = [for (final format in content.formats) format.key];
+  final map = <int>[];
+  for (final key in keys) {
+    final at = now.indexOf(_retiredFormats[key] ?? key);
+    if (at < 0) return null;
+    map.add(at);
+  }
+  return map;
+}
+
+/// Brings a world read from before shops were sized as they open
+/// ([shopSizesVersion]) up to date: works under way are done at once, as
+/// they would have come to be, and a company's shops by formula of a format
+/// that went join its others of the one they became.
+void _settleShopSizes(WorldState world, ContentDb content) {
+  final expansion = content.expansion;
+  for (final store in world.stores) {
+    final works = store.oldWorks;
+    if (works == null) continue;
+    final steps = (works.area - store.area) ~/ expansion.stepArea;
+    store
+      ..area = works.area
+      ..shelfSlots += steps * expansion.shelfSlots
+      ..storageUnits += steps * expansion.storageUnits
+      ..oldWorks = null;
+    if (works.format case final format?) {
+      final next = content.formats[format.index];
+      store
+        ..format = format
+        ..shelfSlots += next.slotBonusAt(store.area)
+        ..storageUnits += next.storageBonusAt(store.area);
+    }
+  }
+  final economy = world.national;
+  if (economy == null) return;
+  for (final country in economy.countries) {
+    for (final block in [...country.blocks]) {
+      if (block.name != null || !country.blocks.contains(block)) continue;
+      final first = economy.blockOf(
+        country,
+        company: block.company,
+        trade: block.trade,
+        format: block.format,
+      );
+      if (first != null && !identical(first, block)) {
+        economy.foldBlock(country, first, block);
+      }
+    }
   }
 }
 

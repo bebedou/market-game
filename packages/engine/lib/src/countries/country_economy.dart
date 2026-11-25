@@ -384,7 +384,7 @@ final class CompanyBlock {
   CompanyBlock.read(StateReader reader)
     : company = reader.readInt(),
       trade = reader.readInt(),
-      format = reader.readInt(),
+      format = reader.mapFormat(reader.readInt()),
       strategy = reader.readInt(),
       pull = Fx.raw(reader.readInt()),
       price = Fx.raw(reader.readInt()),
@@ -1418,6 +1418,47 @@ final class CountryEconomy {
     final whole = sales.cents ~/ 100;
     if (whole == 0) return Fx.zero;
     return Fx.raw(mulDivRound(profit.cents ~/ 100, Fx.scale, whole));
+  }
+
+  /// Folds [from] into [into], both of one company's shops of one kind in
+  /// [country]: its shops region by region, their months' figures, its
+  /// goodwill and what was paid for it; offers for it go.
+  void foldBlock(CountryState country, CompanyBlock into, CompanyBlock from) {
+    for (final (r, region) in into.regions.indexed) {
+      final other = from.regions[r];
+      region
+        ..settled += other.settled
+        ..pending += other.pending;
+      for (var i = 0; i < youngMonths; i++) {
+        region.young[i] += other.young[i];
+      }
+      for (var i = 0; i < 12; i++) {
+        region.sales[i] += other.sales[i];
+        region.profit[i] += other.profit[i];
+      }
+    }
+    for (final (i, month) in into.months.indexed) {
+      final other = from.months
+          .where((m) => m.start == month.start)
+          .firstOrNull;
+      if (other == null) continue;
+      into.months[i] = BlockMonth(
+        start: month.start,
+        stores: month.stores + other.stores,
+        sales: month.sales + other.sales,
+        goods: month.goods + other.goods,
+        marketing: month.marketing + other.marketing,
+        staff: month.staff + other.staff,
+        premises: month.premises + other.premises,
+        opened: month.opened + other.opened,
+        closed: month.closed + other.closed,
+      );
+    }
+    into
+      ..goodwill += from.goodwill
+      ..cost += from.cost;
+    offers.removeWhere((offer) => identical(offer.block, from));
+    country.blocks.remove(from);
   }
 
   /// The block of [company]'s own shops of [format] in trade [trade] of

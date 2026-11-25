@@ -5,7 +5,6 @@ export 'src/accounting/ledger.dart'
     show AccountKind, EntryReason, JournalEntry, PartyRef, PartyType;
 export 'src/commands/apply_command.dart'
     show
-        conversionCost,
         maxMarketingShare,
         maxNameLength,
         maxNationalOpenings,
@@ -42,7 +41,6 @@ export 'src/commands/command.dart'
         RunListed,
         SellControlled,
         SellShares,
-        ConvertStore,
         BuyInDistrict,
         CreateBrand,
         BuyNationalChain,
@@ -52,7 +50,6 @@ export 'src/commands/command.dart'
         ClearStock,
         DismissKeyPerson,
         EnlargeFactory,
-        ExpandStore,
         FireDirector,
         FireManager,
         HireDirector,

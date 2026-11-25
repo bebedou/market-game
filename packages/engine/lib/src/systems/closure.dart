@@ -23,6 +23,5 @@ void closeStore(WorldState world, Ledger ledger, Store store) {
   }
   store
     ..status = StoreStatus.closed
-    ..manager = null
-    ..works = null;
+    ..manager = null;
 }

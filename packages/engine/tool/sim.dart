@@ -1076,9 +1076,6 @@ final class CreditOwner implements Policy {
     var months = strategy.expansionPaybackMonths + 1;
     for (final id in view.vacantSites) {
       final candidate = content.sites[id.index];
-      if (candidate.area < content.formats[strategy.format.index].minArea) {
-        continue;
-      }
       final payback = _entrepreneur.paybackMonths(view, content, candidate);
       if (payback != null && payback < months) {
         site = candidate;

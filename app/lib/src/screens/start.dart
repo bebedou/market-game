@@ -69,59 +69,57 @@ List<_Sector> _sectors(
 }) {
   final content = game.content;
   final sites = freeSites(game);
-  _Kind shop(FormatDef format) {
-    // Its fitting out on the cheapest vacant site with room for it, the
-    // works to enlarge it included.
+  _Kind shop(ShopKind kind) {
+    // Its fitting out on the cheapest vacant site that can host it, the
+    // works to build it out included.
     Money? from;
     for (final site in sites) {
-      if (site.openingArea(format) == null) continue;
+      final area = kindArea(kind, site);
+      if (area == null) continue;
       final cost = shopOpeningCost(
         content,
         site,
-        format,
+        kind.format,
         game.economyAt(site.market).priceIndex,
+        area: area,
       );
       if (from == null || cost < from) from = cost;
     }
     return (
-      name: format.name,
+      name: kindName(kind),
       // What limits it first, where a long line is cut.
       pitch: [
-        if (format.minArea > 0)
-          tr('business.leastArea', {'area': format.minArea}),
+        if (kind.large)
+          tr('business.leastArea', {'area': kind.format.large!.area}),
         if (from == null) tr('business.noSiteLine'),
-        ?trMaybe('business.pitches.${format.key}'),
+        ?trMaybe('business.pitches.${kindKey(kind)}'),
       ].join(' · '),
-      mark: ledger.trade(format),
+      mark: ledger.trade(kind.format),
       from: from,
       open: (context) => context.openPage(
-        format.name,
+        kindName(kind),
         (_) => [
-          NewBusiness(
-            format: format.id,
-            subsidiary: subsidiary,
-            company: company,
-          ),
+          NewBusiness(kind: kind, subsidiary: subsidiary, company: company),
         ],
       ),
     );
   }
 
-  final trades = <String, List<FormatDef>>{};
-  for (final format in content.formats) {
+  final trades = <String, List<ShopKind>>{};
+  for (final kind in shopKinds(content)) {
     trades
-        .putIfAbsent(formatTrades[format.key] ?? format.key, () => [])
-        .add(format);
+        .putIfAbsent(formatTrades[kind.format.key] ?? kind.format.key, () => [])
+        .add(kind);
   }
   return [
-    for (final MapEntry(:key, value: formats) in trades.entries)
+    for (final MapEntry(:key, value: kinds) in trades.entries)
       (
         key: key,
         name:
             trMaybe('business.sectors.$key') ??
-            (formats.length == 1 ? formats.single.name : key),
-        mark: ledger.trade(formats.first),
-        kinds: [for (final format in formats) shop(format)],
+            (kinds.length == 1 ? kindName(kinds.single) : key),
+        mark: ledger.trade(kinds.first.format),
+        kinds: [for (final kind in kinds) shop(kind)],
       ),
     if (content.factories case final factories?)
       (

@@ -29,7 +29,7 @@ final class GameStart {
       },
       format = switch (reader.readInt()) {
         < 0 => null,
-        final index => FormatId(index),
+        final index => FormatId(reader.mapFormat(index)),
       },
       name = reader.readString(),
       cash = reader.version >= startCashVersion
@@ -128,8 +128,9 @@ List<SiteId> startingSites(ContentDb content) {
     return (null, const Refusal('nameRule', count: maxNameLength));
   }
   final usual = content.stores[setup.store];
-  final usualFitOut = content.sites[usual.site.index].openingCost.times(
-    content.formats[usual.format.index].fitOut,
+  final usualSite = content.sites[usual.site.index];
+  final usualFitOut = usualSite.openingCost.times(
+    content.formats[usual.format.index].fitOutAt(usualSite.area),
   );
   final player = content.persons[content.player.index];
   final (chosenSite, chosenFormat) = (start.site, start.format);
@@ -161,10 +162,7 @@ List<SiteId> startingSites(ContentDb content) {
   }
   final site = content.sites[chosenSite.index];
   final format = content.formats[chosenFormat.index];
-  if (format.minArea > site.area) {
-    return (null, Refusal('siteTooSmall', format: format.id));
-  }
-  final fitOut = site.openingCost.times(format.fitOut);
+  final fitOut = site.openingCost.times(format.fitOutAt(site.area));
   var companyCash =
       content.companies[setup.company].cash + usualFitOut - fitOut;
   var personalCash = player.cash;

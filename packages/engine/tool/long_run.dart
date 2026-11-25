@@ -46,9 +46,7 @@ void main(List<String> args) {
   final player = game.world.player;
   final view = game.observe(player);
   final grocery = content.formats.firstWhere((f) => f.key == 'grocery');
-  final site = [
-    for (final id in view.vacantSites) content.sites[id.index],
-  ].firstWhere((site) => site.area >= grocery.minArea);
+  final site = content.sites[view.vacantSites.first.index];
   game.submit(
     OpenStore(
       player,

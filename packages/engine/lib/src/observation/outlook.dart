@@ -221,12 +221,13 @@ Fx shopPull(ContentDb content, Fx location, int area) =>
     location *
     Fx.raw(mulDivRound(area, Fx.scale, area + content.demand.halfSizeArea));
 
-/// A year's wages for a shop serving [unitsServed] a year: staff for the
-/// shoppers, and for every slot it opens at all.
+/// A year's wages for a shop of [area] square metres serving [unitsServed]
+/// a year: staff for the shoppers, and for every slot it opens at all.
 Money yearlyWages(
   ContentDb content,
   FormatDef format,
   StrategyDef strategy, {
+  required int area,
   required Fx wageIndex,
   required Fx wageLevel,
   required Fx unitsServed,
@@ -238,7 +239,7 @@ Money yearlyWages(
     mulDivRound(
       (visits * strategy.serviceTarget * peak).raw,
       1,
-      format.visitsPerStaff,
+      format.visitsPerStaffAt(area),
     ),
   );
   final slots = Fx.fromInt(strategy.hours.where((open) => open).length);
@@ -307,7 +308,8 @@ Fx priceDraw(Fx gap) {
       : expNeg(_priceWeight * gap);
 }
 
-/// What a new shop of [format] on [site] might do, from what anyone can see,
+/// What a new shop of [format] on [site] might do, opening with [area]
+/// square metres, the site's own if null, from what anyone can see,
 /// or, for a neighbourhood still asleep, from its plan ([content] being
 /// `Simulation.plan`):
 /// who lives in the neighbourhood and buys what, the rivals of its own channel
@@ -318,8 +320,9 @@ ShopOutlook shopOutlook(
   Observation view,
   ContentDb content,
   SiteDef site,
-  FormatDef format,
-) {
+  FormatDef format, {
+  int? area,
+}) {
   final market = content.markets[site.market.index];
   final habits = habitsOf(format);
   final macro = view.economyAt(content, market.id);
@@ -331,9 +334,9 @@ ShopOutlook shopOutlook(
   );
   Fx pull(Fx location, int area) => shopPull(content, location, area);
   final channel = content.formatChannels[format.id.index];
-  // A site with room opens it enlarged, at that floor's rent.
-  final area = site.openingArea(format) ?? site.area;
-  final mine = pull(site.location, area) * habits.draw;
+  // Built out, it pays that floor's rent.
+  final floor = area ?? site.area;
+  final mine = pull(site.location, floor) * habits.draw;
   var total = mine;
   var rivals = 0;
   // Shops of a neighbourhood asleep are in its plan alone.
@@ -371,13 +374,14 @@ ShopOutlook shopOutlook(
     content,
     format,
     strategy,
+    area: floor,
     wageIndex: macro.wageIndex,
     wageLevel: market.wageLevel,
     unitsServed: units * served,
     unitsPerVisit: habits.unitsPerVisit,
     peak: habits.peakStaff,
   );
-  final premises = (site.rentFor(area) + format.overheadsFor(area))
+  final premises = (site.rentFor(floor) + format.overheadsFor(floor))
       .times(macro.priceIndex)
       .timesInt(12);
   final profit =
