@@ -9,6 +9,7 @@ import '../home.dart';
 import '../l10n.dart';
 import '../visuals.dart';
 import '../widgets.dart';
+import 'company_books.dart';
 import 'business_page.dart';
 import 'finance.dart' show DirectorSection, openCompanyPage, showDirectorSheet;
 import 'holding.dart' show toDoItems;
@@ -123,6 +124,11 @@ class CompanyDashboard extends StatelessWidget {
           ],
         ),
         _Subsidiaries(company: company, onOpen: onOpen),
+        if (game.view.companyBooks[id.index] case final sheet? when active)
+          Section(
+            title: tr('stocks.balanceSheet'),
+            children: [CompanyBooks(sheet: sheet, titled: false)],
+          ),
         if (directors != null && active)
           Section(
             title: tr('businesses.boss'),

@@ -32,6 +32,7 @@ Node run covers the core and the small test scenario only.
 
 **Fixtures and helpers.**
 
+- [test/fixed_assets_test.dart](../packages/engine/test/fixed_assets_test.dart): fit-out as an asset, a month's wear, closing and selling a shop; `old_saves_test.dart` checks a save of format 44 recognises its fittings against the reserve, and `stocks_test.dart` group `books` a company by formula's book value and growth capital.
 - [test/support/fixtures.dart](../packages/engine/test/support/fixtures.dart):
   `testScenarioJson` (a two-store town), ids such as `player`, `rival`,
   `playerStore`, `milkBudget`, `ScriptedDemandSystem`, `quietSystems`,
@@ -51,8 +52,9 @@ Node run covers the core and the small test scenario only.
   the first as the second); and `save_v44_sizes.bin.gz`, written by
   c2eec76 on the prototype (seed 13, other cities asleep): a shop being
   converted to a supermarket, the corner shop being enlarged, a manager
-  trusted with investing, and French grocers and supermarkets by formula,
-  from before format 45 sized shops as they open.
+  trusted with investing, and French supermarkets by formula opened before
+  more grocers, from before format 45 sized shops as they open: the fold
+  must keep the bigger grocers' block.
   [old_saves_test.dart](../packages/engine/test/old_saves_test.dart)
   loads them, plays on and round-trips them. Formats in between are tested
   field by field, by writing a snippet and reading it with

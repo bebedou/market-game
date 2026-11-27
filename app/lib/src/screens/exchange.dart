@@ -2,6 +2,7 @@ import 'package:engine/engine.dart';
 import 'package:flutter/material.dart';
 
 import '../format.dart';
+import '../fundamentals.dart';
 import '../l10n.dart';
 import '../theme.dart';
 import '../visuals.dart';
@@ -308,6 +309,53 @@ class _SectorPageState extends State<SectorPage> {
 /// A listed company's page, as the owner's mockup has it: its price over
 /// five years, what it rests on, what analysts say and how it is run, who
 /// holds it, and the way to buy or sell.
+/// A listed company's ratios against its sector's median, in every
+/// country: the analyst's sheet.
+class _Ratios extends StatelessWidget {
+  const _Ratios({required this.stock, required this.stocks});
+
+  final StockView stock;
+  final List<StockView> stocks;
+
+  @override
+  Widget build(BuildContext context) {
+    final own = ratiosOf(stock);
+    RatioCell cell(
+      String label,
+      double? Function(StockRatios ratios) pick,
+      String Function(double? value) text,
+    ) {
+      final sector = sectorMedian(stocks, stock.sector, pick);
+      return (
+        label: label,
+        value: text(pick(own)),
+        note: sector == null
+            ? null
+            : tr('stocks.sectorMedian', {'value': text(sector)}),
+      );
+    }
+
+    return Section(
+      title: tr('stocks.ratios'),
+      children: [
+        RatioGrid([
+          cell(tr('stocks.multiple'), (r) => r.pe, _ratioOrDash),
+          cell(tr('stocks.priceToBook'), (r) => r.pb, ratioText),
+          cell(tr('stocks.evToSales'), (r) => r.evSales, ratioText),
+          cell(tr('stocks.returnOnEquity'), (r) => r.roe, ratioPercent),
+          cell(tr('stocks.yield'), (r) => r.dividendYield, ratioPercent),
+          cell(tr('stocks.netDebtToEquity'), (r) => r.netDebtEquity, ratioText),
+        ]),
+        Hint(tr('stocks.sectorMedianHint')),
+      ],
+    );
+  }
+}
+
+/// A P/E to one place, as the market quotes it, or a dash.
+String _ratioOrDash(double? value) =>
+    value == null ? '—' : decimalText(value.toStringAsFixed(1));
+
 class StockPage extends StatelessWidget {
   const StockPage({super.key, required this.stock});
 
@@ -347,9 +395,6 @@ class StockPage extends StatelessWidget {
     final perShare = stock.shares == 0
         ? Money.zero
         : Money(stock.yearProfit.cents ~/ stock.shares);
-    final dividendYield = stock.cap <= Money.zero
-        ? Fx.zero
-        : Fx.raw(stock.yearDividends.cents * 10000 ~/ stock.cap.cents);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -377,31 +422,60 @@ class StockPage extends StatelessWidget {
           ],
         ),
         Section(
-          title: tr('stocks.restsOn'),
+          title: tr('stocks.valuation'),
           children: [
             Line(tr('stocks.cap'), compactMoney(stock.cap)),
+            Line(
+              tr('stocks.enterpriseValue'),
+              compactMoney(stock.cap - stock.books.netCash),
+            ),
             Line(tr('stocks.sales'), compactMoney(stock.yearRevenue)),
             Line(tr('stocks.perShare'), money(perShare)),
-            Line(
-              tr('stocks.multiple'),
-              _multiple(stock.multiple),
-              hint: stock.averageMultiple == null
-                  ? null
-                  : tr('stocks.usually', {
-                      'value': _multiple(stock.averageMultiple),
-                    }),
-            ),
-            Line(tr('stocks.yield'), percent(dividendYield)),
-            Line(
-              tr('stocks.debt'),
-              stock.debtYears == null
-                  ? tr('stocks.noDebt')
-                  : tr('stocks.years', {
-                      'value': decimalText(
-                        (stock.debtYears!.raw ~/ 1000 / 10).toString(),
-                      ),
-                    }),
-            ),
+            if (stock.averageMultiple != null)
+              Line(
+                tr('stocks.averageMultiple'),
+                _multiple(stock.averageMultiple),
+              ),
+          ],
+        ),
+        _Ratios(stock: stock, stocks: view.stocks),
+        Section(
+          title: tr('stocks.record'),
+          children: [
+            if (stock.years.isEmpty)
+              Hint(tr('stocks.noFullYear'))
+            else
+              RecordTable(
+                header: [
+                  tr('stocks.recordYear'),
+                  tr('stocks.recordSales'),
+                  tr('stocks.recordProfit'),
+                  tr('stocks.recordBook'),
+                ],
+                rows: [
+                  for (final year in stock.years)
+                    [
+                      '${Day(year.day.number - 1).date.year}',
+                      compactMoney(year.revenue),
+                      compactMoney(year.profit),
+                      year.equity == null ? '—' : compactMoney(year.equity!),
+                    ],
+                ],
+              ),
+          ],
+        ),
+        Section(
+          title: tr('stocks.balanceSheet'),
+          children: [
+            Line(tr('stocks.fixedAssets'), compactMoney(stock.books.fixed)),
+            if (stock.books.netCash.isNegative)
+              Line(tr('stocks.netDebt'), compactMoney(-stock.books.netCash))
+            else
+              Line(tr('stocks.netCash'), compactMoney(stock.books.netCash)),
+            if (stock.books.other != Money.zero)
+              Line(tr('stocks.otherNet'), compactMoney(stock.books.other)),
+            Line(tr('stocks.equity'), compactMoney(stock.equity), strong: true),
+            Hint(tr('stocks.booksBasis.${stock.kind.name}')),
           ],
         ),
         Section(

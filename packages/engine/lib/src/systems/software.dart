@@ -270,7 +270,8 @@ final class SoftwareSystem implements TickSystem {
       rival.customersBefore = rival.customers;
     }
     final demand = softwareDemand(world, context.content);
-    final yearly = def.growth - def.cycle * (Fx.one - demand);
+    final yearly =
+        softwareTrend(def, market.customers) - def.cycle * (Fx.one - demand);
     final growth = mulDivRound(market.customers, yearly.raw, Fx.scale * 12);
     final products = softwareProducts(world, def, reference);
     final selling = [for (final product in products) product.selling];

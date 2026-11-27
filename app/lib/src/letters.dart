@@ -1,5 +1,6 @@
 import 'package:engine/engine.dart';
 
+import 'commands.dart' show softwareName;
 import 'directors.dart';
 import 'format.dart';
 import 'l10n.dart';
@@ -254,6 +255,62 @@ String memoSentence(Memo memo, ContentDb content, Observation view) {
           ),
         }),
     ].join(' '),
+    SoftwareMarketingSet(:final software, :final budget, :final capped) =>
+      budget == Money.zero
+          ? tr('letters.softwareMarketingStopped', {
+              'software': softwareName(view, software),
+            })
+          : tr(
+              capped
+                  ? 'letters.softwareMarketingMost'
+                  : 'letters.softwareMarketing',
+              {
+                'software': softwareName(view, software),
+                'amount': amount(budget),
+              },
+            ),
+    SoftwareHired(
+      :final software,
+      :final person,
+      :final pay,
+      :final replaced,
+    ) =>
+      replaced == null
+          ? tr('letters.softwareHired', {
+              'person': person,
+              'software': softwareName(view, software),
+              'pay': amount(pay),
+            })
+          : tr('letters.softwareSwapped', {
+              'person': person,
+              'software': softwareName(view, software),
+              'pay': amount(pay),
+              'replaced': replaced,
+            }),
+    SoftwareRoundRaised(:final software, :final share) => tr(
+      'letters.softwareRound',
+      {
+        'software': softwareName(view, software),
+        'share': percent(share, decimals: 0),
+      },
+    ),
+    SoftwareHeld(
+      :final software,
+      :final people,
+      :final teamFull,
+      :final marketingCapped,
+    ) =>
+      [
+        if (teamFull)
+          tr('letters.softwareTeamFull', {
+            'software': softwareName(view, software),
+            'count': people,
+          }),
+        if (marketingCapped)
+          tr('letters.softwareMarketingAtMost', {
+            'software': softwareName(view, software),
+          }),
+      ].join(' '),
     ProfitPaid(amount: final paid) => tr('letters.paid', {
       'amount': amount(paid),
     }),

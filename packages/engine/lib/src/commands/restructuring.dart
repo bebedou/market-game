@@ -242,8 +242,8 @@ Refusal? _moveBusiness(
   if (parts.software != null && to != null && holdsSoftware(world, to.id)) {
     return const Refusal('hasSoftware');
   }
-  final (:stock, :bought) = businessBook(parts);
-  final book = stock + bought;
+  final (:stock, :fixed, :bought) = businessBook(parts);
+  final book = stock + fixed + bought;
   final rate = _dividendRate(world, content, command.actor);
   final way = to == null ? _Way.down : _way(world, from.id, to.id);
   if (to != null) {
@@ -263,6 +263,16 @@ Refusal? _moveBusiness(
     receiver,
     AccountKind.inventory,
     stock,
+    way,
+    rate,
+  );
+  _shift(
+    world,
+    ledger,
+    from,
+    receiver,
+    AccountKind.fixedAssets,
+    fixed,
     way,
     rate,
   );
@@ -405,6 +415,7 @@ Refusal? _moveCompany(
 const _carried = [
   AccountKind.inventory,
   AccountKind.receivables,
+  AccountKind.fixedAssets,
   AccountKind.businessAssets,
   AccountKind.investments,
   AccountKind.payables,
@@ -547,10 +558,12 @@ Refusal? _sellBusiness(
         reason: EntryReason.storeSale,
       );
     }
+    sellFixed(ledger, company, shop.fittings);
     shop
       ..company = null
       ..brand = null
-      ..acquiredMonth = month;
+      ..acquiredMonth = month
+      ..fittings = Money.zero;
   }
   if (world.national case final national?) {
     for (final (i, block) in parts.blocks) {
@@ -587,7 +600,10 @@ Refusal? _sellBusiness(
     for (final contract in world.contracts) {
       if (contract.factory == factory.id) contract.ended = true;
     }
-    factory.status = FactoryStatus.closed;
+    sellFixed(ledger, company, factory.book, factory: factory.id);
+    factory
+      ..status = FactoryStatus.closed
+      ..book = Money.zero;
   }
   if (parts.software case final software?) {
     final rival = softwareBuyer(world)!;

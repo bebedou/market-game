@@ -289,7 +289,8 @@
   "finance": {
     "bankReserves": "5000000.00", "bankMargin": "0.01", "guaranteedSpread": "0.01", "unsecuredSpread": "0.02",
     "bankruptcySpread": "0.05", "reputationDays": 1825, "maxTermMonths": 84, "guaranteeMultiple": "2",
-    "earningsMultiple": "1.5", "graceDays": 30
+    "earningsMultiple": "1.5", "graceDays": 30,
+    "fittingsLifeYears": 10, "plantLifeYears": 25
   },
   "taxes": { "reducedRate": "0.15", "reducedLimit": "42500.00", "corporateRate": "0.25", "dividendRate": "0.30" },
   "acquisitions": { "tangibleReturn": "0.08", "capitalization": "0.40", "distressFloor": "0.5", "fittingsLifeDays": 3650, "fittingsResidual": "0.25", "buyerReserve": "0.25", "intervalDays": 365 },
@@ -687,7 +688,7 @@
     ]
   },
   "software": {
-    "customers": 2900000000, "price": "22.00", "growth": "0.08", "cycle": "0.5",
+    "customers": 2900000000, "ceiling": 8000000000, "price": "22.00", "growth": "0.08", "cycle": "0.5",
     "standard": "1.00", "rise": "0.01", "startGap": "0.25", "launchGap": "0.05",
     "progress": "0.02", "designerBuild": "0.5", "decay": "0.75", "hardness": "35", "appeal": "0.024",
     "draw": "20", "drawFloor": "-4", "drawCap": "2.5", "priceElasticity": 2,

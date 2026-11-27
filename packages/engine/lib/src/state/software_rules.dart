@@ -297,6 +297,15 @@ Fx bestRivalLead(SoftwareMarket market) {
   return best ?? Fx.zero;
 }
 
+/// The software market's yearly growth in customers in a normal year, with
+/// [customers] already: [SoftwareDef.growth] slowing in proportion as they
+/// fill the market's [SoftwareDef.ceiling], none at or past it.
+Fx softwareTrend(SoftwareDef def, int customers) {
+  if (customers >= def.ceiling) return Fx.zero;
+  return def.growth *
+      Fx.raw(mulDivRound(def.ceiling - customers, Fx.scale, def.ceiling));
+}
+
 /// [software]'s yearly growth in customers, from its record: against a
 /// year before, or, younger, against its first month with customers,
 /// scaled to a year. Zero with too little to go on.

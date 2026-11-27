@@ -458,6 +458,31 @@ sealed class Memo {
         paced: reader.readNullableInt(),
         full: reader.readInt(),
       ),
+      SoftwareMarketingSet.tag => SoftwareMarketingSet(
+        day,
+        software: SoftwareId(reader.readInt()),
+        budget: Money(reader.readInt()),
+        capped: reader.readBool(),
+      ),
+      SoftwareHired.tag => SoftwareHired(
+        day,
+        software: SoftwareId(reader.readInt()),
+        person: reader.readString(),
+        pay: Money(reader.readInt()),
+        replaced: reader.readBool() ? reader.readString() : null,
+      ),
+      SoftwareRoundRaised.tag => SoftwareRoundRaised(
+        day,
+        software: SoftwareId(reader.readInt()),
+        share: Fx.raw(reader.readInt()),
+      ),
+      SoftwareHeld.tag => SoftwareHeld(
+        day,
+        software: SoftwareId(reader.readInt()),
+        people: reader.readInt(),
+        teamFull: reader.readBool(),
+        marketingCapped: reader.readBool(),
+      ),
       _ => throw FormatException('Unknown memo tag $tag'),
     };
   }
@@ -818,5 +843,117 @@ final class GrowthHeld extends Memo {
       ..writeInt(format.index)
       ..writeNullableInt(paced)
       ..writeInt(full);
+  }
+}
+
+/// Set [software]'s marketing at [budget] a month, [capped] at the most
+/// a software company may spend.
+final class SoftwareMarketingSet extends Memo {
+  const SoftwareMarketingSet(
+    super.day, {
+    required this.software,
+    required this.budget,
+    this.capped = false,
+  });
+
+  static const int tag = 13;
+
+  final SoftwareId software;
+  final Money budget;
+  final bool capped;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(day.number)
+      ..writeInt(software.index)
+      ..writeInt(budget.cents)
+      ..writeBool(capped);
+  }
+}
+
+/// Hired [person] into [software]'s team at [pay] a month, in place of
+/// [replaced], who built less, if anyone.
+final class SoftwareHired extends Memo {
+  const SoftwareHired(
+    super.day, {
+    required this.software,
+    required this.person,
+    required this.pay,
+    this.replaced,
+  });
+
+  static const int tag = 14;
+
+  final SoftwareId software;
+  final String person;
+  final Money pay;
+  final String? replaced;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(day.number)
+      ..writeInt(software.index)
+      ..writeString(person)
+      ..writeInt(pay.cents)
+      ..writeBool(replaced != null);
+    if (replaced case final name?) writer.writeString(name);
+  }
+}
+
+/// Raised a round for [software], selling [share] of its company.
+final class SoftwareRoundRaised extends Memo {
+  const SoftwareRoundRaised(
+    super.day, {
+    required this.software,
+    required this.share,
+  });
+
+  static const int tag = 15;
+
+  final SoftwareId software;
+  final Fx share;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(day.number)
+      ..writeInt(software.index)
+      ..writeInt(share.raw);
+  }
+}
+
+/// Grew [software] no faster this month because its team of [people] was
+/// [teamFull], with no candidate clearly better than its weakest, or its
+/// marketing at the most a software company may spend.
+final class SoftwareHeld extends Memo {
+  const SoftwareHeld(
+    super.day, {
+    required this.software,
+    required this.people,
+    this.teamFull = false,
+    this.marketingCapped = false,
+  });
+
+  static const int tag = 16;
+
+  final SoftwareId software;
+  final int people;
+  final bool teamFull;
+  final bool marketingCapped;
+
+  @override
+  void write(StateWriter writer) {
+    writer
+      ..writeInt(tag)
+      ..writeInt(day.number)
+      ..writeInt(software.index)
+      ..writeInt(people)
+      ..writeBool(teamFull)
+      ..writeBool(marketingCapped);
   }
 }

@@ -1,3 +1,4 @@
+import 'balance_sheet.dart';
 import '../accounting/ledger.dart';
 import '../content/content_db.dart';
 import '../core/calendar.dart';
@@ -64,6 +65,7 @@ final class Observation {
     this.valuations = const [],
     this.companyPrices = const [],
     this.companyCredits = const [],
+    this.companyBooks = const [],
     this.guaranteeRoom = Money.zero,
     this.portfolio = Money.zero,
     this.listedCompanies = const [],
@@ -199,6 +201,10 @@ final class Observation {
   /// its loans exceed what its earnings carry, null if it has been
   /// liquidated. Buying a store adds the multiple of its earnings.
   final List<Money?> companyCredits;
+
+  /// Every company's balance sheet, public as its filed accounts are,
+  /// indexed by [CompanyId]: null if it is no longer active.
+  final List<BalanceSheet?> companyBooks;
 
   /// How much more the actor can guarantee (see `guaranteeRoom`).
   final Money guaranteeRoom;
@@ -568,9 +574,9 @@ BusinessDeal _deal(
   String business,
 ) {
   final parts = businessParts(world, content, company, business);
-  final (:stock, :bought) = businessBook(parts);
+  final (:stock, :fixed, :bought) = businessBook(parts);
   final (:worth, :buyer) = businessSale(world, content, parts);
-  return (book: stock + bought, worth: worth, buyer: buyer);
+  return (book: stock + fixed + bought, worth: worth, buyer: buyer);
 }
 
 /// A company as its owner sees it.
@@ -656,13 +662,14 @@ final class CompanyView {
   Money get cash => balance(AccountKind.cash);
 
   /// What the company owns less what it owes, at book value: cash, stock at
-  /// cost, what it paid for stores it bought and stakes in other companies,
-  /// less unpaid bills and loans. Fitting out and works are spent, so they
-  /// don't count.
+  /// cost, fittings and plants at cost less depreciation, what it paid for
+  /// stores it bought beyond those and stakes in other companies, less
+  /// unpaid bills and loans.
   Money get netAssets =>
       balance(AccountKind.cash) +
       balance(AccountKind.inventory) +
       balance(AccountKind.receivables) +
+      balance(AccountKind.fixedAssets) +
       balance(AccountKind.businessAssets) +
       balance(AccountKind.investments) +
       balance(AccountKind.payables) +
@@ -690,7 +697,16 @@ final class CompanyView {
   final List<Memo> memos;
 
   /// Profit kept since the start: what dividends may be paid from.
-  Money get retainedEarnings => netAssets + balance(AccountKind.equity);
+  Money get retainedEarnings =>
+      netAssets + balance(AccountKind.equity) + balance(AccountKind.reserves);
+
+  /// [retainedEarnings] with fittings and plants counted as spent when
+  /// they were paid for: what owners by formula judge a company by, as
+  /// they did before the books carried fixed assets.
+  Money get cashRetained =>
+      retainedEarnings -
+      balance(AccountKind.fixedAssets) -
+      balance(AccountKind.reserves);
 }
 
 /// A store as its owner sees it.
@@ -1004,6 +1020,10 @@ final class PublicView {
             ? earningsRoom(world, content, company, values: valuations)
             : null,
     ]);
+    companyBooks = List.unmodifiable([
+      for (final company in world.companies)
+        company.isActive ? BalanceSheet.of(company.accounts) : null,
+    ]);
   }
 
   final MacroView macro;
@@ -1029,6 +1049,7 @@ final class PublicView {
   late final List<DistrictView> districts = districtViews(_world, _content);
   late final List<Money?> companyPrices;
   late final List<Money?> companyCredits;
+  late final List<BalanceSheet?> companyBooks;
 
   static MacroView _macroView(MacroState macro) => (
     regime: macro.regime,
@@ -1242,6 +1263,7 @@ Observation observe(
     valuations: shared.valuations,
     companyPrices: shared.companyPrices,
     companyCredits: shared.companyCredits,
+    companyBooks: shared.companyBooks,
     districts: () => shared.districts,
     national: () => nationalViews(world, content, actor),
     stocks: _once(() => stockMarketView(world, content)),

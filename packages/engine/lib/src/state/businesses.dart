@@ -152,22 +152,32 @@ List<String> businessKeysOf(
   return [...keys];
 }
 
-/// What [parts] stand at in their company's books: its shops' stock at cost
-/// and what was paid for shops and chains bought; fitting out, plants and
-/// software were spent, so count nothing.
-({Money stock, Money bought}) businessBook(BusinessParts parts) {
+/// What [parts] stand at in their company's books: its shops' stock at
+/// cost, their fittings and its plants at cost less depreciation, and what
+/// was paid for shops and chains bought beyond those; software was spent,
+/// so counts nothing.
+({Money stock, Money fixed, Money bought}) businessBook(BusinessParts parts) {
   var stock = Money.zero;
+  var fixed = Money.zero;
   var bought = Money.zero;
   for (final store in parts.stores) {
     for (final product in store.stock) {
       stock += product.value;
     }
+    fixed += store.fittings;
     bought += store.boughtFor;
   }
+  for (final (_, shop) in parts.sleeping) {
+    fixed += shop.fittings;
+  }
   for (final (_, block) in parts.blocks) {
+    fixed += block.fittings;
     bought += block.cost;
   }
-  return (stock: stock, bought: bought);
+  for (final factory in parts.plants) {
+    fixed += factory.book;
+  }
+  return (stock: stock, fixed: fixed, bought: bought);
 }
 
 /// The biggest software rival still selling, who buys software sold on the

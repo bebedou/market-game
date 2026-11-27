@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 
 import '../controller.dart';
 import '../format.dart';
+import '../fundamentals.dart';
 import '../l10n.dart';
 import '../loans.dart';
 import '../theme.dart';
 import '../visuals.dart';
 import '../widgets.dart';
+import 'company_books.dart';
 import 'national.dart';
 
 /// The world outside: the country's economy on top, with its history a page
@@ -1318,6 +1320,17 @@ class _BuyCompany extends StatelessWidget {
                 ? tr('market.symbolicHint')
                 : tr('market.companyPriceHint'),
           ),
+          if (view.companyBooks[company.index] case final sheet?) ...[
+            const SizedBox(height: 6),
+            CompanyBooks(
+              sheet: sheet,
+              price: price,
+              filing: _latestFiling(view.filings, company),
+              sector: _sectorOf(game.content, view, company),
+              stocks: view.stocks?.stocks ?? const [],
+            ),
+            const SizedBox(height: 6),
+          ],
           if (pending)
             Hint(tr('market.buyTomorrow'))
           else ...[
@@ -1356,6 +1369,26 @@ class _BuyCompany extends StatelessWidget {
       ),
     );
   }
+}
+
+/// [company]'s latest year of filed accounts, if any.
+Filing? _latestFiling(List<Filing> filings, CompanyId company) {
+  Filing? latest;
+  for (final filing in filings) {
+    if (filing.company != company) continue;
+    if (latest == null || filing.year > latest.year) latest = filing;
+  }
+  return latest;
+}
+
+/// The stock market's sector of [company]'s shops' trade, from its first
+/// shop; null where it has none or the market lists none.
+int? _sectorOf(ContentDb content, Observation view, CompanyId company) {
+  for (final shelf in view.shelves) {
+    if (shelf.company != company) continue;
+    return sectorOfFormat(content, content.formats[shelf.format.index]);
+  }
+  return null;
 }
 
 /// Confirms buying a rival company whole, with what it would borrow on its

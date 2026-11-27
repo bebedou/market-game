@@ -7,7 +7,15 @@ import '../core/money.dart';
 import '../state/stocks.dart';
 import '../state/world_state.dart';
 import '../systems/stocks.dart'
-    show analystPrice, chainOf, earningsMultiple, exchangeOfStock, listingOf;
+    show
+        StockBooks,
+        analystPrice,
+        bookValue,
+        chainOf,
+        earningsMultiple,
+        exchangeOfStock,
+        listingOf,
+        stockBooks;
 import '../systems/takeovers.dart' show acceptingUnits;
 
 /// What analysts say of a stock, from strong sell to strong buy.
@@ -15,6 +23,11 @@ enum AnalystRating { strongSell, sell, hold, buy, strongBuy }
 
 /// Who holds shares of a company, and how many: see [holdingOwner].
 typedef HolderView = ({int owner, int units});
+
+/// A year of a listed company's results: four quarters to [day], their
+/// sales and profit, and its book value at the end; null for years
+/// published before saves kept it.
+typedef StockYear = ({Day day, Money revenue, Money profit, Money? equity});
 
 /// A listed company, as anyone sees it.
 typedef StockView = ({
@@ -60,6 +73,14 @@ typedef StockView = ({
 
   /// Its net debt in years of profit; null without debt or profit.
   Fx? debtYears,
+
+  /// Its balance sheet in brief (see [StockBooks]), and what it comes to:
+  /// its book value, what it holds less what it owes.
+  StockBooks books,
+  Money equity,
+
+  /// Its latest years of results, up to five, the latest last.
+  List<StockYear> years,
   AnalystRating rating,
 
   /// What analysts think a share worth.
@@ -232,6 +253,7 @@ StockMarketView? stockMarketView(WorldState world, ContentDb content) {
       if (upside >= step.raw * 100) rating++;
     }
     final chain = chainOf(content, economy, listing);
+    final books = stockBooks(world, content, def, listing, stock, economy);
     final debt = switch (listing.kind) {
       ListingKind.formula => stock.debt,
       ListingKind.chain => -(chain?.cash ?? Money.zero),
@@ -259,6 +281,9 @@ StockMarketView? stockMarketView(WorldState world, ContentDb content) {
       debtYears: debt > Money.zero && profit > Money.zero
           ? moneyRatio(debt, profit)
           : null,
+      books: books,
+      equity: bookValue(books),
+      years: _years(stock.results),
       rating: AnalystRating.values[rating],
       analysts: stock.running ? analystPrice(def, market, i) : stock.price,
       management: _management(world, content, def, listing, stock),
@@ -394,6 +419,28 @@ Money portfolioWorth(StockMarket? market) => sharesWorth(market, holdingOwner);
 
 /// How far sales grew over [results], oldest first: see
 /// `StockView.salesGrowth`.
+/// [results] four quarters at a time, from the latest back, as far as
+/// whole years go: the latest last.
+List<StockYear> _years(List<Results> results) {
+  final years = <StockYear>[];
+  for (var end = results.length; end >= 4; end -= 4) {
+    var revenue = Money.zero;
+    var profit = Money.zero;
+    for (var q = end - 4; q < end; q++) {
+      revenue += results[q].revenue;
+      profit += results[q].profit;
+    }
+    final last = results[end - 1];
+    years.insert(0, (
+      day: last.day,
+      revenue: revenue,
+      profit: profit,
+      equity: last.equity,
+    ));
+  }
+  return List.unmodifiable(years);
+}
+
 Fx? _salesGrowth(List<Results> results) {
   final n = results.length;
   Money sum(int from, int to) {

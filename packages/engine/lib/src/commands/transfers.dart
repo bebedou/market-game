@@ -3,6 +3,7 @@ import '../content/content_db.dart';
 import '../core/money.dart';
 import '../state/brands.dart';
 import '../state/entities.dart';
+import '../state/fixed_assets.dart';
 import '../state/taxation.dart' show taxGain;
 import '../state/store.dart';
 import '../state/valuation.dart';
@@ -31,9 +32,10 @@ void injectCapital(
 }
 
 /// Hands [store] to [buyer] for [price] in cash. The seller books the gain,
-/// or loss, over the stock and what it had paid for the store; the buyer
-/// carries the price beyond the stock as a business asset, or books a gain
-/// if it paid less than the stock cost.
+/// or loss, over the stock, the fittings' book value and what it had paid
+/// for the store; the buyer carries the fittings at that book value as far
+/// as the price beyond the stock covers it, the rest as a business asset,
+/// or books a gain if it paid less than the stock cost.
 void transferStore(
   WorldState world,
   Ledger ledger,
@@ -82,6 +84,15 @@ void transferStore(
       store: store.id,
     );
   }
+  sellFixed(ledger, seller, store.fittings, store: store.id);
+  final beyond = price > stock ? price - stock : Money.zero;
+  final fittings = buyFixed(
+    ledger,
+    buyer,
+    store.fittings,
+    beyond,
+    store: store.id,
+  );
   if (price < stock) {
     ledger.post(
       buyer,
@@ -94,7 +105,8 @@ void transferStore(
   }
   store
     ..company = buyer.id
-    ..boughtFor = price > stock ? price - stock : Money.zero
+    ..boughtFor = beyond - fittings
+    ..fittings = fittings
     ..acquiredOn = world.today;
 }
 

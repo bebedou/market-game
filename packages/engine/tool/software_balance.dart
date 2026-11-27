@@ -6,7 +6,10 @@
 // rivals at the end.
 //
 //   dart run tool/software_balance.dart [--seeds 1-3] [--years 6]
-//       [--team star|strong|middle|ordinary|big] [--rivals]
+//       [--team star|strong|middle|ordinary|big] [--rivals] [--price 1.0]
+//
+// With --price, its price is kept at that multiple of the market's usual
+// price, set on the first of each month.
 //
 // The team is picked by people's true levels, as a player with a perfect
 // eye would: star is one level-4 engineer and two level-2s, strong a
@@ -23,6 +26,9 @@ void main(List<String> args) {
   final seeds = option('--seeds', '1-3').split('-').map(int.parse).toList();
   final years = int.parse(option('--years', '6'));
   final team = option('--team', 'star');
+  final priced = args.contains('--price')
+      ? Fx.parse(option('--price', '1.0'))
+      : null;
   final root = Platform.script.resolve('../../../content/');
   final content = loadScenario(
     File(
@@ -121,6 +127,15 @@ void main(List<String> args) {
             player,
             software: software.id,
             budget: third > floor ? third : floor,
+          ),
+        );
+      }
+      if (priced != null && view.running && game.today.isFirstOfMonth) {
+        game.submit(
+          SetSoftwarePrice(
+            player,
+            software: software.id,
+            price: view.referencePrice.times(priced),
           ),
         );
       }

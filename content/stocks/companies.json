@@ -1,5 +1,5 @@
 {
- "about": "The stock market: its rules, sectors, exchanges and listed companies. Built by build_companies.py from Eurostat (nama_10_a64, output P1, 2022, billions of euros) and a fixed seed; edit by hand freely. A company with \"chain\", \"software\" or \"producer\" is the game's own and keeps its own books; the rest run by formula. \"share\" is its share of its sector's output in its country, \"cap\" its market value at the start in euros, \"margin\" its margin before tax in a normal year, \"debt\" its net debt in years of profit.",
+ "about": "The stock market: its rules, sectors, exchanges and listed companies. Built by build_companies.py from Eurostat (nama_10_a64, output P1, 2022, billions of euros) and a fixed seed; edit by hand freely. A company with \"chain\", \"software\" or \"producer\" is the game's own and keeps its own books; the rest run by formula. \"share\" is its share of its sector's output in its country, \"cap\" its market value at the start in euros, \"margin\" its margin before tax in a normal year, \"debt\" its net debt in years of profit, \"equity\" its book value at the start in euros. A sector's \"capital\" is its fixed assets per euro of a year's sales (nama_10_nfa_st over output; banks and insurers from their peers' price to book).",
  "year": 2022,
  "rules": {
   "termPremium": "0.005",
@@ -96,7 +96,8 @@
     "de": "134.26",
     "it": "88.78",
     "es": "75.31"
-   }
+   },
+   "capital": "0.49"
   },
   {
    "id": "utilities",
@@ -114,7 +115,8 @@
     "de": "282.41",
     "it": "190.50",
     "es": "142.52"
-   }
+   },
+   "capital": "1.88"
   },
   {
    "id": "materials",
@@ -132,7 +134,8 @@
     "de": "298.25",
     "it": "195.91",
     "es": "100.31"
-   }
+   },
+   "capital": "0.39"
   },
   {
    "id": "chemicals",
@@ -150,7 +153,8 @@
     "de": "291.73",
     "it": "130.61",
     "es": "85.83"
-   }
+   },
+   "capital": "0.43"
   },
   {
    "id": "pharma",
@@ -168,7 +172,8 @@
     "de": "62.73",
     "it": "28.90",
     "es": "22.92"
-   }
+   },
+   "capital": "0.74"
   },
   {
    "id": "food",
@@ -186,7 +191,8 @@
     "de": "234.92",
     "it": "182.77",
     "es": "164.57"
-   }
+   },
+   "capital": "0.32"
   },
   {
    "id": "cars",
@@ -204,7 +210,8 @@
     "de": "420.92",
     "it": "74.26",
     "es": "71.29"
-   }
+   },
+   "capital": "0.52"
   },
   {
    "id": "machinery",
@@ -222,7 +229,8 @@
     "de": "430.69",
     "it": "210.42",
     "es": "46.55"
-   }
+   },
+   "capital": "0.32"
   },
   {
    "id": "aerospace",
@@ -240,7 +248,8 @@
     "de": "55.01",
     "it": "36.69",
     "es": "18.72"
-   }
+   },
+   "capital": "0.52"
   },
   {
    "id": "construction",
@@ -258,7 +267,8 @@
     "de": "437.54",
     "it": "298.40",
     "es": "187.99"
-   }
+   },
+   "capital": "0.20"
   },
   {
    "id": "transport",
@@ -276,7 +286,8 @@
     "de": "493.53",
     "it": "226.52",
     "es": "152.19"
-   }
+   },
+   "capital": "1.60"
   },
   {
    "id": "telecoms",
@@ -294,7 +305,8 @@
     "de": "72.06",
     "it": "37.99",
     "es": "34.68"
-   }
+   },
+   "capital": "1.88"
   },
   {
    "id": "media",
@@ -312,7 +324,8 @@
     "de": "102.37",
     "it": "45.29",
     "es": "38.25"
-   }
+   },
+   "capital": "0.48"
   },
   {
    "id": "banks",
@@ -330,7 +343,8 @@
     "de": "156.43",
     "it": "83.64",
     "es": "53.27"
-   }
+   },
+   "capital": "2.40"
   },
   {
    "id": "insurance",
@@ -348,7 +362,8 @@
     "de": "107.78",
     "it": "38.93",
     "es": "23.59"
-   }
+   },
+   "capital": "0.79"
   },
   {
    "id": "property",
@@ -366,7 +381,8 @@
     "de": "327.08",
     "it": "96.72",
     "es": "69.17"
-   }
+   },
+   "capital": "2.70"
   },
   {
    "id": "leisure",
@@ -384,7 +400,8 @@
     "de": "102.62",
     "it": "73.55",
     "es": "73.46"
-   }
+   },
+   "capital": "0.61"
   },
   {
    "id": "chips",
@@ -402,7 +419,8 @@
     "de": "54.31",
     "it": "14.70",
     "es": "3.01"
-   }
+   },
+   "capital": "0.89"
   },
   {
    "id": "grocers",
@@ -448,7 +466,8 @@
    "growth": "0.060",
    "risk": "1.3",
    "payout": "0.20",
-   "floor": "2.00"
+   "floor": "2.00",
+   "capital": "0.62"
   }
  ],
  "companies": [
@@ -464,7 +483,8 @@
    "debt": "1.36",
    "growth": "-0.0089",
    "payout": "0.60",
-   "management": "average"
+   "management": "average",
+   "equity": "6659400000"
   },
   {
    "ticker": "MLNC",
@@ -478,7 +498,8 @@
    "debt": "1.47",
    "growth": "-0.0088",
    "payout": "0.46",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2867600000"
   },
   {
    "ticker": "BSCH",
@@ -492,7 +513,8 @@
    "debt": "1.15",
    "growth": "-0.0115",
    "payout": "0.63",
-   "management": "average"
+   "management": "average",
+   "equity": "2354000000"
   },
   {
    "ticker": "CHRB",
@@ -506,7 +528,8 @@
    "debt": "1.39",
    "growth": "0.0238",
    "payout": "0.60",
-   "management": "average"
+   "management": "average",
+   "equity": "2048200000"
   },
   {
    "ticker": "BRBR",
@@ -520,7 +543,8 @@
    "debt": "0.71",
    "growth": "0.0167",
    "payout": "0.47",
-   "management": "average"
+   "management": "average",
+   "equity": "1021600000"
   },
   {
    "ticker": "MRFR",
@@ -534,7 +558,8 @@
    "debt": "2.72",
    "growth": "-0.0083",
    "payout": "0.64",
-   "management": "good"
+   "management": "good",
+   "equity": "568400000"
   },
   {
    "ticker": "CRCR",
@@ -548,7 +573,8 @@
    "debt": "2.92",
    "growth": "-0.0319",
    "payout": "0.62",
-   "management": "poor"
+   "management": "poor",
+   "equity": "852000000"
   },
   {
    "ticker": "DRNN",
@@ -562,7 +588,8 @@
    "debt": "1.29",
    "growth": "-0.0087",
    "payout": "0.55",
-   "management": "poor"
+   "management": "poor",
+   "equity": "685900000"
   },
   {
    "ticker": "SCNR",
@@ -576,7 +603,8 @@
    "debt": "1.51",
    "growth": "0.0045",
    "payout": "0.58",
-   "management": "average"
+   "management": "average",
+   "equity": "459800000"
   },
   {
    "ticker": "CLRM",
@@ -590,7 +618,8 @@
    "debt": "1.26",
    "growth": "0.0040",
    "payout": "0.62",
-   "management": "average"
+   "management": "average",
+   "equity": "375800000"
   },
   {
    "ticker": "KLTW",
@@ -604,7 +633,8 @@
    "debt": "1.98",
    "growth": "-0.0279",
    "payout": "0.64",
-   "management": "bad"
+   "management": "bad",
+   "equity": "13688400000"
   },
   {
    "ticker": "RBFL",
@@ -618,7 +648,8 @@
    "debt": "1.34",
    "growth": "0.0106",
    "payout": "0.55",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "7001100000"
   },
   {
    "ticker": "WSSB",
@@ -632,7 +663,8 @@
    "debt": "0.71",
    "growth": "0.0104",
    "payout": "0.63",
-   "management": "bad"
+   "management": "bad",
+   "equity": "5017500000"
   },
   {
    "ticker": "FLSH",
@@ -646,7 +678,8 @@
    "debt": "1.18",
    "growth": "0.0006",
    "payout": "0.49",
-   "management": "average"
+   "management": "average",
+   "equity": "4002000000"
   },
   {
    "ticker": "TNNH",
@@ -660,7 +693,8 @@
    "debt": "1.73",
    "growth": "0.0173",
    "payout": "0.59",
-   "management": "good"
+   "management": "good",
+   "equity": "2416500000"
   },
   {
    "ticker": "BRKB",
@@ -674,7 +708,8 @@
    "debt": "2.81",
    "growth": "-0.0005",
    "payout": "0.60",
-   "management": "good"
+   "management": "good",
+   "equity": "1321000000"
   },
   {
    "ticker": "NRDB",
@@ -688,7 +723,8 @@
    "debt": "1.49",
    "growth": "-0.0024",
    "payout": "0.58",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2368900000"
   },
   {
    "ticker": "RSNB",
@@ -702,7 +738,8 @@
    "debt": "1.09",
    "growth": "-0.0013",
    "payout": "0.64",
-   "management": "bad"
+   "management": "bad",
+   "equity": "2352100000"
   },
   {
    "ticker": "RBBC",
@@ -716,7 +753,8 @@
    "debt": "1.62",
    "growth": "0.0074",
    "payout": "0.63",
-   "management": "good"
+   "management": "good",
+   "equity": "2158000000"
   },
   {
    "ticker": "LNDS",
@@ -730,7 +768,8 @@
    "debt": "2.35",
    "growth": "-0.0005",
    "payout": "0.63",
-   "management": "poor"
+   "management": "poor",
+   "equity": "850400000"
   },
   {
    "ticker": "BRSS",
@@ -744,7 +783,8 @@
    "debt": "1.28",
    "growth": "0.0071",
    "payout": "0.58",
-   "management": "average"
+   "management": "average",
+   "equity": "9963000000"
   },
   {
    "ticker": "GLRN",
@@ -758,7 +798,8 @@
    "debt": "1.09",
    "growth": "-0.0014",
    "payout": "0.52",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "4516100000"
   },
   {
    "ticker": "FRLM",
@@ -772,7 +813,8 @@
    "debt": "1.33",
    "growth": "-0.0162",
    "payout": "0.46",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2903600000"
   },
   {
    "ticker": "BRNN",
@@ -786,7 +828,8 @@
    "debt": "1.15",
    "growth": "-0.0147",
    "payout": "0.56",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2025100000"
   },
   {
    "ticker": "LNRD",
@@ -800,7 +843,8 @@
    "debt": "0.90",
    "growth": "0.0009",
    "payout": "0.62",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1311300000"
   },
   {
    "ticker": "LRDN",
@@ -814,7 +858,8 @@
    "debt": "0.65",
    "growth": "0.0253",
    "payout": "0.54",
-   "management": "good"
+   "management": "good",
+   "equity": "1236300000"
   },
   {
    "ticker": "MNSS",
@@ -828,7 +873,8 @@
    "debt": "1.03",
    "growth": "-0.0028",
    "payout": "0.55",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2071200000"
   },
   {
    "ticker": "CSNN",
@@ -842,7 +888,8 @@
    "debt": "1.07",
    "growth": "0.0030",
    "payout": "0.55",
-   "management": "average"
+   "management": "average",
+   "equity": "1715900000"
   },
   {
    "ticker": "BRTT",
@@ -856,7 +903,8 @@
    "debt": "1.41",
    "growth": "0.0004",
    "payout": "0.45",
-   "management": "good"
+   "management": "good",
+   "equity": "933800000"
   },
   {
    "ticker": "BRNR",
@@ -870,7 +918,8 @@
    "debt": "1.26",
    "growth": "-0.0071",
    "payout": "0.46",
-   "management": "poor"
+   "management": "poor",
+   "equity": "639400000"
   },
   {
    "ticker": "DDNR",
@@ -884,7 +933,8 @@
    "debt": "2.73",
    "growth": "-0.0043",
    "payout": "0.63",
-   "management": "average"
+   "management": "average",
+   "equity": "7181800000"
   },
   {
    "ticker": "NLLN",
@@ -898,7 +948,8 @@
    "debt": "0.64",
    "growth": "0",
    "payout": "0.60",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "4137300000"
   },
   {
    "ticker": "SNSN",
@@ -912,7 +963,8 @@
    "debt": "1.41",
    "growth": "-0.0063",
    "payout": "0.47",
-   "management": "good"
+   "management": "good",
+   "equity": "2962200000"
   },
   {
    "ticker": "PNDN",
@@ -926,7 +978,8 @@
    "debt": "1.78",
    "growth": "0.0053",
    "payout": "0.58",
-   "management": "average"
+   "management": "average",
+   "equity": "1170600000"
   },
   {
    "ticker": "RDNR",
@@ -940,7 +993,8 @@
    "debt": "0.94",
    "growth": "-0.0204",
    "payout": "0.64",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1853200000"
   },
   {
    "ticker": "FRNR",
@@ -954,7 +1008,8 @@
    "debt": "1.73",
    "growth": "-0.0048",
    "payout": "0.46",
-   "management": "average"
+   "management": "average",
+   "equity": "1243600000"
   },
   {
    "ticker": "MRSN",
@@ -968,7 +1023,8 @@
    "debt": "2.09",
    "growth": "0.0064",
    "payout": "0.58",
-   "management": "average"
+   "management": "average",
+   "equity": "1105400000"
   },
   {
    "ticker": "OLND",
@@ -982,7 +1038,8 @@
    "debt": "1.08",
    "growth": "0.0085",
    "payout": "0.48",
-   "management": "poor"
+   "management": "poor",
+   "equity": "719500000"
   },
   {
    "ticker": "ESDN",
@@ -996,7 +1053,8 @@
    "debt": "1.11",
    "growth": "-0.0010",
    "payout": "0.56",
-   "management": "poor"
+   "management": "poor",
+   "equity": "904700000"
   },
   {
    "ticker": "GZNR",
@@ -1010,7 +1068,8 @@
    "debt": "2.29",
    "growth": "-0.0093",
    "payout": "0.54",
-   "management": "good"
+   "management": "good",
+   "equity": "400300000"
   },
   {
    "ticker": "ARGV",
@@ -1024,7 +1083,8 @@
    "debt": "3.87",
    "growth": "-0.0268",
    "payout": "0.67",
-   "management": "bad"
+   "management": "bad",
+   "equity": "96665600000"
   },
   {
    "ticker": "ARGM",
@@ -1038,7 +1098,8 @@
    "debt": "4.37",
    "growth": "-0.0004",
    "payout": "0.71",
-   "management": "average"
+   "management": "average",
+   "equity": "41240400000"
   },
   {
    "ticker": "PRSC",
@@ -1052,7 +1113,8 @@
    "debt": "5.11",
    "growth": "-0.0106",
    "payout": "0.62",
-   "management": "poor"
+   "management": "poor",
+   "equity": "22909500000"
   },
   {
    "ticker": "DRNL",
@@ -1066,7 +1128,8 @@
    "debt": "4.08",
    "growth": "0.0016",
    "payout": "0.69",
-   "management": "good"
+   "management": "good",
+   "equity": "16316200000"
   },
   {
    "ticker": "CLRN",
@@ -1080,7 +1143,8 @@
    "debt": "3.90",
    "growth": "0.0005",
    "payout": "0.71",
-   "management": "average"
+   "management": "average",
+   "equity": "21510200000"
   },
   {
    "ticker": "FNMR",
@@ -1094,7 +1158,8 @@
    "debt": "1.95",
    "growth": "-0.0081",
    "payout": "0.77",
-   "management": "poor"
+   "management": "poor",
+   "equity": "20512800000"
   },
   {
    "ticker": "GRND",
@@ -1108,7 +1173,8 @@
    "debt": "6.17",
    "growth": "0.0119",
    "payout": "0.80",
-   "management": "average"
+   "management": "average",
+   "equity": "7826300000"
   },
   {
    "ticker": "BRCH",
@@ -1122,7 +1188,8 @@
    "debt": "3.61",
    "growth": "-0.0036",
    "payout": "0.61",
-   "management": "average"
+   "management": "average",
+   "equity": "8609100000"
   },
   {
    "ticker": "BSSC",
@@ -1136,7 +1203,8 @@
    "debt": "7.25",
    "growth": "0.0137",
    "payout": "0.67",
-   "management": "average"
+   "management": "average",
+   "equity": "9131000000"
   },
   {
    "ticker": "SLVR",
@@ -1150,7 +1218,8 @@
    "debt": "3.13",
    "growth": "0.0022",
    "payout": "0.65",
-   "management": "average"
+   "management": "average",
+   "equity": "11064500000"
   },
   {
    "ticker": "DRNS",
@@ -1164,7 +1233,8 @@
    "debt": "3.87",
    "growth": "0.0143",
    "payout": "0.70",
-   "management": "average"
+   "management": "average",
+   "equity": "90986800000"
   },
   {
    "ticker": "ISNB",
@@ -1178,7 +1248,8 @@
    "debt": "3.82",
    "growth": "-0.0158",
    "payout": "0.64",
-   "management": "poor"
+   "management": "poor",
+   "equity": "38457700000"
   },
   {
    "ticker": "MRKN",
@@ -1192,7 +1263,8 @@
    "debt": "3.66",
    "growth": "-0.0163",
    "payout": "0.63",
-   "management": "average"
+   "management": "average",
+   "equity": "30952500000"
   },
   {
    "ticker": "BRNS",
@@ -1206,7 +1278,8 @@
    "debt": "11.38",
    "growth": "-0.0218",
    "payout": "0.75",
-   "management": "poor"
+   "management": "poor",
+   "equity": "20224000000"
   },
   {
    "ticker": "STNB",
@@ -1220,7 +1293,8 @@
    "debt": "3.48",
    "growth": "0.0053",
    "payout": "0.79",
-   "management": "bad"
+   "management": "bad",
+   "equity": "21965200000"
   },
   {
    "ticker": "TNNB",
@@ -1234,7 +1308,8 @@
    "debt": "2.99",
    "growth": "0.0014",
    "payout": "0.75",
-   "management": "bad"
+   "management": "bad",
+   "equity": "20892900000"
   },
   {
    "ticker": "WSTR",
@@ -1248,7 +1323,8 @@
    "debt": "5.99",
    "growth": "-0.0101",
    "payout": "0.62",
-   "management": "average"
+   "management": "average",
+   "equity": "7278400000"
   },
   {
    "ticker": "BRNV",
@@ -1262,7 +1338,8 @@
    "debt": "3.68",
    "growth": "0.0035",
    "payout": "0.69",
-   "management": "average"
+   "management": "average",
+   "equity": "11536600000"
   },
   {
    "ticker": "ERLW",
@@ -1276,7 +1353,8 @@
    "debt": "4.90",
    "growth": "-0.0054",
    "payout": "0.78",
-   "management": "good"
+   "management": "good",
+   "equity": "9167000000"
   },
   {
    "ticker": "STNM",
@@ -1290,7 +1368,8 @@
    "debt": "3.83",
    "growth": "0.0025",
    "payout": "0.76",
-   "management": "average"
+   "management": "average",
+   "equity": "5074400000"
   },
   {
    "ticker": "LNNT",
@@ -1304,7 +1383,8 @@
    "debt": "5.40",
    "growth": "0.0075",
    "payout": "0.76",
-   "management": "poor"
+   "management": "poor",
+   "equity": "56108500000"
   },
   {
    "ticker": "BRSC",
@@ -1318,7 +1398,8 @@
    "debt": "4.04",
    "growth": "0.0059",
    "payout": "0.77",
-   "management": "poor"
+   "management": "poor",
+   "equity": "26839700000"
   },
   {
    "ticker": "ORZZ",
@@ -1332,7 +1413,8 @@
    "debt": "2.38",
    "growth": "-0.0059",
    "payout": "0.61",
-   "management": "bad"
+   "management": "bad",
+   "equity": "23666400000"
   },
   {
    "ticker": "SNLL",
@@ -1346,7 +1428,8 @@
    "debt": "2.68",
    "growth": "0.0088",
    "payout": "0.75",
-   "management": "average"
+   "management": "average",
+   "equity": "10052700000"
   },
   {
    "ticker": "DLSS",
@@ -1360,7 +1443,8 @@
    "debt": "4.00",
    "growth": "-0.0022",
    "payout": "0.78",
-   "management": "average"
+   "management": "average",
+   "equity": "10930800000"
   },
   {
    "ticker": "NRSC",
@@ -1374,7 +1458,8 @@
    "debt": "5.51",
    "growth": "0.0120",
    "payout": "0.70",
-   "management": "poor"
+   "management": "poor",
+   "equity": "8662900000"
   },
   {
    "ticker": "PLRS",
@@ -1388,7 +1473,8 @@
    "debt": "3.07",
    "growth": "-0.0059",
    "payout": "0.67",
-   "management": "average"
+   "management": "average",
+   "equity": "12097300000"
   },
   {
    "ticker": "ORSS",
@@ -1402,7 +1488,8 @@
    "debt": "9.93",
    "growth": "0.0102",
    "payout": "0.67",
-   "management": "poor"
+   "management": "poor",
+   "equity": "5778600000"
   },
   {
    "ticker": "ALRD",
@@ -1416,7 +1503,8 @@
    "debt": "2.46",
    "growth": "0.0045",
    "payout": "0.67",
-   "management": "average"
+   "management": "average",
+   "equity": "8149100000"
   },
   {
    "ticker": "MNNS",
@@ -1430,7 +1518,8 @@
    "debt": "7.52",
    "growth": "0.0042",
    "payout": "0.68",
-   "management": "good"
+   "management": "good",
+   "equity": "7098900000"
   },
   {
    "ticker": "MRNR",
@@ -1444,7 +1533,8 @@
    "debt": "4.00",
    "growth": "0.0005",
    "payout": "0.71",
-   "management": "good"
+   "management": "good",
+   "equity": "47046600000"
   },
   {
    "ticker": "LDRD",
@@ -1458,7 +1548,8 @@
    "debt": "4.19",
    "growth": "0.0161",
    "payout": "0.61",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "21605400000"
   },
   {
    "ticker": "ESSR",
@@ -1472,7 +1563,8 @@
    "debt": "3.56",
    "growth": "-0.0152",
    "payout": "0.77",
-   "management": "good"
+   "management": "good",
+   "equity": "16366400000"
   },
   {
    "ticker": "RRRR",
@@ -1486,7 +1578,8 @@
    "debt": "5.01",
    "growth": "-0.0082",
    "payout": "0.76",
-   "management": "poor"
+   "management": "poor",
+   "equity": "9384200000"
   },
   {
    "ticker": "PDRD",
@@ -1500,7 +1593,8 @@
    "debt": "2.32",
    "growth": "-0.0042",
    "payout": "0.61",
-   "management": "average"
+   "management": "average",
+   "equity": "8255300000"
   },
   {
    "ticker": "MNRD",
@@ -1514,7 +1608,8 @@
    "debt": "6.08",
    "growth": "0.0038",
    "payout": "0.65",
-   "management": "average"
+   "management": "average",
+   "equity": "6806700000"
   },
   {
    "ticker": "VLNR",
@@ -1528,7 +1623,8 @@
    "debt": "3.01",
    "growth": "-0.0138",
    "payout": "0.77",
-   "management": "average"
+   "management": "average",
+   "equity": "6657500000"
   },
   {
    "ticker": "HJRD",
@@ -1542,7 +1638,8 @@
    "debt": "5.27",
    "growth": "0.0036",
    "payout": "0.70",
-   "management": "good"
+   "management": "good",
+   "equity": "3874300000"
   },
   {
    "ticker": "HNRD",
@@ -1556,7 +1653,8 @@
    "debt": "6.06",
    "growth": "0.0048",
    "payout": "0.79",
-   "management": "average"
+   "management": "average",
+   "equity": "3706900000"
   },
   {
    "ticker": "TRRR",
@@ -1570,7 +1668,8 @@
    "debt": "5.73",
    "growth": "0.0210",
    "payout": "0.74",
-   "management": "good"
+   "management": "good",
+   "equity": "2916200000"
   },
   {
    "ticker": "BRCM",
@@ -1584,7 +1683,8 @@
    "debt": "0.89",
    "growth": "-0.0053",
    "payout": "0.38",
-   "management": "bad"
+   "management": "bad",
+   "equity": "3641000000"
   },
   {
    "ticker": "SMRM",
@@ -1598,7 +1698,8 @@
    "debt": "2.20",
    "growth": "-0.0034",
    "payout": "0.33",
-   "management": "average"
+   "management": "average",
+   "equity": "1373300000"
   },
   {
    "ticker": "ESCB",
@@ -1612,7 +1713,8 @@
    "debt": "1.45",
    "growth": "-0.0073",
    "payout": "0.40",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1273700000"
   },
   {
    "ticker": "BSRX",
@@ -1626,7 +1728,8 @@
    "debt": "1.73",
    "growth": "-0.0036",
    "payout": "0.39",
-   "management": "good"
+   "management": "good",
+   "equity": "887800000"
   },
   {
    "ticker": "VLFR",
@@ -1640,7 +1743,8 @@
    "debt": "1.33",
    "growth": "-0.0084",
    "payout": "0.37",
-   "management": "bad"
+   "management": "bad",
+   "equity": "711500000"
   },
   {
    "ticker": "CRLM",
@@ -1654,7 +1758,8 @@
    "debt": "1.31",
    "growth": "0.0070",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "640000000"
   },
   {
    "ticker": "ESCM",
@@ -1668,7 +1773,8 @@
    "debt": "0.77",
    "growth": "0.0017",
    "payout": "0.44",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "579800000"
   },
   {
    "ticker": "CLRV",
@@ -1682,7 +1788,8 @@
    "debt": "1.29",
    "growth": "0.0024",
    "payout": "0.39",
-   "management": "poor"
+   "management": "poor",
+   "equity": "306400000"
   },
   {
    "ticker": "JLRX",
@@ -1696,7 +1803,8 @@
    "debt": "0.99",
    "growth": "-0.0001",
    "payout": "0.43",
-   "management": "bad"
+   "management": "bad",
+   "equity": "365000000"
   },
   {
    "ticker": "VRBR",
@@ -1710,7 +1818,8 @@
    "debt": "1.76",
    "growth": "0.0046",
    "payout": "0.39",
-   "management": "average"
+   "management": "average",
+   "equity": "272300000"
   },
   {
    "ticker": "DRNW",
@@ -1724,7 +1833,8 @@
    "debt": "2.89",
    "growth": "-0.0218",
    "payout": "0.31",
-   "management": "bad"
+   "management": "bad",
+   "equity": "10076000000"
   },
   {
    "ticker": "KLTF",
@@ -1738,7 +1848,8 @@
    "debt": "2.10",
    "growth": "0.0049",
    "payout": "0.38",
-   "management": "poor"
+   "management": "poor",
+   "equity": "4482800000"
   },
   {
    "ticker": "RBHR",
@@ -1752,7 +1863,8 @@
    "debt": "2.09",
    "growth": "-0.0011",
    "payout": "0.46",
-   "management": "poor"
+   "management": "poor",
+   "equity": "3140200000"
   },
   {
    "ticker": "MRKB",
@@ -1766,7 +1878,8 @@
    "debt": "2.32",
    "growth": "0.0003",
    "payout": "0.39",
-   "management": "average"
+   "management": "average",
+   "equity": "2275800000"
   },
   {
    "ticker": "BRNB",
@@ -1780,7 +1893,8 @@
    "debt": "1.48",
    "growth": "0.0087",
    "payout": "0.40",
-   "management": "average"
+   "management": "average",
+   "equity": "1598200000"
   },
   {
    "ticker": "DRNT",
@@ -1794,7 +1908,8 @@
    "debt": "1.37",
    "growth": "-0.0012",
    "payout": "0.46",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2034900000"
   },
   {
    "ticker": "KLTD",
@@ -1808,7 +1923,8 @@
    "debt": "0.90",
    "growth": "-0.0052",
    "payout": "0.39",
-   "management": "average"
+   "management": "average",
+   "equity": "1604300000"
   },
   {
    "ticker": "BRNT",
@@ -1822,7 +1938,8 @@
    "debt": "1.39",
    "growth": "-0.0109",
    "payout": "0.34",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1593300000"
   },
   {
    "ticker": "KRNC",
@@ -1836,7 +1953,8 @@
    "debt": "2.14",
    "growth": "0.0130",
    "payout": "0.30",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1530300000"
   },
   {
    "ticker": "WSSW",
@@ -1850,7 +1968,8 @@
    "debt": "1.94",
    "growth": "-0.0138",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "1220700000"
   },
   {
    "ticker": "SNSS",
@@ -1864,7 +1983,8 @@
    "debt": "1.51",
    "growth": "0.0219",
    "payout": "0.44",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "6528100000"
   },
   {
    "ticker": "BRSH",
@@ -1878,7 +1998,8 @@
    "debt": "1.56",
    "growth": "-0.0168",
    "payout": "0.33",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2884700000"
   },
   {
    "ticker": "FRLL",
@@ -1892,7 +2013,8 @@
    "debt": "1.44",
    "growth": "0.0019",
    "payout": "0.41",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2465900000"
   },
   {
    "ticker": "BRLL",
@@ -1906,7 +2028,8 @@
    "debt": "1.00",
    "growth": "-0.0056",
    "payout": "0.33",
-   "management": "average"
+   "management": "average",
+   "equity": "2170400000"
   },
   {
    "ticker": "SNRM",
@@ -1920,7 +2043,8 @@
    "debt": "1.06",
    "growth": "0.0081",
    "payout": "0.42",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "1049700000"
   },
   {
    "ticker": "LRRM",
@@ -1934,7 +2058,8 @@
    "debt": "1.22",
    "growth": "-0.0169",
    "payout": "0.38",
-   "management": "good"
+   "management": "good",
+   "equity": "1145400000"
   },
   {
    "ticker": "ARNT",
@@ -1948,7 +2073,8 @@
    "debt": "1.32",
    "growth": "-0.0035",
    "payout": "0.42",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "876500000"
   },
   {
    "ticker": "ARSC",
@@ -1962,7 +2088,8 @@
    "debt": "1.35",
    "growth": "-0.0092",
    "payout": "0.43",
-   "management": "good"
+   "management": "good",
+   "equity": "714900000"
   },
   {
    "ticker": "BLSC",
@@ -1976,7 +2103,8 @@
    "debt": "1.27",
    "growth": "-0.0065",
    "payout": "0.46",
-   "management": "average"
+   "management": "average",
+   "equity": "455900000"
   },
   {
    "ticker": "BRRM",
@@ -1990,7 +2118,8 @@
    "debt": "0.99",
    "growth": "0.0021",
    "payout": "0.43",
-   "management": "good"
+   "management": "good",
+   "equity": "399100000"
   },
   {
    "ticker": "OLNM",
@@ -2004,7 +2133,8 @@
    "debt": "1.95",
    "growth": "0.0102",
    "payout": "0.46",
-   "management": "average"
+   "management": "average",
+   "equity": "3468900000"
   },
   {
    "ticker": "LRMT",
@@ -2018,7 +2148,8 @@
    "debt": "1.49",
    "growth": "-0.0101",
    "payout": "0.36",
-   "management": "average"
+   "management": "average",
+   "equity": "1492500000"
   },
   {
    "ticker": "MJMT",
@@ -2032,7 +2163,8 @@
    "debt": "1.61",
    "growth": "0.0081",
    "payout": "0.31",
-   "management": "good"
+   "management": "good",
+   "equity": "1561300000"
   },
   {
    "ticker": "RNCM",
@@ -2046,7 +2178,8 @@
    "debt": "0.64",
    "growth": "-0.0045",
    "payout": "0.49",
-   "management": "bad"
+   "management": "bad",
+   "equity": "752100000"
   },
   {
    "ticker": "CSZM",
@@ -2060,7 +2193,8 @@
    "debt": "0.95",
    "growth": "-0.0094",
    "payout": "0.34",
-   "management": "average"
+   "management": "average",
+   "equity": "648500000"
   },
   {
    "ticker": "BLLL",
@@ -2074,7 +2208,8 @@
    "debt": "1.99",
    "growth": "0.0182",
    "payout": "0.36",
-   "management": "average"
+   "management": "average",
+   "equity": "308000000"
   },
   {
    "ticker": "ALRR",
@@ -2088,7 +2223,8 @@
    "debt": "1.08",
    "growth": "-0.0185",
    "payout": "0.36",
-   "management": "bad"
+   "management": "bad",
+   "equity": "559400000"
   },
   {
    "ticker": "MNLD",
@@ -2102,7 +2238,8 @@
    "debt": "1.42",
    "growth": "-0.0002",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "383400000"
   },
   {
    "ticker": "VLRR",
@@ -2116,7 +2253,8 @@
    "debt": "1.08",
    "growth": "0.0075",
    "payout": "0.32",
-   "management": "average"
+   "management": "average",
+   "equity": "285500000"
   },
   {
    "ticker": "BLND",
@@ -2130,7 +2268,8 @@
    "debt": "2.17",
    "growth": "-0.0096",
    "payout": "0.35",
-   "management": "average"
+   "management": "average",
+   "equity": "213700000"
   },
   {
    "ticker": "GLCR",
@@ -2144,7 +2283,8 @@
    "debt": "1.02",
    "growth": "0.0013",
    "payout": "0.36",
-   "management": "poor"
+   "management": "poor",
+   "equity": "4480100000"
   },
   {
    "ticker": "HTSC",
@@ -2158,7 +2298,8 @@
    "debt": "1.30",
    "growth": "-0.0058",
    "payout": "0.39",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2066600000"
   },
   {
    "ticker": "SCHM",
@@ -2172,7 +2313,8 @@
    "debt": "1.52",
    "growth": "0.0037",
    "payout": "0.44",
-   "management": "good"
+   "management": "good",
+   "equity": "1379000000"
   },
   {
    "ticker": "BLCH",
@@ -2186,7 +2328,8 @@
    "debt": "1.93",
    "growth": "-0.0083",
    "payout": "0.53",
-   "management": "good"
+   "management": "good",
+   "equity": "1343500000"
   },
   {
    "ticker": "CRMR",
@@ -2200,7 +2343,8 @@
    "debt": "2.59",
    "growth": "-0.0042",
    "payout": "0.35",
-   "management": "poor"
+   "management": "poor",
+   "equity": "879400000"
   },
   {
    "ticker": "VRMR",
@@ -2214,7 +2358,8 @@
    "debt": "1.12",
    "growth": "-0.0030",
    "payout": "0.37",
-   "management": "poor"
+   "management": "poor",
+   "equity": "790900000"
   },
   {
    "ticker": "CHRC",
@@ -2228,7 +2373,8 @@
    "debt": "0.67",
    "growth": "-0.0078",
    "payout": "0.52",
-   "management": "average"
+   "management": "average",
+   "equity": "760400000"
   },
   {
    "ticker": "MLLC",
@@ -2242,7 +2388,8 @@
    "debt": "0.91",
    "growth": "-0.0093",
    "payout": "0.47",
-   "management": "poor"
+   "management": "poor",
+   "equity": "350200000"
   },
   {
    "ticker": "CHRM",
@@ -2256,7 +2403,8 @@
    "debt": "2.66",
    "growth": "0.0044",
    "payout": "0.54",
-   "management": "poor"
+   "management": "poor",
+   "equity": "261700000"
   },
   {
    "ticker": "GRNR",
@@ -2270,7 +2418,8 @@
    "debt": "1.02",
    "growth": "0.0034",
    "payout": "0.49",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "284300000"
   },
   {
    "ticker": "MRKR",
@@ -2284,7 +2433,8 @@
    "debt": "1.32",
    "growth": "-0.0031",
    "payout": "0.36",
-   "management": "average"
+   "management": "average",
+   "equity": "12480700000"
   },
   {
    "ticker": "ISNF",
@@ -2298,7 +2448,8 @@
    "debt": "1.93",
    "growth": "-0.0025",
    "payout": "0.46",
-   "management": "average"
+   "management": "average",
+   "equity": "5135100000"
   },
   {
    "ticker": "TNNS",
@@ -2312,7 +2463,8 @@
    "debt": "2.65",
    "growth": "-0.0062",
    "payout": "0.54",
-   "management": "bad"
+   "management": "bad",
+   "equity": "4140700000"
   },
   {
    "ticker": "ECHH",
@@ -2326,7 +2478,8 @@
    "debt": "2.30",
    "growth": "-0.0097",
    "payout": "0.54",
-   "management": "average"
+   "management": "average",
+   "equity": "2935400000"
   },
   {
    "ticker": "SNDB",
@@ -2340,7 +2493,8 @@
    "debt": "2.28",
    "growth": "0.0034",
    "payout": "0.43",
-   "management": "average"
+   "management": "average",
+   "equity": "2401700000"
   },
   {
    "ticker": "ALBN",
@@ -2354,7 +2508,8 @@
    "debt": "1.19",
    "growth": "0.0055",
    "payout": "0.43",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1754200000"
   },
   {
    "ticker": "ZLLH",
@@ -2368,7 +2523,8 @@
    "debt": "0.96",
    "growth": "0.0049",
    "payout": "0.45",
-   "management": "average"
+   "management": "average",
+   "equity": "2124200000"
   },
   {
    "ticker": "ZLLW",
@@ -2382,7 +2538,8 @@
    "debt": "1.06",
    "growth": "-0.0024",
    "payout": "0.38",
-   "management": "average"
+   "management": "average",
+   "equity": "1214700000"
   },
   {
    "ticker": "ZLLM",
@@ -2396,7 +2553,8 @@
    "debt": "1.34",
    "growth": "0.0169",
    "payout": "0.51",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "1384700000"
   },
   {
    "ticker": "LNDT",
@@ -2410,7 +2568,8 @@
    "debt": "1.46",
    "growth": "0.0035",
    "payout": "0.40",
-   "management": "good"
+   "management": "good",
+   "equity": "1422500000"
   },
   {
    "ticker": "SRRC",
@@ -2424,7 +2583,8 @@
    "debt": "1.39",
    "growth": "-0.0036",
    "payout": "0.50",
-   "management": "poor"
+   "management": "poor",
+   "equity": "5636400000"
   },
   {
    "ticker": "ALNC",
@@ -2438,7 +2598,8 @@
    "debt": "1.70",
    "growth": "0.0190",
    "payout": "0.45",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "2530100000"
   },
   {
    "ticker": "FNCH",
@@ -2452,7 +2613,8 @@
    "debt": "0.97",
    "growth": "0.0024",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "1437600000"
   },
   {
    "ticker": "NRRC",
@@ -2466,7 +2628,8 @@
    "debt": "1.68",
    "growth": "-0.0197",
    "payout": "0.52",
-   "management": "average"
+   "management": "average",
+   "equity": "1618900000"
   },
   {
    "ticker": "SRSC",
@@ -2480,7 +2643,8 @@
    "debt": "1.44",
    "growth": "0.0129",
    "payout": "0.54",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1338800000"
   },
   {
    "ticker": "DLSC",
@@ -2494,7 +2658,8 @@
    "debt": "1.92",
    "growth": "-0.0153",
    "payout": "0.48",
-   "management": "bad"
+   "management": "bad",
+   "equity": "645300000"
   },
   {
    "ticker": "SLNC",
@@ -2508,7 +2673,8 @@
    "debt": "1.47",
    "growth": "0.0167",
    "payout": "0.37",
-   "management": "average"
+   "management": "average",
+   "equity": "953800000"
   },
   {
    "ticker": "MNLM",
@@ -2522,7 +2688,8 @@
    "debt": "1.33",
    "growth": "-0.0057",
    "payout": "0.43",
-   "management": "poor"
+   "management": "poor",
+   "equity": "944900000"
   },
   {
    "ticker": "MRTT",
@@ -2536,7 +2703,8 @@
    "debt": "1.78",
    "growth": "0.0114",
    "payout": "0.47",
-   "management": "good"
+   "management": "good",
+   "equity": "875100000"
   },
   {
    "ticker": "TRRD",
@@ -2550,7 +2718,8 @@
    "debt": "1.22",
    "growth": "0.0089",
    "payout": "0.54",
-   "management": "average"
+   "management": "average",
+   "equity": "429700000"
   },
   {
    "ticker": "VLDQ",
@@ -2564,7 +2733,8 @@
    "debt": "1.72",
    "growth": "0.0050",
    "payout": "0.44",
-   "management": "poor"
+   "management": "poor",
+   "equity": "3786100000"
   },
   {
    "ticker": "LRRQ",
@@ -2578,7 +2748,8 @@
    "debt": "2.50",
    "growth": "-0.0015",
    "payout": "0.36",
-   "management": "good"
+   "management": "good",
+   "equity": "1376600000"
   },
   {
    "ticker": "ESZQ",
@@ -2592,7 +2763,8 @@
    "debt": "1.77",
    "growth": "0.0038",
    "payout": "0.48",
-   "management": "good"
+   "management": "good",
+   "equity": "1092300000"
   },
   {
    "ticker": "ALDQ",
@@ -2606,7 +2778,8 @@
    "debt": "1.17",
    "growth": "-0.0095",
    "payout": "0.48",
-   "management": "average"
+   "management": "average",
+   "equity": "880200000"
   },
   {
    "ticker": "MRRQ",
@@ -2620,7 +2793,8 @@
    "debt": "1.57",
    "growth": "-0.0196",
    "payout": "0.41",
-   "management": "bad"
+   "management": "bad",
+   "equity": "505500000"
   },
   {
    "ticker": "LRQM",
@@ -2634,7 +2808,8 @@
    "debt": "3.23",
    "growth": "0.0236",
    "payout": "0.40",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "231400000"
   },
   {
    "ticker": "CNZQ",
@@ -2648,7 +2823,8 @@
    "debt": "1.09",
    "growth": "0.0303",
    "payout": "0.36",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "716500000"
   },
   {
    "ticker": "CRLD",
@@ -2662,7 +2838,8 @@
    "debt": "0.88",
    "growth": "-0.0283",
    "payout": "0.37",
-   "management": "average"
+   "management": "average",
+   "equity": "534500000"
   },
   {
    "ticker": "BDQM",
@@ -2676,7 +2853,8 @@
    "debt": "1.65",
    "growth": "0.0048",
    "payout": "0.47",
-   "management": "average"
+   "management": "average",
+   "equity": "633800000"
   },
   {
    "ticker": "ARRQ",
@@ -2690,7 +2868,8 @@
    "debt": "1.48",
    "growth": "0.0125",
    "payout": "0.42",
-   "management": "average"
+   "management": "average",
+   "equity": "321100000"
   },
   {
    "ticker": "CLRC",
@@ -2704,7 +2883,8 @@
    "debt": "0.48",
    "growth": "0.0116",
    "payout": "0.35",
-   "management": "average"
+   "management": "average",
+   "equity": "2761800000"
   },
   {
    "ticker": "BVLP",
@@ -2718,7 +2898,8 @@
    "debt": "0.72",
    "growth": "0.0027",
    "payout": "0.45",
-   "management": "good"
+   "management": "good",
+   "equity": "1378600000"
   },
   {
    "ticker": "CLRS",
@@ -2732,7 +2913,8 @@
    "debt": "1.01",
    "growth": "0.0059",
    "payout": "0.39",
-   "management": "good"
+   "management": "good",
+   "equity": "1147100000"
   },
   {
    "ticker": "SBRG",
@@ -2746,7 +2928,8 @@
    "debt": "0.98",
    "growth": "-0.0184",
    "payout": "0.40",
-   "management": "average"
+   "management": "average",
+   "equity": "922000000"
   },
   {
    "ticker": "ARGL",
@@ -2760,7 +2943,8 @@
    "debt": "1.46",
    "growth": "0.0019",
    "payout": "0.39",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "364300000"
   },
   {
    "ticker": "BRLP",
@@ -2774,7 +2958,8 @@
    "debt": "0.51",
    "growth": "0.0021",
    "payout": "0.54",
-   "management": "average"
+   "management": "average",
+   "equity": "423900000"
   },
   {
    "ticker": "MLRS",
@@ -2788,7 +2973,8 @@
    "debt": "1.10",
    "growth": "-0.0050",
    "payout": "0.40",
-   "management": "average"
+   "management": "average",
+   "equity": "567300000"
   },
   {
    "ticker": "ESCL",
@@ -2802,7 +2988,8 @@
    "debt": "1.30",
    "growth": "-0.0204",
    "payout": "0.45",
-   "management": "poor"
+   "management": "poor",
+   "equity": "282600000"
   },
   {
    "ticker": "BRVL",
@@ -2816,7 +3003,8 @@
    "debt": "0.80",
    "growth": "-0.0007",
    "payout": "0.54",
-   "management": "bad"
+   "management": "bad",
+   "equity": "310200000"
   },
   {
    "ticker": "BSSP",
@@ -2830,7 +3018,8 @@
    "debt": "1.17",
    "growth": "0.0173",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "181200000"
   },
   {
    "ticker": "BRNG",
@@ -2844,7 +3033,8 @@
    "debt": "0.60",
    "growth": "-0.0023",
    "payout": "0.37",
-   "management": "poor"
+   "management": "poor",
+   "equity": "6020500000"
   },
   {
    "ticker": "RSNH",
@@ -2858,7 +3048,8 @@
    "debt": "2.57",
    "growth": "0.0018",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "2479400000"
   },
   {
    "ticker": "MRKD",
@@ -2872,7 +3063,8 @@
    "debt": "0.64",
    "growth": "-0.0093",
    "payout": "0.38",
-   "management": "bad"
+   "management": "bad",
+   "equity": "2422400000"
   },
   {
    "ticker": "LNDN",
@@ -2886,7 +3078,8 @@
    "debt": "1.56",
    "growth": "0.0143",
    "payout": "0.40",
-   "management": "average"
+   "management": "average",
+   "equity": "1709700000"
   },
   {
    "ticker": "KLTB",
@@ -2900,7 +3093,8 @@
    "debt": "1.59",
    "growth": "0.0099",
    "payout": "0.43",
-   "management": "bad"
+   "management": "bad",
+   "equity": "813800000"
   },
   {
    "ticker": "KRNM",
@@ -2914,7 +3108,8 @@
    "debt": "1.48",
    "growth": "0.0023",
    "payout": "0.48",
-   "management": "good"
+   "management": "good",
+   "equity": "1042000000"
   },
   {
    "ticker": "BRNM",
@@ -2928,7 +3123,8 @@
    "debt": "1.25",
    "growth": "0.0084",
    "payout": "0.40",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1026800000"
   },
   {
    "ticker": "FLSC",
@@ -2942,7 +3138,8 @@
    "debt": "0.77",
    "growth": "0.0077",
    "payout": "0.49",
-   "management": "good"
+   "management": "good",
+   "equity": "1039900000"
   },
   {
    "ticker": "SNNB",
@@ -2956,7 +3153,8 @@
    "debt": "1.16",
    "growth": "-0.0047",
    "payout": "0.36",
-   "management": "poor"
+   "management": "poor",
+   "equity": "771000000"
   },
   {
    "ticker": "DRNG",
@@ -2970,7 +3168,8 @@
    "debt": "0.95",
    "growth": "-0.0061",
    "payout": "0.51",
-   "management": "average"
+   "management": "average",
+   "equity": "333000000"
   },
   {
    "ticker": "FRZZ",
@@ -2984,7 +3183,8 @@
    "debt": "0.85",
    "growth": "-0.0103",
    "payout": "0.40",
-   "management": "average"
+   "management": "average",
+   "equity": "2673400000"
   },
   {
    "ticker": "CSTT",
@@ -2998,7 +3198,8 @@
    "debt": "0.58",
    "growth": "-0.0171",
    "payout": "0.54",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1688100000"
   },
   {
    "ticker": "FNFR",
@@ -3012,7 +3213,8 @@
    "debt": "0.64",
    "growth": "-0.0093",
    "payout": "0.38",
-   "management": "average"
+   "management": "average",
+   "equity": "937500000"
   },
   {
    "ticker": "FNFM",
@@ -3026,7 +3228,8 @@
    "debt": "1.04",
    "growth": "-0.0145",
    "payout": "0.44",
-   "management": "good"
+   "management": "good",
+   "equity": "571600000"
   },
   {
    "ticker": "RSRF",
@@ -3040,7 +3243,8 @@
    "debt": "1.15",
    "growth": "-0.0040",
    "payout": "0.36",
-   "management": "bad"
+   "management": "bad",
+   "equity": "649600000"
   },
   {
    "ticker": "LNLM",
@@ -3054,7 +3258,8 @@
    "debt": "0.51",
    "growth": "0.0029",
    "payout": "0.54",
-   "management": "average"
+   "management": "average",
+   "equity": "586200000"
   },
   {
    "ticker": "MRLL",
@@ -3068,7 +3273,8 @@
    "debt": "1.51",
    "growth": "-0.0180",
    "payout": "0.38",
-   "management": "average"
+   "management": "average",
+   "equity": "429900000"
   },
   {
    "ticker": "FSSF",
@@ -3082,7 +3288,8 @@
    "debt": "0.73",
    "growth": "0.0094",
    "payout": "0.40",
-   "management": "poor"
+   "management": "poor",
+   "equity": "276200000"
   },
   {
    "ticker": "MNZZ",
@@ -3096,7 +3303,8 @@
    "debt": "1.45",
    "growth": "0.0156",
    "payout": "0.41",
-   "management": "poor"
+   "management": "poor",
+   "equity": "150800000"
   },
   {
    "ticker": "CSZZ",
@@ -3110,7 +3318,8 @@
    "debt": "1.30",
    "growth": "-0.0059",
    "payout": "0.49",
-   "management": "poor"
+   "management": "poor",
+   "equity": "372800000"
   },
   {
    "ticker": "CLLF",
@@ -3124,7 +3333,8 @@
    "debt": "1.10",
    "growth": "-0.0058",
    "payout": "0.45",
-   "management": "bad"
+   "management": "bad",
+   "equity": "2237300000"
   },
   {
    "ticker": "NLDF",
@@ -3138,7 +3348,8 @@
    "debt": "1.66",
    "growth": "-0.0005",
    "payout": "0.50",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "899500000"
   },
   {
    "ticker": "RRFR",
@@ -3152,7 +3363,8 @@
    "debt": "1.09",
    "growth": "0.0012",
    "payout": "0.49",
-   "management": "good"
+   "management": "good",
+   "equity": "613300000"
   },
   {
    "ticker": "CSRF",
@@ -3166,7 +3378,8 @@
    "debt": "0.90",
    "growth": "0.0240",
    "payout": "0.45",
-   "management": "average"
+   "management": "average",
+   "equity": "558000000"
   },
   {
    "ticker": "NLFR",
@@ -3180,7 +3393,8 @@
    "debt": "1.93",
    "growth": "0.0039",
    "payout": "0.47",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "357200000"
   },
   {
    "ticker": "MDFR",
@@ -3194,7 +3408,8 @@
    "debt": "1.60",
    "growth": "0.0251",
    "payout": "0.46",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "368000000"
   },
   {
    "ticker": "TRRF",
@@ -3208,7 +3423,8 @@
    "debt": "0.89",
    "growth": "-0.0022",
    "payout": "0.37",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "270500000"
   },
   {
    "ticker": "RLLF",
@@ -3222,7 +3438,8 @@
    "debt": "1.61",
    "growth": "-0.0236",
    "payout": "0.54",
-   "management": "average"
+   "management": "average",
+   "equity": "178200000"
   },
   {
    "ticker": "LLDF",
@@ -3236,7 +3453,8 @@
    "debt": "1.32",
    "growth": "0.0046",
    "payout": "0.47",
-   "management": "good"
+   "management": "good",
+   "equity": "323400000"
   },
   {
    "ticker": "BLLS",
@@ -3250,7 +3468,8 @@
    "debt": "1.82",
    "growth": "0.0061",
    "payout": "0.40",
-   "management": "good"
+   "management": "good",
+   "equity": "250300000"
   },
   {
    "ticker": "ESCN",
@@ -3264,7 +3483,8 @@
    "debt": "2.85",
    "growth": "0.0065",
    "payout": "0.62",
-   "management": "average"
+   "management": "average",
+   "equity": "2607600000"
   },
   {
    "ticker": "RMRL",
@@ -3278,7 +3498,8 @@
    "debt": "2.00",
    "growth": "-0.0016",
    "payout": "0.50",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1640100000"
   },
   {
    "ticker": "LRMS",
@@ -3292,7 +3513,8 @@
    "debt": "1.35",
    "growth": "-0.0052",
    "payout": "0.47",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1236900000"
   },
   {
    "ticker": "LNCL",
@@ -3306,7 +3528,8 @@
    "debt": "2.29",
    "growth": "-0.0021",
    "payout": "0.57",
-   "management": "average"
+   "management": "average",
+   "equity": "361300000"
   },
   {
    "ticker": "VLVL",
@@ -3320,7 +3543,8 @@
    "debt": "1.69",
    "growth": "0.0023",
    "payout": "0.63",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "689100000"
   },
   {
    "ticker": "PRCH",
@@ -3334,7 +3558,8 @@
    "debt": "1.65",
    "growth": "0.0001",
    "payout": "0.54",
-   "management": "good"
+   "management": "good",
+   "equity": "440600000"
   },
   {
    "ticker": "GRNS",
@@ -3348,7 +3573,8 @@
    "debt": "2.29",
    "growth": "0.0082",
    "payout": "0.64",
-   "management": "average"
+   "management": "average",
+   "equity": "589200000"
   },
   {
    "ticker": "FRLN",
@@ -3362,7 +3588,8 @@
    "debt": "2.12",
    "growth": "-0.0044",
    "payout": "0.51",
-   "management": "poor"
+   "management": "poor",
+   "equity": "335400000"
   },
   {
    "ticker": "CLRF",
@@ -3376,7 +3603,8 @@
    "debt": "1.89",
    "growth": "0.0031",
    "payout": "0.53",
-   "management": "bad"
+   "management": "bad",
+   "equity": "650000000"
   },
   {
    "ticker": "JLRS",
@@ -3390,7 +3618,8 @@
    "debt": "3.00",
    "growth": "0.0003",
    "payout": "0.49",
-   "management": "average"
+   "management": "average",
+   "equity": "154500000"
   },
   {
    "ticker": "MRKF",
@@ -3404,7 +3633,8 @@
    "debt": "1.89",
    "growth": "0.0022",
    "payout": "0.61",
-   "management": "good"
+   "management": "good",
+   "equity": "5861400000"
   },
   {
    "ticker": "ECHB",
@@ -3418,7 +3648,8 @@
    "debt": "3.04",
    "growth": "0.0009",
    "payout": "0.61",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1835300000"
   },
   {
    "ticker": "FLSN",
@@ -3432,7 +3663,8 @@
    "debt": "1.95",
    "growth": "-0.0175",
    "payout": "0.62",
-   "management": "average"
+   "management": "average",
+   "equity": "1377300000"
   },
   {
    "ticker": "HHNH",
@@ -3446,7 +3678,8 @@
    "debt": "1.82",
    "growth": "0.0220",
    "payout": "0.58",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1201400000"
   },
   {
    "ticker": "FLKS",
@@ -3460,7 +3693,8 @@
    "debt": "1.70",
    "growth": "-0.0077",
    "payout": "0.47",
-   "management": "good"
+   "management": "good",
+   "equity": "736800000"
   },
   {
    "ticker": "ALBB",
@@ -3474,7 +3708,8 @@
    "debt": "1.83",
    "growth": "0.0159",
    "payout": "0.62",
-   "management": "average"
+   "management": "average",
+   "equity": "1077700000"
   },
   {
    "ticker": "KLTH",
@@ -3488,7 +3723,8 @@
    "debt": "2.75",
    "growth": "-0.0328",
    "payout": "0.58",
-   "management": "average"
+   "management": "average",
+   "equity": "504700000"
   },
   {
    "ticker": "KRNW",
@@ -3502,7 +3738,8 @@
    "debt": "1.75",
    "growth": "0.0018",
    "payout": "0.48",
-   "management": "average"
+   "management": "average",
+   "equity": "415400000"
   },
   {
    "ticker": "BRND",
@@ -3516,7 +3753,8 @@
    "debt": "2.50",
    "growth": "0.0019",
    "payout": "0.48",
-   "management": "average"
+   "management": "average",
+   "equity": "339800000"
   },
   {
    "ticker": "NRDH",
@@ -3530,7 +3768,8 @@
    "debt": "1.85",
    "growth": "-0.0182",
    "payout": "0.58",
-   "management": "average"
+   "management": "average",
+   "equity": "372100000"
   },
   {
    "ticker": "SRSH",
@@ -3544,7 +3783,8 @@
    "debt": "2.21",
    "growth": "-0.0062",
    "payout": "0.46",
-   "management": "good"
+   "management": "good",
+   "equity": "3221600000"
   },
   {
    "ticker": "SLLL",
@@ -3558,7 +3798,8 @@
    "debt": "2.93",
    "growth": "0.0009",
    "payout": "0.56",
-   "management": "average"
+   "management": "average",
+   "equity": "352100000"
   },
   {
    "ticker": "FRRL",
@@ -3572,7 +3813,8 @@
    "debt": "2.49",
    "growth": "-0.0010",
    "payout": "0.56",
-   "management": "average"
+   "management": "average",
+   "equity": "1258000000"
   },
   {
    "ticker": "BRLM",
@@ -3586,7 +3828,8 @@
    "debt": "1.65",
    "growth": "-0.0027",
    "payout": "0.47",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1249900000"
   },
   {
    "ticker": "FRRM",
@@ -3600,7 +3843,8 @@
    "debt": "2.02",
    "growth": "0.0040",
    "payout": "0.62",
-   "management": "average"
+   "management": "average",
+   "equity": "410000000"
   },
   {
    "ticker": "RSNL",
@@ -3614,7 +3858,8 @@
    "debt": "2.04",
    "growth": "-0.0116",
    "payout": "0.60",
-   "management": "poor"
+   "management": "poor",
+   "equity": "853400000"
   },
   {
    "ticker": "MNNL",
@@ -3628,7 +3873,8 @@
    "debt": "2.41",
    "growth": "0.0027",
    "payout": "0.57",
-   "management": "average"
+   "management": "average",
+   "equity": "423700000"
   },
   {
    "ticker": "CLZZ",
@@ -3642,7 +3888,8 @@
    "debt": "1.23",
    "growth": "0.0009",
    "payout": "0.62",
-   "management": "bad"
+   "management": "bad",
+   "equity": "544300000"
   },
   {
    "ticker": "SLNT",
@@ -3656,7 +3903,8 @@
    "debt": "1.67",
    "growth": "0.0172",
    "payout": "0.47",
-   "management": "average"
+   "management": "average",
+   "equity": "606200000"
   },
   {
    "ticker": "LRGL",
@@ -3670,7 +3918,8 @@
    "debt": "2.49",
    "growth": "-0.0018",
    "payout": "0.54",
-   "management": "average"
+   "management": "average",
+   "equity": "241700000"
   },
   {
    "ticker": "SLRL",
@@ -3684,7 +3933,8 @@
    "debt": "2.14",
    "growth": "0.0026",
    "payout": "0.60",
-   "management": "bad"
+   "management": "bad",
+   "equity": "3807100000"
   },
   {
    "ticker": "VLRL",
@@ -3698,7 +3948,8 @@
    "debt": "1.58",
    "growth": "-0.0046",
    "payout": "0.53",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1921900000"
   },
   {
    "ticker": "LJLM",
@@ -3712,7 +3963,8 @@
    "debt": "1.74",
    "growth": "-0.0054",
    "payout": "0.59",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1422600000"
   },
   {
    "ticker": "BLRR",
@@ -3726,7 +3978,8 @@
    "debt": "2.08",
    "growth": "0.0084",
    "payout": "0.59",
-   "management": "average"
+   "management": "average",
+   "equity": "712000000"
   },
   {
    "ticker": "CRRL",
@@ -3740,7 +3993,8 @@
    "debt": "3.99",
    "growth": "0.0015",
    "payout": "0.64",
-   "management": "bad"
+   "management": "bad",
+   "equity": "336700000"
   },
   {
    "ticker": "ALRL",
@@ -3754,7 +4008,8 @@
    "debt": "2.44",
    "growth": "-0.0254",
    "payout": "0.46",
-   "management": "bad"
+   "management": "bad",
+   "equity": "373000000"
   },
   {
    "ticker": "CLSL",
@@ -3768,7 +4023,8 @@
    "debt": "1.70",
    "growth": "-0.0095",
    "payout": "0.56",
-   "management": "average"
+   "management": "average",
+   "equity": "515500000"
   },
   {
    "ticker": "MNND",
@@ -3782,7 +4038,8 @@
    "debt": "1.22",
    "growth": "0.0224",
    "payout": "0.58",
-   "management": "good"
+   "management": "good",
+   "equity": "552600000"
   },
   {
    "ticker": "NDLM",
@@ -3796,7 +4053,8 @@
    "debt": "1.58",
    "growth": "-0.0016",
    "payout": "0.62",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "432600000"
   },
   {
    "ticker": "VLNL",
@@ -3810,7 +4068,8 @@
    "debt": "2.00",
    "growth": "-0.0036",
    "payout": "0.55",
-   "management": "average"
+   "management": "average",
+   "equity": "178000000"
   },
   {
    "ticker": "MLCR",
@@ -3824,7 +4083,8 @@
    "debt": "1.39",
    "growth": "0.0010",
    "payout": "0.34",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "9338100000"
   },
   {
    "ticker": "BLFR",
@@ -3838,7 +4098,8 @@
    "debt": "0.85",
    "growth": "-0.0010",
    "payout": "0.35",
-   "management": "poor"
+   "management": "poor",
+   "equity": "4805900000"
   },
   {
    "ticker": "VRBG",
@@ -3852,7 +4113,8 @@
    "debt": "0.75",
    "growth": "-0.0015",
    "payout": "0.30",
-   "management": "good"
+   "management": "good",
+   "equity": "2998100000"
   },
   {
    "ticker": "CLRB",
@@ -3866,7 +4128,8 @@
    "debt": "1.18",
    "growth": "-0.0175",
    "payout": "0.35",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2080200000"
   },
   {
    "ticker": "JLMS",
@@ -3880,7 +4143,8 @@
    "debt": "1.25",
    "growth": "-0.0056",
    "payout": "0.29",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1572000000"
   },
   {
    "ticker": "BRVT",
@@ -3894,7 +4158,8 @@
    "debt": "0.99",
    "growth": "-0.0146",
    "payout": "0.31",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1916400000"
   },
   {
    "ticker": "BRLT",
@@ -3908,7 +4173,8 @@
    "debt": "1.07",
    "growth": "-0.0047",
    "payout": "0.28",
-   "management": "good"
+   "management": "good",
+   "equity": "1030900000"
   },
   {
    "ticker": "ARGS",
@@ -3922,7 +4188,8 @@
    "debt": "0.83",
    "growth": "-0.0044",
    "payout": "0.27",
-   "management": "average"
+   "management": "average",
+   "equity": "1691100000"
   },
   {
    "ticker": "VLBR",
@@ -3936,7 +4203,8 @@
    "debt": "0.85",
    "growth": "0.0135",
    "payout": "0.31",
-   "management": "good"
+   "management": "good",
+   "equity": "974700000"
   },
   {
    "ticker": "MNTR",
@@ -3950,7 +4218,8 @@
    "debt": "1.45",
    "growth": "0.0073",
    "payout": "0.43",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "1091300000"
   },
   {
    "ticker": "STNR",
@@ -3964,7 +4233,8 @@
    "debt": "1.21",
    "growth": "-0.0034",
    "payout": "0.41",
-   "management": "poor"
+   "management": "poor",
+   "equity": "58927900000"
   },
   {
    "ticker": "RSNN",
@@ -3978,7 +4248,8 @@
    "debt": "1.01",
    "growth": "-0.0040",
    "payout": "0.39",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "25314200000"
   },
   {
    "ticker": "KLTN",
@@ -3992,7 +4263,8 @@
    "debt": "0.77",
    "growth": "0.0005",
    "payout": "0.26",
-   "management": "average"
+   "management": "average",
+   "equity": "15563300000"
   },
   {
    "ticker": "SNNH",
@@ -4006,7 +4278,8 @@
    "debt": "0.61",
    "growth": "0.0149",
    "payout": "0.33",
-   "management": "average"
+   "management": "average",
+   "equity": "14680600000"
   },
   {
    "ticker": "ZLLT",
@@ -4020,7 +4293,8 @@
    "debt": "1.57",
    "growth": "0.0100",
    "payout": "0.29",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "7574900000"
   },
   {
    "ticker": "ALBG",
@@ -4034,7 +4308,8 @@
    "debt": "0.64",
    "growth": "0.0024",
    "payout": "0.27",
-   "management": "average"
+   "management": "average",
+   "equity": "8621000000"
   },
   {
    "ticker": "NRDM",
@@ -4048,7 +4323,8 @@
    "debt": "1.32",
    "growth": "-0.0285",
    "payout": "0.39",
-   "management": "bad"
+   "management": "bad",
+   "equity": "4732000000"
   },
   {
    "ticker": "ERLM",
@@ -4062,7 +4338,8 @@
    "debt": "1.02",
    "growth": "-0.0013",
    "payout": "0.35",
-   "management": "bad"
+   "management": "bad",
+   "equity": "4545600000"
   },
   {
    "ticker": "WSTB",
@@ -4076,7 +4353,8 @@
    "debt": "0.93",
    "growth": "-0.0019",
    "payout": "0.44",
-   "management": "good"
+   "management": "good",
+   "equity": "8435300000"
   },
   {
    "ticker": "HHNB",
@@ -4090,7 +4368,8 @@
    "debt": "0.97",
    "growth": "-0.0085",
    "payout": "0.25",
-   "management": "poor"
+   "management": "poor",
+   "equity": "6574300000"
   },
   {
    "ticker": "TRNT",
@@ -4104,7 +4383,8 @@
    "debt": "0.67",
    "growth": "0.0006",
    "payout": "0.40",
-   "management": "good"
+   "management": "good",
+   "equity": "9033800000"
   },
   {
    "ticker": "FNTM",
@@ -4118,7 +4398,8 @@
    "debt": "1.33",
    "growth": "0.0002",
    "payout": "0.36",
-   "management": "average"
+   "management": "average",
+   "equity": "4241400000"
   },
   {
    "ticker": "MNLT",
@@ -4132,7 +4413,8 @@
    "debt": "1.03",
    "growth": "0.0035",
    "payout": "0.34",
-   "management": "average"
+   "management": "average",
+   "equity": "2217700000"
   },
   {
    "ticker": "BLNT",
@@ -4146,7 +4428,8 @@
    "debt": "0.88",
    "growth": "-0.0142",
    "payout": "0.44",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1757100000"
   },
   {
    "ticker": "GNRT",
@@ -4160,7 +4443,8 @@
    "debt": "1.00",
    "growth": "-0.0019",
    "payout": "0.43",
-   "management": "average"
+   "management": "average",
+   "equity": "2444400000"
   },
   {
    "ticker": "NRZZ",
@@ -4174,7 +4458,8 @@
    "debt": "0.98",
    "growth": "-0.0115",
    "payout": "0.30",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1737300000"
   },
   {
    "ticker": "CSNT",
@@ -4188,7 +4473,8 @@
    "debt": "1.13",
    "growth": "0.0027",
    "payout": "0.27",
-   "management": "average"
+   "management": "average",
+   "equity": "1157900000"
   },
   {
    "ticker": "FZZT",
@@ -4202,7 +4488,8 @@
    "debt": "0.74",
    "growth": "-0.0118",
    "payout": "0.40",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1625100000"
   },
   {
    "ticker": "FNTB",
@@ -4216,7 +4503,8 @@
    "debt": "0.82",
    "growth": "-0.0047",
    "payout": "0.28",
-   "management": "average"
+   "management": "average",
+   "equity": "1512000000"
   },
   {
    "ticker": "ORGT",
@@ -4230,7 +4518,8 @@
    "debt": "0.78",
    "growth": "0.0034",
    "payout": "0.36",
-   "management": "average"
+   "management": "average",
+   "equity": "1396700000"
   },
   {
    "ticker": "PLLM",
@@ -4244,7 +4533,8 @@
    "debt": "0.65",
    "growth": "0.0008",
    "payout": "0.29",
-   "management": "bad"
+   "management": "bad",
+   "equity": "9645700000"
   },
   {
    "ticker": "MRLM",
@@ -4258,7 +4548,8 @@
    "debt": "0.58",
    "growth": "0.0012",
    "payout": "0.33",
-   "management": "average"
+   "management": "average",
+   "equity": "4604700000"
   },
   {
    "ticker": "PNDM",
@@ -4272,7 +4563,8 @@
    "debt": "1.23",
    "growth": "-0.0079",
    "payout": "0.43",
-   "management": "bad"
+   "management": "bad",
+   "equity": "3557200000"
   },
   {
    "ticker": "MNSM",
@@ -4286,7 +4578,8 @@
    "debt": "0.76",
    "growth": "-0.0010",
    "payout": "0.33",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1696600000"
   },
   {
    "ticker": "VLRM",
@@ -4300,7 +4593,8 @@
    "debt": "1.18",
    "growth": "0.0076",
    "payout": "0.33",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "1260100000"
   },
   {
    "ticker": "CNND",
@@ -4314,7 +4608,8 @@
    "debt": "1.60",
    "growth": "0.0022",
    "payout": "0.44",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "1470900000"
   },
   {
    "ticker": "TRLM",
@@ -4328,7 +4623,8 @@
    "debt": "0.95",
    "growth": "-0.0173",
    "payout": "0.32",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1456500000"
   },
   {
    "ticker": "TRDM",
@@ -4342,7 +4638,8 @@
    "debt": "0.54",
    "growth": "-0.0208",
    "payout": "0.29",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1090400000"
   },
   {
    "ticker": "DNMT",
@@ -4356,7 +4653,8 @@
    "debt": "0.84",
    "growth": "0.0234",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "1300300000"
   },
   {
    "ticker": "CLLM",
@@ -4370,7 +4668,8 @@
    "debt": "1.03",
    "growth": "-0.0023",
    "payout": "0.42",
-   "management": "poor"
+   "management": "poor",
+   "equity": "540600000"
   },
   {
    "ticker": "CRCM",
@@ -4384,7 +4683,8 @@
    "debt": "0.80",
    "growth": "0.0001",
    "payout": "0.41",
-   "management": "good"
+   "management": "good",
+   "equity": "1271000000"
   },
   {
    "ticker": "RMNT",
@@ -4398,7 +4698,8 @@
    "debt": "1.10",
    "growth": "-0.0191",
    "payout": "0.30",
-   "management": "poor"
+   "management": "poor",
+   "equity": "577600000"
   },
   {
    "ticker": "SLLM",
@@ -4412,7 +4713,8 @@
    "debt": "1.08",
    "growth": "0.0035",
    "payout": "0.31",
-   "management": "bad"
+   "management": "bad",
+   "equity": "415500000"
   },
   {
    "ticker": "VLMN",
@@ -4426,7 +4728,8 @@
    "debt": "1.32",
    "growth": "-0.0044",
    "payout": "0.35",
-   "management": "poor"
+   "management": "poor",
+   "equity": "314700000"
   },
   {
    "ticker": "DRNR",
@@ -4440,7 +4743,8 @@
    "debt": "1.36",
    "growth": "0.0046",
    "payout": "0.37",
-   "management": "good"
+   "management": "good",
+   "equity": "156400000"
   },
   {
    "ticker": "VLLM",
@@ -4454,7 +4758,8 @@
    "debt": "1.85",
    "growth": "0.0098",
    "payout": "0.37",
-   "management": "average"
+   "management": "average",
+   "equity": "201600000"
   },
   {
    "ticker": "MRRS",
@@ -4468,7 +4773,8 @@
    "debt": "1.05",
    "growth": "-0.0022",
    "payout": "0.42",
-   "management": "poor"
+   "management": "poor",
+   "equity": "246900000"
   },
   {
    "ticker": "VLVR",
@@ -4482,7 +4788,8 @@
    "debt": "1.66",
    "growth": "0.0126",
    "payout": "0.31",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "116800000"
   },
   {
    "ticker": "ESCC",
@@ -4496,7 +4803,8 @@
    "debt": "1.23",
    "growth": "0.0124",
    "payout": "0.36",
-   "management": "good"
+   "management": "good",
+   "equity": "173300000"
   },
   {
    "ticker": "DRNF",
@@ -4510,7 +4818,8 @@
    "debt": "0.65",
    "growth": "-0.0171",
    "payout": "0.47",
-   "management": "bad"
+   "management": "bad",
+   "equity": "181400000"
   },
   {
    "ticker": "WSSC",
@@ -4524,7 +4833,8 @@
    "debt": "0.43",
    "growth": "0.0052",
    "payout": "0.32",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "8546200000"
   },
   {
    "ticker": "SNNR",
@@ -4538,7 +4848,8 @@
    "debt": "1.62",
    "growth": "0.0093",
    "payout": "0.32",
-   "management": "average"
+   "management": "average",
+   "equity": "2048500000"
   },
   {
    "ticker": "SNDH",
@@ -4552,7 +4863,8 @@
    "debt": "0.96",
    "growth": "0.0134",
    "payout": "0.40",
-   "management": "good"
+   "management": "good",
+   "equity": "2879700000"
   },
   {
    "ticker": "ECHT",
@@ -4566,7 +4878,8 @@
    "debt": "0.98",
    "growth": "-0.0064",
    "payout": "0.39",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2104100000"
   },
   {
    "ticker": "KLTS",
@@ -4580,7 +4893,8 @@
    "debt": "1.51",
    "growth": "0.0074",
    "payout": "0.45",
-   "management": "good"
+   "management": "good",
+   "equity": "1545000000"
   },
   {
    "ticker": "HHNR",
@@ -4594,7 +4908,8 @@
    "debt": "0.86",
    "growth": "0.0048",
    "payout": "0.39",
-   "management": "average"
+   "management": "average",
+   "equity": "1707300000"
   },
   {
    "ticker": "ZLLN",
@@ -4608,7 +4923,8 @@
    "debt": "1.37",
    "growth": "-0.0057",
    "payout": "0.30",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1619100000"
   },
   {
    "ticker": "DRND",
@@ -4622,7 +4938,8 @@
    "debt": "0.99",
    "growth": "0.0042",
    "payout": "0.37",
-   "management": "average"
+   "management": "average",
+   "equity": "658600000"
   },
   {
    "ticker": "ECHF",
@@ -4636,7 +4953,8 @@
    "debt": "1.07",
    "growth": "-0.0155",
    "payout": "0.46",
-   "management": "poor"
+   "management": "poor",
+   "equity": "847500000"
   },
   {
    "ticker": "WLDH",
@@ -4650,7 +4968,8 @@
    "debt": "0.89",
    "growth": "0.0041",
    "payout": "0.35",
-   "management": "average"
+   "management": "average",
+   "equity": "636900000"
   },
   {
    "ticker": "RSRM",
@@ -4664,7 +4983,8 @@
    "debt": "0.91",
    "growth": "-0.0009",
    "payout": "0.46",
-   "management": "poor"
+   "management": "poor",
+   "equity": "3886600000"
   },
   {
    "ticker": "VRRM",
@@ -4678,7 +4998,8 @@
    "debt": "1.06",
    "growth": "-0.0034",
    "payout": "0.32",
-   "management": "average"
+   "management": "average",
+   "equity": "1959900000"
   },
   {
    "ticker": "PLLC",
@@ -4692,7 +5013,8 @@
    "debt": "0.83",
    "growth": "0.0066",
    "payout": "0.44",
-   "management": "good"
+   "management": "good",
+   "equity": "1639700000"
   },
   {
    "ticker": "SNNM",
@@ -4706,7 +5028,8 @@
    "debt": "0.68",
    "growth": "-0.0122",
    "payout": "0.36",
-   "management": "average"
+   "management": "average",
+   "equity": "1250200000"
   },
   {
    "ticker": "GNNM",
@@ -4720,7 +5043,8 @@
    "debt": "1.61",
    "growth": "-0.0040",
    "payout": "0.44",
-   "management": "good"
+   "management": "good",
+   "equity": "378700000"
   },
   {
    "ticker": "MRSC",
@@ -4734,7 +5058,8 @@
    "debt": "0.89",
    "growth": "0.0085",
    "payout": "0.34",
-   "management": "poor"
+   "management": "poor",
+   "equity": "415700000"
   },
   {
    "ticker": "LNNM",
@@ -4748,7 +5073,8 @@
    "debt": "1.00",
    "growth": "0.0080",
    "payout": "0.32",
-   "management": "good"
+   "management": "good",
+   "equity": "574800000"
   },
   {
    "ticker": "GLNM",
@@ -4762,7 +5088,8 @@
    "debt": "0.48",
    "growth": "0.0137",
    "payout": "0.32",
-   "management": "poor"
+   "management": "poor",
+   "equity": "616100000"
   },
   {
    "ticker": "BRLC",
@@ -4776,7 +5103,8 @@
    "debt": "1.00",
    "growth": "-0.0122",
    "payout": "0.50",
-   "management": "average"
+   "management": "average",
+   "equity": "399000000"
   },
   {
    "ticker": "BRTM",
@@ -4790,7 +5118,8 @@
    "debt": "2.00",
    "growth": "-0.0012",
    "payout": "0.42",
-   "management": "average"
+   "management": "average",
+   "equity": "253500000"
   },
   {
    "ticker": "MNNM",
@@ -4804,7 +5133,8 @@
    "debt": "1.92",
    "growth": "0.0149",
    "payout": "0.32",
-   "management": "poor"
+   "management": "poor",
+   "equity": "773300000"
   },
   {
    "ticker": "CRRS",
@@ -4818,7 +5148,8 @@
    "debt": "1.51",
    "growth": "-0.0056",
    "payout": "0.48",
-   "management": "poor"
+   "management": "poor",
+   "equity": "441600000"
   },
   {
    "ticker": "RLDM",
@@ -4832,7 +5163,8 @@
    "debt": "1.17",
    "growth": "-0.0103",
    "payout": "0.34",
-   "management": "poor"
+   "management": "poor",
+   "equity": "268100000"
   },
   {
    "ticker": "MRLD",
@@ -4846,7 +5178,8 @@
    "debt": "0.74",
    "growth": "-0.0025",
    "payout": "0.38",
-   "management": "good"
+   "management": "good",
+   "equity": "237200000"
   },
   {
    "ticker": "OLDM",
@@ -4860,7 +5193,8 @@
    "debt": "0.87",
    "growth": "0.0015",
    "payout": "0.39",
-   "management": "good"
+   "management": "good",
+   "equity": "201000000"
   },
   {
    "ticker": "ARNC",
@@ -4874,7 +5208,8 @@
    "debt": "0.63",
    "growth": "-0.0064",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "108300000"
   },
   {
    "ticker": "MNMQ",
@@ -4888,7 +5223,8 @@
    "debt": "0.46",
    "growth": "-0.0051",
    "payout": "0.32",
-   "management": "average"
+   "management": "average",
+   "equity": "151000000"
   },
   {
    "ticker": "TRJM",
@@ -4902,7 +5238,8 @@
    "debt": "1.82",
    "growth": "-0.0019",
    "payout": "0.33",
-   "management": "good"
+   "management": "good",
+   "equity": "61900000"
   },
   {
    "ticker": "SNJM",
@@ -4916,7 +5253,8 @@
    "debt": "1.01",
    "growth": "0.0124",
    "payout": "0.43",
-   "management": "poor"
+   "management": "poor",
+   "equity": "68600000"
   },
   {
    "ticker": "ALRM",
@@ -4930,7 +5268,8 @@
    "debt": "0.52",
    "growth": "0.0003",
    "payout": "0.33",
-   "management": "average"
+   "management": "average",
+   "equity": "88200000"
   },
   {
    "ticker": "CRNC",
@@ -4944,7 +5283,8 @@
    "debt": "0.56",
    "growth": "0.0050",
    "payout": "0.37",
-   "management": "average"
+   "management": "average",
+   "equity": "12103000000"
   },
   {
    "ticker": "LNCR",
@@ -4958,7 +5298,8 @@
    "debt": "0.72",
    "growth": "0.0013",
    "payout": "0.30",
-   "management": "average"
+   "management": "average",
+   "equity": "5565200000"
   },
   {
    "ticker": "ESCG",
@@ -4972,7 +5313,8 @@
    "debt": "0.61",
    "growth": "-0.0024",
    "payout": "0.32",
-   "management": "average"
+   "management": "average",
+   "equity": "3525600000"
   },
   {
    "ticker": "FRRS",
@@ -4986,7 +5328,8 @@
    "debt": "0.57",
    "growth": "-0.0034",
    "payout": "0.28",
-   "management": "bad"
+   "management": "bad",
+   "equity": "2672300000"
   },
   {
    "ticker": "RMRR",
@@ -5000,7 +5343,8 @@
    "debt": "1.80",
    "growth": "0.0167",
    "payout": "0.29",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "2015700000"
   },
   {
    "ticker": "FNVL",
@@ -5014,7 +5358,8 @@
    "debt": "0.97",
    "growth": "0.0037",
    "payout": "0.41",
-   "management": "good"
+   "management": "good",
+   "equity": "1410400000"
   },
   {
    "ticker": "MNTM",
@@ -5028,7 +5373,8 @@
    "debt": "0.95",
    "growth": "-0.0060",
    "payout": "0.43",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1192400000"
   },
   {
    "ticker": "HTSR",
@@ -5042,7 +5388,8 @@
    "debt": "0.80",
    "growth": "0.0001",
    "payout": "0.27",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "1426900000"
   },
   {
    "ticker": "SLCR",
@@ -5056,7 +5403,8 @@
    "debt": "0.81",
    "growth": "-0.0073",
    "payout": "0.44",
-   "management": "bad"
+   "management": "bad",
+   "equity": "906700000"
   },
   {
    "ticker": "HTRS",
@@ -5070,7 +5418,8 @@
    "debt": "0.83",
    "growth": "0.0078",
    "payout": "0.33",
-   "management": "average"
+   "management": "average",
+   "equity": "1769800000"
   },
   {
    "ticker": "SNNF",
@@ -5084,7 +5433,8 @@
    "debt": "2.12",
    "growth": "0.0174",
    "payout": "0.42",
-   "management": "average"
+   "management": "average",
+   "equity": "5768600000"
   },
   {
    "ticker": "MRKW",
@@ -5098,7 +5448,8 @@
    "debt": "1.14",
    "growth": "-0.0114",
    "payout": "0.25",
-   "management": "average"
+   "management": "average",
+   "equity": "3138300000"
   },
   {
    "ticker": "MRKM",
@@ -5112,7 +5463,8 @@
    "debt": "1.18",
    "growth": "-0.0086",
    "payout": "0.45",
-   "management": "average"
+   "management": "average",
+   "equity": "1774900000"
   },
   {
    "ticker": "NRDR",
@@ -5126,7 +5478,8 @@
    "debt": "0.58",
    "growth": "0.0072",
    "payout": "0.26",
-   "management": "average"
+   "management": "average",
+   "equity": "1442800000"
   },
   {
    "ticker": "OSTS",
@@ -5140,7 +5493,8 @@
    "debt": "0.69",
    "growth": "0.0045",
    "payout": "0.28",
-   "management": "average"
+   "management": "average",
+   "equity": "1770000000"
   },
   {
    "ticker": "KRNT",
@@ -5154,7 +5508,8 @@
    "debt": "0.90",
    "growth": "0.0177",
    "payout": "0.41",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1037800000"
   },
   {
    "ticker": "WSSR",
@@ -5168,7 +5523,8 @@
    "debt": "1.09",
    "growth": "0.0176",
    "payout": "0.29",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "969300000"
   },
   {
    "ticker": "BRNH",
@@ -5182,7 +5538,8 @@
    "debt": "0.96",
    "growth": "-0.0081",
    "payout": "0.26",
-   "management": "average"
+   "management": "average",
+   "equity": "599000000"
   },
   {
    "ticker": "FLSF",
@@ -5196,7 +5553,8 @@
    "debt": "1.06",
    "growth": "-0.0002",
    "payout": "0.42",
-   "management": "bad"
+   "management": "bad",
+   "equity": "806700000"
   },
   {
    "ticker": "DRNB",
@@ -5210,7 +5568,8 @@
    "debt": "0.77",
    "growth": "0.0108",
    "payout": "0.39",
-   "management": "good"
+   "management": "good",
+   "equity": "459600000"
   },
   {
    "ticker": "FSSR",
@@ -5224,7 +5583,8 @@
    "debt": "2.36",
    "growth": "-0.0017",
    "payout": "0.40",
-   "management": "average"
+   "management": "average",
+   "equity": "3060400000"
   },
   {
    "ticker": "BRSR",
@@ -5238,7 +5598,8 @@
    "debt": "1.55",
    "growth": "-0.0020",
    "payout": "0.39",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2116700000"
   },
   {
    "ticker": "RSLL",
@@ -5252,7 +5613,8 @@
    "debt": "1.12",
    "growth": "0.0113",
    "payout": "0.33",
-   "management": "good"
+   "management": "good",
+   "equity": "1177600000"
   },
   {
    "ticker": "GNNT",
@@ -5266,7 +5628,8 @@
    "debt": "0.47",
    "growth": "0.0079",
    "payout": "0.28",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "1031100000"
   },
   {
    "ticker": "CLZR",
@@ -5280,7 +5643,8 @@
    "debt": "1.32",
    "growth": "-0.0090",
    "payout": "0.32",
-   "management": "poor"
+   "management": "poor",
+   "equity": "626700000"
   },
   {
    "ticker": "BLLR",
@@ -5294,7 +5658,8 @@
    "debt": "1.04",
    "growth": "-0.0173",
    "payout": "0.27",
-   "management": "bad"
+   "management": "bad",
+   "equity": "784400000"
   },
   {
    "ticker": "CSRR",
@@ -5308,7 +5673,8 @@
    "debt": "0.67",
    "growth": "-0.0035",
    "payout": "0.30",
-   "management": "average"
+   "management": "average",
+   "equity": "865600000"
   },
   {
    "ticker": "ORZR",
@@ -5322,7 +5688,8 @@
    "debt": "1.14",
    "growth": "-0.0068",
    "payout": "0.33",
-   "management": "average"
+   "management": "average",
+   "equity": "376100000"
   },
   {
    "ticker": "ORZS",
@@ -5336,7 +5703,8 @@
    "debt": "0.75",
    "growth": "-0.0123",
    "payout": "0.45",
-   "management": "bad"
+   "management": "bad",
+   "equity": "275700000"
   },
   {
    "ticker": "MNRR",
@@ -5350,7 +5718,8 @@
    "debt": "0.78",
    "growth": "0.0021",
    "payout": "0.31",
-   "management": "average"
+   "management": "average",
+   "equity": "264900000"
   },
   {
    "ticker": "TRLL",
@@ -5364,7 +5733,8 @@
    "debt": "1.17",
    "growth": "-0.0054",
    "payout": "0.30",
-   "management": "good"
+   "management": "good",
+   "equity": "1921600000"
   },
   {
    "ticker": "RRSR",
@@ -5378,7 +5748,8 @@
    "debt": "0.78",
    "growth": "-0.0083",
    "payout": "0.36",
-   "management": "bad"
+   "management": "bad",
+   "equity": "981300000"
   },
   {
    "ticker": "LDRN",
@@ -5392,7 +5763,8 @@
    "debt": "1.37",
    "growth": "-0.0096",
    "payout": "0.29",
-   "management": "poor"
+   "management": "poor",
+   "equity": "555700000"
   },
   {
    "ticker": "VLRN",
@@ -5406,7 +5778,8 @@
    "debt": "1.17",
    "growth": "-0.0089",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "649900000"
   },
   {
    "ticker": "CSRN",
@@ -5420,7 +5793,8 @@
    "debt": "0.43",
    "growth": "-0.0077",
    "payout": "0.27",
-   "management": "poor"
+   "management": "poor",
+   "equity": "476700000"
   },
   {
    "ticker": "HRRR",
@@ -5434,7 +5808,8 @@
    "debt": "0.86",
    "growth": "0.0060",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "302100000"
   },
   {
    "ticker": "CNSR",
@@ -5448,7 +5823,8 @@
    "debt": "0.67",
    "growth": "-0.0077",
    "payout": "0.40",
-   "management": "good"
+   "management": "good",
+   "equity": "311700000"
   },
   {
    "ticker": "BZRN",
@@ -5462,7 +5838,8 @@
    "debt": "0.65",
    "growth": "-0.0140",
    "payout": "0.37",
-   "management": "poor"
+   "management": "poor",
+   "equity": "232800000"
   },
   {
    "ticker": "SLNR",
@@ -5476,7 +5853,8 @@
    "debt": "1.12",
    "growth": "0.0053",
    "payout": "0.28",
-   "management": "average"
+   "management": "average",
+   "equity": "291900000"
   },
   {
    "ticker": "CRNR",
@@ -5490,7 +5868,8 @@
    "debt": "0.67",
    "growth": "0.0062",
    "payout": "0.45",
-   "management": "poor"
+   "management": "poor",
+   "equity": "193100000"
   },
   {
    "ticker": "BRCR",
@@ -5504,7 +5883,8 @@
    "debt": "1.48",
    "growth": "0.0011",
    "payout": "0.49",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "2763900000"
   },
   {
    "ticker": "MRMR",
@@ -5518,7 +5898,8 @@
    "debt": "0.66",
    "growth": "-0.0022",
    "payout": "0.48",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1778200000"
   },
   {
    "ticker": "GRNL",
@@ -5532,7 +5913,8 @@
    "debt": "0.95",
    "growth": "-0.0291",
    "payout": "0.45",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1395300000"
   },
   {
    "ticker": "BLVR",
@@ -5546,7 +5928,8 @@
    "debt": "1.38",
    "growth": "-0.0050",
    "payout": "0.54",
-   "management": "good"
+   "management": "good",
+   "equity": "511300000"
   },
   {
    "ticker": "GRNX",
@@ -5560,7 +5943,8 @@
    "debt": "1.26",
    "growth": "0.0219",
    "payout": "0.42",
-   "management": "average"
+   "management": "average",
+   "equity": "549800000"
   },
   {
    "ticker": "PRMN",
@@ -5574,7 +5958,8 @@
    "debt": "1.27",
    "growth": "-0.0080",
    "payout": "0.40",
-   "management": "bad"
+   "management": "bad",
+   "equity": "732600000"
   },
   {
    "ticker": "CRMC",
@@ -5588,7 +5973,8 @@
    "debt": "1.70",
    "growth": "0.0256",
    "payout": "0.48",
-   "management": "poor"
+   "management": "poor",
+   "equity": "278400000"
   },
   {
    "ticker": "HTSN",
@@ -5602,7 +5988,8 @@
    "debt": "1.54",
    "growth": "-0.0029",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "448500000"
   },
   {
    "ticker": "GRNN",
@@ -5616,7 +6003,8 @@
    "debt": "1.75",
    "growth": "0.0111",
    "payout": "0.45",
-   "management": "average"
+   "management": "average",
+   "equity": "363300000"
   },
   {
    "ticker": "VLNC",
@@ -5630,7 +6018,8 @@
    "debt": "1.02",
    "growth": "-0.0069",
    "payout": "0.37",
-   "management": "bad"
+   "management": "bad",
+   "equity": "389900000"
   },
   {
    "ticker": "BRKC",
@@ -5644,7 +6033,8 @@
    "debt": "1.97",
    "growth": "0.0077",
    "payout": "0.47",
-   "management": "bad"
+   "management": "bad",
+   "equity": "3464200000"
   },
   {
    "ticker": "MRKK",
@@ -5658,7 +6048,8 @@
    "debt": "2.16",
    "growth": "-0.0104",
    "payout": "0.50",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1788500000"
   },
   {
    "ticker": "BRKH",
@@ -5672,7 +6063,8 @@
    "debt": "2.60",
    "growth": "0.0047",
    "payout": "0.44",
-   "management": "good"
+   "management": "good",
+   "equity": "941700000"
   },
   {
    "ticker": "RBST",
@@ -5686,7 +6078,8 @@
    "debt": "0.90",
    "growth": "-0.0121",
    "payout": "0.44",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1087200000"
   },
   {
    "ticker": "BRNE",
@@ -5700,7 +6093,8 @@
    "debt": "1.51",
    "growth": "0.0085",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "646800000"
   },
   {
    "ticker": "ISNW",
@@ -5714,7 +6108,8 @@
    "debt": "1.50",
    "growth": "-0.0012",
    "payout": "0.40",
-   "management": "average"
+   "management": "average",
+   "equity": "518100000"
   },
   {
    "ticker": "LNDF",
@@ -5728,7 +6123,8 @@
    "debt": "1.24",
    "growth": "-0.0094",
    "payout": "0.46",
-   "management": "poor"
+   "management": "poor",
+   "equity": "534800000"
   },
   {
    "ticker": "LNDH",
@@ -5742,7 +6138,8 @@
    "debt": "1.14",
    "growth": "-0.0143",
    "payout": "0.42",
-   "management": "average"
+   "management": "average",
+   "equity": "330100000"
   },
   {
    "ticker": "HHNM",
@@ -5756,7 +6153,8 @@
    "debt": "1.59",
    "growth": "-0.0049",
    "payout": "0.52",
-   "management": "good"
+   "management": "good",
+   "equity": "484100000"
   },
   {
    "ticker": "WSTG",
@@ -5770,7 +6168,8 @@
    "debt": "1.16",
    "growth": "-0.0028",
    "payout": "0.52",
-   "management": "average"
+   "management": "average",
+   "equity": "318400000"
   },
   {
    "ticker": "BRLS",
@@ -5784,7 +6183,8 @@
    "debt": "1.69",
    "growth": "0.0230",
    "payout": "0.39",
-   "management": "good"
+   "management": "good",
+   "equity": "2188000000"
   },
   {
    "ticker": "MRTC",
@@ -5798,7 +6198,8 @@
    "debt": "1.06",
    "growth": "-0.0028",
    "payout": "0.49",
-   "management": "good"
+   "management": "good",
+   "equity": "1365700000"
   },
   {
    "ticker": "MNRC",
@@ -5812,7 +6213,8 @@
    "debt": "2.09",
    "growth": "-0.0115",
    "payout": "0.40",
-   "management": "bad"
+   "management": "bad",
+   "equity": "925800000"
   },
   {
    "ticker": "BRLR",
@@ -5826,7 +6228,8 @@
    "debt": "1.21",
    "growth": "0.0078",
    "payout": "0.44",
-   "management": "good"
+   "management": "good",
+   "equity": "428200000"
   },
   {
    "ticker": "DLRC",
@@ -5840,7 +6243,8 @@
    "debt": "1.06",
    "growth": "-0.0127",
    "payout": "0.35",
-   "management": "average"
+   "management": "average",
+   "equity": "439900000"
   },
   {
    "ticker": "NRLL",
@@ -5854,7 +6258,8 @@
    "debt": "0.75",
    "growth": "-0.0036",
    "payout": "0.46",
-   "management": "average"
+   "management": "average",
+   "equity": "319300000"
   },
   {
    "ticker": "DLLM",
@@ -5868,7 +6273,8 @@
    "debt": "1.27",
    "growth": "0.0058",
    "payout": "0.53",
-   "management": "average"
+   "management": "average",
+   "equity": "405800000"
   },
   {
    "ticker": "VRNC",
@@ -5882,7 +6288,8 @@
    "debt": "2.86",
    "growth": "0.0158",
    "payout": "0.39",
-   "management": "average"
+   "management": "average",
+   "equity": "296400000"
   },
   {
    "ticker": "TRLC",
@@ -5896,7 +6303,8 @@
    "debt": "1.15",
    "growth": "0.0147",
    "payout": "0.55",
-   "management": "poor"
+   "management": "poor",
+   "equity": "352800000"
   },
   {
    "ticker": "MRRD",
@@ -5910,7 +6318,8 @@
    "debt": "1.39",
    "growth": "-0.0091",
    "payout": "0.53",
-   "management": "good"
+   "management": "good",
+   "equity": "171400000"
   },
   {
    "ticker": "CRCN",
@@ -5924,7 +6333,8 @@
    "debt": "1.45",
    "growth": "0.0179",
    "payout": "0.53",
-   "management": "good"
+   "management": "good",
+   "equity": "1476600000"
   },
   {
    "ticker": "ARND",
@@ -5938,7 +6348,8 @@
    "debt": "1.91",
    "growth": "-0.0136",
    "payout": "0.35",
-   "management": "bad"
+   "management": "bad",
+   "equity": "759700000"
   },
   {
    "ticker": "MRDC",
@@ -5952,7 +6363,8 @@
    "debt": "1.93",
    "growth": "0.0129",
    "payout": "0.44",
-   "management": "good"
+   "management": "good",
+   "equity": "377400000"
   },
   {
    "ticker": "BLDC",
@@ -5966,7 +6378,8 @@
    "debt": "1.01",
    "growth": "-0.0213",
    "payout": "0.54",
-   "management": "poor"
+   "management": "poor",
+   "equity": "362300000"
   },
   {
    "ticker": "SLNN",
@@ -5980,7 +6393,8 @@
    "debt": "2.44",
    "growth": "-0.0052",
    "payout": "0.45",
-   "management": "average"
+   "management": "average",
+   "equity": "195100000"
   },
   {
    "ticker": "CRND",
@@ -5994,7 +6408,8 @@
    "debt": "1.03",
    "growth": "-0.0112",
    "payout": "0.38",
-   "management": "poor"
+   "management": "poor",
+   "equity": "212000000"
   },
   {
    "ticker": "PNDC",
@@ -6008,7 +6423,8 @@
    "debt": "1.08",
    "growth": "-0.0141",
    "payout": "0.47",
-   "management": "bad"
+   "management": "bad",
+   "equity": "362300000"
   },
   {
    "ticker": "BLLC",
@@ -6022,7 +6438,8 @@
    "debt": "1.71",
    "growth": "-0.0024",
    "payout": "0.52",
-   "management": "average"
+   "management": "average",
+   "equity": "228300000"
   },
   {
    "ticker": "HRCN",
@@ -6036,7 +6453,8 @@
    "debt": "1.65",
    "growth": "-0.0068",
    "payout": "0.35",
-   "management": "good"
+   "management": "good",
+   "equity": "229400000"
   },
   {
    "ticker": "CNZC",
@@ -6050,7 +6468,8 @@
    "debt": "1.33",
    "growth": "0.0249",
    "payout": "0.37",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "94900000"
   },
   {
    "ticker": "GRNT",
@@ -6064,7 +6483,8 @@
    "debt": "2.44",
    "growth": "-0.0013",
    "payout": "0.32",
-   "management": "average"
+   "management": "average",
+   "equity": "47455900000"
   },
   {
    "ticker": "CLRL",
@@ -6078,7 +6498,8 @@
    "debt": "2.27",
    "growth": "-0.0080",
    "payout": "0.30",
-   "management": "average"
+   "management": "average",
+   "equity": "21796900000"
   },
   {
    "ticker": "BSRC",
@@ -6092,7 +6513,8 @@
    "debt": "1.86",
    "growth": "-0.0026",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "18788300000"
   },
   {
    "ticker": "GLLT",
@@ -6106,7 +6528,8 @@
    "debt": "1.17",
    "growth": "0.0091",
    "payout": "0.29",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "9060300000"
   },
   {
    "ticker": "SBRT",
@@ -6120,7 +6543,8 @@
    "debt": "2.20",
    "growth": "0.0147",
    "payout": "0.34",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "9605200000"
   },
   {
    "ticker": "JLSC",
@@ -6134,7 +6558,8 @@
    "debt": "2.40",
    "growth": "-0.0142",
    "payout": "0.42",
-   "management": "bad"
+   "management": "bad",
+   "equity": "8812000000"
   },
   {
    "ticker": "CLRD",
@@ -6148,7 +6573,8 @@
    "debt": "3.91",
    "growth": "-0.0027",
    "payout": "0.34",
-   "management": "good"
+   "management": "good",
+   "equity": "5510600000"
   },
   {
    "ticker": "MRLN",
@@ -6162,7 +6588,8 @@
    "debt": "2.94",
    "growth": "0.0124",
    "payout": "0.30",
-   "management": "good"
+   "management": "good",
+   "equity": "5820300000"
   },
   {
    "ticker": "PRVL",
@@ -6176,7 +6603,8 @@
    "debt": "2.44",
    "growth": "0.0078",
    "payout": "0.38",
-   "management": "average"
+   "management": "average",
+   "equity": "2920800000"
   },
   {
    "ticker": "CLRT",
@@ -6190,7 +6618,8 @@
    "debt": "4.05",
    "growth": "0.0176",
    "payout": "0.31",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "3391500000"
   },
   {
    "ticker": "OSTB",
@@ -6204,7 +6633,8 @@
    "debt": "3.69",
    "growth": "-0.0045",
    "payout": "0.33",
-   "management": "average"
+   "management": "average",
+   "equity": "73494900000"
   },
   {
    "ticker": "TNNF",
@@ -6218,7 +6648,8 @@
    "debt": "3.19",
    "growth": "-0.0035",
    "payout": "0.36",
-   "management": "good"
+   "management": "good",
+   "equity": "36563600000"
   },
   {
    "ticker": "NRDG",
@@ -6232,7 +6663,8 @@
    "debt": "2.95",
    "growth": "-0.0025",
    "payout": "0.27",
-   "management": "poor"
+   "management": "poor",
+   "equity": "20261400000"
   },
   {
    "ticker": "OSTR",
@@ -6246,7 +6678,8 @@
    "debt": "3.08",
    "growth": "0.0234",
    "payout": "0.30",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "19816000000"
   },
   {
    "ticker": "WLDM",
@@ -6260,7 +6693,8 @@
    "debt": "1.28",
    "growth": "-0.0063",
    "payout": "0.35",
-   "management": "average"
+   "management": "average",
+   "equity": "18635100000"
   },
   {
    "ticker": "STNW",
@@ -6274,7 +6708,8 @@
    "debt": "2.13",
    "growth": "0.0085",
    "payout": "0.42",
-   "management": "average"
+   "management": "average",
+   "equity": "17741700000"
   },
   {
    "ticker": "ERLH",
@@ -6288,7 +6723,8 @@
    "debt": "3.18",
    "growth": "-0.0062",
    "payout": "0.31",
-   "management": "average"
+   "management": "average",
+   "equity": "15490000000"
   },
   {
    "ticker": "LNDD",
@@ -6302,7 +6738,8 @@
    "debt": "1.84",
    "growth": "0.0085",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "6531700000"
   },
   {
    "ticker": "BRNL",
@@ -6316,7 +6753,8 @@
    "debt": "1.17",
    "growth": "0.0167",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "6505000000"
   },
   {
    "ticker": "FLKL",
@@ -6330,7 +6768,8 @@
    "debt": "2.68",
    "growth": "0.0099",
    "payout": "0.42",
-   "management": "average"
+   "management": "average",
+   "equity": "9660300000"
   },
   {
    "ticker": "CSRD",
@@ -6344,7 +6783,8 @@
    "debt": "2.30",
    "growth": "0.0169",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "35184400000"
   },
   {
    "ticker": "MRZZ",
@@ -6358,7 +6798,8 @@
    "debt": "2.63",
    "growth": "0.0063",
    "payout": "0.29",
-   "management": "poor"
+   "management": "poor",
+   "equity": "15767300000"
   },
   {
    "ticker": "ORZT",
@@ -6372,7 +6813,8 @@
    "debt": "2.14",
    "growth": "-0.0143",
    "payout": "0.35",
-   "management": "average"
+   "management": "average",
+   "equity": "13647000000"
   },
   {
    "ticker": "DLRT",
@@ -6386,7 +6828,8 @@
    "debt": "2.94",
    "growth": "-0.0077",
    "payout": "0.32",
-   "management": "average"
+   "management": "average",
+   "equity": "10826700000"
   },
   {
    "ticker": "BRST",
@@ -6400,7 +6843,8 @@
    "debt": "2.45",
    "growth": "0.0118",
    "payout": "0.37",
-   "management": "good"
+   "management": "good",
+   "equity": "7337200000"
   },
   {
    "ticker": "SNRD",
@@ -6414,7 +6858,8 @@
    "debt": "4.33",
    "growth": "-0.0034",
    "payout": "0.34",
-   "management": "average"
+   "management": "average",
+   "equity": "5040200000"
   },
   {
    "ticker": "BRNP",
@@ -6428,7 +6873,8 @@
    "debt": "2.18",
    "growth": "0.0082",
    "payout": "0.43",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "5377600000"
   },
   {
    "ticker": "LLLT",
@@ -6442,7 +6888,8 @@
    "debt": "2.28",
    "growth": "0.0176",
    "payout": "0.26",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "3092400000"
   },
   {
    "ticker": "CLLT",
@@ -6456,7 +6903,8 @@
    "debt": "2.69",
    "growth": "-0.0011",
    "payout": "0.42",
-   "management": "average"
+   "management": "average",
+   "equity": "4321600000"
   },
   {
    "ticker": "PLRD",
@@ -6470,7 +6918,8 @@
    "debt": "1.12",
    "growth": "-0.0035",
    "payout": "0.36",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "3921600000"
   },
   {
    "ticker": "MNLR",
@@ -6484,7 +6933,8 @@
    "debt": "2.36",
    "growth": "0.0086",
    "payout": "0.38",
-   "management": "average"
+   "management": "average",
+   "equity": "25517800000"
   },
   {
    "ticker": "LLTR",
@@ -6498,7 +6948,8 @@
    "debt": "2.21",
    "growth": "-0.0066",
    "payout": "0.29",
-   "management": "poor"
+   "management": "poor",
+   "equity": "10915900000"
   },
   {
    "ticker": "OLDT",
@@ -6512,7 +6963,8 @@
    "debt": "2.61",
    "growth": "-0.0095",
    "payout": "0.40",
-   "management": "poor"
+   "management": "poor",
+   "equity": "6553000000"
   },
   {
    "ticker": "RJTR",
@@ -6526,7 +6978,8 @@
    "debt": "2.33",
    "growth": "-0.0041",
    "payout": "0.31",
-   "management": "poor"
+   "management": "poor",
+   "equity": "5418500000"
   },
   {
    "ticker": "CRLL",
@@ -6540,7 +6993,8 @@
    "debt": "2.10",
    "growth": "0.0068",
    "payout": "0.36",
-   "management": "bad"
+   "management": "bad",
+   "equity": "5296900000"
   },
   {
    "ticker": "RRRT",
@@ -6554,7 +7008,8 @@
    "debt": "2.20",
    "growth": "-0.0158",
    "payout": "0.39",
-   "management": "bad"
+   "management": "bad",
+   "equity": "3848000000"
   },
   {
    "ticker": "BRTR",
@@ -6568,7 +7023,8 @@
    "debt": "3.28",
    "growth": "-0.0030",
    "payout": "0.30",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "2123200000"
   },
   {
    "ticker": "MNRS",
@@ -6582,7 +7038,8 @@
    "debt": "5.12",
    "growth": "-0.0036",
    "payout": "0.35",
-   "management": "good"
+   "management": "good",
+   "equity": "2403400000"
   },
   {
    "ticker": "LNDR",
@@ -6596,7 +7053,8 @@
    "debt": "0.79",
    "growth": "0.0088",
    "payout": "0.38",
-   "management": "bad"
+   "management": "bad",
+   "equity": "3495300000"
   },
   {
    "ticker": "OLLT",
@@ -6610,7 +7068,8 @@
    "debt": "3.07",
    "growth": "-0.0055",
    "payout": "0.25",
-   "management": "good"
+   "management": "good",
+   "equity": "3839400000"
   },
   {
    "ticker": "VLVT",
@@ -6624,7 +7083,8 @@
    "debt": "2.70",
    "growth": "-0.0010",
    "payout": "0.73",
-   "management": "average"
+   "management": "average",
+   "equity": "31856600000"
   },
   {
    "ticker": "FNVR",
@@ -6638,7 +7098,8 @@
    "debt": "3.23",
    "growth": "-0.0055",
    "payout": "0.77",
-   "management": "poor"
+   "management": "poor",
+   "equity": "17610200000"
   },
   {
    "ticker": "CLRR",
@@ -6652,7 +7113,8 @@
    "debt": "4.47",
    "growth": "-0.0011",
    "payout": "0.75",
-   "management": "average"
+   "management": "average",
+   "equity": "8109600000"
   },
   {
    "ticker": "FRRX",
@@ -6666,7 +7128,8 @@
    "debt": "1.70",
    "growth": "0.0017",
    "payout": "0.62",
-   "management": "bad"
+   "management": "bad",
+   "equity": "8744200000"
   },
   {
    "ticker": "ARGN",
@@ -6680,7 +7143,8 @@
    "debt": "2.60",
    "growth": "-0.0057",
    "payout": "0.79",
-   "management": "good"
+   "management": "good",
+   "equity": "5491900000"
   },
   {
    "ticker": "GLVL",
@@ -6694,7 +7158,8 @@
    "debt": "4.96",
    "growth": "-0.0055",
    "payout": "0.71",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "3855200000"
   },
   {
    "ticker": "BFRT",
@@ -6708,7 +7173,8 @@
    "debt": "2.23",
    "growth": "0.0026",
    "payout": "0.62",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "4908800000"
   },
   {
    "ticker": "BMST",
@@ -6722,7 +7188,8 @@
    "debt": "2.90",
    "growth": "0.0063",
    "payout": "0.72",
-   "management": "average"
+   "management": "average",
+   "equity": "4929500000"
   },
   {
    "ticker": "FNRS",
@@ -6736,7 +7203,8 @@
    "debt": "3.13",
    "growth": "0.0063",
    "payout": "0.76",
-   "management": "average"
+   "management": "average",
+   "equity": "1932700000"
   },
   {
    "ticker": "JLRC",
@@ -6750,7 +7218,8 @@
    "debt": "1.53",
    "growth": "0.0021",
    "payout": "0.76",
-   "management": "average"
+   "management": "average",
+   "equity": "3130600000"
   },
   {
    "ticker": "HHNC",
@@ -6764,7 +7233,8 @@
    "debt": "2.72",
    "growth": "0.0002",
    "payout": "0.61",
-   "management": "average"
+   "management": "average",
+   "equity": "38847300000"
   },
   {
    "ticker": "BRNC",
@@ -6778,7 +7248,8 @@
    "debt": "3.26",
    "growth": "-0.0043",
    "payout": "0.73",
-   "management": "average"
+   "management": "average",
+   "equity": "18127400000"
   },
   {
    "ticker": "ZLLB",
@@ -6792,7 +7263,8 @@
    "debt": "2.49",
    "growth": "-0.0113",
    "payout": "0.73",
-   "management": "bad"
+   "management": "bad",
+   "equity": "12620800000"
   },
   {
    "ticker": "ECHR",
@@ -6806,7 +7278,8 @@
    "debt": "2.85",
    "growth": "0.0056",
    "payout": "0.62",
-   "management": "good"
+   "management": "good",
+   "equity": "7571800000"
   },
   {
    "ticker": "TNNW",
@@ -6820,7 +7293,8 @@
    "debt": "5.25",
    "growth": "-0.0124",
    "payout": "0.77",
-   "management": "bad"
+   "management": "bad",
+   "equity": "5465900000"
   },
   {
    "ticker": "NRDT",
@@ -6834,7 +7308,8 @@
    "debt": "3.00",
    "growth": "0.0104",
    "payout": "0.60",
-   "management": "good"
+   "management": "good",
+   "equity": "5725100000"
   },
   {
    "ticker": "ISNC",
@@ -6848,7 +7323,8 @@
    "debt": "2.60",
    "growth": "-0.0018",
    "payout": "0.71",
-   "management": "average"
+   "management": "average",
+   "equity": "4259500000"
   },
   {
    "ticker": "BRKR",
@@ -6862,7 +7338,8 @@
    "debt": "2.31",
    "growth": "-0.0031",
    "payout": "0.79",
-   "management": "average"
+   "management": "average",
+   "equity": "3871900000"
   },
   {
    "ticker": "WSTN",
@@ -6876,7 +7353,8 @@
    "debt": "4.90",
    "growth": "0.0173",
    "payout": "0.68",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "4397100000"
   },
   {
    "ticker": "FLSB",
@@ -6890,7 +7368,8 @@
    "debt": "2.62",
    "growth": "-0.0034",
    "payout": "0.79",
-   "management": "average"
+   "management": "average",
+   "equity": "4217500000"
   },
   {
    "ticker": "FNTT",
@@ -6904,7 +7383,8 @@
    "debt": "3.48",
    "growth": "0.0024",
    "payout": "0.79",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "19033700000"
   },
   {
    "ticker": "LRZZ",
@@ -6918,7 +7398,8 @@
    "debt": "2.85",
    "growth": "0.0137",
    "payout": "0.73",
-   "management": "good"
+   "management": "good",
+   "equity": "8553300000"
   },
   {
    "ticker": "SLRT",
@@ -6932,7 +7413,8 @@
    "debt": "2.92",
    "growth": "0.0160",
    "payout": "0.71",
-   "management": "good"
+   "management": "good",
+   "equity": "6287600000"
   },
   {
    "ticker": "RSGT",
@@ -6946,7 +7428,8 @@
    "debt": "3.55",
    "growth": "-0.0008",
    "payout": "0.80",
-   "management": "good"
+   "management": "good",
+   "equity": "5919200000"
   },
   {
    "ticker": "LRLL",
@@ -6960,7 +7443,8 @@
    "debt": "4.87",
    "growth": "-0.0115",
    "payout": "0.73",
-   "management": "average"
+   "management": "average",
+   "equity": "4333700000"
   },
   {
    "ticker": "FRRT",
@@ -6974,7 +7458,8 @@
    "debt": "2.01",
    "growth": "0.0189",
    "payout": "0.70",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "3591700000"
   },
   {
    "ticker": "GLNT",
@@ -6988,7 +7473,8 @@
    "debt": "3.17",
    "growth": "-0.0203",
    "payout": "0.69",
-   "management": "average"
+   "management": "average",
+   "equity": "2158500000"
   },
   {
    "ticker": "MNZT",
@@ -7002,7 +7488,8 @@
    "debt": "3.31",
    "growth": "-0.0019",
    "payout": "0.67",
-   "management": "good"
+   "management": "good",
+   "equity": "2460400000"
   },
   {
    "ticker": "GNLL",
@@ -7016,7 +7503,8 @@
    "debt": "2.79",
    "growth": "0.0022",
    "payout": "0.78",
-   "management": "good"
+   "management": "good",
+   "equity": "1433700000"
   },
   {
    "ticker": "LNTL",
@@ -7030,7 +7518,8 @@
    "debt": "1.49",
    "growth": "-0.0021",
    "payout": "0.63",
-   "management": "good"
+   "management": "good",
+   "equity": "1053800000"
   },
   {
    "ticker": "GNTL",
@@ -7044,7 +7533,8 @@
    "debt": "2.83",
    "growth": "0.0053",
    "payout": "0.75",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "17303400000"
   },
   {
    "ticker": "HNCT",
@@ -7058,7 +7548,8 @@
    "debt": "3.41",
    "growth": "-0.0148",
    "payout": "0.73",
-   "management": "bad"
+   "management": "bad",
+   "equity": "7795600000"
   },
   {
    "ticker": "PNTL",
@@ -7072,7 +7563,8 @@
    "debt": "1.22",
    "growth": "0.0069",
    "payout": "0.67",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "4850300000"
   },
   {
    "ticker": "SLRS",
@@ -7086,7 +7578,8 @@
    "debt": "2.36",
    "growth": "-0.0038",
    "payout": "0.68",
-   "management": "good"
+   "management": "good",
+   "equity": "4560300000"
   },
   {
    "ticker": "VLJT",
@@ -7100,7 +7593,8 @@
    "debt": "3.13",
    "growth": "0.0048",
    "payout": "0.69",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2777600000"
   },
   {
    "ticker": "ALRT",
@@ -7114,7 +7608,8 @@
    "debt": "1.76",
    "growth": "-0.0200",
    "payout": "0.78",
-   "management": "average"
+   "management": "average",
+   "equity": "4083000000"
   },
   {
    "ticker": "LSTL",
@@ -7128,7 +7623,8 @@
    "debt": "2.49",
    "growth": "0.0051",
    "payout": "0.64",
-   "management": "average"
+   "management": "average",
+   "equity": "2369900000"
   },
   {
    "ticker": "MRRT",
@@ -7142,7 +7638,8 @@
    "debt": "2.41",
    "growth": "0.0045",
    "payout": "0.61",
-   "management": "average"
+   "management": "average",
+   "equity": "2993600000"
   },
   {
    "ticker": "DDTL",
@@ -7156,7 +7653,8 @@
    "debt": "2.42",
    "growth": "-0.0060",
    "payout": "0.78",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1485400000"
   },
   {
    "ticker": "BLRT",
@@ -7170,7 +7668,8 @@
    "debt": "3.26",
    "growth": "0.0044",
    "payout": "0.66",
-   "management": "average"
+   "management": "average",
+   "equity": "1691600000"
   },
   {
    "ticker": "ARGR",
@@ -7184,7 +7683,8 @@
    "debt": "1.84",
    "growth": "-0.0084",
    "payout": "0.51",
-   "management": "good"
+   "management": "good",
+   "equity": "3758300000"
   },
   {
    "ticker": "ESCT",
@@ -7198,7 +7698,8 @@
    "debt": "1.01",
    "growth": "-0.0132",
    "payout": "0.59",
-   "management": "good"
+   "management": "good",
+   "equity": "2025900000"
   },
   {
    "ticker": "FNMS",
@@ -7212,7 +7713,8 @@
    "debt": "1.31",
    "growth": "0.0140",
    "payout": "0.45",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "998900000"
   },
   {
    "ticker": "LRLM",
@@ -7226,7 +7728,8 @@
    "debt": "1.88",
    "growth": "0.0014",
    "payout": "0.59",
-   "management": "average"
+   "management": "average",
+   "equity": "742600000"
   },
   {
    "ticker": "BSCM",
@@ -7240,7 +7743,8 @@
    "debt": "1.10",
    "growth": "-0.0034",
    "payout": "0.52",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1041000000"
   },
   {
    "ticker": "MLLM",
@@ -7254,7 +7758,8 @@
    "debt": "1.39",
    "growth": "0.0047",
    "payout": "0.41",
-   "management": "good"
+   "management": "good",
+   "equity": "598500000"
   },
   {
    "ticker": "CLRE",
@@ -7268,7 +7773,8 @@
    "debt": "1.28",
    "growth": "0.0174",
    "payout": "0.53",
-   "management": "average"
+   "management": "average",
+   "equity": "624900000"
   },
   {
    "ticker": "BSRH",
@@ -7282,7 +7788,8 @@
    "debt": "1.09",
    "growth": "0.0029",
    "payout": "0.57",
-   "management": "poor"
+   "management": "poor",
+   "equity": "570800000"
   },
   {
    "ticker": "RVLL",
@@ -7296,7 +7803,8 @@
    "debt": "1.24",
    "growth": "0.0064",
    "payout": "0.55",
-   "management": "good"
+   "management": "good",
+   "equity": "479500000"
   },
   {
    "ticker": "BRRX",
@@ -7310,7 +7818,8 @@
    "debt": "0.95",
    "growth": "-0.0157",
    "payout": "0.42",
-   "management": "bad"
+   "management": "bad",
+   "equity": "466700000"
   },
   {
    "ticker": "ALBW",
@@ -7324,7 +7833,8 @@
    "debt": "1.49",
    "growth": "-0.0054",
    "payout": "0.51",
-   "management": "bad"
+   "management": "bad",
+   "equity": "5291700000"
   },
   {
    "ticker": "ERLL",
@@ -7338,7 +7848,8 @@
    "debt": "1.95",
    "growth": "0.0121",
    "payout": "0.52",
-   "management": "good"
+   "management": "good",
+   "equity": "1957400000"
   },
   {
    "ticker": "TNNR",
@@ -7352,7 +7863,8 @@
    "debt": "1.25",
    "growth": "-0.0033",
    "payout": "0.42",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1924200000"
   },
   {
    "ticker": "TNNT",
@@ -7366,7 +7878,8 @@
    "debt": "0.90",
    "growth": "0.0033",
    "payout": "0.46",
-   "management": "good"
+   "management": "good",
+   "equity": "1337700000"
   },
   {
    "ticker": "KRNS",
@@ -7380,7 +7893,8 @@
    "debt": "1.73",
    "growth": "-0.0085",
    "payout": "0.40",
-   "management": "good"
+   "management": "good",
+   "equity": "914900000"
   },
   {
    "ticker": "ZLLC",
@@ -7394,7 +7908,8 @@
    "debt": "1.15",
    "growth": "-0.0077",
    "payout": "0.52",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1158300000"
   },
   {
    "ticker": "TNNM",
@@ -7408,7 +7923,8 @@
    "debt": "0.92",
    "growth": "0.0011",
    "payout": "0.57",
-   "management": "average"
+   "management": "average",
+   "equity": "659800000"
   },
   {
    "ticker": "DRNM",
@@ -7422,7 +7938,8 @@
    "debt": "1.82",
    "growth": "0.0042",
    "payout": "0.47",
-   "management": "average"
+   "management": "average",
+   "equity": "715500000"
   },
   {
    "ticker": "WSTS",
@@ -7436,7 +7953,8 @@
    "debt": "2.59",
    "growth": "-0.0287",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "382200000"
   },
   {
    "ticker": "HHNS",
@@ -7450,7 +7968,8 @@
    "debt": "1.35",
    "growth": "0.0021",
    "payout": "0.46",
-   "management": "average"
+   "management": "average",
+   "equity": "411600000"
   },
   {
    "ticker": "FLMM",
@@ -7464,7 +7983,8 @@
    "debt": "1.67",
    "growth": "-0.0220",
    "payout": "0.51",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2426600000"
   },
   {
    "ticker": "LNND",
@@ -7478,7 +7998,8 @@
    "debt": "1.54",
    "growth": "0.0046",
    "payout": "0.50",
-   "management": "good"
+   "management": "good",
+   "equity": "1153600000"
   },
   {
    "ticker": "BRSM",
@@ -7492,7 +8013,8 @@
    "debt": "0.96",
    "growth": "0.0140",
    "payout": "0.42",
-   "management": "poor"
+   "management": "poor",
+   "equity": "839900000"
   },
   {
    "ticker": "BRLD",
@@ -7506,7 +8028,8 @@
    "debt": "0.91",
    "growth": "-0.0231",
    "payout": "0.45",
-   "management": "average"
+   "management": "average",
+   "equity": "511700000"
   },
   {
    "ticker": "GNRD",
@@ -7520,7 +8043,8 @@
    "debt": "1.25",
    "growth": "-0.0021",
    "payout": "0.48",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "407300000"
   },
   {
    "ticker": "ALNM",
@@ -7534,7 +8058,8 @@
    "debt": "1.89",
    "growth": "-0.0031",
    "payout": "0.45",
-   "management": "average"
+   "management": "average",
+   "equity": "272600000"
   },
   {
    "ticker": "MNSD",
@@ -7548,7 +8073,8 @@
    "debt": "1.11",
    "growth": "-0.0013",
    "payout": "0.45",
-   "management": "poor"
+   "management": "poor",
+   "equity": "251800000"
   },
   {
    "ticker": "GNLM",
@@ -7562,7 +8088,8 @@
    "debt": "1.25",
    "growth": "-0.0083",
    "payout": "0.49",
-   "management": "average"
+   "management": "average",
+   "equity": "268100000"
   },
   {
    "ticker": "ORLM",
@@ -7576,7 +8103,8 @@
    "debt": "2.38",
    "growth": "-0.0126",
    "payout": "0.48",
-   "management": "average"
+   "management": "average",
+   "equity": "229700000"
   },
   {
    "ticker": "CRLE",
@@ -7590,7 +8118,8 @@
    "debt": "2.22",
    "growth": "-0.0268",
    "payout": "0.48",
-   "management": "average"
+   "management": "average",
+   "equity": "152100000"
   },
   {
    "ticker": "VLRD",
@@ -7604,7 +8133,8 @@
    "debt": "1.97",
    "growth": "-0.0145",
    "payout": "0.45",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2013500000"
   },
   {
    "ticker": "LRMD",
@@ -7618,7 +8148,8 @@
    "debt": "1.41",
    "growth": "-0.0136",
    "payout": "0.54",
-   "management": "average"
+   "management": "average",
+   "equity": "958800000"
   },
   {
    "ticker": "SNLM",
@@ -7632,7 +8163,8 @@
    "debt": "1.31",
    "growth": "-0.0103",
    "payout": "0.43",
-   "management": "poor"
+   "management": "poor",
+   "equity": "559600000"
   },
   {
    "ticker": "CNNM",
@@ -7646,7 +8178,8 @@
    "debt": "1.95",
    "growth": "0.0092",
    "payout": "0.54",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "428200000"
   },
   {
    "ticker": "VLRS",
@@ -7660,7 +8193,8 @@
    "debt": "2.00",
    "growth": "0.0130",
    "payout": "0.52",
-   "management": "average"
+   "management": "average",
+   "equity": "251600000"
   },
   {
    "ticker": "LRSM",
@@ -7674,7 +8208,8 @@
    "debt": "1.40",
    "growth": "0.0118",
    "payout": "0.41",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "259000000"
   },
   {
    "ticker": "LLSM",
@@ -7688,7 +8223,8 @@
    "debt": "1.58",
    "growth": "0.0058",
    "payout": "0.40",
-   "management": "poor"
+   "management": "poor",
+   "equity": "330200000"
   },
   {
    "ticker": "HLLM",
@@ -7702,7 +8238,8 @@
    "debt": "0.49",
    "growth": "0.0125",
    "payout": "0.55",
-   "management": "good"
+   "management": "good",
+   "equity": "229400000"
   },
   {
    "ticker": "GJMD",
@@ -7716,7 +8253,8 @@
    "debt": "2.17",
    "growth": "0.0002",
    "payout": "0.53",
-   "management": "poor"
+   "management": "poor",
+   "equity": "173100000"
   },
   {
    "ticker": "DRMD",
@@ -7730,7 +8268,8 @@
    "debt": "1.57",
    "growth": "-0.0081",
    "payout": "0.49",
-   "management": "average"
+   "management": "average",
+   "equity": "111500000"
   },
   {
    "ticker": "GRNV",
@@ -7744,7 +8283,8 @@
    "debt": "0",
    "growth": "-0.0033",
    "payout": "0.49",
-   "management": "bad"
+   "management": "bad",
+   "equity": "59392800000"
   },
   {
    "ticker": "BRMR",
@@ -7758,7 +8298,8 @@
    "debt": "0",
    "growth": "-0.0093",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "21811700000"
   },
   {
    "ticker": "MRSB",
@@ -7772,7 +8313,8 @@
    "debt": "0",
    "growth": "0.0017",
    "payout": "0.54",
-   "management": "average"
+   "management": "average",
+   "equity": "16269300000"
   },
   {
    "ticker": "MNTB",
@@ -7786,7 +8328,8 @@
    "debt": "0",
    "growth": "0.0111",
    "payout": "0.46",
-   "management": "average"
+   "management": "average",
+   "equity": "15129600000"
   },
   {
    "ticker": "DRNC",
@@ -7800,7 +8343,8 @@
    "debt": "0",
    "growth": "-0.0206",
    "payout": "0.58",
-   "management": "bad"
+   "management": "bad",
+   "equity": "10296600000"
   },
   {
    "ticker": "MLLB",
@@ -7814,7 +8358,8 @@
    "debt": "0",
    "growth": "-0.0001",
    "payout": "0.56",
-   "management": "average"
+   "management": "average",
+   "equity": "6861600000"
   },
   {
    "ticker": "BSSB",
@@ -7828,7 +8373,8 @@
    "debt": "0",
    "growth": "0.0154",
    "payout": "0.42",
-   "management": "average"
+   "management": "average",
+   "equity": "5405700000"
   },
   {
    "ticker": "BLLB",
@@ -7842,7 +8388,8 @@
    "debt": "0",
    "growth": "-0.0101",
    "payout": "0.53",
-   "management": "bad"
+   "management": "bad",
+   "equity": "8326000000"
   },
   {
    "ticker": "BRCB",
@@ -7856,7 +8403,8 @@
    "debt": "0",
    "growth": "0.0038",
    "payout": "0.50",
-   "management": "bad"
+   "management": "bad",
+   "equity": "18269600000"
   },
   {
    "ticker": "DRNQ",
@@ -7870,7 +8418,8 @@
    "debt": "0",
    "growth": "0.0104",
    "payout": "0.45",
-   "management": "average"
+   "management": "average",
+   "equity": "5719800000"
   },
   {
    "ticker": "FLKB",
@@ -7884,7 +8433,8 @@
    "debt": "0",
    "growth": "-0.0086",
    "payout": "0.52",
-   "management": "average"
+   "management": "average",
+   "equity": "106088000000"
   },
   {
    "ticker": "ALBK",
@@ -7898,7 +8448,8 @@
    "debt": "0",
    "growth": "0.0031",
    "payout": "0.54",
-   "management": "good"
+   "management": "good",
+   "equity": "33845400000"
   },
   {
    "ticker": "ISNH",
@@ -7912,7 +8463,8 @@
    "debt": "0",
    "growth": "-0.0055",
    "payout": "0.55",
-   "management": "poor"
+   "management": "poor",
+   "equity": "17909800000"
   },
   {
    "ticker": "FLSM",
@@ -7926,7 +8478,8 @@
    "debt": "0",
    "growth": "-0.0030",
    "payout": "0.59",
-   "management": "poor"
+   "management": "poor",
+   "equity": "27132000000"
   },
   {
    "ticker": "DRNK",
@@ -7940,7 +8493,8 @@
    "debt": "0",
    "growth": "0.0076",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "6958000000"
   },
   {
    "ticker": "STNL",
@@ -7954,7 +8508,8 @@
    "debt": "0",
    "growth": "-0.0015",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "11499800000"
   },
   {
    "ticker": "SNNG",
@@ -7968,7 +8523,8 @@
    "debt": "0",
    "growth": "-0.0222",
    "payout": "0.44",
-   "management": "bad"
+   "management": "bad",
+   "equity": "3609200000"
   },
   {
    "ticker": "STNG",
@@ -7982,7 +8538,8 @@
    "debt": "0",
    "growth": "-0.0030",
    "payout": "0.46",
-   "management": "bad"
+   "management": "bad",
+   "equity": "10714300000"
   },
   {
    "ticker": "LNDL",
@@ -7996,7 +8553,8 @@
    "debt": "0",
    "growth": "-0.0103",
    "payout": "0.50",
-   "management": "bad"
+   "management": "bad",
+   "equity": "5697600000"
   },
   {
    "ticker": "WSSH",
@@ -8010,7 +8568,8 @@
    "debt": "0",
    "growth": "0.0146",
    "payout": "0.53",
-   "management": "poor"
+   "management": "poor",
+   "equity": "9373200000"
   },
   {
    "ticker": "TRRB",
@@ -8024,7 +8583,8 @@
    "debt": "0",
    "growth": "0.0178",
    "payout": "0.43",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "31348600000"
   },
   {
    "ticker": "DLSB",
@@ -8038,7 +8598,8 @@
    "debt": "0",
    "growth": "-0.0190",
    "payout": "0.50",
-   "management": "average"
+   "management": "average",
+   "equity": "6593500000"
   },
   {
    "ticker": "PLLL",
@@ -8052,7 +8613,8 @@
    "debt": "0",
    "growth": "0.0123",
    "payout": "0.50",
-   "management": "poor"
+   "management": "poor",
+   "equity": "10040900000"
   },
   {
    "ticker": "BLLN",
@@ -8066,7 +8628,8 @@
    "debt": "0",
    "growth": "-0.0091",
    "payout": "0.54",
-   "management": "bad"
+   "management": "bad",
+   "equity": "3711400000"
   },
   {
    "ticker": "CSNB",
@@ -8080,7 +8643,8 @@
    "debt": "0",
    "growth": "-0.0153",
    "payout": "0.54",
-   "management": "good"
+   "management": "good",
+   "equity": "5186800000"
   },
   {
    "ticker": "VLNT",
@@ -8094,7 +8658,8 @@
    "debt": "0",
    "growth": "0.0036",
    "payout": "0.58",
-   "management": "good"
+   "management": "good",
+   "equity": "3028900000"
   },
   {
    "ticker": "LNNB",
@@ -8108,7 +8673,8 @@
    "debt": "0",
    "growth": "-0.0023",
    "payout": "0.53",
-   "management": "good"
+   "management": "good",
+   "equity": "10753900000"
   },
   {
    "ticker": "RSLM",
@@ -8122,7 +8688,8 @@
    "debt": "0",
    "growth": "-0.0168",
    "payout": "0.41",
-   "management": "bad"
+   "management": "bad",
+   "equity": "2966100000"
   },
   {
    "ticker": "VLGB",
@@ -8136,7 +8703,8 @@
    "debt": "0",
    "growth": "-0.0021",
    "payout": "0.55",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "6699300000"
   },
   {
    "ticker": "GNNB",
@@ -8150,7 +8718,8 @@
    "debt": "0",
    "growth": "0.0007",
    "payout": "0.42",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2656000000"
   },
   {
    "ticker": "NNCB",
@@ -8164,7 +8733,8 @@
    "debt": "0",
    "growth": "0.0064",
    "payout": "0.57",
-   "management": "average"
+   "management": "average",
+   "equity": "57974400000"
   },
   {
    "ticker": "HZBN",
@@ -8178,7 +8748,8 @@
    "debt": "0",
    "growth": "-0.0111",
    "payout": "0.42",
-   "management": "poor"
+   "management": "poor",
+   "equity": "16749500000"
   },
   {
    "ticker": "CRRR",
@@ -8192,7 +8763,8 @@
    "debt": "0",
    "growth": "-0.0137",
    "payout": "0.44",
-   "management": "poor"
+   "management": "poor",
+   "equity": "8522300000"
   },
   {
    "ticker": "VLDB",
@@ -8206,7 +8778,8 @@
    "debt": "0",
    "growth": "0.0003",
    "payout": "0.50",
-   "management": "good"
+   "management": "good",
+   "equity": "5788900000"
   },
   {
    "ticker": "CNRS",
@@ -8220,7 +8793,8 @@
    "debt": "0",
    "growth": "0.0210",
    "payout": "0.58",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "5713500000"
   },
   {
    "ticker": "VLLD",
@@ -8234,7 +8808,8 @@
    "debt": "0",
    "growth": "-0.0054",
    "payout": "0.47",
-   "management": "average"
+   "management": "average",
+   "equity": "2773400000"
   },
   {
    "ticker": "DRSB",
@@ -8248,7 +8823,8 @@
    "debt": "0",
    "growth": "0.0020",
    "payout": "0.46",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2674100000"
   },
   {
    "ticker": "CSNC",
@@ -8262,7 +8838,8 @@
    "debt": "0",
    "growth": "-0.0016",
    "payout": "0.49",
-   "management": "good"
+   "management": "good",
+   "equity": "2925800000"
   },
   {
    "ticker": "MNJB",
@@ -8276,7 +8853,8 @@
    "debt": "0",
    "growth": "0.0119",
    "payout": "0.49",
-   "management": "good"
+   "management": "good",
+   "equity": "6405800000"
   },
   {
    "ticker": "LLSB",
@@ -8290,7 +8868,8 @@
    "debt": "0",
    "growth": "0.0086",
    "payout": "0.56",
-   "management": "average"
+   "management": "average",
+   "equity": "1827600000"
   },
   {
    "ticker": "GRNC",
@@ -8304,7 +8883,8 @@
    "debt": "0",
    "growth": "-0.0078",
    "payout": "0.61",
-   "management": "good"
+   "management": "good",
+   "equity": "11653800000"
   },
   {
    "ticker": "GRNA",
@@ -8318,7 +8898,8 @@
    "debt": "0",
    "growth": "0.0133",
    "payout": "0.68",
-   "management": "good"
+   "management": "good",
+   "equity": "5320400000"
   },
   {
    "ticker": "BRLN",
@@ -8332,7 +8913,8 @@
    "debt": "0",
    "growth": "-0.0112",
    "payout": "0.51",
-   "management": "average"
+   "management": "average",
+   "equity": "3346300000"
   },
   {
    "ticker": "BVLL",
@@ -8346,7 +8928,8 @@
    "debt": "0",
    "growth": "-0.0006",
    "payout": "0.70",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1533600000"
   },
   {
    "ticker": "GRNH",
@@ -8360,7 +8943,8 @@
    "debt": "0",
    "growth": "-0.0140",
    "payout": "0.62",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1516600000"
   },
   {
    "ticker": "RNCS",
@@ -8374,7 +8958,8 @@
    "debt": "0",
    "growth": "-0.0163",
    "payout": "0.66",
-   "management": "average"
+   "management": "average",
+   "equity": "3792500000"
   },
   {
    "ticker": "MLMS",
@@ -8388,7 +8973,8 @@
    "debt": "0",
    "growth": "-0.0125",
    "payout": "0.67",
-   "management": "average"
+   "management": "average",
+   "equity": "600300000"
   },
   {
    "ticker": "VRVL",
@@ -8402,7 +8988,8 @@
    "debt": "0",
    "growth": "0.0307",
    "payout": "0.69",
-   "management": "good"
+   "management": "good",
+   "equity": "1828000000"
   },
   {
    "ticker": "MNTC",
@@ -8416,7 +9003,8 @@
    "debt": "0",
    "growth": "0.0123",
    "payout": "0.61",
-   "management": "average"
+   "management": "average",
+   "equity": "4929000000"
   },
   {
    "ticker": "SLND",
@@ -8430,7 +9018,8 @@
    "debt": "0",
    "growth": "0.0061",
    "payout": "0.57",
-   "management": "average"
+   "management": "average",
+   "equity": "1012700000"
   },
   {
    "ticker": "LTRB",
@@ -8444,7 +9033,8 @@
    "debt": "0",
    "growth": "0.0085",
    "payout": "0.67",
-   "management": "good"
+   "management": "good",
+   "equity": "23797600000"
   },
   {
    "ticker": "ALBS",
@@ -8458,7 +9048,8 @@
    "debt": "0",
    "growth": "-0.0095",
    "payout": "0.60",
-   "management": "bad"
+   "management": "bad",
+   "equity": "4331700000"
   },
   {
    "ticker": "DRNV",
@@ -8472,7 +9063,8 @@
    "debt": "0",
    "growth": "-0.0116",
    "payout": "0.57",
-   "management": "good"
+   "management": "good",
+   "equity": "9343000000"
   },
   {
    "ticker": "HGCK",
@@ -8486,7 +9078,8 @@
    "debt": "0",
    "growth": "0.0201",
    "payout": "0.66",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "7332300000"
   },
   {
    "ticker": "FLKH",
@@ -8500,7 +9093,8 @@
    "debt": "0",
    "growth": "-0.0190",
    "payout": "0.64",
-   "management": "bad"
+   "management": "bad",
+   "equity": "985100000"
   },
   {
    "ticker": "BRNU",
@@ -8514,7 +9108,8 @@
    "debt": "0",
    "growth": "0",
    "payout": "0.56",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2300000000"
   },
   {
    "ticker": "HGNG",
@@ -8528,7 +9123,8 @@
    "debt": "0",
    "growth": "0.0040",
    "payout": "0.61",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2028800000"
   },
   {
    "ticker": "BRNA",
@@ -8542,7 +9138,8 @@
    "debt": "0",
    "growth": "0.0158",
    "payout": "0.64",
-   "management": "average"
+   "management": "average",
+   "equity": "1202500000"
   },
   {
    "ticker": "ZLLR",
@@ -8556,7 +9153,8 @@
    "debt": "0",
    "growth": "0.0104",
    "payout": "0.69",
-   "management": "good"
+   "management": "good",
+   "equity": "3091600000"
   },
   {
    "ticker": "LNDV",
@@ -8570,7 +9168,8 @@
    "debt": "0",
    "growth": "0.0265",
    "payout": "0.64",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "2277500000"
   },
   {
    "ticker": "NRZS",
@@ -8584,7 +9183,8 @@
    "debt": "0",
    "growth": "-0.0068",
    "payout": "0.66",
-   "management": "average"
+   "management": "average",
+   "equity": "4117400000"
   },
   {
    "ticker": "LLMS",
@@ -8598,7 +9198,8 @@
    "debt": "0",
    "growth": "-0.0030",
    "payout": "0.69",
-   "management": "average"
+   "management": "average",
+   "equity": "3198900000"
   },
   {
    "ticker": "LRSS",
@@ -8612,7 +9213,8 @@
    "debt": "0",
    "growth": "-0.0042",
    "payout": "0.52",
-   "management": "average"
+   "management": "average",
+   "equity": "2542700000"
   },
   {
    "ticker": "LZZS",
@@ -8626,7 +9228,8 @@
    "debt": "0",
    "growth": "0.0054",
    "payout": "0.66",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "2440400000"
   },
   {
    "ticker": "ORTT",
@@ -8640,7 +9243,8 @@
    "debt": "0",
    "growth": "-0.0005",
    "payout": "0.68",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "1476700000"
   },
   {
    "ticker": "PLNS",
@@ -8654,7 +9258,8 @@
    "debt": "0",
    "growth": "-0.0055",
    "payout": "0.58",
-   "management": "bad"
+   "management": "bad",
+   "equity": "468300000"
   },
   {
    "ticker": "VLNS",
@@ -8668,7 +9273,8 @@
    "debt": "0",
    "growth": "-0.0236",
    "payout": "0.58",
-   "management": "poor"
+   "management": "poor",
+   "equity": "193600000"
   },
   {
    "ticker": "CLNT",
@@ -8682,7 +9288,8 @@
    "debt": "0",
    "growth": "0.0077",
    "payout": "0.53",
-   "management": "poor"
+   "management": "poor",
+   "equity": "632000000"
   },
   {
    "ticker": "PLRC",
@@ -8696,7 +9303,8 @@
    "debt": "0",
    "growth": "0.0011",
    "payout": "0.62",
-   "management": "average"
+   "management": "average",
+   "equity": "642000000"
   },
   {
    "ticker": "BRLZ",
@@ -8710,7 +9318,8 @@
    "debt": "0",
    "growth": "-0.0008",
    "payout": "0.56",
-   "management": "average"
+   "management": "average",
+   "equity": "794000000"
   },
   {
    "ticker": "LRSG",
@@ -8724,7 +9333,8 @@
    "debt": "0",
    "growth": "-0.0014",
    "payout": "0.53",
-   "management": "average"
+   "management": "average",
+   "equity": "3763200000"
   },
   {
    "ticker": "LRSR",
@@ -8738,7 +9348,8 @@
    "debt": "0",
    "growth": "-0.0035",
    "payout": "0.56",
-   "management": "average"
+   "management": "average",
+   "equity": "1442200000"
   },
   {
    "ticker": "SNLS",
@@ -8752,7 +9363,8 @@
    "debt": "0",
    "growth": "0.0119",
    "payout": "0.70",
-   "management": "good"
+   "management": "good",
+   "equity": "1124700000"
   },
   {
    "ticker": "CNDS",
@@ -8766,7 +9378,8 @@
    "debt": "0",
    "growth": "-0.0150",
    "payout": "0.65",
-   "management": "average"
+   "management": "average",
+   "equity": "1053700000"
   },
   {
    "ticker": "SNRS",
@@ -8780,7 +9393,8 @@
    "debt": "0",
    "growth": "0.0121",
    "payout": "0.70",
-   "management": "average"
+   "management": "average",
+   "equity": "777800000"
   },
   {
    "ticker": "CRJS",
@@ -8794,7 +9408,8 @@
    "debt": "0",
    "growth": "0.0122",
    "payout": "0.60",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "797600000"
   },
   {
    "ticker": "GJSG",
@@ -8808,7 +9423,8 @@
    "debt": "0",
    "growth": "-0.0191",
    "payout": "0.55",
-   "management": "average"
+   "management": "average",
+   "equity": "477900000"
   },
   {
    "ticker": "CSRS",
@@ -8822,7 +9438,8 @@
    "debt": "0",
    "growth": "0.0008",
    "payout": "0.68",
-   "management": "poor"
+   "management": "poor",
+   "equity": "218400000"
   },
   {
    "ticker": "RZSG",
@@ -8836,7 +9453,8 @@
    "debt": "0",
    "growth": "-0.0049",
    "payout": "0.51",
-   "management": "average"
+   "management": "average",
+   "equity": "436700000"
   },
   {
    "ticker": "SLLS",
@@ -8850,7 +9468,8 @@
    "debt": "0",
    "growth": "-0.0115",
    "payout": "0.55",
-   "management": "poor"
+   "management": "poor",
+   "equity": "475800000"
   },
   {
    "ticker": "SLRF",
@@ -8864,7 +9483,8 @@
    "debt": "5.17",
    "growth": "-0.0053",
    "payout": "0.79",
-   "management": "poor"
+   "management": "poor",
+   "equity": "10319600000"
   },
   {
    "ticker": "GRNF",
@@ -8878,7 +9498,8 @@
    "debt": "6.59",
    "growth": "0.0197",
    "payout": "0.78",
-   "management": "average"
+   "management": "average",
+   "equity": "4371500000"
   },
   {
    "ticker": "GLRX",
@@ -8892,7 +9513,8 @@
    "debt": "3.82",
    "growth": "-0.0068",
    "payout": "0.80",
-   "management": "good"
+   "management": "good",
+   "equity": "2892000000"
   },
   {
    "ticker": "HTSF",
@@ -8906,7 +9528,8 @@
    "debt": "8.23",
    "growth": "0.0140",
    "payout": "0.80",
-   "management": "average"
+   "management": "average",
+   "equity": "1374300000"
   },
   {
    "ticker": "VRLF",
@@ -8920,7 +9543,8 @@
    "debt": "4.48",
    "growth": "0.0061",
    "payout": "0.81",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "1218200000"
   },
   {
    "ticker": "LRMN",
@@ -8934,7 +9558,8 @@
    "debt": "5.44",
    "growth": "0.0111",
    "payout": "0.84",
-   "management": "good"
+   "management": "good",
+   "equity": "1011900000"
   },
   {
    "ticker": "MRMF",
@@ -8948,7 +9573,8 @@
    "debt": "3.98",
    "growth": "0.0036",
    "payout": "0.75",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1642700000"
   },
   {
    "ticker": "BLVT",
@@ -8962,7 +9588,8 @@
    "debt": "4.16",
    "growth": "-0.0084",
    "payout": "0.75",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1722500000"
   },
   {
    "ticker": "HTCR",
@@ -8976,7 +9603,8 @@
    "debt": "5.32",
    "growth": "0.0167",
    "payout": "0.83",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1390500000"
   },
   {
    "ticker": "BRRF",
@@ -8990,7 +9618,8 @@
    "debt": "8.30",
    "growth": "0.0015",
    "payout": "0.87",
-   "management": "good"
+   "management": "good",
+   "equity": "598600000"
   },
   {
    "ticker": "SNNC",
@@ -9004,7 +9633,8 @@
    "debt": "7.61",
    "growth": "-0.0017",
    "payout": "0.80",
-   "management": "average"
+   "management": "average",
+   "equity": "13062700000"
   },
   {
    "ticker": "BRNI",
@@ -9018,7 +9648,8 @@
    "debt": "6.71",
    "growth": "0.0092",
    "payout": "0.89",
-   "management": "poor"
+   "management": "poor",
+   "equity": "7679100000"
   },
   {
    "ticker": "TNNL",
@@ -9032,7 +9663,8 @@
    "debt": "5.05",
    "growth": "-0.0135",
    "payout": "0.86",
-   "management": "average"
+   "management": "average",
+   "equity": "5460000000"
   },
   {
    "ticker": "KLTM",
@@ -9046,7 +9678,8 @@
    "debt": "6.60",
    "growth": "0.0297",
    "payout": "0.77",
-   "management": "good"
+   "management": "good",
+   "equity": "2324300000"
   },
   {
    "ticker": "MRKS",
@@ -9060,7 +9693,8 @@
    "debt": "5.74",
    "growth": "0.0043",
    "payout": "0.86",
-   "management": "average"
+   "management": "average",
+   "equity": "2008800000"
   },
   {
    "ticker": "WLDB",
@@ -9074,7 +9708,8 @@
    "debt": "4.31",
    "growth": "-0.0049",
    "payout": "0.78",
-   "management": "poor"
+   "management": "poor",
+   "equity": "3123200000"
   },
   {
    "ticker": "ECHN",
@@ -9088,7 +9723,8 @@
    "debt": "10.70",
    "growth": "0.0231",
    "payout": "0.90",
-   "management": "good"
+   "management": "good",
+   "equity": "1293500000"
   },
   {
    "ticker": "OSTC",
@@ -9102,7 +9738,8 @@
    "debt": "3.94",
    "growth": "0.0104",
    "payout": "0.74",
-   "management": "good"
+   "management": "good",
+   "equity": "2191300000"
   },
   {
    "ticker": "ISNL",
@@ -9116,7 +9753,8 @@
    "debt": "3.23",
    "growth": "-0.0020",
    "payout": "0.80",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1510000000"
   },
   {
    "ticker": "BRNO",
@@ -9130,7 +9768,8 @@
    "debt": "4.28",
    "growth": "-0.0063",
    "payout": "0.75",
-   "management": "average"
+   "management": "average",
+   "equity": "2453700000"
   },
   {
    "ticker": "DLLB",
@@ -9144,7 +9783,8 @@
    "debt": "4.98",
    "growth": "0.0116",
    "payout": "0.76",
-   "management": "average"
+   "management": "average",
+   "equity": "5576400000"
   },
   {
    "ticker": "LNNL",
@@ -9158,7 +9798,8 @@
    "debt": "3.86",
    "growth": "0.0354",
    "payout": "0.73",
-   "management": "good"
+   "management": "good",
+   "equity": "3112000000"
   },
   {
    "ticker": "RSNM",
@@ -9172,7 +9813,8 @@
    "debt": "6.91",
    "growth": "0.0049",
    "payout": "0.89",
-   "management": "good"
+   "management": "good",
+   "equity": "1062600000"
   },
   {
    "ticker": "BRLB",
@@ -9186,7 +9828,8 @@
    "debt": "7.73",
    "growth": "-0.0064",
    "payout": "0.86",
-   "management": "bad"
+   "management": "bad",
+   "equity": "801500000"
   },
   {
    "ticker": "LRNM",
@@ -9200,7 +9843,8 @@
    "debt": "3.90",
    "growth": "-0.0207",
    "payout": "0.81",
-   "management": "average"
+   "management": "average",
+   "equity": "1512800000"
   },
   {
    "ticker": "BRGM",
@@ -9214,7 +9858,8 @@
    "debt": "4.75",
    "growth": "-0.0053",
    "payout": "0.82",
-   "management": "good"
+   "management": "good",
+   "equity": "684200000"
   },
   {
    "ticker": "VLNM",
@@ -9228,7 +9873,8 @@
    "debt": "8.49",
    "growth": "-0.0064",
    "payout": "0.88",
-   "management": "average"
+   "management": "average",
+   "equity": "275100000"
   },
   {
    "ticker": "BRRB",
@@ -9242,7 +9888,8 @@
    "debt": "8.54",
    "growth": "0.0093",
    "payout": "0.85",
-   "management": "good"
+   "management": "good",
+   "equity": "510200000"
   },
   {
    "ticker": "CSRM",
@@ -9256,7 +9903,8 @@
    "debt": "5.12",
    "growth": "0.0023",
    "payout": "0.72",
-   "management": "poor"
+   "management": "poor",
+   "equity": "449100000"
   },
   {
    "ticker": "BLSS",
@@ -9270,7 +9918,8 @@
    "debt": "7.93",
    "growth": "-0.0043",
    "payout": "0.81",
-   "management": "good"
+   "management": "good",
+   "equity": "305500000"
   },
   {
    "ticker": "GRSN",
@@ -9284,7 +9933,8 @@
    "debt": "10.38",
    "growth": "0.0001",
    "payout": "0.76",
-   "management": "good"
+   "management": "good",
+   "equity": "652600000"
   },
   {
    "ticker": "VLLS",
@@ -9298,7 +9948,8 @@
    "debt": "5.59",
    "growth": "-0.0082",
    "payout": "0.73",
-   "management": "average"
+   "management": "average",
+   "equity": "1112400000"
   },
   {
    "ticker": "MNDN",
@@ -9312,7 +9963,8 @@
    "debt": "9.56",
    "growth": "0.0008",
    "payout": "0.90",
-   "management": "good"
+   "management": "good",
+   "equity": "239400000"
   },
   {
    "ticker": "CRSN",
@@ -9326,7 +9978,8 @@
    "debt": "4.49",
    "growth": "0.0139",
    "payout": "0.77",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1123700000"
   },
   {
    "ticker": "CSSN",
@@ -9340,7 +9993,8 @@
    "debt": "3.53",
    "growth": "0.0009",
    "payout": "0.87",
-   "management": "good"
+   "management": "good",
+   "equity": "576600000"
   },
   {
    "ticker": "RZNM",
@@ -9354,7 +10008,8 @@
    "debt": "8.31",
    "growth": "-0.0007",
    "payout": "0.78",
-   "management": "poor"
+   "management": "poor",
+   "equity": "307300000"
   },
   {
    "ticker": "HNNM",
@@ -9368,7 +10023,8 @@
    "debt": "4.53",
    "growth": "0.0108",
    "payout": "0.90",
-   "management": "average"
+   "management": "average",
+   "equity": "300100000"
   },
   {
    "ticker": "RSNR",
@@ -9382,7 +10038,8 @@
    "debt": "5.62",
    "growth": "0.0171",
    "payout": "0.71",
-   "management": "average"
+   "management": "average",
+   "equity": "605800000"
   },
   {
    "ticker": "OLRN",
@@ -9396,7 +10053,8 @@
    "debt": "5.42",
    "growth": "-0.0050",
    "payout": "0.83",
-   "management": "good"
+   "management": "good",
+   "equity": "343200000"
   },
   {
    "ticker": "CSLS",
@@ -9410,7 +10068,8 @@
    "debt": "6.08",
    "growth": "-0.0055",
    "payout": "0.83",
-   "management": "average"
+   "management": "average",
+   "equity": "457700000"
   },
   {
    "ticker": "RNCH",
@@ -9424,7 +10083,8 @@
    "debt": "1.47",
    "growth": "-0.0100",
    "payout": "0.37",
-   "management": "bad"
+   "management": "bad",
+   "equity": "2332700000"
   },
   {
    "ticker": "GRNM",
@@ -9438,7 +10098,8 @@
    "debt": "3.25",
    "growth": "0.0039",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "777700000"
   },
   {
    "ticker": "LRLN",
@@ -9452,7 +10113,8 @@
    "debt": "1.47",
    "growth": "-0.0087",
    "payout": "0.36",
-   "management": "average"
+   "management": "average",
+   "equity": "659800000"
   },
   {
    "ticker": "BRFR",
@@ -9466,7 +10128,8 @@
    "debt": "1.62",
    "growth": "-0.0099",
    "payout": "0.35",
-   "management": "poor"
+   "management": "poor",
+   "equity": "456000000"
   },
   {
    "ticker": "RRCH",
@@ -9480,7 +10143,8 @@
    "debt": "3.61",
    "growth": "0.0036",
    "payout": "0.35",
-   "management": "bad"
+   "management": "bad",
+   "equity": "450800000"
   },
   {
    "ticker": "VRBH",
@@ -9494,7 +10158,8 @@
    "debt": "3.22",
    "growth": "0.0117",
    "payout": "0.34",
-   "management": "average"
+   "management": "average",
+   "equity": "192900000"
   },
   {
    "ticker": "FNVH",
@@ -9508,7 +10173,8 @@
    "debt": "2.67",
    "growth": "0.0090",
    "payout": "0.46",
-   "management": "average"
+   "management": "average",
+   "equity": "223400000"
   },
   {
    "ticker": "MRVL",
@@ -9522,7 +10188,8 @@
    "debt": "2.23",
    "growth": "0.0093",
    "payout": "0.47",
-   "management": "average"
+   "management": "average",
+   "equity": "252200000"
   },
   {
    "ticker": "FNSC",
@@ -9536,7 +10203,8 @@
    "debt": "1.68",
    "growth": "0.0068",
    "payout": "0.43",
-   "management": "poor"
+   "management": "poor",
+   "equity": "399200000"
   },
   {
    "ticker": "CRRX",
@@ -9550,7 +10218,8 @@
    "debt": "1.79",
    "growth": "0.0080",
    "payout": "0.39",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "138400000"
   },
   {
    "ticker": "ERLR",
@@ -9564,7 +10233,8 @@
    "debt": "1.02",
    "growth": "0.0064",
    "payout": "0.48",
-   "management": "good"
+   "management": "good",
+   "equity": "2918200000"
   },
   {
    "ticker": "SNNN",
@@ -9578,7 +10248,8 @@
    "debt": "1.77",
    "growth": "0.0082",
    "payout": "0.33",
-   "management": "average"
+   "management": "average",
+   "equity": "1464500000"
   },
   {
    "ticker": "SNDR",
@@ -9592,7 +10263,8 @@
    "debt": "1.92",
    "growth": "0.0032",
    "payout": "0.36",
-   "management": "poor"
+   "management": "poor",
+   "equity": "755900000"
   },
   {
    "ticker": "ISNT",
@@ -9606,7 +10278,8 @@
    "debt": "3.12",
    "growth": "-0.0143",
    "payout": "0.44",
-   "management": "average"
+   "management": "average",
+   "equity": "517400000"
   },
   {
    "ticker": "NRDD",
@@ -9620,7 +10293,8 @@
    "debt": "2.25",
    "growth": "-0.0192",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "689300000"
   },
   {
    "ticker": "LNDC",
@@ -9634,7 +10308,8 @@
    "debt": "1.41",
    "growth": "0.0112",
    "payout": "0.37",
-   "management": "average"
+   "management": "average",
+   "equity": "702400000"
   },
   {
    "ticker": "NRDS",
@@ -9648,7 +10323,8 @@
    "debt": "1.62",
    "growth": "0.0024",
    "payout": "0.34",
-   "management": "good"
+   "management": "good",
+   "equity": "279100000"
   },
   {
    "ticker": "KLTT",
@@ -9662,7 +10338,8 @@
    "debt": "1.45",
    "growth": "-0.0073",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "344600000"
   },
   {
    "ticker": "HGHR",
@@ -9676,7 +10353,8 @@
    "debt": "1.77",
    "growth": "-0.0011",
    "payout": "0.36",
-   "management": "bad"
+   "management": "bad",
+   "equity": "345300000"
   },
   {
    "ticker": "MRKG",
@@ -9690,7 +10368,8 @@
    "debt": "2.94",
    "growth": "-0.0078",
    "payout": "0.49",
-   "management": "poor"
+   "management": "poor",
+   "equity": "213900000"
   },
   {
    "ticker": "ALLL",
@@ -9704,7 +10383,8 @@
    "debt": "2.22",
    "growth": "-0.0251",
    "payout": "0.39",
-   "management": "bad"
+   "management": "bad",
+   "equity": "2033500000"
   },
   {
    "ticker": "MRLH",
@@ -9718,7 +10398,8 @@
    "debt": "3.10",
    "growth": "0.0026",
    "payout": "0.41",
-   "management": "average"
+   "management": "average",
+   "equity": "866800000"
   },
   {
    "ticker": "LRGH",
@@ -9732,7 +10413,8 @@
    "debt": "0.97",
    "growth": "-0.0045",
    "payout": "0.38",
-   "management": "average"
+   "management": "average",
+   "equity": "692100000"
   },
   {
    "ticker": "BLTT",
@@ -9746,7 +10428,8 @@
    "debt": "1.80",
    "growth": "-0.0072",
    "payout": "0.48",
-   "management": "bad"
+   "management": "bad",
+   "equity": "493000000"
   },
   {
    "ticker": "BRGH",
@@ -9760,7 +10443,8 @@
    "debt": "3.51",
    "growth": "0.0143",
    "payout": "0.37",
-   "management": "good"
+   "management": "good",
+   "equity": "271400000"
   },
   {
    "ticker": "VRRH",
@@ -9774,7 +10458,8 @@
    "debt": "1.40",
    "growth": "0.0041",
    "payout": "0.43",
-   "management": "average"
+   "management": "average",
+   "equity": "289100000"
   },
   {
    "ticker": "FRRD",
@@ -9788,7 +10473,8 @@
    "debt": "3.55",
    "growth": "0.0030",
    "payout": "0.43",
-   "management": "poor"
+   "management": "poor",
+   "equity": "343200000"
   },
   {
    "ticker": "CSSC",
@@ -9802,7 +10488,8 @@
    "debt": "2.16",
    "growth": "0.0044",
    "payout": "0.45",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "169500000"
   },
   {
    "ticker": "LNZZ",
@@ -9816,7 +10503,8 @@
    "debt": "2.41",
    "growth": "0.0084",
    "payout": "0.50",
-   "management": "excellent"
+   "management": "excellent",
+   "equity": "183600000"
   },
   {
    "ticker": "MNNH",
@@ -9830,7 +10518,8 @@
    "debt": "3.67",
    "growth": "0.0007",
    "payout": "0.43",
-   "management": "good"
+   "management": "good",
+   "equity": "210200000"
   },
   {
    "ticker": "GNDH",
@@ -9844,7 +10533,8 @@
    "debt": "2.36",
    "growth": "0.0026",
    "payout": "0.33",
-   "management": "good"
+   "management": "good",
+   "equity": "1817200000"
   },
   {
    "ticker": "TRZH",
@@ -9858,7 +10548,8 @@
    "debt": "2.82",
    "growth": "-0.0034",
    "payout": "0.41",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1023700000"
   },
   {
    "ticker": "BLJH",
@@ -9872,7 +10563,8 @@
    "debt": "1.01",
    "growth": "-0.0150",
    "payout": "0.50",
-   "management": "average"
+   "management": "average",
+   "equity": "686800000"
   },
   {
    "ticker": "BLHT",
@@ -9886,7 +10578,8 @@
    "debt": "2.75",
    "growth": "0.0140",
    "payout": "0.30",
-   "management": "good"
+   "management": "good",
+   "equity": "511600000"
   },
   {
    "ticker": "BJHT",
@@ -9900,7 +10593,8 @@
    "debt": "2.30",
    "growth": "0.0035",
    "payout": "0.37",
-   "management": "good"
+   "management": "good",
+   "equity": "370300000"
   },
   {
    "ticker": "VLLL",
@@ -9914,7 +10608,8 @@
    "debt": "3.11",
    "growth": "0.0032",
    "payout": "0.43",
-   "management": "good"
+   "management": "good",
+   "equity": "281800000"
   },
   {
    "ticker": "CSLH",
@@ -9928,7 +10623,8 @@
    "debt": "2.53",
    "growth": "-0.0103",
    "payout": "0.47",
-   "management": "average"
+   "management": "average",
+   "equity": "377200000"
   },
   {
    "ticker": "CNJH",
@@ -9942,7 +10638,8 @@
    "debt": "2.17",
    "growth": "-0.0045",
    "payout": "0.44",
-   "management": "poor"
+   "management": "poor",
+   "equity": "180300000"
   },
   {
    "ticker": "MLSH",
@@ -9956,7 +10653,8 @@
    "debt": "2.07",
    "growth": "-0.0145",
    "payout": "0.34",
-   "management": "good"
+   "management": "good",
+   "equity": "110200000"
   },
   {
    "ticker": "DLSH",
@@ -9970,7 +10668,8 @@
    "debt": "1.85",
    "growth": "0.0093",
    "payout": "0.36",
-   "management": "average"
+   "management": "average",
+   "equity": "275800000"
   },
   {
    "ticker": "GLBR",
@@ -9984,7 +10683,8 @@
    "debt": "0.54",
    "growth": "0.0120",
    "payout": "0.23",
-   "management": "average"
+   "management": "average",
+   "equity": "2053200000"
   },
   {
    "ticker": "ESCS",
@@ -9998,7 +10698,8 @@
    "debt": "0.70",
    "growth": "-0.0074",
    "payout": "0.30",
-   "management": "average"
+   "management": "average",
+   "equity": "1048000000"
   },
   {
    "ticker": "RMNS",
@@ -10012,7 +10713,8 @@
    "debt": "0.41",
    "growth": "0.0117",
    "payout": "0.33",
-   "management": "average"
+   "management": "average",
+   "equity": "551200000"
   },
   {
    "ticker": "CHRF",
@@ -10026,7 +10728,8 @@
    "debt": "0.46",
    "growth": "-0.0081",
    "payout": "0.19",
-   "management": "average"
+   "management": "average",
+   "equity": "514000000"
   },
   {
    "ticker": "FNMM",
@@ -10040,7 +10743,8 @@
    "debt": "0.74",
    "growth": "-0.0094",
    "payout": "0.21",
-   "management": "good"
+   "management": "good",
+   "equity": "459500000"
   },
   {
    "ticker": "GRNI",
@@ -10054,7 +10758,8 @@
    "debt": "0.58",
    "growth": "-0.0086",
    "payout": "0.27",
-   "management": "good"
+   "management": "good",
+   "equity": "277100000"
   },
   {
    "ticker": "VLCS",
@@ -10068,7 +10773,8 @@
    "debt": "0.62",
    "growth": "-0.0077",
    "payout": "0.18",
-   "management": "average"
+   "management": "average",
+   "equity": "312500000"
   },
   {
    "ticker": "DRNU",
@@ -10082,7 +10788,8 @@
    "debt": "0.40",
    "growth": "0.0092",
    "payout": "0.25",
-   "management": "average"
+   "management": "average",
+   "equity": "342700000"
   },
   {
    "ticker": "PRMT",
@@ -10096,7 +10803,8 @@
    "debt": "0.42",
    "growth": "-0.0090",
    "payout": "0.26",
-   "management": "bad"
+   "management": "bad",
+   "equity": "190500000"
   },
   {
    "ticker": "JLVL",
@@ -10110,7 +10818,8 @@
    "debt": "0.55",
    "growth": "-0.0012",
    "payout": "0.20",
-   "management": "poor"
+   "management": "poor",
+   "equity": "232400000"
   },
   {
    "ticker": "HHNK",
@@ -10124,7 +10833,8 @@
    "debt": "0.28",
    "growth": "0.0165",
    "payout": "0.16",
-   "management": "good"
+   "management": "good",
+   "equity": "8313600000"
   },
   {
    "ticker": "FLSS",
@@ -10138,7 +10848,8 @@
    "debt": "0.57",
    "growth": "0.0057",
    "payout": "0.30",
-   "management": "average"
+   "management": "average",
+   "equity": "4398900000"
   },
   {
    "ticker": "KRNH",
@@ -10152,7 +10863,8 @@
    "debt": "0.25",
    "growth": "-0.0195",
    "payout": "0.18",
-   "management": "poor"
+   "management": "poor",
+   "equity": "2408700000"
   },
   {
    "ticker": "FLKR",
@@ -10166,7 +10878,8 @@
    "debt": "0.71",
    "growth": "-0.0059",
    "payout": "0.26",
-   "management": "average"
+   "management": "average",
+   "equity": "2285800000"
   },
   {
    "ticker": "KLTR",
@@ -10180,7 +10893,8 @@
    "debt": "0.44",
    "growth": "0.0124",
    "payout": "0.22",
-   "management": "poor"
+   "management": "poor",
+   "equity": "1025400000"
   },
   {
    "ticker": "TNNG",
@@ -10194,7 +10908,8 @@
    "debt": "0.44",
    "growth": "-0.0087",
    "payout": "0.26",
-   "management": "bad"
+   "management": "bad",
+   "equity": "890100000"
   },
   {
    "ticker": "ALBR",
@@ -10208,7 +10923,8 @@
    "debt": "0.30",
    "growth": "0.0140",
    "payout": "0.16",
-   "management": "good"
+   "management": "good",
+   "equity": "1310200000"
   },
   {
    "ticker": "ISNN",
@@ -10222,7 +10938,8 @@
    "debt": "1.21",
    "growth": "0.0103",
    "payout": "0.16",
-   "management": "average"
+   "management": "average",
+   "equity": "561200000"
   },
   {
    "ticker": "RBMR",
@@ -10236,7 +10953,8 @@
    "debt": "0.53",
    "growth": "0.0153",
    "payout": "0.23",
-   "management": "bad"
+   "management": "bad",
+   "equity": "940400000"
   },
   {
    "ticker": "HGNN",
@@ -10250,7 +10968,8 @@
    "debt": "0.77",
    "growth": "0.0072",
    "payout": "0.32",
-   "management": "average"
+   "management": "average",
+   "equity": "855600000"
   },
   {
    "ticker": "FRSC",
@@ -10264,7 +10983,8 @@
    "debt": "0.39",
    "growth": "0.0150",
    "payout": "0.31",
-   "management": "average"
+   "management": "average",
+   "equity": "2116600000"
   },
   {
    "ticker": "NRSH",
@@ -10278,7 +10998,8 @@
    "debt": "0.64",
    "growth": "0.0026",
    "payout": "0.30",
-   "management": "bad"
+   "management": "bad",
+   "equity": "1184900000"
   },
   {
    "ticker": "RSSC",
@@ -10292,7 +11013,8 @@
    "debt": "0.59",
    "growth": "0.0044",
    "payout": "0.17",
-   "management": "average"
+   "management": "average",
+   "equity": "665500000"
   },
   {
    "ticker": "VRRD",
@@ -10306,7 +11028,8 @@
    "debt": "0.79",
    "growth": "0.0019",
    "payout": "0.23",
-   "management": "average"
+   "management": "average",
+   "equity": "421600000"
   },
   {
    "ticker": "TRZZ",
@@ -10320,7 +11043,8 @@
    "debt": "0.99",
    "growth": "0.0077",
    "payout": "0.18",
-   "management": "average"
+   "management": "average",
+   "equity": "459700000"
   },
   {
    "ticker": "SLZZ",
@@ -10334,7 +11058,8 @@
    "debt": "0.30",
    "growth": "0.0119",
    "payout": "0.21",
-   "management": "good"
+   "management": "good",
+   "equity": "335800000"
   },
   {
    "ticker": "CLSS",
@@ -10348,7 +11073,8 @@
    "debt": "0.46",
    "growth": "0.0031",
    "payout": "0.26",
-   "management": "good"
+   "management": "good",
+   "equity": "181600000"
   },
   {
    "ticker": "LRNS",
@@ -10362,7 +11088,8 @@
    "debt": "0.30",
    "growth": "0.0032",
    "payout": "0.33",
-   "management": "good"
+   "management": "good",
+   "equity": "334800000"
   },
   {
    "ticker": "VRNS",
@@ -10376,7 +11103,8 @@
    "debt": "0.51",
    "growth": "0.0159",
    "payout": "0.31",
-   "management": "good"
+   "management": "good",
+   "equity": "295500000"
   },
   {
    "ticker": "MNNC",
@@ -10390,7 +11118,8 @@
    "debt": "0.29",
    "growth": "0.0070",
    "payout": "0.28",
-   "management": "average"
+   "management": "average",
+   "equity": "186600000"
   },
   {
    "ticker": "ARNS",
@@ -10404,7 +11133,8 @@
    "debt": "0.72",
    "growth": "0.0060",
    "payout": "0.34",
-   "management": "average"
+   "management": "average",
+   "equity": "404300000"
   },
   {
    "ticker": "BLLM",
@@ -10418,7 +11148,8 @@
    "debt": "0.38",
    "growth": "-0.0052",
    "payout": "0.16",
-   "management": "poor"
+   "management": "poor",
+   "equity": "239400000"
   },
   {
    "ticker": "CRRM",
@@ -10432,7 +11163,8 @@
    "debt": "0.59",
    "growth": "0.0296",
    "payout": "0.25",
-   "management": "good"
+   "management": "good",
+   "equity": "127400000"
   },
   {
    "ticker": "HZSM",
@@ -10446,7 +11178,8 @@
    "debt": "0.70",
    "growth": "-0.0134",
    "payout": "0.30",
-   "management": "average"
+   "management": "average",
+   "equity": "74900000"
   },
   {
    "ticker": "CRNS",
@@ -10460,7 +11193,8 @@
    "debt": "0.34",
    "growth": "0.0048",
    "payout": "0.20",
-   "management": "good"
+   "management": "good",
+   "equity": "111500000"
   },
   {
    "ticker": "RJSM",
@@ -10474,7 +11208,8 @@
    "debt": "0.28",
    "growth": "-0.0167",
    "payout": "0.24",
-   "management": "bad"
+   "management": "bad",
+   "equity": "71800000"
   },
   {
    "ticker": "RNSM",
@@ -10488,7 +11223,8 @@
    "debt": "0.44",
    "growth": "0.0054",
    "payout": "0.30",
-   "management": "good"
+   "management": "good",
+   "equity": "79300000"
   },
   {
    "ticker": "MNRM",
@@ -10502,7 +11238,8 @@
    "debt": "0.79",
    "growth": "-0.0094",
    "payout": "0.29",
-   "management": "average"
+   "management": "average",
+   "equity": "41400000"
   },
   {
    "ticker": "LJSM",
@@ -10516,7 +11253,8 @@
    "debt": "0.43",
    "growth": "-0.0051",
    "payout": "0.26",
-   "management": "poor"
+   "management": "poor",
+   "equity": "53100000"
   },
   {
    "ticker": "VLRC",
@@ -10530,7 +11268,8 @@
    "debt": "0.38",
    "growth": "-0.0065",
    "payout": "0.31",
-   "management": "good"
+   "management": "good",
+   "equity": "26500000"
   },
   {
    "ticker": "HNSM",

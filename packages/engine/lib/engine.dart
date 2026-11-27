@@ -247,6 +247,7 @@ export 'src/state/software_rules.dart' show SoftwareWorth, roundMoney;
 export 'src/state/talent.dart' show KeyRole;
 export 'src/state/taxation.dart' show CountryTax;
 export 'src/state/valuation.dart' show Valuation, companyWorth, symbolicPrice;
+export 'src/observation/balance_sheet.dart' show BalanceSheet;
 export 'src/observation/stocks_view.dart'
     show
         AnalystRating,
@@ -258,7 +259,9 @@ export 'src/observation/stocks_view.dart'
         RaiderView,
         ShareLoanView,
         StockMarketView,
-        StockView;
+        StockView,
+        StockYear;
+export 'src/systems/stocks.dart' show StockBooks;
 export 'src/state/stocks.dart'
     show BidStatus, holdingOwner, isPlayers, isRaider, raiderOf, raiderOwner;
 export 'src/systems/events.dart';

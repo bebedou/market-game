@@ -124,12 +124,13 @@ final class PeriodReport {
     return total;
   }
 
-  /// What trading earned: [profit] before what was spent fitting out and
-  /// enlarging stores, which serves for years, the corporate tax, gains on
-  /// stores sold and debts forgiven, and with each store's rent and
-  /// overheads, paid on the first of the month, counted day by day (see
-  /// [StoreReport.occupancy]), so a week with the first in it bears only
-  /// its share.
+  /// What trading earned: [profit] before the corporate tax, gains on
+  /// stores sold and debts forgiven, and before fitting out and works
+  /// spent outright (only in saves from before format 47, when they were
+  /// not yet fixed assets; since, their depreciation counts), with each
+  /// store's rent and overheads, paid on the first of the month, counted
+  /// day by day (see [StoreReport.occupancy]), so a week with the first in
+  /// it bears only its share.
   Money get tradingProfit =>
       profit +
       flow(AccountKind.openingCosts) +
@@ -247,6 +248,7 @@ const _incomeStatement = [
   AccountKind.disposals,
   AccountKind.overheads,
   AccountKind.ownGoods,
+  AccountKind.depreciation,
 ];
 
 /// One store's part of a [PeriodReport].
@@ -813,7 +815,7 @@ void _recordFactory(FactoryReport report, JournalEntry entry) {
       report._wages += entry.amount;
     case EntryReason.rent:
       report._site += entry.amount;
-    case EntryReason.openingCosts:
+    case EntryReason.openingCosts || EntryReason.investment:
       report._build += entry.amount;
     case EntryReason.salary || EntryReason.development:
       report._lab += entry.amount;

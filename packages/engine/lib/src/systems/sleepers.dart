@@ -2,6 +2,7 @@ import '../accounting/ledger.dart';
 import '../state/brands.dart';
 import '../state/buying_terms.dart';
 import '../state/entities.dart';
+import '../state/fixed_assets.dart';
 import '../content/content_db.dart';
 import '../core/calendar.dart';
 import '../core/fx.dart';
@@ -136,7 +137,7 @@ final class SleeperSystem implements TickSystem {
       final rng = context.rng(RngStream.neighbourhoods, 1000 + sleeper.row);
       _grow(world, content, sleeper);
       _trade(world, content, context.ledger, sleeper, context.day, month);
-      _close(world, sleeper, month, rng);
+      _close(world, context.ledger, sleeper, month, rng);
       _open(world, content, sleeper, month, rng);
     }
   }
@@ -404,6 +405,7 @@ final class SleeperSystem implements TickSystem {
 
   void _close(
     WorldState world,
+    Ledger ledger,
     SleepingNeighbourhood sleeper,
     int month,
     Rng rng,
@@ -429,6 +431,9 @@ final class SleeperSystem implements TickSystem {
       }
     }
     for (final shop in closing) {
+      if (shop.company case final id?) {
+        writeOffFixed(ledger, world.companies[id.index], shop.fittings);
+      }
       sleeper.shops.remove(shop);
       sleeper.closed++;
     }

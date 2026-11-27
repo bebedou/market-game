@@ -49,7 +49,8 @@ final class Results {
   final Money research;
   final Money interest;
 
-  /// Fitting out and enlarging stores.
+  /// The depreciation of fittings and plants, and fitting out spent
+  /// outright in saves from before the books carried fixed assets.
   final Money works;
 
   /// The corporate tax billed in these months: on the year before.
@@ -124,7 +125,8 @@ final class Financials {
   /// Balances, debit-positive, indexed by [AccountKind].
   final List<Money> balances;
 
-  /// Fitting out and works at what they cost, though spent long ago.
+  /// Fitting out and works spent outright before the books carried fixed
+  /// assets, and the stores the game began with, at what they cost.
   final Money fitOut;
 
   /// The last twelve complete months, or if [young] every month so far, the
@@ -145,29 +147,35 @@ final class Financials {
 
   Money balance(AccountKind kind) => balances[kind.index];
 
-  /// The money tied up in the business: fit-out and works at cost, what was
-  /// paid for stores beyond their stock, and the stock, less unpaid bills.
-  /// Equity plus loans less cash wouldn't do: fitting out is an expense here,
-  /// so a shop's books would show almost nothing invested.
+  /// The money tied up in the business: fittings and plants (those spent
+  /// outright before the books carried them at cost, the rest at book
+  /// value), what was paid for stores beyond their stock and fittings, and
+  /// the stock, less unpaid bills.
   Money get capital => _tiedUp(fitOut, balances);
 
-  /// What is owned less what is owed, at book value: fit-out and works are
-  /// spent, so they don't count.
+  /// What is owned less what is owed, at book value, fittings and plants at
+  /// cost less depreciation.
   Money get netAssets =>
       balance(AccountKind.cash) +
       balance(AccountKind.inventory) +
       balance(AccountKind.receivables) +
+      balance(AccountKind.fixedAssets) +
       balance(AccountKind.businessAssets) +
       balance(AccountKind.investments) +
       balance(AccountKind.payables) +
       balance(AccountKind.loans);
 
   /// Profit kept since the start.
-  Money get retainedEarnings => netAssets + balance(AccountKind.equity);
+  Money get retainedEarnings =>
+      netAssets + balance(AccountKind.equity) + balance(AccountKind.reserves);
 }
 
+/// Fixed assets recognised from fittings spent outright (the reserve, below
+/// zero) are already in [fitOut], at cost.
 Money _tiedUp(Money fitOut, List<Money> balances) =>
     fitOut +
+    balances[AccountKind.fixedAssets.index] +
+    balances[AccountKind.reserves.index] +
     balances[AccountKind.businessAssets.index] +
     balances[AccountKind.inventory.index] +
     balances[AccountKind.receivables.index] +
@@ -252,6 +260,7 @@ List<_Month> _history(SimulationController game, CompanyView company) {
     months.add((report: report, capital: capital));
     capital -=
         report.flow(AccountKind.openingCosts) +
+        report.flow(AccountKind.fixedAssets) +
         report.flow(AccountKind.businessAssets) +
         report.flow(AccountKind.inventory) +
         report.flow(AccountKind.receivables) +
@@ -322,7 +331,9 @@ Results _over(
       marketing += report.flow(AccountKind.marketing);
       research += report.flow(AccountKind.research);
       interest += report.flow(AccountKind.interest);
-      works += report.flow(AccountKind.openingCosts);
+      works +=
+          report.flow(AccountKind.openingCosts) +
+          report.flow(AccountKind.depreciation);
       tax += report.flow(AccountKind.taxes);
       oneOffs -=
           report.flow(AccountKind.disposals) +

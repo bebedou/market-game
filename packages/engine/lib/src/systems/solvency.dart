@@ -3,8 +3,11 @@ import '../commands/apply_command.dart' show holderOf;
 import '../commands/transfers.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
+import '../state/districts.dart'
+    show monthsSinceStart, sitesOf, valueSleepingShop;
 import '../state/entities.dart';
 import '../state/factory.dart';
+import '../state/fixed_assets.dart';
 import '../state/orders.dart';
 import '../state/world_state.dart';
 import 'closure.dart';
@@ -31,8 +34,54 @@ final class SolvencySystem implements TickSystem {
   }
 }
 
+/// Hands [company]'s shops in districts run by formula to their
+/// shopkeepers, for what each is worth, paid by everyone beyond the
+/// districts played in full, as a business sold does; otherwise they would
+/// go on booking their months to a company wound up.
+void _sellSleepingShops(
+  WorldState world,
+  TickContext context,
+  Company company,
+) {
+  final content = context.content;
+  final month = monthsSinceStart(content, world.today);
+  for (final sleeper in world.sleepers) {
+    for (final shop in sleeper.shops) {
+      if (shop.company != company.id) continue;
+      final price =
+          valueSleepingShop(
+            world,
+            content,
+            sitesOf(world, content, sleeper)[shop.site],
+            shop,
+            month,
+            country: content.neighbourhoods[sleeper.row].country,
+          )?.price ??
+          Money.zero;
+      if (price > Money.zero) {
+        context.ledger.pay(
+          payer: world.elsewhere,
+          payerAccount: AccountKind.spending,
+          payee: company,
+          payeeAccount: AccountKind.disposals,
+          amount: price,
+          reason: EntryReason.storeSale,
+        );
+      }
+      sellFixed(context.ledger, company, shop.fittings);
+      shop
+        ..company = null
+        ..brand = null
+        ..acquiredMonth = month
+        ..fittings = Money.zero;
+    }
+  }
+}
+
 /// Winds up [company]. Its stores are sold at their asking prices to
-/// whoever can buy them, or else close, and its loans fall due at once.
+/// whoever can buy them, or else close, its shops in districts run by
+/// formula pass to their shopkeepers for what they are worth, and its loans
+/// fall due at once.
 /// Creditors share its cash in proportion to what they are owed; guarantors
 /// answer for what is left of guaranteed loans, as far as their cash goes;
 /// the rest is written off. The owner loses the capital put in and the bank
@@ -51,10 +100,24 @@ void liquidate(WorldState world, TickContext context, Company company) {
     }
   }
   for (final factory in world.factories) {
-    if (factory.company == company.id) factory.status = FactoryStatus.closed;
+    if (factory.company != company.id) continue;
+    writeOffFixed(ledger, company, factory.book, factory: factory.id);
+    factory
+      ..status = FactoryStatus.closed
+      ..book = Money.zero;
   }
   // Its shops run by formula close with it.
-  world.national?.closeCompany(company.id.index);
+  if (world.national case final national?) {
+    for (final country in national.countries) {
+      for (final block in country.blocks) {
+        if (block.company != company.id.index) continue;
+        writeOffFixed(ledger, company, block.fittings);
+        block.fittings = Money.zero;
+      }
+    }
+    national.closeCompany(company.id.index);
+  }
+  _sellSleepingShops(world, context, company);
   _collectReceivables(world, ledger, company);
   final guarantors = <int, Person>{};
   for (final loan in world.loans) {

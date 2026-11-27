@@ -6,7 +6,7 @@ import '../core/money.dart';
 import '../core/safe_int.dart';
 import '../persistence/state_io.dart';
 import 'factory_sales.dart' show factorySalesVersion;
-import 'store.dart' show labsVersion;
+import 'store.dart' show fixedAssetsVersion, labsVersion;
 
 /// Append only.
 enum FactoryStatus { running, closed }
@@ -141,6 +141,8 @@ final class Factory {
     };
     reliability = Fx.raw(reader.readInt());
     independentShare = reader.readInt();
+    if (reader.version < fixedAssetsVersion) return;
+    book = Money(reader.readInt());
   }
 
   final FactoryId id;
@@ -159,6 +161,10 @@ final class Factory {
 
   /// What building and fitting it cost, and enlarging it since.
   Money builtFor;
+
+  /// [builtFor] less depreciation, carried in its company's fixed assets
+  /// (see `state/fixed_assets.dart`); nothing once it closes or is sold.
+  Money book = Money.zero;
 
   /// Its size, by index into the scenario's sizes: 0 is a workshop.
   int size = 0;
@@ -370,7 +376,8 @@ final class Factory {
       ..writeInt(size)
       ..writeNullableInt(enlargedOn?.number)
       ..writeInt(reliability.raw)
-      ..writeInt(independentShare);
+      ..writeInt(independentShare)
+      ..writeInt(book.cents);
   }
 }
 

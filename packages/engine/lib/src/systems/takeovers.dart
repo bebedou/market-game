@@ -12,6 +12,7 @@ import '../countries/country_economy.dart';
 import '../commands/transfers.dart' show transferCompany;
 import '../state/credit.dart';
 import '../state/entities.dart';
+import '../state/fixed_assets.dart';
 import '../state/stocks.dart';
 import '../state/world_state.dart';
 import 'events.dart';
@@ -446,7 +447,9 @@ void _merge(WorldState world, StocksDef def, StockMarket market, Bid bid) {
   final gone = market.stocks[bid.stock];
   into
     ..share += gone.share
-    ..debt += gone.debt;
+    ..debt += gone.debt
+    ..assets += gone.assets
+    ..volume += gone.volume;
   if (into.share > 1000000) into.share = 1000000;
   leaveExchange(def, market, bid.stock);
   gone.controller = null;
@@ -479,7 +482,7 @@ void _chainJoins(
   leaveExchange(def, market, bid.stock);
   final index = tableCountry(content, listing.country)!;
   final chain = chainOf(content, economy, listing)!;
-  economy.buyChain(
+  final block = economy.buyChain(
     index,
     chain,
     company: company.id.index,
@@ -487,6 +490,7 @@ void _chainJoins(
     strategy: bid.strategy,
     cost: holding.cost,
   );
+  carryFixed(ledger, company, block.fittings);
 }
 
 /// The bank lends the player's holding what [bid] borrows, against the
@@ -849,8 +853,10 @@ List<int> _candidates(
         scored.add((i, multiple.raw * 1000 ~/ usual.raw));
       case RaiderStyle.growth:
         if (stock.results.length < 8) continue;
+        // The four quarters before the latest four.
+        final n = stock.results.length;
         var before = Money.zero;
-        for (var q = 0; q < 4; q++) {
+        for (var q = n - 8; q < n - 4; q++) {
           before += stock.results[q].profit;
         }
         if (before <= Money.zero) continue;
@@ -887,8 +893,10 @@ bool _stillFits(Listing stock, RaiderStyle style) {
           multiple.raw * 10 <= usual.raw * 11;
     case RaiderStyle.growth:
       if (stock.results.length < 8) return true;
+      // The four quarters before the latest four.
+      final n = stock.results.length;
       var before = Money.zero;
-      for (var q = 0; q < 4; q++) {
+      for (var q = n - 8; q < n - 4; q++) {
         before += stock.results[q].profit;
       }
       return before > Money.zero &&

@@ -122,6 +122,10 @@ final class Chain {
   Fx price;
   Money cash;
 
+  /// Its shops' fittings at cost less depreciation: what it paid fitting
+  /// them out, worn a month at a time; its own books, not the game's.
+  Money fittings = Money.zero;
+
   /// Months in a row with no cash.
   int monthsShort = 0;
   bool failed = false;
@@ -248,6 +252,10 @@ const _shapeVersion = 33;
 /// knew, so a table that has gained some since still reads it: the new ones
 /// start afresh.
 const _grownVersion = 34;
+
+/// Saves from which blocks and chains carry their shops' fittings, as
+/// `fixedAssetsVersion` in `state/store.dart` says.
+const _fixedAssetsVersion = 47;
 
 /// The trades every table had before clothing, for saves that didn't say.
 const _tradesBeforeClothing = 3;
@@ -413,6 +421,9 @@ final class CompanyBlock {
       if (reader.version >= _qualityVersion) {
         quality = Fx.raw(reader.readInt());
       }
+      if (reader.version >= _fixedAssetsVersion) {
+        fittings = Money(reader.readInt());
+      }
     } else {
       marketing = costs.marketing;
     }
@@ -456,8 +467,13 @@ final class CompanyBlock {
   /// company's own shops, the only ones its director opens.
   String? name;
 
-  /// What the company paid for that chain, carried as a business asset.
+  /// What the company paid for that chain beyond its [fittings], carried
+  /// as a business asset.
   Money cost = Money.zero;
+
+  /// Its shops' fittings at cost less depreciation, carried in its
+  /// company's fixed assets (see `state/fixed_assets.dart`).
+  Money fittings = Money.zero;
 
   /// How far past what its director runs well they are growing it: the
   /// rate over their grade's, less one; zero within it. Its shops draw less
@@ -506,7 +522,8 @@ final class CompanyBlock {
     writer
       ..writeInt(cost.cents)
       ..writeInt(strain.raw)
-      ..writeInt(quality.raw);
+      ..writeInt(quality.raw)
+      ..writeInt(fittings.cents);
   }
 }
 
@@ -623,14 +640,22 @@ final class CountryState {
 /// [start], with each country's phase of the cycle given month by month (see
 /// [advanceMonth]).
 final class CountryEconomy {
-  CountryEconomy(this.table, {required this.seed, Day? start})
-    : today = start ?? table.startDay,
-      regime = table.startRegime {
+  CountryEconomy(
+    this.table, {
+    required this.seed,
+    Day? start,
+    this.fittingsLifeYears = 10,
+  }) : today = start ?? table.startDay,
+       regime = table.startRegime {
     countries = [for (final def in table.countries) _start(def)];
   }
 
   final CountryTable table;
   final int seed;
+
+  /// How long a chain's shop fittings serve, in years: its fittings wear
+  /// by twice the straight-line rate a month, as the game's own do.
+  final int fittingsLifeYears;
 
   /// The first of the month about to be run.
   Day today;
@@ -1295,6 +1320,15 @@ final class CountryEconomy {
     );
     if (chain.months.length > countryMonthsKept) chain.months.removeAt(0);
     chain.cash += profit - tax - fitOut;
+    // Its fittings: the shops it closed go with theirs, the new ones' are
+    // added, and all wear by a month.
+    if (closed > 0 && stores > 0) {
+      chain.fittings -= Money(
+        mulDivRound(chain.fittings.cents, closed, stores),
+      );
+    }
+    chain.fittings += fitOut;
+    chain.fittings -= _wear(chain.fittings);
     chain.monthsShort = chain.cash.isNegative ? chain.monthsShort + 1 : 0;
     if (chain.monthsShort >= 12 && !chain.def.independent) {
       _fail(chain, rivals);
@@ -1309,7 +1343,18 @@ final class CountryEconomy {
       heirs.regional[r] += chain.regional[r];
       chain.regional[r] = 0;
     }
-    chain.failed = true;
+    heirs.fittings += chain.fittings;
+    chain
+      ..fittings = Money.zero
+      ..failed = true;
+  }
+
+  /// What a month wears off [book]: twice the straight-line rate on what
+  /// is left, as `monthsWear` in `state/fixed_assets.dart` works it out.
+  Money _wear(Money book) {
+    if (book <= Money.zero) return Money.zero;
+    if (book <= const Money(100)) return book;
+    return Money(mulDivRound(book.cents, 2, fittingsLifeYears * 12));
   }
 
   /// Where [chain]'s [opened] new shops go and its [closed] shops come
@@ -1456,7 +1501,8 @@ final class CountryEconomy {
     }
     into
       ..goodwill += from.goodwill
-      ..cost += from.cost;
+      ..cost += from.cost
+      ..fittings += from.fittings;
     offers.removeWhere((offer) => identical(offer.block, from));
     country.blocks.remove(from);
   }
@@ -1663,7 +1709,9 @@ final class CountryEconomy {
   /// [company] buys [chain] of the country at [index], for [cost]: its
   /// shops become the company's, region by region, run as [strategy] has
   /// shops of [format], under the chain's name, with the chain's pull,
-  /// prices and costs. The chain trades no more.
+  /// prices and costs, their fittings at the chain's book value as far as
+  /// [cost] covers it. The chain trades no more. The caller books the
+  /// block's fittings out of the price (see `carryFixed`).
   CompanyBlock buyChain(
     int index,
     Chain chain, {
@@ -1692,26 +1740,33 @@ final class CountryEconomy {
       perStore: chain.perStore,
       regions: country.regionCount,
       name: chain.def.name,
-    )..cost = cost;
+    );
+    block
+      ..fittings = chain.fittings < cost ? chain.fittings : cost
+      ..cost = cost - block.fittings;
     for (var r = 0; r < chain.regional.length; r++) {
       block.regions[r].settled = chain.regional[r];
       chain.regional[r] = 0;
     }
     chain
       ..boughtBy = company
-      ..cash = Money.zero;
+      ..cash = Money.zero
+      ..fittings = Money.zero;
     country.blocks.add(block);
     return block;
   }
 
   /// [buyer], a chain of the country at [index], buys [block] for [price]:
-  /// its shops, settled or not, become the chain's in their regions.
+  /// its shops, settled or not, become the chain's in their regions, with
+  /// their fittings at the block's book value as far as [price] covers it.
   void sellBlock(int index, CompanyBlock block, Chain buyer, Money price) {
     final country = countries[index];
     for (var r = 0; r < block.regions.length; r++) {
       buyer.regional[r] += block.regions[r].stores;
     }
-    buyer.cash -= price;
+    buyer
+      ..cash -= price
+      ..fittings += block.fittings < price ? block.fittings : price;
     country.blocks.remove(block);
     offers.removeWhere((offer) => offer.block == block);
   }
@@ -1936,6 +1991,7 @@ final class CountryEconomy {
           ..writeInt(chain.monthsShort)
           ..writeBool(chain.failed)
           ..writeNullableInt(chain.boughtBy)
+          ..writeInt(chain.fittings.cents)
           ..writeInt(chain.months.length);
         for (final month in chain.months) {
           writer
@@ -2065,6 +2121,9 @@ final class CountryEconomy {
           ..boughtBy = reader.version >= _placedVersion
               ? reader.readNullableInt()
               : null;
+        if (reader.version >= _fixedAssetsVersion) {
+          chain.fittings = Money(reader.readInt());
+        }
         chain.months.clear();
         for (var i = 0, n = reader.readInt(); i < n; i++) {
           chain.months.add(

@@ -717,3 +717,129 @@ class FigureGrid extends StatelessWidget {
     );
   }
 }
+
+/// One cell of a [RatioGrid]: a ratio's [label], its [value], and a
+/// [note] under it, such as its sector's median.
+typedef RatioCell = ({String label, String value, String? note});
+
+/// Ratios two by two in ruled cells, an analyst's sheet: the rule of ink
+/// above, a hairline between and under each.
+class RatioGrid extends StatelessWidget {
+  const RatioGrid(this.cells, {super.key});
+
+  final List<RatioCell> cells;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ledger = Ledger.of(context);
+    final hairline = BorderSide(color: ledger.rule, width: 0.5);
+    Widget cell(RatioCell item, {required bool left}) => Container(
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: hairline,
+          right: left ? hairline : BorderSide.none,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.label,
+            style: theme.textTheme.labelSmall?.copyWith(color: ledger.muted),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            item.value,
+            style: figures(
+              theme.textTheme.titleMedium,
+            ).copyWith(fontWeight: FontWeight.w500),
+          ),
+          if (item.note case final note?)
+            Text(
+              note,
+              style: theme.textTheme.labelSmall?.copyWith(color: ledger.muted),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: ledger.ink)),
+        ),
+        child: Column(
+          children: [
+            for (var i = 0; i < cells.length; i += 2)
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: cell(cells[i], left: true)),
+                    Expanded(
+                      child: i + 1 < cells.length
+                          ? cell(cells[i + 1], left: false)
+                          : const SizedBox(),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Figures by row under a ruled header, the first column a label and the
+/// rest right-aligned numbers: a company's record year by year.
+class RecordTable extends StatelessWidget {
+  const RecordTable({super.key, required this.header, required this.rows});
+
+  final List<String> header;
+  final List<List<String>> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ledger = Ledger.of(context);
+    final hairline = BorderSide(color: ledger.rule, width: 0.5);
+    Widget text(String value, int column, {bool head = false}) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        value,
+        textAlign: column == 0 ? TextAlign.start : TextAlign.end,
+        style: head
+            ? theme.textTheme.labelSmall?.copyWith(color: ledger.muted)
+            : figures(theme.textTheme.bodySmall),
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Table(
+        columnWidths: const {0: FlexColumnWidth(0.8)},
+        children: [
+          TableRow(
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: ledger.ink)),
+            ),
+            children: [
+              for (final (i, label) in header.indexed)
+                text(label, i, head: true),
+            ],
+          ),
+          for (final row in rows)
+            TableRow(
+              decoration: BoxDecoration(border: Border(bottom: hairline)),
+              children: [for (final (i, value) in row.indexed) text(value, i)],
+            ),
+        ],
+      ),
+    );
+  }
+}

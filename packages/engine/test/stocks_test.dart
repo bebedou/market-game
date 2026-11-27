@@ -488,4 +488,52 @@ void main() {
       expect(stocksVersion, lessThanOrEqualTo(currentStateVersion));
     });
   });
+
+  group('books', () {
+    test('a company by formula opens at the book value the table gives it, '
+        "its sector's capital for its sales less its net debt", () {
+      final game = _game()..step();
+      final i = _parisFormula(_content);
+      final listing = _content.stocks!.listings[i];
+      final sector = _content.stocks!.sectors[listing.sector];
+      final stock = game.observe(_content.player).stocks!.stocks[i];
+      expect(listing.equity, isNotNull);
+      expect(sector.capital > Fx.zero, isTrue);
+      // Its first month has run: within a hundredth of the table's.
+      final gap = (stock.equity - listing.equity!).magnitude;
+      expect(gap <= listing.equity!.times(const Fx.raw(100)), isTrue);
+      expect(stock.books.fixed > stock.equity, isTrue);
+      expect(stock.books.netCash, -game.world.stocks!.stocks[i].debt);
+    });
+
+    test("growing it costs its sector's capital for the sales it adds, "
+        'and its books keep what it earns', () {
+      final grown = _game();
+      final steady = _game();
+      final i = _parisFormula(_content);
+      grown.step();
+      steady.step();
+      grown.world.stocks!.stocks[i].growthLever = 1;
+      for (var day = 0; day < 400; day++) {
+        grown.step();
+        steady.step();
+      }
+      final fast = grown.world.stocks!.stocks[i];
+      final usual = steady.world.stocks!.stocks[i];
+      expect(fast.share > usual.share, isTrue);
+      expect(fast.volume > usual.volume, isTrue);
+      // What it built for its added sales, at its sector's capital.
+      final capital =
+          _content.stocks!.sectors[_content.stocks!.listings[i].sector].capital;
+      final added = (fast.volume - usual.volume).times(capital);
+      expect(
+        (fast.assets - usual.assets - added).magnitude <=
+            added.times(const Fx.raw(500)),
+        isTrue,
+      );
+      // Each quarter has its book value.
+      expect(fast.results.last.equity, isNotNull);
+      expect(invariantViolations(grown.world), isEmpty);
+    });
+  });
 }

@@ -16,6 +16,7 @@ import '../systems/national.dart';
 import '../countries/country_economy.dart';
 import '../countries/shop_bridge.dart' show formatTrades;
 import '../state/factory.dart';
+import '../state/fixed_assets.dart';
 import '../state/labs.dart';
 import '../state/talent.dart';
 import '../state/software.dart';
@@ -235,16 +236,13 @@ Refusal? _openInDistrict(
   if (command.capital > Money.zero) {
     injectCapital(ledger, holder, company, command.capital);
   }
-  if (cost > Money.zero) {
-    ledger.pay(
-      payer: company,
-      payerAccount: AccountKind.openingCosts,
-      payee: world.elsewhere,
-      payeeAccount: AccountKind.revenue,
-      amount: cost,
-      reason: EntryReason.openingCosts,
-    );
-  }
+  invest(
+    ledger,
+    company,
+    payee: world.elsewhere,
+    payeeAccount: AccountKind.revenue,
+    amount: cost,
+  );
   final brand = aiBrand(world, content, command.actor, format.id, company.name);
   final month = monthsSinceStart(content, world.today);
   sleeper.shops.add(
@@ -260,6 +258,7 @@ Refusal? _openInDistrict(
       openedMonth: month,
       company: company.id,
       brand: brand.id,
+      fittings: cost > Money.zero ? cost : Money.zero,
     ),
   );
   sleeper.opened++;
@@ -357,6 +356,11 @@ Refusal? _buyInDistrict(
     amount: value.price,
     reason: EntryReason.storeSale,
   );
+  // Its fittings change books: the buyer carries them at what they are
+  // worn to, out of the price.
+  if (seller != null) sellFixed(ledger, seller, shop.fittings);
+  final fittings = value.fittings < value.price ? value.fittings : value.price;
+  carryFixed(ledger, company, fittings);
   final brand = aiBrand(
     world,
     content,
@@ -365,6 +369,7 @@ Refusal? _buyInDistrict(
     company.name,
   );
   shop
+    ..fittings = fittings > Money.zero ? fittings : Money.zero
     ..company = company.id
     ..brand = brand.id
     ..name = districtShopName(
@@ -1071,15 +1076,15 @@ Refusal? _openStore(
   );
   if (brand != null) brandStore(world, content, store, brand);
   if (openingCost > Money.zero) {
-    ledger.pay(
-      payer: company,
-      payerAccount: AccountKind.openingCosts,
+    invest(
+      ledger,
+      company,
       payee: world.landlords,
       payeeAccount: AccountKind.revenue,
       amount: openingCost,
-      reason: EntryReason.openingCosts,
       store: store.id,
     );
+    store.fittings = openingCost;
   }
   return null;
 }
@@ -1655,15 +1660,15 @@ Refusal? _buildFactory(
     )..size = command.size,
   );
   if (cost > Money.zero) {
-    ledger.pay(
-      payer: company,
-      payerAccount: AccountKind.openingCosts,
+    invest(
+      ledger,
+      company,
       payee: world.landlords,
       payeeAccount: AccountKind.revenue,
       amount: cost,
-      reason: EntryReason.openingCosts,
       factory: id,
     );
+    world.factories[id.index].book = cost;
   }
   return null;
 }
@@ -1748,7 +1753,11 @@ Refusal? _closeFactory(
       }
     }
   }
-  factory.status = FactoryStatus.closed;
+  final company = world.companies[factory.company.index];
+  writeOffFixed(ledger, company, factory.book, factory: factory.id);
+  factory
+    ..status = FactoryStatus.closed
+    ..book = Money.zero;
   return null;
 }
 
@@ -2064,18 +2073,15 @@ Refusal? _openNational(
   if (loan != null) {
     _lendFor(world, content, ledger, company, person, loan, command.termMonths);
   }
-  if (cost > Money.zero) {
-    ledger.pay(
-      payer: company,
-      payerAccount: AccountKind.openingCosts,
-      payee: world.elsewhere,
-      payeeAccount: AccountKind.revenue,
-      amount: cost,
-      reason: EntryReason.openingCosts,
-    );
-  }
+  invest(
+    ledger,
+    company,
+    payee: world.elsewhere,
+    payeeAccount: AccountKind.revenue,
+    amount: cost,
+  );
   final strategy = content.strategies[command.strategy.index];
-  economy.open(
+  final block = economy.open(
     index,
     company: company.id.index,
     trade: trade,
@@ -2087,6 +2093,7 @@ Refusal? _openNational(
     price: Fx.one + strategy.marketPosition,
     costs: nationalCosts(format, strategy, command.country),
   );
+  if (cost > Money.zero) block.fittings += cost;
   return null;
 }
 
@@ -2163,7 +2170,7 @@ Refusal? _buyNationalChain(
     amount: price,
     reason: EntryReason.storeSale,
   );
-  economy.buyChain(
+  final block = economy.buyChain(
     index,
     chain,
     company: company.id.index,
@@ -2171,6 +2178,7 @@ Refusal? _buyNationalChain(
     strategy: command.strategy.index,
     cost: price,
   );
+  carryFixed(ledger, company, block.fittings);
   return null;
 }
 
@@ -2236,7 +2244,9 @@ void _sellBlock(
       reason: EntryReason.storeSale,
     );
   }
+  sellFixed(ledger, company, block.fittings);
   economy.sellBlock(index, block, buyer, price);
+  block.fittings = Money.zero;
 }
 
 Refusal? _acceptOffer(
@@ -2611,19 +2621,17 @@ Refusal? _enlargeFactory(
   if (loan != null) {
     _lendFor(world, content, ledger, company, person, loan, command.termMonths);
   }
-  if (cost > Money.zero) {
-    ledger.pay(
-      payer: company,
-      payerAccount: AccountKind.openingCosts,
-      payee: world.landlords,
-      payeeAccount: AccountKind.revenue,
-      amount: cost,
-      reason: EntryReason.openingCosts,
-      factory: factory.id,
-    );
-  }
+  invest(
+    ledger,
+    company,
+    payee: world.landlords,
+    payeeAccount: AccountKind.revenue,
+    amount: cost,
+    factory: factory.id,
+  );
   factory
     ..builtFor += cost
+    ..book += cost > Money.zero ? cost : Money.zero
     ..enlargedOn = world.today + factories.sizes[next].buildDays;
   return null;
 }

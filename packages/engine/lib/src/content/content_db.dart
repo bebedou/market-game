@@ -797,6 +797,8 @@ final class FinanceDef {
     required this.guaranteeMultiple,
     required this.earningsMultiple,
     required this.graceDays,
+    this.fittingsLifeYears = 10,
+    this.plantLifeYears = 25,
   });
 
   /// The bank's opening cash, the most it can ever have lent out.
@@ -825,6 +827,12 @@ final class FinanceDef {
 
   /// Days a bill may stay overdue before the company is liquidated.
   final int graceDays;
+
+  /// How long shop fittings and plants serve, in years: their book value
+  /// wears by twice the straight-line rate, a month at a time (see
+  /// `state/fixed_assets.dart`).
+  final int fittingsLifeYears;
+  final int plantLifeYears;
 }
 
 final class CategoryDef {

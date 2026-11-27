@@ -1,6 +1,7 @@
 import '../accounting/ledger.dart';
 import '../core/fx.dart';
 import '../core/money.dart';
+import 'fixed_assets.dart';
 import 'store.dart';
 import 'stocks.dart';
 import 'world_state.dart';
@@ -27,7 +28,16 @@ List<String> invariantViolations(WorldState world) {
     );
   }
 
+  final fixed = fixedAssetsByCompany(world);
   for (final company in world.companies) {
+    if (company.accounts[AccountKind.fixedAssets] != fixed[company.id.index]) {
+      violations.add(
+        'company ${company.id.index}: fixed assets account '
+        '${company.accounts[AccountKind.fixedAssets].toDecimalString()} '
+        'differs from the book values of its assets '
+        '${fixed[company.id.index].toDecimalString()}',
+      );
+    }
     var stockValue = Money.zero;
     for (final store in world.stores.where((s) => s.company == company.id)) {
       final where = 'store ${store.id.index}';

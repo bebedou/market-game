@@ -1,6 +1,6 @@
 import '../accounting/ledger.dart';
 import '../commands/apply_command.dart'
-    show maxNationalOpenings, maxNationalRate;
+    show maxNationalOpenings, maxNationalRate, maxSoftwareMarketing;
 import '../commands/command.dart';
 import '../content/content_db.dart';
 import '../core/fx.dart';
@@ -18,6 +18,7 @@ import '../observation/software_view.dart' show SoftwareView;
 import '../state/factory.dart' show FactoryStatus;
 import '../state/factory_sales.dart' show TenderStatus;
 import '../state/store.dart';
+import '../state/talent.dart' show KeyRole;
 import 'entrepreneur_policy.dart';
 import 'manager.dart';
 import 'retail_policy.dart';
@@ -60,6 +61,11 @@ const growFastPlantFull = 75;
 const growSoftwareMarketing = Fx.raw(1000);
 const growFastSoftwareMarketing = Fx.raw(2500);
 const roundBelowMonths = 6;
+
+/// How much more than the weakest of their role a candidate must build, or
+/// draw, for a boss growing software with a full team to take them on in
+/// that one's place: a fifth more.
+const softwareSwapGain = Fx.raw(12000);
 const hireCashMonths = 12;
 const hireFastCashMonths = 6;
 
@@ -182,10 +188,9 @@ List<Command> direct(
     return loan;
   }
 
-  final profit =
-      company.retainedEarnings + company.balance(AccountKind.dividends);
+  final profit = company.cashRetained + company.balance(AccountKind.dividends);
   // Fitting out is spent, out of the profit kept.
-  var retained = company.retainedEarnings;
+  var retained = company.cashRetained;
   ProfitKept? saving;
   // The trades the brief grows, each with the strategy its shops follow,
   // the director's own first; a brief from before goals grows only that.
@@ -263,7 +268,11 @@ List<Command> direct(
   // made overall before what it spent fitting out shops, which serve for
   // years, so a chain growing fast doesn't wait for each year's fitting out
   // to be earned back before the next.
-  final earned = profit + company.balance(AccountKind.openingCosts);
+  final earned =
+      company.retainedEarnings +
+      company.balance(AccountKind.dividends) +
+      company.balance(AccountKind.openingCosts) +
+      company.balance(AccountKind.depreciation);
   national:
   for (final (trade, own) in growing) {
     if (earned <= Money.zero ||
@@ -313,7 +322,7 @@ List<Command> direct(
       spare: spare,
       credit: director.borrows ? credit : Money.zero,
     );
-    _directSoftware(view, content, company, director, commands);
+    _directSoftware(view, content, company, director, commands, give);
   }
 
   if (director.payout) {
@@ -1019,48 +1028,80 @@ String _spot(Command command) => switch (command) {
 };
 
 /// What [director] does with [company]'s software on the first of the
-/// month, by its goal: harvesting, they stop its marketing; growing, they
-/// spend at least [growSoftwareMarketing] of its revenue on it, and growing
-/// fast [growFastSoftwareMarketing], raising a round when it has less than
-/// [roundBelowMonths] of cash at its loss. Who joins its team stays the
-/// owner's choice.
+/// month, by its goal, each decision written for the owner ([give]):
+/// - its marketing: none harvesting; growing, at least
+///   [growSoftwareMarketing] of its revenue, growing fast
+///   [growFastSoftwareMarketing], never past [maxSoftwareMarketing];
+/// - its team, growing: someone hired a month while there is room and the
+///   cash allows (see [_hireForSoftware]), or, the team full, someone who
+///   builds or draws [softwareSwapGain] times the weakest of their role in
+///   that one's place;
+/// - growing fast, a round when it has less than [roundBelowMonths] of cash
+///   at its loss.
+/// Growing, a month the team was full with no one better, or marketing at
+/// the most, they say so. Its price stays the owner's.
 void _directSoftware(
   Observation view,
   ContentDb content,
   CompanyView company,
   Director director,
   List<Command> commands,
+  void Function(Command? command, Memo memo) give,
 ) {
   final software = company.software;
   if (software == null || !software.running) return;
+  final today = view.today;
   final goal = director.goalOf(softwareBusiness);
+  final growing = goal == Goal.grow || goal == Goal.growFast;
   final least = switch (goal) {
     Goal.harvest => Money.zero,
     Goal.hold => software.marketing,
     Goal.grow => software.revenue.times(growSoftwareMarketing),
     Goal.growFast => software.revenue.times(growFastSoftwareMarketing),
   };
-  final budget = goal == Goal.harvest
+  var budget = goal == Goal.harvest
       ? Money.zero
       : (least > software.marketing ? least : software.marketing);
+  final capped = budget >= maxSoftwareMarketing;
+  if (capped) budget = maxSoftwareMarketing;
   if (budget != software.marketing) {
-    commands.add(
+    give(
       SetSoftwareMarketing(view.actor, software: software.id, budget: budget),
+      SoftwareMarketingSet(
+        today,
+        software: software.id,
+        budget: budget,
+        capped: capped,
+      ),
     );
   }
-  if (goal == Goal.grow || goal == Goal.growFast) {
-    _hireForSoftware(
+  if (growing) {
+    final hired = _hireForSoftware(
       view,
       content,
       company,
       software,
       commands,
+      give,
       fast: goal == Goal.growFast,
     );
+    final full = !hired && software.team.length >= software.maxPeople;
+    if (full || capped) {
+      give(
+        null,
+        SoftwareHeld(
+          today,
+          software: software.id,
+          people: software.team.length,
+          teamFull: full,
+          marketingCapped: capped,
+        ),
+      );
+    }
   }
   if (goal != Goal.growFast ||
       software.monthProfit >= Money.zero ||
-      view.today.number < software.nextRound.number) {
+      today.number < software.nextRound.number) {
     return;
   }
   final cash = company.cash;
@@ -1068,48 +1109,85 @@ void _directSoftware(
   if (cash.cents >= loss.cents * roundBelowMonths) return;
   final share = Fx.raw(software.maxRoundShare.raw ~/ 2);
   if (share > Fx.zero) {
-    commands.add(RaiseRound(view.actor, software: software.id, share: share));
+    give(
+      RaiseRound(view.actor, software: software.id, share: share),
+      SoftwareRoundRaised(today, software: software.id, share: share),
+    );
   }
 }
 
-/// Hires the candidate who builds most for their pay into [software], if
-/// its team has room and [company]'s cash covers [hireCashMonths] of its
-/// loss with them ([hireFastCashMonths] growing [fast]), or it still makes
-/// money with them; growing fast, the strongest it can so afford rather
-/// than the best value. One a month.
-void _hireForSoftware(
+/// Takes on the candidate who builds most for their pay into [software],
+/// if [company]'s cash covers [hireCashMonths] of its loss with them
+/// ([hireFastCashMonths] growing [fast]), or it still makes money with
+/// them; growing fast, the strongest it can so afford rather than the best
+/// value. While its team has room, they join it; once it is full, only
+/// one who builds, or draws, [softwareSwapGain] times the weakest of their
+/// role, whom they replace ([commands] let that one go). One a month.
+/// Whether anyone was taken on.
+bool _hireForSoftware(
   Observation view,
   ContentDb content,
   CompanyView company,
   SoftwareView software,
-  List<Command> commands, {
+  List<Command> commands,
+  void Function(Command? command, Memo memo) give, {
   required bool fast,
 }) {
   final def = content.software;
-  if (def == null || software.team.length >= software.maxPeople) return;
+  if (def == null) return false;
+  final full = software.team.length >= software.maxPeople;
+  Fx power(KeyPersonView person) => def.levels[person.level].power;
+  // The weakest of each role, whom someone better replaces on a full team.
+  final weakest = <KeyRole, KeyPersonView>{};
+  for (final member in software.team) {
+    final now = weakest[member.role];
+    if (now == null || power(member) < power(now)) {
+      weakest[member.role] = member;
+    }
+  }
   final months = fast ? hireFastCashMonths : hireCashMonths;
   KeyPersonView? best;
+  KeyPersonView? out;
   var bestScore = 0;
   for (final candidate in view.softwareCandidates) {
     final pay = candidate.salary.times(software.wageLevel);
     if (pay <= Money.zero) continue;
-    final after = software.monthProfit - pay;
+    final replaced = full ? weakest[candidate.role] : null;
+    if (full &&
+        (replaced == null ||
+            power(candidate) < power(replaced) * softwareSwapGain)) {
+      continue;
+    }
+    final after = software.monthProfit - pay + (replaced?.salary ?? Money.zero);
     final affordable =
         after >= Money.zero || company.cash.cents >= -after.cents * months;
     if (!affordable) continue;
-    final power = def.levels[candidate.level].power;
+    final strength = power(candidate);
     // Power per thousand of pay, or growing fast, power alone.
-    final score = fast ? power.raw : mulDivRound(power.raw, 100000, pay.cents);
+    final score = fast
+        ? strength.raw
+        : mulDivRound(strength.raw, 100000, pay.cents);
     if (best == null || score > bestScore) {
       best = candidate;
+      out = replaced;
       bestScore = score;
     }
   }
-  if (best != null) {
-    commands.add(
-      HireSoftwarePerson(view.actor, software: software.id, person: best.id),
-    );
+  if (best == null) return false;
+  if (out != null) {
+    commands.add(DismissKeyPerson(view.actor, person: out.id));
   }
+  give(
+    HireSoftwarePerson(view.actor, software: software.id, person: best.id),
+    SoftwareHired(
+      view.today,
+      software: software.id,
+      person: best.name,
+      pay: best.salary.times(software.wageLevel),
+      replaced: out?.name,
+    ),
+  );
+  return true;
 }
 
 /// [company]'s shops of [trade] in [country]: run by hand, in districts run

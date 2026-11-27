@@ -322,7 +322,8 @@ final class Simulation {
       );
       store
         ..brand = shop.brand
-        ..reputation = known(shop);
+        ..reputation = known(shop)
+        ..fittings = shop.fittings;
     }
     final standard = standardPolicies(grown);
     policies = Map.unmodifiable({

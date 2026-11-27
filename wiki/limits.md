@@ -42,10 +42,11 @@ past 2^53 it now counts in thousands of cents, or more (`_Worth` in
 sum fits, nothing changes. A share's price, a company's worth times its
 mood, now works in one division when that product wouldn't fit (`_price`).
 
-It then stops on 22 September 2074, and this one isn't arithmetic: a single
-company's market value passes 90 trillion. The software rivals' worth, a
-year's revenue times a multiple, grows 9 to 13% a year, far faster than the
-economy:
+It then stopped on 22 September 2074, and that one wasn't arithmetic: a
+single company's market value passed 90 trillion. The software rivals'
+worth, a year's revenue times a multiple, grew 9 to 13% a year, far faster
+than the economy, because the market's customers grew 8% a year for ever
+(78.6 billion by 2074, eight people's worth for each one alive):
 
 | Company | Worth, 1 Jul 2053 | Worth, 1 Jan 2074 |
 |---|---|---|
@@ -54,9 +55,11 @@ economy:
 | Nerith | 3.6 trillion | 41.2 trillion |
 | Halvren Systems | 5.1 trillion | 27.6 trillion |
 
-No sum can pass 2^53 cents under the engine's rule, so the way on is to stop
-the software market outgrowing the world (a balance question), or to count
-money above some size in a bigger unit everywhere (a large change).
+Since 2026-11-26 the market fills toward a ceiling (`SoftwareDef.ceiling`,
+8 billion customers): its growth slows in proportion as it fills and stops
+there (`softwareTrend`), so revenue then grows with prices and investors'
+multiples fall as growth does. A save already past the ceiling stops
+growing rather than shrinking.
 
 ## The number types
 
@@ -116,9 +119,9 @@ below.
    (months, units of capacity, 1,000) and have room for centuries.
 3. **Lifetime balances.** They only grow, by tens of billions a year in
    the owner's game: centuries of room.
-4. **A single company's worth.** The software rivals' grows 9 to 13% a year and
-   passes 90 trillion in September 2074 in the owner's game: the next stop,
-   and a balance question, not an arithmetic one.
+4. **A single company's worth.** The software rivals' grew 9 to 13% a year
+   and passed 90 trillion in September 2074 in the owner's game. With the
+   market's ceiling it grows about with prices once the market is full.
 5. **`Rng.nextInt` bounds.** At most 2^21. A shopper choosing among a
    trade's open shops draws against the sum of their weights, up to 10,000
    a shop ([demand.dart](../packages/engine/lib/src/systems/demand.dart)

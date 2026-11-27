@@ -9,6 +9,11 @@
 #
 # Running it again rewrites companies.json from scratch. To change a company,
 # edit companies.json by hand afterwards; a mod can ship its own copy.
+#
+#   python build_companies.py --assets
+#
+# only sets each sector's capital and each formula company's equity in the
+# companies.json there is, leaving everything else as it stands.
 # Market caps and shares left null (the game's own companies) are set from
 # their books when the game starts; `dart run tool/stock_caps.dart` in
 # packages/engine fills them in here.
@@ -16,6 +21,7 @@ import json
 import math
 import os
 import random
+import sys
 import urllib.request
 
 BASE = 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/'
@@ -248,6 +254,140 @@ def output():
     return table
 
 
+# Capital per sector: net fixed assets at current replacement cost
+# (nama_10_nfa_st, N11N) over output (nama_10_a64, P1), in YEAR, for the
+# industry groups the fixed-asset table reports nearest each sector. The
+# table goes into detail for France and Italy only; Germany and Spain give
+# its sections. Each sector takes the median of the countries that report
+# its groups. Real estate leaves out dwellings (N111N) and the rents owners
+# impute to themselves (L68A).
+CAPITAL_GROUPS = {
+    'energy': ['B', 'C19'],
+    'utilities': ['D', 'E'],
+    'materials': ['C16-C18', 'C22_C23', 'C24_C25'],
+    'chemicals': ['C20'],
+    'pharma': ['C21'],
+    'food': ['C10-C12'],
+    'cars': ['C29_C30'],
+    'machinery': ['C27', 'C28'],
+    'aerospace': ['C29_C30'],
+    'construction': ['F'],
+    'transport': ['H'],
+    'telecoms': ['J61'],
+    'media': ['J58-J60'],
+    'leisure': ['I'],
+    'chips': ['C26'],
+    'software': ['J62_J63'],
+}
+# Banks and insurers hold financial capital, which the fixed-asset table
+# leaves out: their equity is set from the price to book their European
+# peers traded at around the end of YEAR, about 0.7 for banks and 1.2 for
+# insurers, each company spread around it.
+FINANCIAL_BOOK = {'banks': 0.7, 'insurance': 1.2}
+# Software needs twice the capital of the national accounts' ratio: its
+# margin otherwise makes growth almost free.
+SOFTWARE_CAPITAL = 2.0
+
+
+def fixed_assets():
+    """Each industry's net fixed assets, and its dwellings, in YEAR, in
+    millions of euros, by country."""
+    geo = '&'.join(f'geo={g}' for g in COUNTRIES.values())
+    rows = get('nama_10_nfa_st',
+               f'{geo}&unit=CRC_MEUR&asset10=N11N&asset10=N111N&time={YEAR}')
+    table = {}
+    for row, value in rows:
+        if value is not None:
+            table[(row['geo'], row['nace_r2'], row['asset10'])] = value
+    return table
+
+
+def median(values):
+    values = sorted(values)
+    middle = len(values) // 2
+    if len(values) % 2:
+        return values[middle]
+    return (values[middle - 1] + values[middle]) / 2
+
+
+def capital_ratios(stats):
+    """Each formula sector's fixed assets per euro of a year's sales."""
+    assets = fixed_assets()
+    ratios = {}
+    for sector, groups in CAPITAL_GROUPS.items():
+        found = []
+        for code in COUNTRIES.values():
+            held = [assets.get((code, g, 'N11N')) for g in groups]
+            made = [stats.get((code, g)) for g in groups]
+            if None in held or None in made:
+                continue
+            found.append(sum(held) / sum(made))
+        ratios[sector] = median(found)
+    found = []
+    for code in COUNTRIES.values():
+        held = assets[(code, 'L', 'N11N')] - assets[(code, 'L', 'N111N')]
+        made = stats[(code, 'L68')] - stats[(code, 'L68A')]
+        found.append(held / made)
+    ratios['property'] = median(found)
+    ratios['software'] *= SOFTWARE_CAPITAL
+    return ratios
+
+
+def add_assets(result, stats):
+    """Sets each sector's capital and each formula company's equity at the
+    start: its fixed assets, its sector's capital times its sales, less its
+    net debt; a bank's or insurer's from its price and its peers' price to
+    book."""
+    ratios = capital_ratios(stats)
+    sectors = {sector['id']: sector for sector in result['sectors']}
+    for key, ratio in ratios.items():
+        sectors[key]['capital'] = fx(ratio, 2)
+    for company in result['companies']:
+        sector = sectors[company['sector']]
+        # The game's own companies keep their own books.
+        if 'output' not in sector or 'share' not in company:
+            continue
+        cap = float(company['cap'])
+        if company['sector'] in FINANCIAL_BOOK:
+            # Spread around its peers' as theirs is, the same each build.
+            spread = math.exp(random.Random(company['ticker']).gauss(0, 0.25))
+            equity = cap / (FINANCIAL_BOOK[company['sector']] * spread)
+        else:
+            sales = (float(company['share'])
+                     * float(sector['output'][company['country']]) * 1e9)
+            earnings = (sales * float(company['margin'])
+                        * (1 - TAX[company['country']]))
+            equity = (float(sector['capital']) * sales
+                      - float(company['debt']) * earnings)
+        company['equity'] = f'{round(equity, -5):.0f}'
+    # Financial sectors' capital follows from their companies' equity.
+    for key in FINANCIAL_BOOK:
+        sector = sectors[key]
+        held = made = 0
+        for company in result['companies']:
+            if company['sector'] != key or 'share' not in company:
+                continue
+            held += float(company['equity'])
+            made += (float(company['share'])
+                     * float(sector['output'][company['country']]) * 1e9)
+        sector['capital'] = fx(held / made, 2)
+
+
+ABOUT = (
+    'The stock market: its rules, sectors, exchanges and listed companies. '
+    'Built by build_companies.py from Eurostat (nama_10_a64, output P1, '
+    f'{YEAR}, billions of euros) and a fixed seed; edit by hand freely. '
+    'A company with "chain", "software" or "producer" is the game\'s own '
+    'and keeps its own books; the rest run by formula. "share" is its '
+    'share of its sector\'s output in its country, "cap" its market '
+    'value at the start in euros, "margin" its margin before tax in a '
+    'normal year, "debt" its net debt in years of profit, "equity" its '
+    'book value at the start in euros. A sector\'s "capital" is its fixed '
+    'assets per euro of a year\'s sales (nama_10_nfa_st over output; '
+    'banks and insurers from their peers\' price to book).'
+)
+
+
 def ticker(name, taken):
     """Up to four letters from [name], none of them used before."""
     letters = [c for c in name.upper() if 'A' <= c <= 'Z']
@@ -413,16 +553,7 @@ def main():
         })
 
     result = {
-        'about': (
-            'The stock market: its rules, sectors, exchanges and listed companies. '
-            'Built by build_companies.py from Eurostat (nama_10_a64, output P1, '
-            f'{YEAR}, billions of euros) and a fixed seed; edit by hand freely. '
-            'A company with "chain", "software" or "producer" is the game\'s own '
-            'and keeps its own books; the rest run by formula. "share" is its '
-            'share of its sector\'s output in its country, "cap" its market '
-            'value at the start in euros, "margin" its margin before tax in a '
-            'normal year, "debt" its net debt in years of profit.'
-        ),
+        'about': ABOUT,
         'year': YEAR,
         'rules': RULES,
         'exchanges': [
@@ -432,11 +563,30 @@ def main():
         'companies': companies,
         'raiders': RAIDERS,
     }
-    text = json.dumps(result, ensure_ascii=False, indent=1)
-    with open(os.path.join(HERE, 'companies.json'), 'w', encoding='utf-8', newline='\n') as file:
-        file.write(text + '\n')
+    add_assets(result, stats)
+    write(result)
     print(f'{len(companies)} companies in {len(sectors)} sectors')
 
 
+def write(result):
+    text = json.dumps(result, ensure_ascii=False, indent=1)
+    with open(os.path.join(HERE, 'companies.json'), 'w', encoding='utf-8', newline='\n') as file:
+        file.write(text + '\n')
+
+
+def assets_only():
+    with open(os.path.join(HERE, 'companies.json'), encoding='utf-8') as file:
+        result = json.load(file)
+    add_assets(result, output())
+    result['about'] = ABOUT
+    write(result)
+    for sector in result['sectors']:
+        if 'capital' in sector:
+            print(f"{sector['id']:12s} capital {sector['capital']}")
+
+
 if __name__ == '__main__':
-    main()
+    if '--assets' in sys.argv:
+        assets_only()
+    else:
+        main()

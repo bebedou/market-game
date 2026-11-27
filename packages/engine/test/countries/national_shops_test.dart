@@ -107,11 +107,13 @@ void main() {
         .timesInt(3);
     final company = game.world.companies[0];
     final other = twin.world.companies[0];
+    // An investment, carried as fixed assets in the shops' block.
     expect(
-      company.accounts[AccountKind.openingCosts] -
-          other.accounts[AccountKind.openingCosts],
+      company.accounts[AccountKind.fixedAssets] -
+          other.accounts[AccountKind.fixedAssets],
       cost,
     );
+    expect(economy.blocks.single.fittings, cost);
     expect(company.accounts[AccountKind.cash] < cash, isTrue);
     expect(_block(game)!.regions[_north].pending, 3);
     expect(_block(game)!.trading, 0);

@@ -100,7 +100,7 @@ final class RetailPolicy implements Policy {
 
   /// Retained profit, up to the uncommitted cash beyond the reserve.
   Money _dividend(CompanyView company, Money surplus) {
-    final retained = company.retainedEarnings;
+    final retained = company.cashRetained;
     return surplus < retained ? surplus : retained;
   }
 
@@ -115,7 +115,7 @@ final class RetailPolicy implements Policy {
     Money reserve,
   ) {
     final profit =
-        company.retainedEarnings + company.balance(AccountKind.dividends);
+        company.cashRetained + company.balance(AccountKind.dividends);
     final young = view.today.number - company.founded.number < 730;
     if (free.timesInt(2) >= reserve || (profit <= Money.zero && !young)) {
       return Money.zero;

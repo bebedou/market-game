@@ -2,7 +2,7 @@ import '../core/fx.dart';
 import '../core/ids.dart';
 import '../core/money.dart';
 import '../persistence/state_io.dart';
-import 'store.dart' show shopSizesVersion;
+import 'store.dart' show fixedAssetsVersion, shopSizesVersion;
 
 /// The months of a sleeping shop's figures kept.
 const sleepingMonthsKept = 12;
@@ -63,6 +63,7 @@ final class SleepingShop {
     this.company,
     this.brand,
     this.acquiredMonth,
+    this.fittings = Money.zero,
     List<Money>? sales,
     List<Money>? profits,
   }) : sales = sales ?? [],
@@ -98,7 +99,10 @@ final class SleepingShop {
               null => null,
             }
           : null,
-      acquiredMonth = reader.version >= 26 ? reader.readNullableInt() : null;
+      acquiredMonth = reader.version >= 26 ? reader.readNullableInt() : null,
+      fittings = reader.version >= fixedAssetsVersion
+          ? Money(reader.readInt())
+          : Money.zero;
 
   /// Its site's number in the neighbourhood.
   final int site;
@@ -115,6 +119,11 @@ final class SleepingShop {
 
   /// When it last changed hands, in months since the game's start, if ever.
   int? acquiredMonth;
+
+  /// For a chain's shop, its fittings at cost less depreciation, carried in
+  /// its company's fixed assets (see `state/fixed_assets.dart`); nothing for
+  /// a shopkeeper's, whose books are not kept.
+  Money fittings;
 
   /// Its owner's name.
   final String owner;
@@ -166,7 +175,8 @@ final class SleepingShop {
     writer
       ..writeNullableInt(company?.index)
       ..writeNullableInt(brand?.index)
-      ..writeNullableInt(acquiredMonth);
+      ..writeNullableInt(acquiredMonth)
+      ..writeInt(fittings.cents);
   }
 }
 

@@ -203,6 +203,10 @@ enum StoreStatus {
 /// large size rather than a format of its own.
 const shopSizesVersion = 45;
 
+/// The first save version whose books carry fittings and plants as fixed
+/// assets (see `state/fixed_assets.dart`).
+const fixedAssetsVersion = 47;
+
 /// Building works an older save had under way on a store: the area it was
 /// to have, when they were to finish, and the format it was to become, if
 /// it changed.
@@ -306,6 +310,7 @@ final class Store {
     this.boughtFor = Money.zero,
     this.acquiredOn,
     this.reputation = Fx.zero,
+    this.fittings = Money.zero,
   });
 
   Store.read(this.id, StateReader reader)
@@ -369,7 +374,10 @@ final class Store {
               final index? => BrandId(index),
               null => null,
             }
-          : null;
+          : null,
+      fittings = reader.version >= fixedAssetsVersion
+          ? Money(reader.readInt())
+          : Money.zero;
 
   static T _skipped<T>(StateReader reader, bool present, T value) {
     if (present) reader.readInt();
@@ -414,9 +422,13 @@ final class Store {
   /// What its advertising has built up, wearing off day by day.
   Money goodwill;
 
-  /// What its owner paid for it beyond its stock, carried in the owner's
-  /// business assets; zero if the owner opened it.
+  /// What its owner paid for it beyond its stock and [fittings], carried in
+  /// the owner's business assets; zero if the owner opened it.
   Money boughtFor;
+
+  /// Its fittings at cost less depreciation, carried in its owner's fixed
+  /// assets (see `state/fixed_assets.dart`); nothing once it closes.
+  Money fittings;
 
   /// When its owner bought it, if they did.
   Day? acquiredOn;
@@ -523,6 +535,7 @@ final class Store {
       ..writeInt(boughtFor.cents)
       ..writeNullableInt(acquiredOn?.number)
       ..writeInt(reputation.raw)
-      ..writeNullableInt(brand?.index);
+      ..writeNullableInt(brand?.index)
+      ..writeInt(fittings.cents);
   }
 }

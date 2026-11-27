@@ -2,13 +2,15 @@ import '../accounting/ledger.dart';
 import '../core/fx.dart';
 import '../core/money.dart';
 import '../state/entities.dart';
+import '../state/fixed_assets.dart';
 import '../state/orders.dart';
 import '../state/world_state.dart';
 import 'events.dart';
 import 'tick_system.dart';
 
 /// The settlement phase. Every day, staff wages are billed; on the first of
-/// each month, rent, overheads and loan installments too. Then every bill that is due
+/// each month, rent, overheads and loan installments too, and fixed assets
+/// wear by a month (see [depreciate]). Then every bill that is due
 /// is paid, oldest first, as far as each company's cash allows. Unpaid bills stay due and
 /// are retried daily; the solvency phase deals with those overdue too long.
 final class SettlementSystem implements TickSystem {
@@ -20,6 +22,7 @@ final class SettlementSystem implements TickSystem {
     _billMarketing(world, context);
     if (context.day.isFirstOfMonth) {
       _billRent(world, context);
+      depreciate(world, context.content, context.ledger);
       for (final loan in world.loans) {
         if (loan.accruedTo < context.day) {
           billInstallment(world, context.ledger, loan);

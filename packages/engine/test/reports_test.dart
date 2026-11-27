@@ -192,24 +192,24 @@ void main() {
     });
   });
 
-  test('trading profit leaves out fitting out, works and tax', () {
-    final simulation = Simulation.newGame(
-      content,
-      seed: 1,
-      systems: quietSystems,
-    )..submit(
-        OpenStore(player, site: lane, name: 'Lane', company: playerCompany),
-      );
+  test('fitting out is a fixed asset, and trading profit leaves out the '
+      'rent paid ahead and tax', () {
+    final simulation =
+        Simulation.newGame(content, seed: 1, systems: quietSystems)..submit(
+          OpenStore(player, site: lane, name: 'Lane', company: playerCompany),
+        );
     simulation.step();
     final week = simulation.reports(playerCompany, ReportPeriod.week).last;
-    expect(week.flow(AccountKind.openingCosts), Money.parse('250.00'));
+    // The fit-out serves for years: an asset, worn a month at a time from
+    // the first of the month, today, twice a tenth of it a year.
+    expect(week.flow(AccountKind.openingCosts), Money.zero);
+    expect(week.flow(AccountKind.depreciation), Money.parse('4.17'));
+    expect(week.flow(AccountKind.fixedAssets), Money.parse('245.83'));
+    final store = simulation.world.stores.last;
+    expect(store.fittings, Money.parse('245.83'));
     // A month's rent is paid on taking the site; the day bears 100.00/31.
     expect(week.rentPaidAhead, Money.parse('96.77'));
-    expect(
-      week.tradingProfit,
-      week.profit + Money.parse('250.00') + Money.parse('96.77'),
-      reason: 'the fit-out serves for years',
-    );
+    expect(week.tradingProfit, week.profit + Money.parse('96.77'));
   });
 
   test('keep the latest 13 weeks, and survive a save', () {

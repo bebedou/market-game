@@ -189,8 +189,8 @@ void main() {
       'formula with its other grocers', () {
     // Written by c2eec76: seed 13, the other cities asleep, a shop being
     // made a supermarket and the corner shop being enlarged, its manager
-    // trusted with investing, both works in the log, and in France ten
-    // grocers and five supermarkets by formula being fitted out. Its works
+    // trusted with investing, both works in the log, and in France five
+    // supermarkets and then ten grocers by formula being fitted out. Its works
     // finished, that build had the first at 220 m², 18 slots and 5,500 of
     // storage, and the corner shop at 160 m², 10 slots and 2,000.
     final scenario = content();
@@ -214,16 +214,51 @@ void main() {
     final france = game.national!.countries.firstWhere(
       (country) => country.def.key == 'fr',
     );
+    // The five supermarkets, opened first, join the ten grocers, which keep
+    // their draw and figures: the bigger block is the one kept.
+    final blocks = [
+      for (final block in france.blocks)
+        if (block.company == 0) block,
+    ];
     expect(
-      [
-        for (final block in france.blocks)
-          if (block.company == 0) (block.format, block.stores),
-      ],
+      [for (final block in blocks) (block.format, block.stores)],
       [(grocery.id.index, 15)],
     );
+    expect(blocks.single.pull, const Fx.raw(2436));
+    expect(blocks.single.perStore, Money.parse('384000.00'));
     // Enlarging and converting are gone from the log.
     expect(game.commandLog, hasLength(5));
     expect(invariantViolations(game.world), isEmpty);
     playOn(game, scenario);
+  });
+
+  test('a save from before fixed assets (format 46 or earlier) recognises '
+      'its fittings at their worn cost, against a reserve', () {
+    final scenario = content();
+    final game = Simulation.load(scenario, fixture('save_v44_sizes'));
+    final world = game.world;
+    final company = world.companies[0];
+    final accounts = company.accounts;
+    // Its shops in full and across France carry their fittings now.
+    final mine = world.stores.where(
+      (s) => s.company == company.id && s.isTrading,
+    );
+    expect(mine.every((s) => s.fittings > Money.zero), isTrue);
+    final france = game.national!.countries.firstWhere(
+      (country) => country.def.key == 'fr',
+    );
+    final block = france.blocks.firstWhere((b) => b.company == 0);
+    expect(block.fittings > Money.zero, isTrue);
+    expect(accounts[AccountKind.fixedAssets] > Money.zero, isTrue);
+    // Recognised against the reserve, not profit: none of its shops was
+    // bought, so the reserve stands for all of them, and nothing has worn
+    // yet.
+    expect(accounts[AccountKind.reserves], -accounts[AccountKind.fixedAssets]);
+    expect(accounts[AccountKind.depreciation], Money.zero);
+    // Chains by formula carry theirs too.
+    expect(france.chains.any((c) => c.fittings > Money.zero), isTrue);
+    expect(invariantViolations(world), isEmpty);
+    playOn(game, scenario);
+    expect(accounts[AccountKind.depreciation] > Money.zero, isTrue);
   });
 }

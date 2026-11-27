@@ -3,6 +3,7 @@ import '../core/fx.dart';
 import '../core/money.dart';
 import '../core/safe_int.dart';
 import '../persistence/state_io.dart';
+import 'store.dart' show fixedAssetsVersion;
 
 /// The save version from which the world keeps a stock market.
 const stocksVersion = 38;
@@ -55,8 +56,8 @@ Fx moneyRatio(Money a, Money b) {
 /// multiple of this, in percent, either way.
 const stakeStep = 5;
 
-/// Quarters of results kept, and months of closing prices.
-const resultsKept = 8;
+/// Quarters of results kept, five years, and months of closing prices.
+const resultsKept = 20;
 const closesKept = 60;
 
 /// One quarter's results, as published.
@@ -66,13 +67,17 @@ final class Results {
     required this.revenue,
     required this.profit,
     required this.dividends,
+    this.equity,
   });
 
   Results.read(StateReader reader)
     : day = Day(reader.readInt()),
       revenue = Money(reader.readInt()),
       profit = Money(reader.readInt()),
-      dividends = Money(reader.readInt());
+      dividends = Money(reader.readInt()),
+      equity = reader.version >= fixedAssetsVersion && reader.readBool()
+          ? Money(reader.readInt())
+          : null;
 
   /// When they were published.
   final Day day;
@@ -84,12 +89,18 @@ final class Results {
   /// Paid out to all its shareholders.
   final Money dividends;
 
+  /// Its book value at the quarter's end, what it held less its net debt;
+  /// null for quarters published before saves kept it.
+  final Money? equity;
+
   void write(StateWriter writer) {
     writer
       ..writeInt(day.number)
       ..writeInt(revenue.cents)
       ..writeInt(profit.cents)
-      ..writeInt(dividends.cents);
+      ..writeInt(dividends.cents)
+      ..writeBool(equity != null);
+    if (equity case final equity?) writer.writeInt(equity.cents);
   }
 }
 
@@ -150,6 +161,9 @@ final class Listing {
     growthLever = reader.readInt();
     if (reader.readBool()) debtLever = Fx.raw(reader.readInt());
     director = reader.readNullableInt();
+    if (reader.version < fixedAssetsVersion) return;
+    assets = Money(reader.readInt());
+    volume = Money(reader.readInt());
   }
 
   /// Its position in the table, or -1 for a company of the player's listed
@@ -207,6 +221,14 @@ final class Listing {
   Fx margin;
   Money debt;
   Fx cycle = Fx.one;
+
+  /// For one by formula: what it holds to trade, at the table's prices
+  /// (its book value at today's is this times its country's price level),
+  /// and what it sells a year at those prices, what its last investment
+  /// was sized on. Each euro of sales it adds costs its sector's capital
+  /// to build (see `SectorDef.capital`).
+  Money assets = Money.zero;
+  Money volume = Money.zero;
 
   /// What it has sold and earned so far this quarter, in how many months.
   Money quarterRevenue = Money.zero;
@@ -300,7 +322,10 @@ final class Listing {
       ..writeInt(growthLever)
       ..writeBool(debtLever != null);
     if (debtLever case final debt?) writer.writeInt(debt.raw);
-    writer.writeNullableInt(director);
+    writer
+      ..writeNullableInt(director)
+      ..writeInt(assets.cents)
+      ..writeInt(volume.cents);
   }
 }
 

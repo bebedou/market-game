@@ -142,6 +142,7 @@ void main() {
     'terms.growth': [for (final growth in Growth.values) growth.name],
     'terms.duties': [for (final duty in ManagerDuty.values) duty.name],
     'terms.misses': [for (final miss in MissReason.values) miss.name],
+    'stocks.booksBasis': [for (final kind in ListingKind.values) kind.name],
   };
 
   tearDown(() => useStrings(stringsFromFiles('en')));

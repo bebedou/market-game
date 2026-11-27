@@ -25,7 +25,7 @@ final softwareJson = testScenarioJson
     )
     .replaceFirst('  "suppliers": [', '''
   "software": {
-    "customers": 1000000, "price": "10.00", "growth": "0", "cycle": "0",
+    "customers": 1000000, "ceiling": 3000000, "price": "10.00", "growth": "0", "cycle": "0",
     "standard": "1.00", "rise": "0.01", "startGap": "0.10", "launchGap": "0.05",
     "progress": "0.01", "designerBuild": "0.5", "decay": "0.5", "hardness": "0", "appeal": "0.02",
     "draw": "10", "drawFloor": "-4", "drawCap": "3", "priceElasticity": 1,
@@ -117,6 +117,37 @@ void main() {
     expect(market.standard, Fx.one);
     expect(market.rivals.map((r) => r.customers), [500000, 500000]);
     expect(market.rest.name, 'Everyone else');
+  });
+
+  test('the market grows toward its ceiling, slower as it fills, and no '
+      'further', () {
+    final growing = loadScenario(
+      softwareJson.replaceFirst(
+        '"growth": "0", "cycle": "0"',
+        '"growth": "0.60", "cycle": "0"',
+      ),
+    );
+    final def = growing.software!;
+    expect(def.ceiling, 3000000);
+    expect(softwareTrend(def, 0), Fx.parse('0.60'));
+    expect(softwareTrend(def, 1500000), Fx.parse('0.30'));
+    expect(softwareTrend(def, 3000000), Fx.zero);
+    expect(softwareTrend(def, 4000000), Fx.zero);
+    final game = Simulation.newGame(growing, seed: 1, systems: softwareSystems);
+    final market = game.world.softwareMarket!;
+    final start = market.customers;
+    for (var day = 0; day < 365; day++) {
+      game.step();
+    }
+    final firstYear = market.customers - start;
+    for (var day = 0; day < 365 * 9; day++) {
+      game.step();
+    }
+    // From a million, about 0.6 × a million × two thirds in a year; nearly
+    // three after ten, and never past.
+    expect(firstYear, inInclusiveRange(380000, 480000));
+    expect(market.customers, greaterThan(2900000));
+    expect(market.customers, lessThanOrEqualTo(3000000));
   });
 
   test('a software company is a company of its own, building its product', () {

@@ -340,6 +340,12 @@ ContentDb loadScenario(
     guaranteeMultiple: financeNode.nonNegativeFx('guaranteeMultiple'),
     earningsMultiple: financeNode.nonNegativeFx('earningsMultiple'),
     graceDays: financeNode.nonNegativeInt('graceDays'),
+    fittingsLifeYears: financeNode.has('fittingsLifeYears')
+        ? financeNode.positiveInt('fittingsLifeYears')
+        : 10,
+    plantLifeYears: financeNode.has('plantLifeYears')
+        ? financeNode.positiveInt('plantLifeYears')
+        : 25,
   );
   financeNode.finish();
 
@@ -1363,6 +1369,9 @@ StocksDef _stocks(
           payout: payout,
           debt: node.fx('debt'),
           floor: floor,
+          capital: node.has('capital')
+              ? node.nonNegativeFx('capital')
+              : Fx.zero,
           output: List.unmodifiable(output),
         ),
       );
@@ -1388,6 +1397,9 @@ StocksDef _stocks(
           risk: risk,
           payout: payout,
           floor: floor,
+          capital: node.has('capital')
+              ? node.nonNegativeFx('capital')
+              : Fx.zero,
           trade: trade,
           software: isSoftware,
         ),
@@ -1456,6 +1468,7 @@ StocksDef _stocks(
     var margin = Fx.zero;
     var debt = Fx.zero;
     var growth = Fx.zero;
+    Money? equity;
     if (formula) {
       final grade = node.string('management');
       management = managementGrades.indexOf(grade);
@@ -1476,6 +1489,9 @@ StocksDef _stocks(
       margin = node.fx('margin');
       debt = node.fx('debt');
       growth = node.yearlyRate('growth');
+      if (node.optionalString('equity') case final text?) {
+        equity = Money.parse(text);
+      }
     }
     final payout = node.optionalString('payout') == null
         ? def.payout
@@ -1496,6 +1512,7 @@ StocksDef _stocks(
         growth: growth,
         payout: payout,
         management: management,
+        equity: equity,
       ),
     );
     node.finish();
@@ -1573,6 +1590,7 @@ SoftwareDef _software(JsonNode node, LabsDef? labs) {
   if (startupNames.isEmpty) node.fail('startupNames', 'must not be empty');
   final software = SoftwareDef(
     customers: node.positiveInt('customers'),
+    ceiling: node.positiveInt('ceiling'),
     price: node.positiveMoney('price'),
     growth: node.fx('growth'),
     cycle: node.nonNegativeFx('cycle'),

@@ -5,8 +5,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:engine/engine.dart';
+import 'package:engine/src/accounting/ledger.dart' show Ledger;
 import 'package:engine/src/state/districts.dart';
 import 'package:engine/src/state/invariants.dart';
+import 'package:engine/src/state/orders.dart' show Payable;
+import 'package:engine/src/systems/settlement.dart' show bill;
 import 'package:test/test.dart';
 
 final _scenario = File(
@@ -232,6 +235,42 @@ void main() {
       expect(invariantViolations(game.world), isEmpty);
       _advance(game, 30);
       expect(invariantViolations(game.world), isEmpty);
+    });
+
+    test('wound up, its company sells the shop to a shopkeeper', () {
+      final game = _withChainShop();
+      _advance(game, 40);
+      final world = game.world;
+      final company = world.companies[_chainCompany.index];
+      final shop = world.sleepers.single.shops.singleWhere(
+        (shop) => shop.company == _chainCompany,
+      );
+      // A bill long overdue, more than it has, winds the company up.
+      bill(
+        Ledger(game.today),
+        company,
+        AccountKind.rent,
+        Payable(
+          creditor: world.landlords.partyRef,
+          creditorAccount: AccountKind.revenue,
+          reason: EntryReason.rent,
+          amount:
+              company.accounts[AccountKind.cash] + Money.parse('1000000.00'),
+          due: Day(game.today.number - _content.finance.graceDays - 1),
+        ),
+      );
+      final day = game.step();
+      expect(day.events.whereType<CompanyLiquidated>(), isNotEmpty);
+      expect(company.status, CompanyStatus.liquidated);
+      expect(shop.company, isNull);
+      expect(shop.brand, isNull);
+      expect(
+        world.sleepers.single.shops.where((s) => s.company == _chainCompany),
+        isEmpty,
+      );
+      expect(invariantViolations(world), isEmpty);
+      _advance(game, 40);
+      expect(invariantViolations(world), isEmpty);
     });
 
     test('saves, loads and replays the same', () {

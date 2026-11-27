@@ -44,6 +44,7 @@ final class SectorDef {
     this.cycle = Fx.zero,
     this.leverage = Fx.zero,
     this.debt = Fx.zero,
+    this.capital = Fx.zero,
     this.output,
     this.trade,
     this.software = false,
@@ -76,6 +77,11 @@ final class SectorDef {
 
   /// What a company of it is worth while losing money, in years of sales.
   final Fx floor;
+
+  /// Its fixed assets per euro of a year's sales, from the national
+  /// accounts: what its companies by formula hold for what they sell, and
+  /// what each euro of sales they add costs them to build.
+  final Fx capital;
 
   /// What it makes a year in each of the scenario's countries at the
   /// table's start, by [CountryId]; null for a sector the game plays.
@@ -149,6 +155,7 @@ final class ListingDef {
     required this.growth,
     required this.payout,
     required this.management,
+    this.equity,
   });
 
   final String ticker;
@@ -186,6 +193,11 @@ final class ListingDef {
   /// For one by formula: how well it is run at the start, by
   /// [managementGrades].
   final int management;
+
+  /// For one by formula: its book value at the table's start, what it
+  /// holds less its net debt; null to take its sector's capital for its
+  /// sales.
+  final Money? equity;
 }
 
 /// How the market prices companies and moves.

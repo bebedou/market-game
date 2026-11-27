@@ -65,10 +65,10 @@ String _refused(Simulation game, Command command) {
 
 /// The player's shops' book value.
 Money _book(Simulation game, CompanyId company) {
-  final (:stock, :bought) = businessBook(
+  final (:stock, :fixed, :bought) = businessBook(
     businessParts(game.world, game.content, company, _shops),
   );
-  return stock + bought;
+  return stock + fixed + bought;
 }
 
 /// Books [amount] of profit to [company] from beyond the town.

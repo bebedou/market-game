@@ -459,6 +459,10 @@ class _BalanceSheet extends StatelessWidget {
               tr('common.stockAtCost'),
               money(balance(AccountKind.inventory)),
             ),
+            Line(
+              tr('stocks.fixedAssets'),
+              money(balance(AccountKind.fixedAssets)),
+            ),
             if (bought != Money.zero)
               Line(
                 tr('financials.storesBought'),
@@ -486,22 +490,36 @@ class _BalanceSheet extends StatelessWidget {
               tr('financials.capitalIn'),
               money(-balance(AccountKind.equity)),
             ),
+            if (balance(AccountKind.reserves) != Money.zero)
+              Line(
+                tr('financials.reserve'),
+                money(-balance(AccountKind.reserves)),
+                hint: tr('financials.reserveHint'),
+              ),
             Line(
               tr('financials.profitKept'),
               signedMoney(kept),
               color: gainColor(context, kept.cents.sign),
             ),
-            Hint(tr('financials.fitOutSpent')),
+            Hint(tr('financials.fixedAssetsHint')),
           ],
         ),
         if (!_gone(companies))
           Section(
             title: tr('financials.tiedUp'),
             children: [
+              if (financials.fitOut != Money.zero)
+                Line(
+                  tr('financials.fitOutAtCost'),
+                  money(financials.fitOut),
+                  hint: tr('financials.fitOutHint'),
+                ),
               Line(
-                tr('financials.fitOutAtCost'),
-                money(financials.fitOut),
-                hint: tr('financials.fitOutHint'),
+                tr('financials.fixedSince'),
+                money(
+                  balance(AccountKind.fixedAssets) +
+                      balance(AccountKind.reserves),
+                ),
               ),
               if (bought != Money.zero)
                 Line(tr('financials.storesBought'), money(bought)),

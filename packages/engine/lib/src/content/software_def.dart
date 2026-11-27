@@ -10,6 +10,7 @@ import 'content_db.dart' show TalentDef, TalentLevelDef;
 final class SoftwareDef implements TalentDef {
   const SoftwareDef({
     required this.customers,
+    required this.ceiling,
     required this.price,
     required this.growth,
     required this.cycle,
@@ -69,6 +70,10 @@ final class SoftwareDef implements TalentDef {
 
   /// Customers in the world at the start: everyone who pays for software.
   final int customers;
+
+  /// The most customers the world's software can have: its growth slows as
+  /// the market fills, and stops there (see `softwareTrend`).
+  final int ceiling;
 
   /// What a customer pays a month on average at the start, at a price index
   /// of one.

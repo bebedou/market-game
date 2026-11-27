@@ -372,8 +372,7 @@ final class EntrepreneurPolicy implements Policy {
     var latest = -1;
     for (final company in view.companies) {
       if (company.status != CompanyStatus.active) continue;
-      profit +=
-          company.retainedEarnings + company.balance(AccountKind.dividends);
+      profit += company.cashRetained + company.balance(AccountKind.dividends);
       for (final store in company.stores) {
         final since = store.acquiredOn ?? store.opensOn;
         if (since.number > latest) latest = since.number;

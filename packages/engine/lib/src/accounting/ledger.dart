@@ -76,6 +76,18 @@ enum AccountKind {
   /// held back on them: kept apart from its profit, since its subsidiaries'
   /// profit counted them, and from what it pays out.
   dividendsReceived,
+
+  /// Shop fittings and plants at cost less depreciation: see
+  /// `state/fixed_assets.dart`.
+  fixedAssets,
+
+  /// A month's wear of fixed assets: an expense.
+  depreciation,
+
+  /// Fixed assets bought before the books counted them (saves before
+  /// format 47), recognised at their worn cost against this reserve, part
+  /// of equity: neither profit nor capital put in.
+  reserves,
 }
 
 /// Accounts there were before saves recorded how many.
@@ -126,13 +138,24 @@ final class Accounts {
       this[AccountKind.cash] +
       this[AccountKind.inventory] +
       this[AccountKind.receivables] +
+      this[AccountKind.fixedAssets] +
       this[AccountKind.businessAssets] +
       this[AccountKind.investments] +
       this[AccountKind.payables] +
       this[AccountKind.loans];
 
-  /// Profit kept since the start: net assets beyond the capital put in.
-  Money get retainedEarnings => netAssets + this[AccountKind.equity];
+  /// Profit kept since the start: net assets beyond the capital put in and
+  /// the reserve fixed assets were first recognised against.
+  Money get retainedEarnings =>
+      netAssets + this[AccountKind.equity] + this[AccountKind.reserves];
+
+  /// [retainedEarnings] with fittings and plants counted as spent when
+  /// they were paid for, as the books did before format 47: what owners by
+  /// formula judge a company's profit and spare cash by.
+  Money get cashRetained =>
+      retainedEarnings -
+      this[AccountKind.fixedAssets] -
+      this[AccountKind.reserves];
 
   void write(StateWriter writer) => writeBalances(writer, _balances);
 }
@@ -177,7 +200,8 @@ enum EntryReason {
   capitalInjection,
   dividend,
 
-  /// Stock written off when a store closes.
+  /// Stock written off when a store closes, and fittings or a plant when
+  /// it closes.
   closure,
 
   /// Debts settled or written off when a company is liquidated.
@@ -259,6 +283,17 @@ enum EntryReason {
   /// A business or company moving between companies of one owner, or one
   /// merging into another.
   restructuring,
+
+  /// Fitting out shops or building and enlarging a plant: an investment,
+  /// carried as a fixed asset and written down over its life.
+  investment,
+
+  /// A month's wear of fixed assets.
+  depreciation,
+
+  /// Fixed assets bought before the books counted them, recognised when a
+  /// save of format 46 or earlier is loaded.
+  assetsRecognised,
 }
 
 /// One double-entry posting in one party's books. [store], [product] and

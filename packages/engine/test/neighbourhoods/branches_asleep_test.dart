@@ -125,16 +125,18 @@ void main() {
       ]),
       isEmpty,
     );
-    final spent = game.world.companies[0].accounts[AccountKind.openingCosts];
+    final held = game.world.companies[0].accounts[AccountKind.fixedAssets];
     expect(_apply(game, [_openThere(game)]), isEmpty);
     final shop = game.world.sleepers.single.shops.last;
     expect(shop.company, _company);
     // Run as the director's strategy has it, under the company's brand.
     expect(shop.strategy, _grocer.id);
     expect(shop.brand, isNotNull);
+    // Its fitting out is the company's, carried as a fixed asset.
+    expect(shop.fittings > Money.zero, isTrue);
     expect(
-      game.world.companies[0].accounts[AccountKind.openingCosts] > spent,
-      isTrue,
+      game.world.companies[0].accounts[AccountKind.fixedAssets],
+      held + shop.fittings,
     );
     expect(invariantViolations(game.world), isEmpty);
   });

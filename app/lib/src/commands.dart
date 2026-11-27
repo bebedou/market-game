@@ -332,33 +332,33 @@ String describeCommand(Command command, ContentDb content, Observation view) {
     }),
     SetSoftwarePrice(:final software, :final price) => tr(
       'commands.setSoftwarePrice',
-      {'name': _softwareName(view, software), 'price': money(price)},
+      {'name': softwareName(view, software), 'price': money(price)},
     ),
     SetSoftwareMarketing(:final software, :final budget) => tr(
       'commands.setSoftwareMarketing',
       {
-        'name': _softwareName(view, software),
+        'name': softwareName(view, software),
         'amount': money(budget, cents: false),
       },
     ),
     HireSoftwarePerson(:final software, :final person) =>
       tr('commands.hireSoftwarePerson', {
         'person': _softwarePersonName(view, person),
-        'name': _softwareName(view, software),
+        'name': softwareName(view, software),
       }),
     RaiseRound(:final software, :final share) => tr('commands.raiseRound', {
-      'name': _softwareName(view, software),
+      'name': softwareName(view, software),
       'share': percent(share, decimals: 0),
     }),
     AcceptSoftwareOffer(:final software) => tr('commands.acceptSoftwareOffer', {
-      'name': _softwareName(view, software),
+      'name': softwareName(view, software),
     }),
     DeclineSoftwareOffer(:final software) => tr(
       'commands.declineSoftwareOffer',
-      {'name': _softwareName(view, software)},
+      {'name': softwareName(view, software)},
     ),
     ShutDownSoftware(:final software) => tr('commands.shutDownSoftware', {
-      'name': _softwareName(view, software),
+      'name': softwareName(view, software),
     }),
     ClearStock(store: final s, product: final p) => tr('commands.clearStock', {
       'product': product(p),
@@ -486,7 +486,7 @@ String _price(Money? price) => price == null
 
 /// The name of the actor's software company [id], or nothing if it isn't
 /// theirs.
-String _softwareName(Observation view, SoftwareId id) {
+String softwareName(Observation view, SoftwareId id) {
   for (final company in view.companies) {
     if (company.software case final software? when software.id == id) {
       return software.name;

@@ -9,6 +9,7 @@ import 'package:engine/src/policies/director.dart';
 import 'package:engine/src/policies/retail_policy.dart' show operatingReserve;
 import 'package:engine/src/state/factory_sales.dart';
 import 'package:engine/src/state/invariants.dart';
+import 'package:engine/src/state/talent.dart';
 import 'package:test/test.dart';
 
 import 'director_test.dart' show clerk, growing, opening, star, withDirectors;
@@ -281,6 +282,96 @@ void main() {
 
       expect(team(Goal.grow), 1);
       expect(team(Goal.hold), 0);
+    });
+
+    /// Plays [game] past the next first of the month.
+    void pastFirstOfMonth(Simulation game) {
+      game.step();
+      while (!game.today.isFirstOfMonth) {
+        game.step();
+      }
+      game.step();
+    }
+
+    /// Hires, for the player's software, the candidates [pick] chooses
+    /// among those on the market, in order.
+    void hireFor(
+      Simulation game,
+      List<KeyPerson> Function(List<KeyPerson> candidates) pick,
+    ) {
+      final software = game.world.software.single;
+      final candidates = [
+        for (final person in game.world.keyPeople)
+          if (person.forSoftware && person.status == KeyStatus.candidate)
+            person,
+      ];
+      for (final person in pick(candidates)) {
+        game.submit(
+          HireSoftwarePerson(player, software: software.id, person: person.id),
+        );
+      }
+      expect(game.step().rejections, isEmpty);
+    }
+
+    test('growing, the boss writes in their letter whom they hired', () {
+      final (game, company) = started();
+      game.submit(_brief({softwareBusiness: Goal.grow}, company: company));
+      pastFirstOfMonth(game);
+      final memos = game.world.companies[company.index].memos;
+      final hired = memos.whereType<SoftwareHired>().single;
+      final person = game.world.keyPeople.firstWhere(
+        (p) => p.software == game.world.software.single.id,
+      );
+      expect(hired.person, person.name);
+      expect(hired.replaced, isNull);
+    });
+
+    test('growing with a full team, the boss takes on someone who builds '
+        'clearly more in place of the weakest of their role', () {
+      final (game, company) = started();
+      // The weakest two, one of them of the role of someone three times as
+      // strong still on the market.
+      hireFor(game, (candidates) {
+        final strong = candidates.firstWhere((p) => p.level == 1);
+        final weak = candidates.where((p) => p.level == 0).toList();
+        final same = weak.firstWhere((p) => p.role == strong.role);
+        return [same, weak.firstWhere((p) => !identical(p, same))];
+      });
+      final software = game.world.software.single;
+      List<KeyPerson> team() => [
+        for (final person in game.world.keyPeople)
+          if (person.software == software.id) person,
+      ];
+      expect(team().map((p) => p.level), [0, 0]);
+      final before = team();
+      game.submit(_brief({softwareBusiness: Goal.grow}, company: company));
+      pastFirstOfMonth(game);
+      expect(team(), hasLength(2));
+      expect(team().map((p) => p.level), contains(1));
+      final hired = game.world.companies[company.index].memos
+          .whereType<SoftwareHired>()
+          .single;
+      expect(hired.replaced, isNotNull);
+      // One of the two left.
+      expect(before.where((p) => p.status == KeyStatus.gone), hasLength(1));
+      expect(invariantViolations(game.world), isEmpty);
+    });
+
+    test('growing with a full team and no one better, the boss says so', () {
+      final (game, company) = started();
+      hireFor(
+        game,
+        (candidates) => [
+          for (final person in candidates)
+            if (person.level == 1) person,
+        ].take(2).toList(),
+      );
+      game.submit(_brief({softwareBusiness: Goal.grow}, company: company));
+      pastFirstOfMonth(game);
+      final memos = game.world.companies[company.index].memos;
+      expect(memos.whereType<SoftwareHired>(), isEmpty);
+      final held = memos.whereType<SoftwareHeld>().single;
+      expect((held.teamFull, held.people), (true, 2));
     });
 
     test('harvesting, the boss stops its marketing on the first of the '

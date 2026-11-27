@@ -13,6 +13,7 @@ import '../state/director.dart';
 import '../state/entities.dart';
 import '../state/factories.dart';
 import '../state/factory.dart';
+import '../state/fixed_assets.dart';
 import '../state/national_value.dart';
 import '../state/orders.dart';
 import '../state/store.dart';
@@ -53,6 +54,7 @@ CountryEconomy? currentNational(WorldState world, ContentDb content) {
     table,
     seed: world.seed,
     start: content.startDay,
+    fittingsLifeYears: content.finance.fittingsLifeYears,
   );
   final months = 1 + world.regimeLog.length;
   while (economy.monthsRun < months) {
@@ -388,8 +390,14 @@ void absorbDirected(WorldState world, TickContext context) {
       costs: nationalCosts(format, strategy, market.country),
       settled: true,
     );
-    block.cost += store.boughtFor;
-    store.boughtFor = Money.zero;
+    // Its fittings and what was paid for it stay the company's, in the
+    // block.
+    block
+      ..cost += store.boughtFor
+      ..fittings += store.fittings;
+    store
+      ..boughtFor = Money.zero
+      ..fittings = Money.zero;
     closeStore(world, context.ledger, store);
     context.events.add(
       StoreAbsorbed(
@@ -527,6 +535,19 @@ final class NationalSystem implements TickSystem {
     Money made = Money.zero,
   }) {
     final company = world.companies[block.company];
+    // The shops it closed at the month's start take their share of its
+    // fittings with them.
+    if (month.closed > 0 && block.fittings > Money.zero) {
+      final gone = Money(
+        mulDivRound(
+          block.fittings.cents,
+          month.closed,
+          month.stores + month.closed,
+        ),
+      );
+      block.fittings -= gone;
+      writeOffFixed(ledger, company, gone);
+    }
     if (month.sales > Money.zero) {
       ledger.pay(
         payer: world.elsewhere,

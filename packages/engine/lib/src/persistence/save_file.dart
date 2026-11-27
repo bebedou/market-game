@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../accounting/ledger.dart';
 import '../commands/command.dart';
 import '../content/content_db.dart';
 import '../content/scenario_loader.dart';
@@ -8,12 +9,18 @@ import '../core/calendar.dart';
 import '../core/fx.dart';
 import '../countries/country_economy.dart';
 import '../neighbourhoods/neighbourhood_generator.dart';
+import '../core/money.dart';
+import '../state/districts.dart' show monthsSinceStart, sitesOf;
+import '../state/factory.dart';
+import '../state/fixed_assets.dart';
 import '../state/game_start.dart';
 import '../state/growth.dart';
 import '../state/sleepers.dart';
 import '../state/stocks.dart';
-import '../state/store.dart' show shopSizesVersion;
+import '../state/store.dart' show fixedAssetsVersion, shopSizesVersion;
 import '../state/world_state.dart';
+import '../systems/national.dart' show nationalFitOut;
+import '../systems/stocks.dart' show settleListedAssets;
 import 'state_io.dart';
 
 /// The bytes of a saved game.
@@ -202,6 +209,10 @@ final class SaveData {
     if (version >= stocksVersion) readStocks(reader, world);
     reader.expectEnd();
     if (version < shopSizesVersion) _settleShopSizes(world, content);
+    if (version < fixedAssetsVersion) {
+      _recogniseFixedAssets(world, content);
+      settleListedAssets(world, content);
+    }
     if (version < _structureVersion) {
       if (growthProblem(world, content) case final problem?) {
         throw FormatException(
@@ -367,7 +378,8 @@ List<int>? _formatMap(List<ContentList>? saved, ContentDb content) {
 /// Brings a world read from before shops were sized as they open
 /// ([shopSizesVersion]) up to date: works under way are done at once, as
 /// they would have come to be, and a company's shops by formula of a format
-/// that went join its others of the one they became.
+/// that went join its others of the one they became, the smaller into the
+/// bigger.
 void _settleShopSizes(WorldState world, ContentDb content) {
   final expansion = content.expansion;
   for (final store in world.stores) {
@@ -390,18 +402,164 @@ void _settleShopSizes(WorldState world, ContentDb content) {
   final economy = world.national;
   if (economy == null) return;
   for (final country in economy.countries) {
-    for (final block in [...country.blocks]) {
-      if (block.name != null || !country.blocks.contains(block)) continue;
-      final first = economy.blockOf(
-        country,
-        company: block.company,
-        trade: block.trade,
-        format: block.format,
-      );
-      if (first != null && !identical(first, block)) {
-        economy.foldBlock(country, first, block);
+    // A company's own shops of one kind, by company, trade and format: the
+    // smaller fold into the one with the most shops, which keeps its draw
+    // and figures.
+    final kinds = <(int, int, int), List<CompanyBlock>>{};
+    for (final block in country.blocks) {
+      if (block.name != null) continue;
+      (kinds[(block.company, block.trade, block.format)] ??= []).add(block);
+    }
+    for (final blocks in kinds.values) {
+      if (blocks.length < 2) continue;
+      blocks.sort((a, b) => b.stores.compareTo(a.stores));
+      for (final smaller in blocks.skip(1)) {
+        economy.foldBlock(country, blocks.first, smaller);
       }
     }
+  }
+}
+
+/// Saves before format 47 spent fittings and plants outright. Each still
+/// in use is recognised at what it would cost today, worn by every month
+/// since it opened as the books now wear it, against the reserve
+/// [AccountKind.reserves], so that profit kept is what it was. A store
+/// bought takes its fittings out of what was paid for it instead. Shops run
+/// by formula, whose ages are not kept, are taken as half their life old.
+void _recogniseFixedAssets(WorldState world, ContentDb content) {
+  final ledger = Ledger(world.today);
+  final finance = content.finance;
+  final reserve = List.filled(world.companies.length, Money.zero);
+  Money worn(Money cost, int months, int life) {
+    var book = cost;
+    for (var m = 0; m < months && book > Money.zero; m++) {
+      book -= monthsWear(book, life);
+    }
+    return book;
+  }
+
+  int monthsSince(Day day) {
+    final from = day.date;
+    final now = world.today.date;
+    final months = (now.year - from.year) * 12 + now.month - from.month;
+    return months > 0 ? months : 0;
+  }
+
+  for (final store in world.stores) {
+    if (!store.isTrading) continue;
+    final site = content.sites[store.site.index];
+    final cost = shopOpeningCost(
+      content,
+      site,
+      content.formats[store.format.index],
+      world.macroAt(content, site.market).priceIndex,
+      area: store.area,
+    );
+    final book = worn(
+      cost,
+      monthsSince(store.opensOn),
+      finance.fittingsLifeYears,
+    );
+    if (book <= Money.zero) continue;
+    final company = world.companies[store.company.index];
+    if (store.boughtFor > Money.zero) {
+      final carried = book < store.boughtFor ? book : store.boughtFor;
+      carryFixed(
+        ledger,
+        company,
+        carried,
+        reason: EntryReason.assetsRecognised,
+        store: store.id,
+      );
+      store
+        ..boughtFor -= carried
+        ..fittings = carried;
+    } else {
+      store.fittings = book;
+      reserve[store.company.index] += book;
+    }
+  }
+  for (final factory in world.factories) {
+    if (factory.status != FactoryStatus.running) continue;
+    factory.book = worn(
+      factory.builtFor,
+      monthsSince(factory.opensOn),
+      finance.plantLifeYears,
+    );
+    reserve[factory.company.index] += factory.book;
+  }
+  final month = monthsSinceStart(content, world.today);
+  for (final district in world.sleepers) {
+    for (final shop in district.shops) {
+      final company = shop.company;
+      if (company == null) continue;
+      final site = sitesOf(world, content, district)[shop.site];
+      final cost = site.openingCost
+          .times(content.formats[shop.format.index].fitOutAt(shop.area))
+          .times(
+            world
+                .macroOf(content.neighbourhoods[district.row].country)
+                .priceIndex,
+          );
+      shop.fittings = worn(
+        cost,
+        month - (shop.acquiredMonth ?? shop.openedMonth),
+        finance.fittingsLifeYears,
+      );
+      reserve[company.index] += shop.fittings;
+    }
+  }
+  if (world.national case final economy?) {
+    final half = finance.fittingsLifeYears * 6;
+    for (final country in economy.countries) {
+      for (final block in country.blocks) {
+        final national = content.formats[block.format].national;
+        if (national == null) continue;
+        var cost = Money.zero;
+        for (final (r, region) in block.regions.indexed) {
+          cost += nationalFitOut(
+            national,
+            country,
+            block.trade,
+            r,
+          ).timesInt(region.stores);
+        }
+        final book = worn(cost, half, finance.fittingsLifeYears);
+        // A chain bought carries its fittings out of what was paid.
+        if (block.cost > Money.zero) {
+          final carried = book < block.cost ? book : block.cost;
+          carryFixed(
+            ledger,
+            world.companies[block.company],
+            carried,
+            reason: EntryReason.assetsRecognised,
+          );
+          block
+            ..cost -= carried
+            ..fittings = carried;
+        } else {
+          block.fittings = book;
+          reserve[block.company] += book;
+        }
+      }
+      for (final chain in country.chains) {
+        final cost = chain.perStore
+            .times(economy.table.fitOut)
+            .times(country.priceIndex)
+            .timesInt(chain.stores);
+        chain.fittings = worn(cost, half, finance.fittingsLifeYears);
+      }
+    }
+  }
+  for (final (i, book) in reserve.indexed) {
+    if (book <= Money.zero) continue;
+    ledger.post(
+      world.companies[i],
+      debit: AccountKind.fixedAssets,
+      credit: AccountKind.reserves,
+      amount: book,
+      reason: EntryReason.assetsRecognised,
+    );
   }
 }
 
@@ -499,6 +657,7 @@ void readNational(StateReader reader, WorldState world, ContentDb content) {
     table,
     seed: world.seed,
     start: content.startDay,
+    fittingsLifeYears: content.finance.fittingsLifeYears,
   )..read(reader);
   world.nationalPosted = switch (reader.readNullableInt()) {
     final day? => Day(day),

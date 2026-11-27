@@ -141,6 +141,20 @@ void _open(
     if (listing.kind == ListingKind.formula && month.profit > Money.zero) {
       stock.debt = month.profit.timesInt(12).times(listing.debt);
     }
+    if (listing.kind == ListingKind.formula) {
+      // What it holds: the table's book value and its net debt, or its
+      // sector's capital for its sales.
+      stock.volume = _volume(def, market, listing, stock);
+      final level = world.macroOf(listing.country).priceIndex;
+      stock.assets = switch (listing.equity) {
+        final equity? => equity + _atTablePrices(stock.debt, level),
+        null => stock.volume.times(sector.capital),
+      };
+    }
+    market.stocks.add(stock);
+    final equity = bookValue(
+      stockBooks(world, content, def, listing, stock, economy),
+    );
     for (var q = 4; q >= 1; q--) {
       final profit = month.profit.timesInt(3);
       stock.keep(
@@ -151,10 +165,10 @@ void _open(
           dividends: profit > Money.zero
               ? profit.times(listing.payout)
               : Money.zero,
+          equity: equity,
         ),
       );
     }
-    market.stocks.add(stock);
     stock.worth = stockWorth(world, content, def, listing, stock, economy);
     final worth = stock.worth;
     var shares = worth.cents ~/ _sharePrice.cents;
@@ -291,9 +305,9 @@ final class StockMarketSystem implements TickSystem {
         ..quarterRevenue = stock.quarterRevenue + month.revenue
         ..quarterProfit = stock.quarterProfit + month.profit
         ..quarterMonths += 1;
-      if (listing.kind == ListingKind.formula && month.profit.isNegative) {
-        stock.debt -= month.profit;
-      }
+      // Its month's profit, or loss, is cash: it pays debt down or adds
+      // to it.
+      if (listing.kind == ListingKind.formula) stock.debt -= month.profit;
     }
   }
 
@@ -339,20 +353,21 @@ final class StockMarketSystem implements TickSystem {
         chain.cash -= dividends;
       }
       if (listing.kind == ListingKind.formula) {
-        final kept = profit - dividends;
+        // It pays out a quarter of the way to the debt it aims for, or its
+        // controller does: what it has spare below it, less of its usual
+        // dividend above it. What it pays is cash, as its profit was.
         final target = (stock.yearProfit + profit).times(
           stock.debtLever ?? listing.debt,
         );
-        if (kept > Money.zero && stock.debt > target) {
-          final over = stock.debt - target;
-          stock.debt -= kept < over ? kept : over;
-        } else if (stock.debtLever != null && stock.debt < target) {
-          // Borrowing up to what its controller aims for pays out a quarter
-          // of the way at a time.
-          final more = Money((target - stock.debt).cents ~/ 4);
-          stock.debt += more;
-          dividends += more;
+        if (target > Money.zero) {
+          final gap = Money((target - stock.debt).cents ~/ 4);
+          if (gap > Money.zero) {
+            dividends += gap;
+          } else {
+            dividends -= -gap < dividends ? -gap : dividends;
+          }
         }
+        stock.debt += dividends;
       }
       if (listing.kind == ListingKind.company) {
         // A company of the player's pays what its owner pays out; its
@@ -383,6 +398,9 @@ final class StockMarketSystem implements TickSystem {
             revenue: revenue,
             profit: profit,
             dividends: dividends,
+            equity: bookValue(
+              stockBooks(world, content, def, listing, stock, economy),
+            ),
           ),
         )
         ..quarterRevenue = Money.zero
@@ -995,6 +1013,15 @@ Fx _worthRatio(_Worth after, _Worth before) {
               stock.management - listing.management,
             ) +
             _marginOf(stock.growthLever);
+        // The sales it adds cost its sector's capital, paid at today's
+        // prices; sales it loses free what they tied up.
+        final volume = _volume(def, market, listing, stock);
+        var invested = (volume - stock.volume).times(sector.capital);
+        if (stock.assets + invested < Money.zero) invested = -stock.assets;
+        stock
+          ..assets += invested
+          ..debt += invested.times(macro.priceIndex)
+          ..volume = volume;
         stock.margin +=
             (aim - stock.margin) * rules.managementPull +
             Fx.raw(
@@ -1116,6 +1143,97 @@ int? _directorGrade(ContentDb content, Listing stock) {
   return best - (grades - 1 - grade);
 }
 
+/// What [stock], of [listing], sells a year at the table's prices in a
+/// normal year: its share of its sector's output in its country, grown as
+/// the sector's trend has.
+Money _volume(
+  StocksDef def,
+  StockMarket market,
+  ListingDef listing,
+  Listing stock,
+) {
+  final trend = market
+      .trends[listing.country.index * def.sectors.length + listing.sector];
+  final year = def.sectors[listing.sector].output![listing.country.index].times(
+    trend,
+  );
+  return Money(mulDivRound(year.cents, stock.share, _micro));
+}
+
+/// [money] at today's prices, [level], in the table's.
+Money _atTablePrices(Money money, Fx level) =>
+    Money(mulDivRound(money.cents, Fx.scale, level.raw));
+
+/// A listed company's balance sheet, in brief: what it holds to trade (shop
+/// fittings, plants, its operating assets for one by formula, its product
+/// for software), its cash less its loans, and the rest of what it holds
+/// less what it owes (stock, bills, stakes, goodwill).
+typedef StockBooks = ({Money fixed, Money netCash, Money other});
+
+/// What [stock]'s books hold: [StockBooks]. A company by formula holds its
+/// assets at today's prices less its net debt; a chain its shops' fittings
+/// and its cash; a software rival and a producer hold their sector's
+/// capital for a year's sales and keep no books of debt; a company of the
+/// player's what its own books say.
+StockBooks stockBooks(
+  WorldState world,
+  ContentDb content,
+  StocksDef def,
+  ListingDef listing,
+  Listing stock,
+  CountryEconomy? economy,
+) {
+  final sector = def.sectors[listing.sector];
+  switch (listing.kind) {
+    case ListingKind.formula:
+      return (
+        fixed: stock.assets.times(world.macroOf(listing.country).priceIndex),
+        netCash: -stock.debt,
+        other: Money.zero,
+      );
+    case ListingKind.chain:
+      final chain = chainOf(content, economy, listing);
+      return (
+        fixed: chain?.fittings ?? Money.zero,
+        netCash: chain?.cash ?? Money.zero,
+        other: Money.zero,
+      );
+    case ListingKind.software || ListingKind.producer:
+      return (
+        fixed: stock.yearRevenue.times(sector.capital),
+        netCash: Money.zero,
+        other: Money.zero,
+      );
+    case ListingKind.company:
+      final accounts = world.companies[listing.link].accounts;
+      final fixed = accounts[AccountKind.fixedAssets];
+      final netCash = accounts[AccountKind.cash] + accounts[AccountKind.loans];
+      return (
+        fixed: fixed,
+        netCash: netCash,
+        other: accounts.netAssets - fixed - netCash,
+      );
+  }
+}
+
+/// Saves before format 47 kept no assets for companies by formula: each
+/// holds its sector's capital for what it sells now.
+void settleListedAssets(WorldState world, ContentDb content) {
+  final def = content.stocks;
+  final market = world.stocks;
+  if (def == null || market == null) return;
+  for (final (i, stock) in market.stocks.indexed) {
+    final listing = listingOf(def, market, i);
+    if (listing.kind != ListingKind.formula) continue;
+    stock
+      ..volume = _volume(def, market, listing, stock)
+      ..assets = stock.volume.times(def.sectors[listing.sector].capital);
+  }
+}
+
+/// What [books] come to: the company's book value.
+Money bookValue(StockBooks books) => books.fixed + books.netCash + books.other;
+
 /// What company [i] of [def] is worth by its books: a year's profit times
 /// the multiple rates, growth and risk set, or for software a year's sales
 /// times its market's multiple; never less than its sales times its
@@ -1229,10 +1347,15 @@ Fx earningsMultiple(
 /// player's own: it grows with its growth and falls with the economy.
 Fx _softwareMultiple(WorldState world, ContentDb content, Listing stock) {
   final def = content.software!;
-  var growth = def.growth;
+  var growth = softwareTrend(
+    def,
+    world.softwareMarket?.customers ?? def.customers,
+  );
   if (stock.results.length >= 8) {
+    // The four quarters before the latest four.
+    final n = stock.results.length;
     var before = Money.zero;
-    for (var q = 0; q < 4; q++) {
+    for (var q = n - 8; q < n - 4; q++) {
       before += stock.results[q].revenue;
     }
     if (before > Money.zero) {
